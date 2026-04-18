@@ -3,7 +3,7 @@ use aura_policy::TransactionContext;
 
 use crate::{
     constants::TREASURY_SEED,
-    cpi::{
+    ext_cpi::{
         parse_ciphertext_account, AuraEncryptContext, ENCRYPT_CPI_AUTHORITY_SEED,
         ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
     },

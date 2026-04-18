@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::TREASURY_SEED,
-    cpi::{parse_ciphertext_account, ENCRYPT_FHE_UINT64},
+    ext_cpi::{parse_ciphertext_account, ENCRYPT_FHE_UINT64},
     instructions::sync_treasury_account,
     program_accounts::TreasuryAccount,
 };

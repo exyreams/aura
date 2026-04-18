@@ -2,13 +2,13 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::TREASURY_SEED,
-    cpi::{
+    execution::{
+        apply_confidential_policy_result, confirm_pending_decryption, expire_pending_transaction,
+    },
+    ext_cpi::{
         decode_digest_hex, decrypt_u64, decrypt_u64_lane, parse_decryption_request_account,
         verify_decryption_request_digest, DecryptionStatus, ENCRYPT_FHE_UINT64,
         ENCRYPT_FHE_VECTOR_U64,
-    },
-    execution::{
-        apply_confidential_policy_result, confirm_pending_decryption, expire_pending_transaction,
     },
     instructions::sync_treasury_account,
     program_accounts::TreasuryAccount,

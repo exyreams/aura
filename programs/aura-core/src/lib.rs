@@ -11,7 +11,7 @@
 //! - `instructions/` — one file per Anchor instruction handler
 //! - `state/`        — domain model types (`AgentTreasury`, `PendingTransaction`, etc.)
 //! - `execution/`    — proposal lifecycle state-machine logic
-//! - `cpi/`          — thin adapters for dWallet and Encrypt CPIs
+//! - `ext_cpi/`      — thin adapters for dWallet and Encrypt CPIs
 //! - `governance/`   — emergency multisig override
 //! - `audit/`        — append-only audit trail
 //! - `program_accounts/` — Anchor account serialization layer
@@ -25,9 +25,9 @@ use anchor_lang::prelude::*;
 
 pub mod audit;
 pub mod constants;
-pub mod cpi;
 pub mod errors;
 pub mod execution;
+pub mod ext_cpi;
 pub mod governance;
 pub mod instructions;
 pub mod program_accounts;
@@ -49,7 +49,7 @@ use instructions::{
     __client_accounts_request_policy_decryption,
 };
 
-declare_id!("6ekyM9L4vah2ePLJyingmyfZHWciXFUJ6oekPLkEtUGQ");
+declare_id!("7vtHJVz7CeWHFSumryc4WgtZCit5dG8dsaHns8qzDGC9");
 
 #[program]
 pub mod aura_core {
@@ -159,7 +159,15 @@ pub mod aura_core {
 }
 
 pub use audit::{AuditEvent, AuditKind, AuditTrail};
-pub use cpi::{
+pub use errors::TreasuryError;
+pub use execution::{
+    apply_confidential_policy_result, build_chain_message, confirm_pending_decryption,
+    deny_pending_transaction, evaluate_batch_preview, expire_pending_transaction,
+    finalize_signed_pending, generate_proposal_digest, hash_message, keccak_message_digest,
+    keccak_message_digest_hex, mark_pending_decryption_request, mark_signature_requested,
+    propose_confidential_transaction, propose_confidential_vector_transaction, propose_transaction,
+};
+pub use ext_cpi::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex, decrypt_u64,
     decrypt_u64_lane, parse_ciphertext_account, parse_decryption_request_account,
     parse_message_approval_account, parse_runtime_pubkey, pending_signature_request_from_live,
@@ -169,14 +177,6 @@ pub use cpi::{
     MessageApprovalStatus, OnchainCiphertext, OnchainDecryptionRequest, OnchainMessageApproval,
     DWALLET_CPI_AUTHORITY_SEED, ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED,
     ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64, MESSAGE_APPROVAL_SEED,
-};
-pub use errors::TreasuryError;
-pub use execution::{
-    apply_confidential_policy_result, build_chain_message, confirm_pending_decryption,
-    deny_pending_transaction, evaluate_batch_preview, expire_pending_transaction,
-    finalize_signed_pending, generate_proposal_digest, hash_message, keccak_message_digest,
-    keccak_message_digest_hex, mark_pending_decryption_request, mark_signature_requested,
-    propose_confidential_transaction, propose_confidential_vector_transaction, propose_transaction,
 };
 pub use governance::{EmergencyMultisig, OverrideProposal};
 pub use program_accounts::*;

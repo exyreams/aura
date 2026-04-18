@@ -2,11 +2,11 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::TREASURY_SEED,
-    cpi::{
+    execution::{expire_pending_transaction, mark_pending_decryption_request},
+    ext_cpi::{
         parse_ciphertext_account, request_decryption_via_cpi, ENCRYPT_CPI_AUTHORITY_SEED,
         ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64,
     },
-    execution::{expire_pending_transaction, mark_pending_decryption_request},
     instructions::sync_treasury_account,
     program_accounts::TreasuryAccount,
     state::PendingDecryptionRequest,

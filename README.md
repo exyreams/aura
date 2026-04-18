@@ -170,7 +170,7 @@ Multiple agents can share a collective spending pool. Attach a `configure_swarm`
 
 ```
 aura-core (devnet)
-  Program ID:    6ekyM9L4vah2ePLJyingmyfZHWciXFUJ6oekPLkEtUGQ
+  Program ID:    7vtHJVz7CeWHFSumryc4WgtZCit5dG8dsaHns8qzDGC9
   IDL Metadata:  pVS5Pe4WhfZtrdGLrVZP2vE6N7CsCpzCwpoVZj6vNrL
 
 Ika Encrypt (pre-alpha devnet)
@@ -225,9 +225,9 @@ programs/
   │   ├─ src/
   │   │   ├─ audit/          # Append-only audit trail and event types
   │   │   ├─ constants/      # Field length limits and collection caps
-  │   │   ├─ cpi/            # dWallet and Encrypt CPI adapters
   │   │   ├─ errors/         # TreasuryError and AuraCoreError
   │   │   ├─ execution/      # Proposal lifecycle state machine
+  │   │   ├─ ext_cpi/        # dWallet and Encrypt CPI adapters
   │   │   ├─ governance/     # Emergency multisig override
   │   │   ├─ instructions/   # One file per Anchor instruction handler
   │   │   ├─ program_accounts/ # On-chain account serialization layer

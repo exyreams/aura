@@ -6,9 +6,9 @@ use aura_policy::{
 
 use crate::{
     audit::AuditKind,
-    cpi::decision_digest,
     errors::TreasuryError,
     execution::generate_proposal_digest,
+    ext_cpi::decision_digest,
     state::{
         AgentTreasury, ExecutionReceipt, PendingDecryptionRequest, PendingSignatureRequest,
         PendingTransaction, ProposalStatus,

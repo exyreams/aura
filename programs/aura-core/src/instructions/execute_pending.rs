@@ -2,11 +2,11 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::TREASURY_SEED,
-    cpi::{
+    execution::{deny_pending_transaction, expire_pending_transaction, mark_signature_requested},
+    ext_cpi::{
         approve_message_via_cpi, build_message_approval_request, parse_runtime_pubkey,
         pending_signature_request_from_live, DWALLET_CPI_AUTHORITY_SEED,
     },
-    execution::{deny_pending_transaction, expire_pending_transaction, mark_signature_requested},
     instructions::sync_treasury_account,
     program_accounts::TreasuryAccount,
     program_events::emit_execution_event,
