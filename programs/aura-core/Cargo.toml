@@ -1,0 +1,30 @@
+[package]
+name = "aura-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "aura_core"
+path = "src/lib.rs"
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+no-entrypoint = []
+no-idl = []
+idl-build = ["anchor-lang/idl-build"]
+cpi = ["no-entrypoint"]
+
+[dependencies]
+anchor-lang = "1.0.0"
+aura-policy = { path = "../aura-policy" }
+bs58 = "0.5"
+encrypt-anchor = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-dsl = { package = "encrypt-solana-dsl", git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-solana-types = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-types = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+hex = "0.4"
+sha2 = "0.10"
+sha3 = "0.10"
+

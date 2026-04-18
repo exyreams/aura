@@ -1,0 +1,14 @@
+[package]
+name = "aura-policy"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "aura_policy"
+path = "src/lib.rs"
+
+[dependencies]
+encrypt-dsl = { package = "encrypt-solana-dsl", git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-solana-types = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-types = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
