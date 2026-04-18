@@ -23,6 +23,8 @@ pub const ENCRYPT_EVENT_AUTHORITY_SEED: &[u8] = b"__event_authority";
 
 /// Instruction discriminator for `request_decryption` in the Encrypt program.
 pub const IX_REQUEST_DECRYPTION: u8 = 11;
+/// Instruction discriminator for `execute_graph` in the Encrypt program.
+pub const IX_EXECUTE_GRAPH: u8 = 4;
 
 /// FHE type code for a single encrypted `u64` scalar.
 pub const ENCRYPT_FHE_UINT64: u8 = 4;
@@ -121,8 +123,11 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
         ix_data: &[u8],
         encrypt_execute_accounts: &[Self::Account<'a>],
     ) -> std::result::Result<(), Self::Error> {
+        let num_inputs = parse_execute_graph_num_inputs(ix_data).ok_or_else(|| {
+            anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRaw)
+        })?;
         let mut accounts = vec![
-            AccountMeta::new(self.config.key(), false),
+            AccountMeta::new_readonly(self.config.key(), false),
             AccountMeta::new(self.deposit.key(), false),
             AccountMeta::new_readonly(self.caller_program.key(), false),
             AccountMeta::new_readonly(self.cpi_authority.key(), true),
@@ -131,8 +136,14 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
             AccountMeta::new_readonly(self.event_authority.key(), false),
             AccountMeta::new_readonly(self.encrypt_program.key(), false),
         ];
-        for account in encrypt_execute_accounts {
-            accounts.push(AccountMeta::new(account.key(), false));
+        for (index, account) in encrypt_execute_accounts.iter().enumerate() {
+            let is_signer = account.is_signer;
+            let meta = if index < num_inputs {
+                AccountMeta::new_readonly(account.key(), is_signer)
+            } else {
+                AccountMeta::new(account.key(), is_signer)
+            };
+            accounts.push(meta);
         }
 
         let ix = Instruction {
@@ -393,7 +404,7 @@ pub fn request_decryption_via_cpi<'info>(
         accounts: vec![
             AccountMeta::new_readonly(config.key(), false),
             AccountMeta::new(deposit.key(), false),
-            AccountMeta::new(request_account.key(), false),
+            AccountMeta::new(request_account.key(), request_account.is_signer),
             AccountMeta::new_readonly(caller_program.key(), false),
             AccountMeta::new_readonly(cpi_authority.key(), true),
             AccountMeta::new_readonly(ciphertext.key(), false),
@@ -422,6 +433,19 @@ pub fn request_decryption_via_cpi<'info>(
     invoke_signed(&ix, &account_infos, signer_seeds)?;
 
     Ok(digest)
+}
+
+fn parse_execute_graph_num_inputs(ix_data: &[u8]) -> Option<usize> {
+    if ix_data.len() < 4 || ix_data.first().copied()? != IX_EXECUTE_GRAPH {
+        return None;
+    }
+
+    let graph_len = u16::from_le_bytes([ix_data[1], ix_data[2]]) as usize;
+    if ix_data.len() != graph_len + 4 {
+        return None;
+    }
+
+    ix_data.last().copied().map(usize::from)
 }
 
 /// Returns `true` if the decryption request's stored ciphertext digest matches
@@ -618,5 +642,21 @@ mod tests {
 
         assert_eq!(decrypt_u64(&parsed).expect("lane 0"), 42);
         assert_eq!(decrypt_u64_lane(&parsed, 1).expect("lane 1"), 99);
+    }
+
+    #[test]
+    fn parse_execute_graph_num_inputs_reads_trailing_byte() {
+        let ix_data = vec![IX_EXECUTE_GRAPH, 3, 0, 9, 8, 7, 4];
+
+        assert_eq!(parse_execute_graph_num_inputs(&ix_data), Some(4));
+    }
+
+    #[test]
+    fn parse_execute_graph_num_inputs_rejects_malformed_payload() {
+        let wrong_disc = vec![99, 0, 0, 0];
+        let wrong_len = vec![IX_EXECUTE_GRAPH, 5, 0, 1, 2, 3];
+
+        assert_eq!(parse_execute_graph_num_inputs(&wrong_disc), None);
+        assert_eq!(parse_execute_graph_num_inputs(&wrong_len), None);
     }
 }

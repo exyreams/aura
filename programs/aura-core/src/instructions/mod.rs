@@ -33,40 +33,57 @@ pub mod request_policy_decryption;
 
 pub use cancel_pending::CancelPending;
 pub(crate) use cancel_pending::__client_accounts_cancel_pending;
+pub(crate) use cancel_pending::__cpi_client_accounts_cancel_pending;
 pub use collect_override_signature::CollectOverrideSignature;
 pub(crate) use collect_override_signature::__client_accounts_collect_override_signature;
+pub(crate) use collect_override_signature::__cpi_client_accounts_collect_override_signature;
 pub use configure_confidential_guardrails::ConfigureConfidentialGuardrails;
 pub(crate) use configure_confidential_guardrails::__client_accounts_configure_confidential_guardrails;
+pub(crate) use configure_confidential_guardrails::__cpi_client_accounts_configure_confidential_guardrails;
 pub use configure_confidential_vector_guardrails::ConfigureConfidentialVectorGuardrails;
 pub(crate) use configure_confidential_vector_guardrails::__client_accounts_configure_confidential_vector_guardrails;
+pub(crate) use configure_confidential_vector_guardrails::__cpi_client_accounts_configure_confidential_vector_guardrails;
 pub(crate) use configure_multisig::__client_accounts_configure_multisig;
+pub(crate) use configure_multisig::__cpi_client_accounts_configure_multisig;
 pub use configure_multisig::{ConfigureMultisig, ConfigureMultisigArgs};
 pub(crate) use configure_swarm::__client_accounts_configure_swarm;
+pub(crate) use configure_swarm::__cpi_client_accounts_configure_swarm;
 pub use configure_swarm::{ConfigureSwarm, ConfigureSwarmArgs};
 pub use confirm_policy_decryption::ConfirmPolicyDecryption;
 pub(crate) use confirm_policy_decryption::__client_accounts_confirm_policy_decryption;
+pub(crate) use confirm_policy_decryption::__cpi_client_accounts_confirm_policy_decryption;
 pub(crate) use create_treasury::__client_accounts_create_treasury;
+pub(crate) use create_treasury::__cpi_client_accounts_create_treasury;
 pub use create_treasury::{CreateTreasury, CreateTreasuryArgs};
 pub use execute_pending::ExecutePending;
 pub(crate) use execute_pending::__client_accounts_execute_pending;
+pub(crate) use execute_pending::__cpi_client_accounts_execute_pending;
 pub use finalize_execution::FinalizeExecution;
 pub(crate) use finalize_execution::__client_accounts_finalize_execution;
+pub(crate) use finalize_execution::__cpi_client_accounts_finalize_execution;
 pub use pause_execution::PauseExecution;
 pub(crate) use pause_execution::__client_accounts_pause_execution;
+pub(crate) use pause_execution::__cpi_client_accounts_pause_execution;
 pub(crate) use propose_confidential_transaction::__client_accounts_propose_confidential_transaction;
+pub(crate) use propose_confidential_transaction::__cpi_client_accounts_propose_confidential_transaction;
 pub use propose_confidential_transaction::{
     ProposeConfidentialTransaction, ProposeConfidentialTransactionArgs,
 };
 pub use propose_confidential_vector_transaction::ProposeConfidentialVectorTransaction;
 pub(crate) use propose_confidential_vector_transaction::__client_accounts_propose_confidential_vector_transaction;
+pub(crate) use propose_confidential_vector_transaction::__cpi_client_accounts_propose_confidential_vector_transaction;
 pub use propose_override::ProposeOverride;
 pub(crate) use propose_override::__client_accounts_propose_override;
+pub(crate) use propose_override::__cpi_client_accounts_propose_override;
 pub(crate) use propose_transaction::__client_accounts_propose_transaction;
+pub(crate) use propose_transaction::__cpi_client_accounts_propose_transaction;
 pub use propose_transaction::{ProposeTransaction, ProposeTransactionArgs};
 pub(crate) use register_dwallet::__client_accounts_register_dwallet;
+pub(crate) use register_dwallet::__cpi_client_accounts_register_dwallet;
 pub use register_dwallet::{RegisterDwallet, RegisterDwalletArgs};
 pub use request_policy_decryption::RequestPolicyDecryption;
 pub(crate) use request_policy_decryption::__client_accounts_request_policy_decryption;
+pub(crate) use request_policy_decryption::__cpi_client_accounts_request_policy_decryption;
 
 use anchor_lang::prelude::*;
 

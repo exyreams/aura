@@ -36,6 +36,7 @@ pub mod program_events;
 pub mod state;
 
 pub use instructions::*;
+#[allow(unused_imports)]
 use instructions::{
     __client_accounts_cancel_pending, __client_accounts_collect_override_signature,
     __client_accounts_configure_confidential_guardrails,
@@ -46,7 +47,17 @@ use instructions::{
     __client_accounts_pause_execution, __client_accounts_propose_confidential_transaction,
     __client_accounts_propose_confidential_vector_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_register_dwallet,
-    __client_accounts_request_policy_decryption,
+    __client_accounts_request_policy_decryption, __cpi_client_accounts_cancel_pending,
+    __cpi_client_accounts_collect_override_signature,
+    __cpi_client_accounts_configure_confidential_guardrails,
+    __cpi_client_accounts_configure_confidential_vector_guardrails,
+    __cpi_client_accounts_configure_multisig, __cpi_client_accounts_configure_swarm,
+    __cpi_client_accounts_confirm_policy_decryption, __cpi_client_accounts_create_treasury,
+    __cpi_client_accounts_execute_pending, __cpi_client_accounts_finalize_execution,
+    __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_confidential_transaction,
+    __cpi_client_accounts_propose_confidential_vector_transaction,
+    __cpi_client_accounts_propose_override, __cpi_client_accounts_propose_transaction,
+    __cpi_client_accounts_register_dwallet, __cpi_client_accounts_request_policy_decryption,
 };
 
 declare_id!("7vtHJVz7CeWHFSumryc4WgtZCit5dG8dsaHns8qzDGC9");
