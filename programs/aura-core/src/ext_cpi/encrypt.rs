@@ -135,6 +135,7 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
             AccountMeta::new(self.payer.key(), true),
             AccountMeta::new_readonly(self.event_authority.key(), false),
             AccountMeta::new_readonly(self.encrypt_program.key(), false),
+            AccountMeta::new_readonly(self.system_program.key(), false),
         ];
         for (index, account) in encrypt_execute_accounts.iter().enumerate() {
             let is_signer = account.is_signer;
@@ -161,6 +162,7 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
             self.payer.clone(),
             self.event_authority.clone(),
             self.encrypt_program.clone(),
+            self.system_program.clone(),
         ];
         account_infos.extend_from_slice(encrypt_execute_accounts);
 
