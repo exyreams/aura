@@ -6,9 +6,9 @@ use crate::{
         apply_confidential_policy_result, confirm_pending_decryption, expire_pending_transaction,
     },
     ext_cpi::{
-        decode_digest_hex, decrypt_u64, decrypt_u64_lane, parse_decryption_request_account,
-        verify_decryption_request_digest, DecryptionStatus, ENCRYPT_FHE_UINT64,
-        ENCRYPT_FHE_VECTOR_U64,
+        decode_digest_hex, decrypt_scalar_u64, decrypt_u64_lane,
+        is_supported_policy_scalar_fhe_type, parse_decryption_request_account,
+        verify_decryption_request_digest, DecryptionStatus, ENCRYPT_FHE_VECTOR_U64,
     },
     instructions::sync_treasury_account,
     program_accounts::TreasuryAccount,
@@ -109,8 +109,8 @@ fn confirm_live_decryption(
         pending.policy_output_ciphertext_account.as_ref(),
         parsed.fhe_type,
     ) {
-        (Some(_), ENCRYPT_FHE_UINT64) => (
-            Some(decrypt_u64(&parsed).map_err(crate::map_treasury_error)?),
+        (Some(_), fhe_type) if is_supported_policy_scalar_fhe_type(fhe_type) => (
+            Some(decrypt_scalar_u64(&parsed).map_err(crate::map_treasury_error)?),
             None,
         ),
         (Some(_), ENCRYPT_FHE_VECTOR_U64) => (

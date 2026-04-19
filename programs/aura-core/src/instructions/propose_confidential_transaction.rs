@@ -176,6 +176,13 @@ pub fn handler(
         ctx.accounts.policy_output_ciphertext.to_account_info(),
     )?;
 
+    let policy_output_fhe_type = {
+        let data = ctx.accounts.policy_output_ciphertext.try_borrow_data()?;
+        parse_ciphertext_account(&data)
+            .map_err(crate::map_treasury_error)?
+            .fhe_type
+    };
+
     let tx = TransactionContext {
         amount_usd: args.amount_usd,
         target_chain: chain_from_code(args.target_chain)?,
@@ -199,6 +206,10 @@ pub fn handler(
         &policy_output_ciphertext_account,
     )
     .map_err(crate::map_treasury_error)?;
+
+    if let Some(pending) = domain.pending.as_mut() {
+        pending.policy_output_fhe_type = Some(policy_output_fhe_type);
+    }
 
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
 }

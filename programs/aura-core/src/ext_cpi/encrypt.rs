@@ -135,7 +135,6 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
             AccountMeta::new(self.payer.key(), true),
             AccountMeta::new_readonly(self.event_authority.key(), false),
             AccountMeta::new_readonly(self.encrypt_program.key(), false),
-            AccountMeta::new_readonly(self.system_program.key(), false),
         ];
         for (index, account) in encrypt_execute_accounts.iter().enumerate() {
             let is_signer = account.is_signer;
@@ -146,6 +145,7 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
             };
             accounts.push(meta);
         }
+        accounts.push(AccountMeta::new_readonly(self.system_program.key(), false));
 
         let ix = Instruction {
             program_id: self.encrypt_program.key(),
@@ -162,9 +162,9 @@ impl<'info> EncryptCpi for AuraEncryptContext<'info> {
             self.payer.clone(),
             self.event_authority.clone(),
             self.encrypt_program.clone(),
-            self.system_program.clone(),
         ];
         account_infos.extend_from_slice(encrypt_execute_accounts);
+        account_infos.push(self.system_program.clone());
 
         let seeds = &[ENCRYPT_CPI_AUTHORITY_SEED, &[self.cpi_authority_bump]];
         let signer_seeds = &[&seeds[..]];
@@ -467,6 +467,67 @@ pub fn decrypt_u64(request: &OnchainDecryptionRequest) -> TreasuryResult<u64> {
     decrypt_u64_lane(request, 0)
 }
 
+/// Reads a decrypted scalar integer value and widens it to `u64`.
+///
+/// Supports the scalar policy-output types produced by Encrypt graphs:
+/// `EBool`, `EUint8`, `EUint16`, `EUint32`, and `EUint64`.
+pub fn decrypt_scalar_u64(request: &OnchainDecryptionRequest) -> TreasuryResult<u64> {
+    let plaintext = request.plaintext.as_deref().ok_or_else(|| {
+        TreasuryError::InvalidAccountData(
+            "decryption request does not contain completed plaintext bytes".to_string(),
+        )
+    })?;
+
+    match request.fhe_type {
+        0 | 1 => plaintext.first().copied().map(u64::from).ok_or_else(|| {
+            TreasuryError::InvalidAccountData(
+                "decrypted plaintext is shorter than one byte".to_string(),
+            )
+        }),
+        2 => {
+            let bytes: [u8; 2] = plaintext
+                .get(..2)
+                .ok_or_else(|| {
+                    TreasuryError::InvalidAccountData(
+                        "decrypted plaintext is shorter than two bytes".to_string(),
+                    )
+                })?
+                .try_into()
+                .map_err(|_| {
+                    TreasuryError::InvalidAccountData(
+                        "decrypted plaintext could not be parsed as u16".to_string(),
+                    )
+                })?;
+            Ok(u16::from_le_bytes(bytes).into())
+        }
+        3 => {
+            let bytes: [u8; 4] = plaintext
+                .get(..4)
+                .ok_or_else(|| {
+                    TreasuryError::InvalidAccountData(
+                        "decrypted plaintext is shorter than four bytes".to_string(),
+                    )
+                })?
+                .try_into()
+                .map_err(|_| {
+                    TreasuryError::InvalidAccountData(
+                        "decrypted plaintext could not be parsed as u32".to_string(),
+                    )
+                })?;
+            Ok(u32::from_le_bytes(bytes).into())
+        }
+        ENCRYPT_FHE_UINT64 => decrypt_u64(request),
+        other => Err(TreasuryError::InvalidAccountData(format!(
+            "unsupported scalar FHE type {other} for policy output"
+        ))),
+    }
+}
+
+/// Returns `true` if `fhe_type` is a supported scalar policy-output type.
+pub fn is_supported_policy_scalar_fhe_type(fhe_type: u8) -> bool {
+    matches!(fhe_type, 0..=4)
+}
+
 /// Reads the decrypted `u64` value from a specific lane of a completed decryption request.
 ///
 /// Each lane occupies 8 bytes in the plaintext. Lane 0 is the primary policy
@@ -660,5 +721,20 @@ mod tests {
 
         assert_eq!(parse_execute_graph_num_inputs(&wrong_disc), None);
         assert_eq!(parse_execute_graph_num_inputs(&wrong_len), None);
+    }
+
+    #[test]
+    fn decrypt_scalar_u64_supports_narrow_scalar_types() {
+        let (mut data, _, _) = sample_decryption_request_data();
+        data.resize(DR_HEADER_END + 4, 0);
+        data[DR_TOTAL_LEN..DR_TOTAL_LEN + 4].copy_from_slice(&4u32.to_le_bytes());
+        data[DR_BYTES_WRITTEN..DR_BYTES_WRITTEN + 4].copy_from_slice(&4u32.to_le_bytes());
+        data[DR_FHE_TYPE] = 3;
+        data[DR_HEADER_END..DR_HEADER_END + 4].copy_from_slice(&7u32.to_le_bytes());
+
+        let parsed = parse_decryption_request_account(&data).expect("layout should parse");
+
+        assert_eq!(decrypt_scalar_u64(&parsed).expect("scalar u32"), 7);
+        assert!(is_supported_policy_scalar_fhe_type(parsed.fhe_type));
     }
 }

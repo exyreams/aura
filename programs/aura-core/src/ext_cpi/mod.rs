@@ -24,7 +24,8 @@ pub use dwallet::{
 };
 
 pub use encrypt::{
-    decision_digest, decrypt_u64, decrypt_u64_lane, parse_ciphertext_account,
+    decision_digest, decrypt_scalar_u64, decrypt_u64, decrypt_u64_lane,
+    is_supported_policy_scalar_fhe_type, parse_ciphertext_account,
     parse_decryption_request_account, request_decryption_via_cpi, verify_decryption_request_digest,
     AuraEncryptContext, DecryptionStatus, EncryptEvaluation, OnchainCiphertext,
     OnchainDecryptionRequest, ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED,

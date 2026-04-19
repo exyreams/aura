@@ -4,8 +4,8 @@ use crate::{
     constants::TREASURY_SEED,
     execution::{expire_pending_transaction, mark_pending_decryption_request},
     ext_cpi::{
-        parse_ciphertext_account, request_decryption_via_cpi, ENCRYPT_CPI_AUTHORITY_SEED,
-        ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64,
+        is_supported_policy_scalar_fhe_type, parse_ciphertext_account, request_decryption_via_cpi,
+        ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_VECTOR_U64,
     },
     instructions::sync_treasury_account,
     program_accounts::TreasuryAccount,
@@ -118,7 +118,9 @@ fn request_live_decryption(
     if ciphertext.fhe_type != expected_fhe_type {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
-    if ciphertext.fhe_type != ENCRYPT_FHE_UINT64 && ciphertext.fhe_type != ENCRYPT_FHE_VECTOR_U64 {
+    if !is_supported_policy_scalar_fhe_type(ciphertext.fhe_type)
+        && ciphertext.fhe_type != ENCRYPT_FHE_VECTOR_U64
+    {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
     if ciphertext.status != 1 {
