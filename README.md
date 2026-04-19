@@ -170,8 +170,8 @@ Multiple agents can share a collective spending pool. Attach a `configure_swarm`
 
 ```
 aura-core (devnet)
-  Program ID:    7vtHJVz7CeWHFSumryc4WgtZCit5dG8dsaHns8qzDGC9
-  IDL Metadata:  pVS5Pe4WhfZtrdGLrVZP2vE6N7CsCpzCwpoVZj6vNrL
+  Program ID:    G4XjdmHtwwuTdw7VxWqTuTaL8WkZTKnCEnyaV5V6zgVW
+  IDL Metadata:  Gf7k5TBLSE2LXhwMLtWB1Xe4hvLAtTExvQLUPKazSyQM
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:    4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8
