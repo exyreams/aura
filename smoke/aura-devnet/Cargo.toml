@@ -1,0 +1,46 @@
+[package]
+name = "aura-devnet"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace]
+
+[[bin]]
+name = "dwallet"
+path = "src/dwallet.rs"
+
+[[bin]]
+name = "confidential"
+path = "src/confidential.rs"
+
+[[bin]]
+name = "policy"
+path = "src/policy.rs"
+
+[dependencies]
+anyhow = "1"
+anchor-lang = "1.0.0"
+borsh = "1.6"
+dirs-next = "2"
+aura-core = { path = "../../programs/aura-core", features = ["cpi"] }
+aura-policy = { path = "../../programs/aura-policy" }
+bcs = "0.2"
+bs58 = "0.5"
+encrypt-compute = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-grpc = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+encrypt-types = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha" }
+hex = "0.4"
+ika-dwallet-types = { git = "https://github.com/dwallet-labs/ika-pre-alpha" }
+ika-grpc = { git = "https://github.com/dwallet-labs/ika-pre-alpha" }
+solana-client = "3.1"
+solana-commitment-config = "3.1"
+solana-sdk = "=3.0.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tonic = { version = "0.14", features = ["tls-native-roots", "transport"] }
+
+[patch."https://github.com/dwallet-labs/encrypt-pre-alpha"]
+encrypt-grpc = { path = "../vendor/encrypt-grpc" }
+
+[patch."https://github.com/dwallet-labs/ika-pre-alpha"]
+ika-grpc = { path = "../vendor/ika-grpc" }

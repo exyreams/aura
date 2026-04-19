@@ -186,21 +186,76 @@ Ika dWallet (pre-alpha devnet)
 
 ## Quick Start
 
+### Running Tests
+
 ```bash
-# Run all tests
+# Run all tests (both crates, 75 tests total)
 cargo test --workspace
 
+# Run tests for specific crate
+cargo test -p aura-core    # 46 tests
+cargo test -p aura-policy  # 29 tests
+```
+
+### Building and Deploying
+
+```bash
 # Build the program
 anchor build
 
-# Deploy to devnet (pass your own RPC to avoid rate limits)
-anchor program deploy --provider.cluster "https://devnet.helius-rpc.com/?api-key=<YOUR_KEY>"
+# Deploy to devnet (use your own RPC to avoid rate limits)
+anchor deploy --provider.cluster "https://devnet.helius-rpc.com/?api-key=<YOUR_KEY>"
+```
 
-# Run dWallet smoke test against live devnet
-cargo run -p aura-core --example devnet_dwallet_smoke
+### Smoke Tests (Live Devnet Integration)
 
-# Run Encrypt confidential smoke test (blocked upstream — no code changes needed on our side)
-cargo run -p aura-core --example devnet_confidential_smoke
+The `smoke/aura-devnet/` directory contains three integration tests that run against live devnet services:
+
+**Prerequisites:**
+- Solana CLI configured with a funded devnet wallet (`~/.config/solana/id.json`)
+- Network access to:
+  - Solana devnet RPC
+  - Ika Encrypt gRPC: `pre-alpha-dev-1.encrypt.ika-network.net:443`
+  - Ika dWallet gRPC: `pre-alpha-dev-1.ika.ika-network.net:443`
+
+**Updating vendor dependencies:**
+
+The `smoke/vendor/` directory contains local copies of gRPC proto files from upstream Ika repos. To sync with the latest upstream versions:
+
+```bash
+# Linux/macOS
+cd smoke
+./sync-vendor.sh
+
+# Windows (PowerShell)
+cd smoke
+./sync-vendor.ps1
+
+# Review changes
+git diff vendor/
+
+# Rebuild to regenerate Rust code
+cd aura-devnet
+cargo build
+```
+
+```bash
+# 1. dWallet Integration Test
+# Tests: create_treasury → register_dwallet → propose_transaction → execute_pending → finalize_execution
+# Verifies: dWallet CPI, message approval, signature verification
+cd smoke/aura-devnet
+cargo run --bin dwallet
+
+# 2. Confidential Policy Test (FHE)
+# Tests: configure_confidential_guardrails → propose_confidential_transaction → request_policy_decryption → confirm_policy_decryption
+# Verifies: Encrypt network CPI, FHE graph execution, decryption flow
+# Note: Currently blocked by upstream Encrypt network issue (no code changes needed on our side)
+cargo run --bin confidential
+
+# 3. Policy Engine Test
+# Tests: All 11 policy rules in isolation and batch evaluation
+# Verifies: Public policy evaluation, reputation scaling, time windows, velocity limits
+cargo run --bin policy
 ```
 
 ---
