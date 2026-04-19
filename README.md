@@ -209,14 +209,27 @@ anchor deploy --provider.cluster "https://devnet.helius-rpc.com/?api-key=<YOUR_K
 
 ### Smoke Tests (Live Devnet Integration)
 
-The `smoke/aura-devnet/` directory contains three integration tests that run against live devnet services:
+The `smoke/aura-devnet/` directory contains three integration tests that run against live devnet services.
 
 **Prerequisites:**
 - Solana CLI configured with a funded devnet wallet (`~/.config/solana/id.json`)
+  - Get devnet SOL: `solana airdrop 2 --url devnet`
 - Network access to:
-  - Solana devnet RPC
+  - Solana devnet RPC (default: `https://api.devnet.solana.com`)
   - Ika Encrypt gRPC: `pre-alpha-dev-1.encrypt.ika-network.net:443`
   - Ika dWallet gRPC: `pre-alpha-dev-1.ika.ika-network.net:443`
+
+**Optional: Use a custom RPC endpoint**
+
+To avoid rate limits on the public devnet RPC, set one of these environment variables:
+
+```bash
+# Option 1: AURA-specific RPC (takes precedence)
+export AURA_DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
+
+# Option 2: General Solana RPC (fallback)
+export SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
+```
 
 **Updating vendor dependencies:**
 
@@ -239,11 +252,14 @@ cd aura-devnet
 cargo build
 ```
 
+**Running the tests:**
+
 ```bash
+cd smoke/aura-devnet
+
 # 1. dWallet Integration Test
 # Tests: create_treasury → register_dwallet → propose_transaction → execute_pending → finalize_execution
 # Verifies: dWallet CPI, message approval, signature verification
-cd smoke/aura-devnet
 cargo run --bin dwallet
 
 # 2. Confidential Policy Test (FHE)

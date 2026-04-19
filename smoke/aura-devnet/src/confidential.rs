@@ -28,8 +28,6 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use aura_devnet::*;
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 /// Run one complete confidential scenario end-to-end.
 ///
 /// Order of operations:
@@ -49,7 +47,9 @@ async fn run_confidential_scenario(
     rpc: &RpcClient,
     payer: &Keypair,
     live: Option<&LiveDWallet>,
-    dwallet_client: Option<&mut ika_grpc::d_wallet_service_client::DWalletServiceClient<tonic::transport::Channel>>,
+    dwallet_client: Option<
+        &mut ika_grpc::d_wallet_service_client::DWalletServiceClient<tonic::transport::Channel>,
+    >,
     agent_id: &str,
     encrypt_program: &Pubkey,
     dwallet_program: &Pubkey,
@@ -67,11 +67,17 @@ async fn run_confidential_scenario(
         &ID,
     );
 
-    // ── 1-2: create and verify the four input ciphertexts ─────────────────
+    // 1-2: create and verify the four input ciphertexts
     println!("  Encrypting input ciphertexts...");
-    let daily_ct = encrypt_u64(daily_limit, &ID).await.context("encrypt daily_limit")?;
-    let per_tx_ct = encrypt_u64(per_tx_limit, &ID).await.context("encrypt per_tx_limit")?;
-    let spent_ct = encrypt_u64(spent_today, &ID).await.context("encrypt spent_today")?;
+    let daily_ct = encrypt_u64(daily_limit, &ID)
+        .await
+        .context("encrypt daily_limit")?;
+    let per_tx_ct = encrypt_u64(per_tx_limit, &ID)
+        .await
+        .context("encrypt per_tx_limit")?;
+    let spent_ct = encrypt_u64(spent_today, &ID)
+        .await
+        .context("encrypt spent_today")?;
     let amount_ct = encrypt_u64(amount, &ID).await.context("encrypt amount")?;
 
     println!("  Waiting for input ciphertexts to be verified on-chain...");
@@ -80,7 +86,7 @@ async fn run_confidential_scenario(
     wait_for_ciphertext_verified(rpc, &spent_ct).context("spent_today ct not verified")?;
     wait_for_ciphertext_verified(rpc, &amount_ct).context("amount ct not verified")?;
 
-    // ── 3: create treasury (and optionally register dWallet) ──────────────
+    // 3: create treasury (and optionally register dWallet)
     send_tx(
         rpc,
         payer,
@@ -104,13 +110,18 @@ async fn run_confidential_scenario(
         send_tx(
             rpc,
             payer,
-            vec![register_dwallet_ix(payer, treasury, live_dw, created_at + 1)],
+            vec![register_dwallet_ix(
+                payer,
+                treasury,
+                live_dw,
+                created_at + 1,
+            )],
             &[],
         )
         .context("register_dwallet failed")?;
     }
 
-    // ── 4: configure scalar FHE guardrails ────────────────────────────────
+    // 4: configure scalar FHE guardrails
     send_tx(
         rpc,
         payer,
@@ -124,13 +135,16 @@ async fn run_confidential_scenario(
                 spent_today_ciphertext: spent_ct,
             }
             .to_account_metas(None),
-            data: instruction::ConfigureConfidentialGuardrails { now: created_at + 2 }.data(),
+            data: instruction::ConfigureConfidentialGuardrails {
+                now: created_at + 2,
+            }
+            .data(),
         }],
         &[],
     )
     .context("configure_confidential_guardrails failed")?;
 
-    // ── 5: propose confidential transaction ───────────────────────────────
+    // 5: propose confidential transaction
     // The policy_output keypair must sign so the Encrypt program can create
     // the ciphertext account on behalf of our CPI authority.
     let policy_output = Keypair::new();
@@ -181,12 +195,12 @@ async fn run_confidential_scenario(
     )
     .context("propose_confidential_transaction failed")?;
 
-    // ── 6: wait for output ciphertext ─────────────────────────────────────
+    // 6: wait for output ciphertext
     println!("  Waiting for FHE output ciphertext to be verified...");
     wait_for_ciphertext_verified(rpc, &policy_output.pubkey())
         .context("policy output ciphertext not verified")?;
 
-    // ── 7: request decryption ─────────────────────────────────────────────
+    // 7: request decryption
     let request_account = Keypair::new();
 
     let mut req_metas = accounts::RequestPolicyDecryption {
@@ -212,18 +226,21 @@ async fn run_confidential_scenario(
         vec![solana_sdk::instruction::Instruction {
             program_id: ID,
             accounts: req_metas,
-            data: instruction::RequestPolicyDecryption { now: created_at + 4 }.data(),
+            data: instruction::RequestPolicyDecryption {
+                now: created_at + 4,
+            }
+            .data(),
         }],
         &[&request_account],
     )
     .context("request_policy_decryption failed")?;
 
-    // ── 8: wait for plaintext ─────────────────────────────────────────────
+    // 8: wait for plaintext
     println!("  Waiting for decryption plaintext...");
     wait_for_decryption_ready(rpc, &request_account.pubkey())
         .context("decryption request did not complete")?;
 
-    // ── 9: confirm decryption ─────────────────────────────────────────────
+    // 9: confirm decryption
     send_tx(
         rpc,
         payer,
@@ -235,7 +252,10 @@ async fn run_confidential_scenario(
                 request_account: request_account.pubkey(),
             }
             .to_account_metas(None),
-            data: instruction::ConfirmPolicyDecryption { now: created_at + 5 }.data(),
+            data: instruction::ConfirmPolicyDecryption {
+                now: created_at + 5,
+            }
+            .data(),
         }],
         &[],
     )
@@ -252,12 +272,21 @@ async fn run_confidential_scenario(
         pending.decision.approved, pending.decision.violation
     );
 
-    // ── 10: approve or deny ───────────────────────────────────────────────
+    // 10: approve or deny
     if expect_approved {
         ensure!(pending.decision.approved, "expected approved result");
         let live_dw = live.context("approved scenario requires a registered dWallet")?;
         let dw_client = dwallet_client.context("approved scenario requires dWallet gRPC client")?;
-        finalize_via_dwallet(rpc, payer, dw_client, treasury, dwallet_program, live_dw, created_at + 6).await?;
+        finalize_via_dwallet(
+            rpc,
+            payer,
+            dw_client,
+            treasury,
+            dwallet_program,
+            live_dw,
+            created_at + 6,
+        )
+        .await?;
     } else {
         ensure!(!pending.decision.approved, "expected denied result");
         execute_denied(rpc, payer, treasury, created_at + 6)
@@ -268,8 +297,6 @@ async fn run_confidential_scenario(
     Ok(())
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let payer = load_payer()?;
@@ -279,24 +306,21 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Payer: {}", payer.pubkey());
 
-    // ── shared setup ──────────────────────────────────────────────────────
     println!("\nEnsuring Encrypt deposit account...");
     let ep = ensure_encrypt_deposit(&rpc, &payer, &encrypt_program)?;
 
     println!("\nProvisioning live dWallet via DKG...");
     let mut dwallet_client = connect_dwallet_client().await?;
-    let live =
-        provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
+    let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
     println!("  dWallet PDA: {}", live.dwallet_pda);
     transfer_dwallet_authority(&rpc, &payer, &dwallet_program, &live.dwallet_pda)?;
 
     let seed = now_unix();
 
-    // ── Scenario A: denial (amount > per_tx_limit) ────────────────────────
     run_confidential_scenario(
         &rpc,
         &payer,
-        None,   // no dWallet needed for denial
+        None, // no dWallet needed for denial
         None,
         &format!("conf-deny-{seed}"),
         &encrypt_program,
@@ -311,7 +335,6 @@ async fn main() -> anyhow::Result<()> {
     .await?;
     println!("  ✓ Scenario A passed (denial)");
 
-    // ── Scenario B: approval + finalize ───────────────────────────────────
     run_confidential_scenario(
         &rpc,
         &payer,

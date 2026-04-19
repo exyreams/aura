@@ -13,15 +13,15 @@ use std::{
 };
 
 use anchor_lang::{
-    prelude::Pubkey, system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize,
-    InstructionData, ToAccountMetas,
+    prelude::Pubkey, system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData,
+    ToAccountMetas,
 };
 use anyhow::{anyhow, ensure, Context};
 use aura_core::{
-    accounts, instruction, build_message_approval_request, parse_message_approval_account,
-    CreateTreasuryArgs, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord,
-    RegisterDwalletArgs, TreasuryAccount, DWALLET_CPI_AUTHORITY_SEED,
-    DWALLET_DEVNET_GRPC_ENDPOINT, ENCRYPT_FHE_UINT64, ID,
+    accounts, build_message_approval_request, instruction, parse_message_approval_account,
+    CreateTreasuryArgs, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord, RegisterDwalletArgs,
+    TreasuryAccount, DWALLET_CPI_AUTHORITY_SEED, DWALLET_DEVNET_GRPC_ENDPOINT, ENCRYPT_FHE_UINT64,
+    ID,
 };
 use encrypt_compute::mock_crypto::MockEncryptor;
 use encrypt_grpc::{
@@ -39,15 +39,15 @@ use ika_dwallet_types::{
     VersionedPresignDataAttestation,
 };
 use ika_grpc::{d_wallet_service_client::DWalletServiceClient, UserSignedRequest};
-use solana_commitment_config::CommitmentConfig;
 use solana_client::rpc_client::RpcClient;
+use solana_commitment_config::CommitmentConfig;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     signature::{read_keypair_file, Keypair, Signature, Signer},
     transaction::Transaction,
 };
 
-// ─── constants ───────────────────────────────────────────────────────────────
+//   constants
 
 /// 32-byte network encryption key used by the pre-alpha Encrypt service.
 /// Replace with the real key once the network publishes it.
@@ -68,8 +68,10 @@ pub const DEFAULT_HEAP_FRAME_BYTES: u32 = 256 * 1024;
 pub const COMPUTE_BUDGET_PROGRAM_ID: &str = "ComputeBudget111111111111111111111111111111";
 
 pub const DEVNET_RPC: &str = "https://api.devnet.solana.com";
+pub const DEVNET_RPC_ENV: &str = "AURA_DEVNET_RPC_URL";
+pub const SOLANA_RPC_ENV: &str = "SOLANA_RPC_URL";
 
-// ─── basic helpers ────────────────────────────────────────────────────────────
+// Basic helpers
 
 /// Derives a PDA and returns `(address, bump)`.
 pub fn pda(seeds: &[&[u8]], program_id: &Pubkey) -> (Pubkey, u8) {
@@ -95,16 +97,28 @@ pub fn random_preimage() -> [u8; 32] {
 pub fn load_payer() -> anyhow::Result<Keypair> {
     let path = env::var("PAYER_KEYPAIR").unwrap_or_else(|_| {
         dirs_next::home_dir()
-            .map(|h| h.join(".config/solana/id.json").to_string_lossy().into_owned())
+            .map(|h| {
+                h.join(".config/solana/id.json")
+                    .to_string_lossy()
+                    .into_owned()
+            })
             .unwrap_or_else(|| "~/.config/solana/id.json".to_string())
     });
-    read_keypair_file(&path)
-        .map_err(|e| anyhow!("failed to load payer keypair from {path}: {e}"))
+    read_keypair_file(&path).map_err(|e| anyhow!("failed to load payer keypair from {path}: {e}"))
 }
 
 /// Build a confirmed devnet RPC client.
 pub fn devnet_rpc() -> RpcClient {
-    RpcClient::new_with_commitment(DEVNET_RPC.to_string(), CommitmentConfig::confirmed())
+    let rpc_url = env::var(DEVNET_RPC_ENV)
+        .ok()
+        .filter(|url| !url.trim().is_empty())
+        .or_else(|| {
+            env::var(SOLANA_RPC_ENV)
+                .ok()
+                .filter(|url| !url.trim().is_empty())
+        })
+        .unwrap_or_else(|| DEVNET_RPC.to_string());
+    RpcClient::new_with_commitment(rpc_url, CommitmentConfig::confirmed())
 }
 
 fn compute_budget_instruction(discriminator: u8, value: u32) -> Instruction {
@@ -126,7 +140,7 @@ fn set_compute_unit_limit_instruction(units: u32) -> Instruction {
     compute_budget_instruction(2, units)
 }
 
-// ─── Solana transaction helpers ───────────────────────────────────────────────
+// Solana transaction helpers
 
 /// Build, sign, and confirm a Solana transaction.
 /// Prepends a 1.4 M CU budget and 256 KB heap frame to every transaction.
@@ -141,7 +155,9 @@ pub fn send_tx(
     signers.extend_from_slice(extra_signers);
     let mut instructions = Vec::with_capacity(ixs.len() + 2);
     instructions.push(request_heap_frame_instruction(DEFAULT_HEAP_FRAME_BYTES));
-    instructions.push(set_compute_unit_limit_instruction(DEFAULT_COMPUTE_UNIT_LIMIT));
+    instructions.push(set_compute_unit_limit_instruction(
+        DEFAULT_COMPUTE_UNIT_LIMIT,
+    ));
     instructions.extend(ixs);
     let tx = Transaction::new_signed_with_payer(
         &instructions,
@@ -157,10 +173,7 @@ pub fn send_tx(
 /// Anchor leaves these Encrypt output/request accounts as `UncheckedAccount`,
 /// so the smoke harness updates the outer metas manually when the Encrypt
 /// program expects a freshly created account to sign.
-pub fn mark_account_meta_signer(
-    metas: &mut [AccountMeta],
-    pubkey: Pubkey,
-) -> anyhow::Result<()> {
+pub fn mark_account_meta_signer(metas: &mut [AccountMeta], pubkey: Pubkey) -> anyhow::Result<()> {
     let meta = metas
         .iter_mut()
         .find(|meta| meta.pubkey == pubkey)
@@ -169,7 +182,7 @@ pub fn mark_account_meta_signer(
     Ok(())
 }
 
-// ─── account polling ─────────────────────────────────────────────────────────
+// Account polling
 
 /// Poll `account` every second until `predicate(&data)` is true or `timeout`
 /// elapses. Returns the raw account data on success.
@@ -206,10 +219,7 @@ pub fn wait_for_ciphertext_verified(
 
 /// Wait up to 120 s for an Encrypt `DecryptionRequest` account to have all
 /// plaintext bytes written (`bytes_written == total_len > 0`).
-pub fn wait_for_decryption_ready(
-    client: &RpcClient,
-    request: &Pubkey,
-) -> anyhow::Result<Vec<u8>> {
+pub fn wait_for_decryption_ready(client: &RpcClient, request: &Pubkey) -> anyhow::Result<Vec<u8>> {
     wait_for_account(client, request, Duration::from_secs(120), |d| {
         if d.len() < 107 {
             return false;
@@ -244,7 +254,7 @@ pub fn wait_for_message_approval_signed(
     })
 }
 
-// ─── treasury account helpers ────────────────────────────────────────────────
+// Treasury account helpers
 
 /// Deserialize the raw on-chain `TreasuryAccount`.
 pub fn fetch_treasury(client: &RpcClient, treasury: &Pubkey) -> anyhow::Result<TreasuryAccount> {
@@ -261,7 +271,7 @@ pub fn fetch_treasury_domain(
     Ok(fetch_treasury(client, treasury)?.to_domain()?)
 }
 
-// ─── dWallet PDA / epoch helpers ─────────────────────────────────────────────
+// dWallet PDA / epoch helpers
 
 /// Derive the dWallet PDA from curve code and raw public key bytes.
 /// Mirrors `find_message_approval_pda_v2` in `cpi/dwallet.rs`.
@@ -290,7 +300,7 @@ pub fn read_ika_epoch(data: &[u8]) -> anyhow::Result<u64> {
     Ok(u64::from_le_bytes(data[34..42].try_into()?))
 }
 
-// ─── gRPC connections ────────────────────────────────────────────────────────
+// gRPC connections
 
 /// Open a TLS gRPC channel to the Ika dWallet devnet endpoint.
 pub async fn connect_dwallet_client(
@@ -319,7 +329,7 @@ pub async fn connect_encrypt_client(
     Ok(EncryptServiceClient::new(channel))
 }
 
-// ─── dWallet request helpers ─────────────────────────────────────────────────
+// dWallet request helpers
 
 /// Sign `SignedRequestData` with the payer's Ed25519 key and wrap it in the
 /// `UserSignedRequest` wire format expected by the dWallet gRPC service.
@@ -360,7 +370,7 @@ pub async fn submit_dwallet_request(
     unreachable!()
 }
 
-// ─── Encrypt helpers ─────────────────────────────────────────────────────────
+// Encrypt helpers
 
 /// Encrypt a single `u64` value and return the on-chain ciphertext account
 /// pubkey. Retries up to 8 times with exponential back-off.
@@ -373,7 +383,8 @@ pub async fn encrypt_u64(value: u64, authorized: &Pubkey) -> anyhow::Result<Pubk
         plaintext_bytes: &value_bytes,
         fhe_type: FheType::EUint64,
     }];
-    let enc = MockEncryptor.encrypt_and_prove(&inputs, &ENCRYPT_NETWORK_KEY, EncryptProofChain::Solana);
+    let enc =
+        MockEncryptor.encrypt_and_prove(&inputs, &ENCRYPT_NETWORK_KEY, EncryptProofChain::Solana);
 
     let req = CreateInputRequest {
         chain: EncryptChain::Solana.into(),
@@ -414,7 +425,7 @@ pub async fn encrypt_u64(value: u64, authorized: &Pubkey) -> anyhow::Result<Pubk
     unreachable!()
 }
 
-// ─── Encrypt PDA bundle ──────────────────────────────────────────────────────
+// Encrypt PDA bundle
 
 /// All Encrypt program PDAs required by every confidential instruction.
 pub struct EncryptPdas {
@@ -438,10 +449,14 @@ pub fn ensure_encrypt_deposit(
 ) -> anyhow::Result<EncryptPdas> {
     let (config_pda, _) = pda(&[b"encrypt_config"], encrypt_program);
     let (event_authority, _) = pda(&[b"__event_authority"], encrypt_program);
-    let (deposit_pda, deposit_bump) =
-        pda(&[b"encrypt_deposit", payer.pubkey().as_ref()], encrypt_program);
-    let (network_key_pda, _) =
-        pda(&[b"network_encryption_key", &ENCRYPT_NETWORK_KEY], encrypt_program);
+    let (deposit_pda, deposit_bump) = pda(
+        &[b"encrypt_deposit", payer.pubkey().as_ref()],
+        encrypt_program,
+    );
+    let (network_key_pda, _) = pda(
+        &[b"network_encryption_key", &ENCRYPT_NETWORK_KEY],
+        encrypt_program,
+    );
     let (cpi_authority, _) = pda(&[b"__encrypt_cpi_authority"], &ID);
 
     if client.get_account(&deposit_pda).is_err() {
@@ -450,10 +465,13 @@ pub fn ensure_encrypt_deposit(
             .context("Encrypt config account not found — is the program deployed?")?;
 
         // Bytes [100..132] of the config account hold the fee-vault pubkey.
-        let enc_vault =
-            Pubkey::try_from(&config_info.data[100..132]).unwrap_or(Pubkey::default());
+        let enc_vault = Pubkey::try_from(&config_info.data[100..132]).unwrap_or(Pubkey::default());
         let vault_is_payer = enc_vault == Pubkey::default();
-        let vault_account = if vault_is_payer { payer.pubkey() } else { enc_vault };
+        let vault_account = if vault_is_payer {
+            payer.pubkey()
+        } else {
+            enc_vault
+        };
 
         let mut data = vec![0u8; 18];
         data[0] = ENCRYPT_DEPOSIT_DISC;
@@ -482,10 +500,16 @@ pub fn ensure_encrypt_deposit(
         println!("  Created Encrypt deposit account {deposit_pda}");
     }
 
-    Ok(EncryptPdas { config_pda, deposit_pda, network_key_pda, event_authority, cpi_authority })
+    Ok(EncryptPdas {
+        config_pda,
+        deposit_pda,
+        network_key_pda,
+        event_authority,
+        cpi_authority,
+    })
 }
 
-// ─── live dWallet ─────────────────────────────────────────────────────────────
+// Live dWallet
 
 /// Result of a successful DKG provisioning call.
 #[derive(Clone)]
@@ -514,12 +538,9 @@ pub async fn provision_dwallet(
 ) -> anyhow::Result<LiveDWallet> {
     let (coordinator_pda, _) =
         Pubkey::find_program_address(&[b"dwallet_coordinator"], dwallet_program);
-    let coordinator_data = wait_for_account(
-        rpc,
-        &coordinator_pda,
-        Duration::from_secs(60),
-        |d| d.len() >= DWALLET_COORDINATOR_LEN && d[0] == DWALLET_COORDINATOR_DISC,
-    )
+    let coordinator_data = wait_for_account(rpc, &coordinator_pda, Duration::from_secs(60), |d| {
+        d.len() >= DWALLET_COORDINATOR_LEN && d[0] == DWALLET_COORDINATOR_DISC
+    })
     .context("dWallet coordinator account not ready")?;
     let ika_epoch = read_ika_epoch(&coordinator_data)?;
 
@@ -615,7 +636,7 @@ pub fn transfer_dwallet_authority(
     Ok(())
 }
 
-// ─── shared on-chain instruction builders ────────────────────────────────────
+// Shared on-chain instruction builders
 
 /// Build `create_treasury` instruction with the given policy configuration.
 pub fn create_treasury_ix(
@@ -706,11 +727,14 @@ pub fn execute_denied(
     .context("execute_pending (denial) failed")?;
 
     let domain = fetch_treasury_domain(rpc, &treasury)?;
-    ensure!(domain.pending.is_none(), "denied proposal should be cleared after execute_pending");
+    ensure!(
+        domain.pending.is_none(),
+        "denied proposal should be cleared after execute_pending"
+    );
     Ok(())
 }
 
-// ─── finalize via live dWallet ────────────────────────────────────────────────
+// Finalize via live dWallet
 
 /// Drive the `execute_pending` → presign → sign → `finalize_execution`
 /// pipeline for an **approved** proposal.
@@ -736,7 +760,10 @@ pub async fn finalize_via_dwallet(
         .pending
         .clone()
         .ok_or_else(|| anyhow!("no pending proposal to finalize on treasury {treasury}"))?;
-    ensure!(pending.decision.approved, "proposal must be approved before finalize");
+    ensure!(
+        pending.decision.approved,
+        "proposal must be approved before finalize"
+    );
 
     let dwallet_ref = domain
         .dwallets
@@ -846,9 +873,8 @@ pub async fn finalize_via_dwallet(
     };
 
     // 5 — wait for Signed status
-    let signed_data =
-        wait_for_message_approval_signed(rpc, &approval_req.message_approval_account)
-            .context("MessageApproval never reached Signed status")?;
+    let signed_data = wait_for_message_approval_signed(rpc, &approval_req.message_approval_account)
+        .context("MessageApproval never reached Signed status")?;
     let parsed = parse_message_approval_account(&signed_data)?;
     ensure!(
         parsed.signature == signature_bytes,
@@ -875,8 +901,14 @@ pub async fn finalize_via_dwallet(
     .context("finalize_execution failed")?;
 
     let finalized = fetch_treasury_domain(rpc, &treasury)?;
-    ensure!(finalized.pending.is_none(), "pending not cleared after finalize");
-    ensure!(finalized.total_transactions >= 1, "total_transactions not incremented");
+    ensure!(
+        finalized.pending.is_none(),
+        "pending not cleared after finalize"
+    );
+    ensure!(
+        finalized.total_transactions >= 1,
+        "total_transactions not incremented"
+    );
     println!(
         "  ✓ finalized — total_transactions={}",
         finalized.total_transactions

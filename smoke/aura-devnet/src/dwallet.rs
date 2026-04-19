@@ -28,20 +28,19 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Payer: {}", payer.pubkey());
 
-    // ── Step 1: provision dWallet ──────────────────────────────────────────
+    // Step 1: provision dWallet
     println!("\nProvisioning live Ed25519 dWallet via DKG...");
     let mut dwallet_client = connect_dwallet_client()
         .await
         .context("connect to dWallet gRPC")?;
-    let live =
-        provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program_id).await?;
+    let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program_id).await?;
     println!("  dWallet PDA: {}", live.dwallet_pda);
 
-    // ── Step 2: transfer ownership ─────────────────────────────────────────
+    // Step 2: transfer ownership
     println!("\nTransferring dWallet ownership to AURA CPI authority...");
     transfer_dwallet_authority(&rpc, &payer, &dwallet_program_id, &live.dwallet_pda)?;
 
-    // ── Step 3 + 4: create treasury and register dWallet ──────────────────
+    // Step 3 + 4: create treasury and register dWallet
     let agent_id = format!("dwallet-smoke-{}", now_unix());
     let created_at = now_unix();
     let (treasury, _) = pda(
@@ -61,7 +60,9 @@ async fn main() -> anyhow::Result<()> {
     send_tx(
         &rpc,
         &payer,
-        vec![create_treasury_ix(&payer, treasury, &agent_id, created_at, policy)],
+        vec![create_treasury_ix(
+            &payer, treasury, &agent_id, created_at, policy,
+        )],
         &[],
     )
     .context("create_treasury failed")?;
@@ -75,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
     )
     .context("register_dwallet failed")?;
 
-    // ── Step 5: propose a plain transfer ──────────────────────────────────
+    // Step 5: propose a plain transfer
     println!("\nProposing public transfer of 250 USD...");
     send_tx(
         &rpc,
@@ -108,7 +109,9 @@ async fn main() -> anyhow::Result<()> {
     .context("propose_transaction failed")?;
 
     let domain = fetch_treasury_domain(&rpc, &treasury)?;
-    let pending = domain.pending.context("no pending proposal after propose_transaction")?;
+    let pending = domain
+        .pending
+        .context("no pending proposal after propose_transaction")?;
     ensure!(
         pending.decision.approved,
         "proposal should be approved; violation={}",
@@ -119,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
         pending.proposal_id, pending.decision.effective_daily_limit_usd
     );
 
-    // ── Step 6: execute → presign → sign → finalize ────────────────────────
+    // Step 6: execute → presign → sign → finalize
     println!("\nFinalizing via live dWallet...");
     finalize_via_dwallet(
         &rpc,
