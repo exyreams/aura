@@ -4,7 +4,7 @@
 
 AURA lets AI agents manage real crypto treasuries without exposing your strategy on-chain and without trusting a centralized approval server. Spending limits are stored as FHE ciphertexts — unreadable to anyone — and policy evaluation happens directly over those encrypted values via Ika's Encrypt network. When a transaction is approved, it is co-signed by an Ika dWallet, giving you native multi-chain execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism.
 
-**Status:** Core program and policy engine deployed on Solana devnet. Live smoke tests passing. TypeScript and Rust SDKs available under `packages/`.
+**Status:** Core program and policy engine deployed on Solana devnet. Live smoke tests passing. TypeScript and Rust SDKs plus the operator CLI with confidential/execution flows and a live dashboard all live under `packages/`.
 
 ---
 
@@ -44,7 +44,8 @@ programs/
 
 packages/
   ├─ sdk-rs/         # Rust SDK for account decoding, PDAs, instructions, and RPC flows
-  └─ sdk-ts/         # TypeScript SDK with typed client helpers and published ESM artifacts
+  ├─ sdk-ts/         # TypeScript SDK with typed client helpers and published ESM artifacts
+  └─ cli/            # Terminal CLI for treasury operations, governance, and config management
 ```
 
 `aura-policy` has no Anchor dependency. It is used both by `aura-core` instruction handlers on-chain and by off-chain tooling for simulation and previewing. The SDKs wrap the deployed program surface without redefining it by hand, so client integrations stay aligned with the on-chain source of truth.
@@ -79,6 +80,47 @@ The package includes:
 - 120 unit tests (no network) and 14 devnet integration tests
 - `npm run generate-idl` / `generate-idl:win` to sync the IDL from `anchor build` output
 - `docs/` — API reference and runnable examples for both API levels
+
+### `cli` (Terminal Interface)
+
+Located at [`packages/cli/`](packages/cli/), this package provides:
+
+- config-driven wallet / RPC resolution via `~/.aura/config.json`
+- human-readable treasury, dWallet, and governance commands
+- **auto-encryption** of guardrail and transaction amounts via `@encrypt.xyz/pre-alpha-solana-client`
+- **automatic dWallet presign + sign** via `@ika.xyz/pre-alpha-solana-client`
+- confidential guardrail, decryption, and execution lifecycle commands
+- a full-screen `ink` dashboard and watch-oriented execution views
+- interactive prompts when required flags are omitted
+- `--json` and `--dry-run` modes for scripting and review
+
+Example commands:
+
+```bash
+aura config init
+aura treasury create --agent-id my-agent --daily-limit 10000 --per-tx-limit 1000
+aura treasury show --agent-id my-agent
+
+# Register dWallet with live signing metadata
+aura dwallet register --agent-id my-agent --chain ethereum \
+  --dwallet-id <id> --address <addr> --balance 5000 \
+  --dwallet-account <pda> --authorized-user <pubkey> \
+  --message-metadata-digest <hex> --public-key-hex <hex>
+
+# Confidential flow — amounts auto-encrypted via Ika Encrypt gRPC
+aura confidential deposit ensure
+aura confidential guardrails scalar --agent-id my-agent --daily-limit 10000 --per-tx-limit 1000
+aura confidential propose --agent-id my-agent --amount 250 --chain ethereum --recipient 0x... --wait
+aura confidential request-decryption --agent-id my-agent --wait
+aura confidential confirm-decryption --agent-id my-agent
+
+# Execution — dWallet presign + sign driven automatically via Ika dWallet gRPC
+aura execution execute --agent-id my-agent --wait-signed
+aura execution finalize --agent-id my-agent
+
+aura governance multisig --agent-id my-agent --required 2 --guardians pk1,pk2,pk3
+aura dashboard --agent-id my-agent
+```
 
 ---
 
@@ -238,6 +280,11 @@ npm test
 
 # TypeScript SDK — devnet integration tests (requires funded wallet)
 npm run test:devnet
+
+# CLI package
+cd ../cli
+npm run build
+npm test
 ```
 
 ### Building and Deploying
@@ -375,23 +422,37 @@ packages/
   │   │   └─ utils.rs        # Input validation helpers
   │   └─ Cargo.toml
   │
-  └─ sdk-ts/
+  ├─ sdk-ts/
+  │   ├─ src/
+  │   │   ├─ aura.ts        # High-level facade (Aura class — recommended entry point)
+  │   │   ├─ client.ts      # Low-level client (AuraClient — full instruction control)
+  │   │   ├─ accounts.ts    # Typed account shapes for instruction helpers
+  │   │   ├─ constants.ts   # Program IDs, seeds, and generated type aliases
+  │   │   ├─ errors.ts      # AuraErrorCode enum and error helpers
+  │   │   ├─ events.ts      # On-chain event types and discriminators
+  │   │   ├─ validation.ts  # Input validation helpers
+  │   │   ├─ pda.ts         # PDA derivation helpers
+  │   │   └─ generated/     # Auto-generated from anchor build (gitignored)
+  │   ├─ docs/
+  │   │   ├─ high-level.md  # Aura facade API reference
+  │   │   ├─ low-level.md   # AuraClient API reference
+  │   │   └─ examples/      # Runnable examples for every major flow
+  │   ├─ tests/             # 120 unit tests + 14 devnet integration tests
+  │   └─ dist/              # Published ESM runtime + type declarations
+  └─ cli/
       ├─ src/
-      │   ├─ aura.ts        # High-level facade (Aura class — recommended entry point)
-      │   ├─ client.ts      # Low-level client (AuraClient — full instruction control)
-      │   ├─ accounts.ts    # Typed account shapes for instruction helpers
-      │   ├─ constants.ts   # Program IDs, seeds, and generated type aliases
-      │   ├─ errors.ts      # AuraErrorCode enum and error helpers
-      │   ├─ events.ts      # On-chain event types and discriminators
-      │   ├─ validation.ts  # Input validation helpers
-      │   ├─ pda.ts         # PDA derivation helpers
-      │   └─ generated/     # Auto-generated from anchor build (gitignored)
-      ├─ docs/
-      │   ├─ high-level.md  # Aura facade API reference
-      │   ├─ low-level.md   # AuraClient API reference
-      │   └─ examples/      # Runnable examples for every major flow
-      ├─ tests/             # 120 unit tests + 14 devnet integration tests
-      └─ dist/              # Published ESM runtime + type declarations
+      │   ├─ commands/      # Config, treasury, dWallet, confidential, execution, and dashboard commands
+      │   ├─ config.ts      # ~/.aura/config.json resolution and IO
+      │   ├─ context.ts     # Wallet, RPC, and SDK client setup
+      │   ├─ dashboard.tsx  # Full-screen ink dashboard runtime
+      │   ├─ domain.ts      # Chain / transaction type parsing and labels
+      │   ├─ ika.ts         # Ika Encrypt + dWallet gRPC client wrappers
+      │   ├─ output.ts      # Tables, banners, spinners, and JSON serialization
+      │   ├─ protocol.ts    # Encrypt/dWallet helpers, deposit setup, and live polling
+      │   └─ treasury-view.ts # Shared treasury and proposal panel rendering
+      ├─ tests/             # CLI runtime and parsing tests
+      ├─ bin/               # `aura` entrypoint wrapper
+      └─ dist/              # Compiled ESM runtime
 
 Anchor.toml    # anchor 1.0.0, solana 3.1.13
 Cargo.toml     # Rust workspace root

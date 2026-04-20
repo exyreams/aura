@@ -1,0 +1,49 @@
+{
+  "name": "@aura/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Production-grade CLI for the AURA autonomous treasury program on Solana",
+  "license": "MIT",
+  "repository": "https://github.com/exyreams/aura",
+  "homepage": "https://github.com/exyreams/aura",
+  "bin": {
+    "aura": "./bin/aura.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "prebuild": "node -e \"const path=require('node:path');const cli=path.dirname(process.env.npm_package_json);const sdk=path.resolve(cli,'../sdk-ts');process.argv=['node','tsc','-p',path.join(sdk,'tsconfig.json')];require(path.join(sdk,'node_modules/typescript/bin/tsc'));\"",
+    "build": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\"",
+    "test": "node -e \"const path=require('node:path');const {spawnSync}=require('node:child_process');const pkg=path.dirname(process.env.npm_package_json);const cli=path.join(pkg,'node_modules/tsx/dist/cli.mjs');const tests=['tests/config.test.ts','tests/domain.test.ts','tests/protocol.test.ts'];const result=spawnSync(process.execPath,[cli,'--test',...tests],{cwd:pkg,stdio:'inherit'});process.exit(result.status ?? 1);\"",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@encrypt.xyz/pre-alpha-solana-client": "^0.1.0",
+    "@ika.xyz/pre-alpha-solana-client": "^0.1.0",
+    "@inquirer/prompts": "8.4.2",
+    "@solana/web3.js": "1.98.4",
+    "bn.js": "5.2.3",
+    "boxen": "8.0.1",
+    "chalk": "5.6.2",
+    "cli-table3": "0.6.5",
+    "commander": "14.0.3",
+    "ink": "7.0.1",
+    "js-sha3": "0.9.3",
+    "ora": "9.3.0",
+    "react": "19.2.5"
+  },
+  "devDependencies": {
+    "@types/bn.js": "5.2.0",
+    "@types/node": "25.6.0",
+    "@types/react": "19.2.14",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3"
+  }
+}
