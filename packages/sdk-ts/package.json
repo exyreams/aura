@@ -1,0 +1,60 @@
+{
+  "name": "@aura/sdk-ts",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TypeScript SDK for the AURA autonomous treasury program on Solana",
+  "license": "MIT",
+  "repository": "https://github.com/exyreams/aura",
+  "homepage": "https://github.com/exyreams/aura",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./idl": {
+      "default": "./dist/generated/aura_core.json"
+    },
+    "./package.json": "./package.json"
+  },
+  "keywords": [
+    "solana",
+    "anchor",
+    "sdk",
+    "typescript",
+    "aura"
+  ],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test tests/bn.test.ts tests/pda.test.ts tests/client.test.ts",
+    "test:devnet": "tsx --test tests/devnet.test.ts",
+    "prepack": "npm run build",
+    "generate-idl": "bash scripts/generate-idl.sh",
+    "generate-idl:win": "pwsh scripts/generate-idl.ps1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@solana/web3.js": "1.98.4",
+    "bn.js": "5.2.3"
+  },
+  "devDependencies": {
+    "@types/bn.js": "5.2.0",
+    "@types/node": "25.6.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3"
+  }
+}

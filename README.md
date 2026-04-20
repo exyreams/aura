@@ -4,7 +4,7 @@
 
 AURA lets AI agents manage real crypto treasuries without exposing your strategy on-chain and without trusting a centralized approval server. Spending limits are stored as FHE ciphertexts — unreadable to anyone — and policy evaluation happens directly over those encrypted values via Ika's Encrypt network. When a transaction is approved, it is co-signed by an Ika dWallet, giving you native multi-chain execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism.
 
-**Status:** Program layer complete and tested (75 tests passing). Deployed on Solana devnet.
+**Status:** Core program and policy engine deployed on Solana devnet. Live smoke tests passing. TypeScript SDK available under `packages/sdk-ts/`.
 
 ---
 
@@ -41,9 +41,29 @@ This means:
 programs/
   ├─ aura-core/      # Deployed Anchor program — treasury state machine
   └─ aura-policy/    # Pure Rust policy engine — rules, FHE graphs, types
+
+packages/
+  └─ sdk-ts/         # TypeScript SDK with typed client helpers and published ESM artifacts
 ```
 
-`aura-policy` has no Anchor dependency. It is used both by `aura-core` instruction handlers on-chain and by off-chain tooling for simulation and previewing.
+`aura-policy` has no Anchor dependency. It is used both by `aura-core` instruction handlers on-chain and by off-chain tooling for simulation and previewing. The SDKs wrap the deployed program surface without redefining it by hand, so client integrations stay aligned with the on-chain source of truth.
+
+---
+
+## SDKs
+
+### `sdk-ts` (TypeScript)
+
+Located at [`packages/sdk-ts/`](packages/sdk-ts/), this package ships compiled ESM JavaScript in `dist/` plus `.d.ts` declarations for consumers. That is the standard production layout for a TypeScript SDK: Node and bundlers execute the emitted `.js`, while TypeScript users still get a fully typed experience.
+
+The package includes:
+
+- a typed `AuraClient` wrapping all 18 program instructions
+- strict Anchor account resolution via the generated IDL
+- PDA helpers and generated type exports
+- the raw IDL exported at `@aura/sdk-ts/idl`
+- 71 unit tests (no network) and 14 devnet integration tests
+- `npm run generate-idl` / `generate-idl:win` to sync the IDL from `anchor build` output
 
 ---
 
@@ -75,7 +95,7 @@ The on-chain coordinator. Owns the `TreasuryAccount` PDA and exposes the full in
 | `collect_override_signature` | Guardian co-signs the override proposal |
 | `configure_swarm` | Attach a shared pool limit for a group of agents |
 
-**46 tests passing.**
+Verified with `cargo test -p aura-core`.
 
 ---
 
@@ -107,7 +127,7 @@ The policy engine. Evaluates transactions against 11 configurable spending rules
 - **Scalar graph** (`confidential_spend_guardrails_scalar_v1`) — takes 4 separate `EUint64` ciphertexts, outputs `(violation_code, next_spent_today)`
 - **Vector graph** (`confidential_spend_guardrails_vector_v3`) — takes a single `EUint64Vector` encoding `[daily_limit, per_tx_limit, spent_today]`, outputs an updated vector with `lane[3] = violation_code`
 
-**29 tests passing.**
+Verified with `cargo test -p aura-policy`.
 
 ---
 
@@ -189,12 +209,19 @@ Ika dWallet (pre-alpha devnet)
 ### Running Tests
 
 ```bash
-# Run all tests (both crates, 75 tests total)
+# Run all Rust workspace tests (programs + Rust SDK)
 cargo test --workspace
 
 # Run tests for specific crate
-cargo test -p aura-core    # 46 tests
-cargo test -p aura-policy  # 29 tests
+cargo test -p aura-core
+cargo test -p aura-policy
+
+# TypeScript SDK — unit tests (no network required)
+cd packages/sdk-ts
+npm test
+
+# TypeScript SDK — devnet integration tests (requires funded wallet)
+npm run test:devnet
 ```
 
 ### Building and Deploying
@@ -265,7 +292,6 @@ cargo run --bin dwallet
 # 2. Confidential Policy Test (FHE)
 # Tests: configure_confidential_guardrails → propose_confidential_transaction → request_policy_decryption → confirm_policy_decryption
 # Verifies: Encrypt network CPI, FHE graph execution, decryption flow
-# Note: Currently blocked by upstream Encrypt network issue (no code changes needed on our side)
 cargo run --bin confidential
 
 # 3. Policy Engine Test
@@ -284,7 +310,7 @@ cargo run --bin policy
 | Solana CLI | `3.1.13` |
 | Rust workspace resolver | `2` |
 
-Both crates enforce `#![forbid(unsafe_code)]`.
+All Rust crates enforce `#![forbid(unsafe_code)]`.
 
 ---
 
@@ -320,6 +346,16 @@ programs/
       │   ├─ violations/     # ViolationCode enum
       │   └─ tests/          # Unit tests (engine rules, time/velocity, advanced, confidential)
       └─ Cargo.toml
+packages/
+  └─ sdk-ts/
+      ├─ src/
+      │   ├─ client.ts       # High-level TypeScript client
+      │   ├─ accounts.ts     # Typed account shapes for instruction helpers
+      │   ├─ constants.ts    # Program IDs, seeds, and generated type aliases
+      │   ├─ generated/      # Anchor-generated IDL and TS bindings
+      │   └─ pda.ts          # PDA helpers
+      ├─ dist/               # Published ESM runtime + type declarations
+      └─ package.json
 
 Anchor.toml    # anchor 1.0.0, solana 3.1.13
 Cargo.toml     # Rust workspace root

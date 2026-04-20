@@ -1,0 +1,6 @@
+node_modules/
+dist/
+
+# Auto-generated from `anchor build` — run `npm run generate-idl` to regenerate
+src/generated/*.json
+src/generated/*.ts
