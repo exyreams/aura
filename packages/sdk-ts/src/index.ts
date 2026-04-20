@@ -12,5 +12,8 @@ export * from "./accounts.js";
 export * from "./bn.js";
 export * from "./client.js";
 export * from "./constants.js";
+export * from "./errors.js";
+export * from "./events.js";
 export * from "./generated/aura_core.js";
 export * from "./pda.js";
+export * from "./validation.js";

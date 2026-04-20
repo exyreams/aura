@@ -339,7 +339,83 @@ import type {
 
 ---
 
-## Scripts
+## Error Handling
+
+All on-chain errors are accessible via `AuraErrorCode`:
+
+```ts
+import { AuraErrorCode, isAuraError, getAuraErrorCode } from "@aura/sdk-ts";
+
+try {
+  await client.proposeTransaction(aiAuthority, accounts, args);
+} catch (error) {
+  if (isAuraError(error, AuraErrorCode.ExecutionPaused)) {
+    console.log("treasury is paused — call pauseExecution(false) first");
+  } else if (isAuraError(error, AuraErrorCode.PendingTransactionExists)) {
+    console.log("cancel the existing pending transaction first");
+  } else {
+    const code = getAuraErrorCode(error);
+    console.log(`program error code: ${code}`);
+  }
+}
+```
+
+All 27 error codes are available on `AuraErrorCode`. See `src/errors.ts` for the full list.
+
+---
+
+## Events
+
+Three event types are emitted by the program:
+
+```ts
+import {
+  type TreasuryAuditEvent,
+  type ProposalLifecycleEvent,
+  type ExecutionLifecycleEvent,
+} from "@aura/sdk-ts";
+import { EventParser } from "@coral-xyz/anchor";
+
+// Parse events from a confirmed transaction
+const parser = new EventParser(AURA_PROGRAM_ID, client.coder);
+const events = parser.parseLogs(transactionLogs);
+for (const event of events) {
+  if (event.name === "proposalLifecycleEvent") {
+    const e = event.data as ProposalLifecycleEvent;
+    console.log(`proposal ${e.proposalId} status: ${e.status}`);
+  }
+}
+```
+
+| Event | When emitted |
+|---|---|
+| `treasuryAuditEvent` | After every state-mutating instruction |
+| `proposalLifecycleEvent` | After every proposal state change |
+| `executionLifecycleEvent` | After `finalize_execution` completes |
+
+---
+
+## Validation
+
+Client-side validation helpers catch invalid inputs before submitting transactions:
+
+```ts
+import {
+  validateAgentId,
+  validateDwalletId,
+  validateAddress,
+  validateAmountUsd,
+  validateMultisigThreshold,
+  validateGuardians,
+  validateSwarmMembers,
+} from "@aura/sdk-ts";
+
+validateAgentId("my-agent");                    // throws if empty or > 64 bytes
+validateAmountUsd(100);                         // throws if zero
+validateMultisigThreshold(2, guardians.length); // throws if threshold > count
+```
+
+---
 
 ```bash
 # Build ESM output to dist/

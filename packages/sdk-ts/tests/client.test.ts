@@ -465,7 +465,7 @@ test("executePendingInstruction builds and decodes", async () => {
   assert.equal(decoded?.name, "execute_pending");
 });
 
-// ── finalizeExecutionInstruction ─────────────────────────────────────────────
+// finalizeExecutionInstruction
 
 test("finalizeExecutionInstruction builds and decodes", async () => {
   const client = makeClient();
@@ -478,7 +478,7 @@ test("finalizeExecutionInstruction builds and decodes", async () => {
   assert.equal(decoded?.name, "finalize_execution");
 });
 
-// ── requestPolicyDecryptionInstruction ───────────────────────────────────────
+// requestPolicyDecryptionInstruction
 
 test("requestPolicyDecryptionInstruction builds and decodes", async () => {
   const client = makeClient();
@@ -504,7 +504,7 @@ test("requestPolicyDecryptionInstruction builds and decodes", async () => {
   assert.equal(decoded?.name, "request_policy_decryption");
 });
 
-// ── confirmPolicyDecryptionInstruction ───────────────────────────────────────
+// confirmPolicyDecryptionInstruction
 
 test("confirmPolicyDecryptionInstruction builds and decodes", async () => {
   const client = makeClient();
@@ -517,7 +517,7 @@ test("confirmPolicyDecryptionInstruction builds and decodes", async () => {
   assert.equal(decoded?.name, "confirm_policy_decryption");
 });
 
-// ── configureConfidentialGuardrailsInstruction ───────────────────────────────
+// configureConfidentialGuardrailsInstruction
 
 test("configureConfidentialGuardrailsInstruction builds and decodes", async () => {
   const client = makeClient();
@@ -539,7 +539,7 @@ test("configureConfidentialGuardrailsInstruction builds and decodes", async () =
   assert.equal(decoded?.name, "configure_confidential_guardrails");
 });
 
-// ── configureConfidentialVectorGuardrailsInstruction ─────────────────────────
+// configureConfidentialVectorGuardrailsInstruction
 
 test("configureConfidentialVectorGuardrailsInstruction builds and decodes", async () => {
   const client = makeClient();
@@ -559,7 +559,7 @@ test("configureConfidentialVectorGuardrailsInstruction builds and decodes", asyn
   assert.equal(decoded?.name, "configure_confidential_vector_guardrails");
 });
 
-// ── proposeConfidentialTransactionInstruction ─────────────────────────────────
+// proposeConfidentialTransactionInstruction
 
 test("proposeConfidentialTransactionInstruction builds and decodes", async () => {
   const client = makeClient();
