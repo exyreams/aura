@@ -260,6 +260,7 @@ pub fn build_message_approval_request(
 /// The dWallet network processes the approval asynchronously. Poll
 /// `parse_message_approval_account` until `status == Signed` before calling
 /// `finalize_execution`.
+#[allow(clippy::too_many_arguments)]
 pub fn approve_message_via_cpi<'info>(
     layout: DWalletMessageApprovalLayout,
     dwallet_program: &AccountInfo<'info>,

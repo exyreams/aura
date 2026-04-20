@@ -382,6 +382,7 @@ pub fn parse_decryption_request_account(data: &[u8]) -> TreasuryResult<OnchainDe
 /// instruction, and calls `invoke_signed` with the Encrypt CPI authority PDA
 /// as the signer. Returns the ciphertext digest so the caller can store it
 /// in the `PendingTransaction` for later verification.
+#[allow(clippy::too_many_arguments)]
 pub fn request_decryption_via_cpi<'info>(
     encrypt_program: &AccountInfo<'info>,
     config: &AccountInfo<'info>,

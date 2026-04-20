@@ -1,8 +1,8 @@
-/// Program-wide constants for field length limits and collection caps.
-///
-/// These values are referenced by both the Anchor `#[max_len]` attributes in
-/// `program_accounts/` and by validation logic elsewhere. Keeping them here
-/// avoids magic numbers scattered across the codebase.
+//! Program-wide constants for field length limits and collection caps.
+//!
+//! These values are referenced by both the Anchor `#[max_len]` attributes in
+//! `program_accounts/` and by validation logic elsewhere. Keeping them here
+//! avoids magic numbers scattered across the codebase.
 
 /// PDA seed for treasury accounts: `[TREASURY_SEED, owner, agent_id]`.
 pub const TREASURY_SEED: &[u8] = b"treasury";

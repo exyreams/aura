@@ -9,7 +9,7 @@
 /// The two sub-modules are:
 /// - `executor` — proposal creation, status transitions, and receipt generation
 /// - `message`  — deterministic message and digest construction used for
-///                signing and tamper detection
+///   signing and tamper detection
 mod executor;
 mod message;
 

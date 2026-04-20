@@ -4,7 +4,7 @@
 /// to the on-chain account via `PolicyDecision::next_state`. All fields
 /// default to `0`; `normalize_state` treats zero timestamps as uninitialized
 /// and sets them to the current time on first use.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct PolicyState {
     /// Total USD spent in the current 24-hour rolling window.
     pub spent_today_usd: u64,
@@ -17,16 +17,4 @@ pub struct PolicyState {
     /// Amounts of the most recent approved transactions, capped at 10 entries.
     /// Used by the velocity limit rule.
     pub recent_amounts: Vec<u64>,
-}
-
-impl Default for PolicyState {
-    fn default() -> Self {
-        Self {
-            spent_today_usd: 0,
-            last_reset_timestamp: 0,
-            hourly_spent_usd: 0,
-            hourly_bucket_started_at: 0,
-            recent_amounts: Vec::new(),
-        }
-    }
 }

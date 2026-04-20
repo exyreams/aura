@@ -8,9 +8,9 @@
 ///
 /// The two sub-modules are:
 /// - `dwallet`  — message approval requests, PDA derivation, account parsing,
-///                and ownership-transfer CPIs for Ika dWallet
+///   and ownership-transfer CPIs for Ika dWallet
 /// - `encrypt`  — FHE graph execution, decryption requests, and ciphertext /
-///                decryption-request account parsing for Ika Encrypt
+///   decryption-request account parsing for Ika Encrypt
 mod dwallet;
 mod encrypt;
 

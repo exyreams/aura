@@ -19,6 +19,7 @@
 //! - `program_error/`    — `AuraCoreError` and `TreasuryError` → Anchor error mapping
 //! - `constants/`    — field length limits and collection caps
 #![allow(unexpected_cfgs)]
+#![allow(clippy::diverging_sub_expression)]
 #![forbid(unsafe_code)]
 
 use anchor_lang::prelude::*;
