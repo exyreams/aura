@@ -9,6 +9,7 @@
  */
 
 export * from "./accounts.js";
+export * from "./aura.js";
 export * from "./bn.js";
 export * from "./client.js";
 export * from "./constants.js";

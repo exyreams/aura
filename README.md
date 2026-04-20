@@ -71,12 +71,14 @@ Located at [`packages/sdk-ts/`](packages/sdk-ts/), this package ships compiled E
 
 The package includes:
 
-- a typed `AuraClient` wrapping all 18 program instructions
+- `Aura` — high-level facade with plain-number inputs, automatic timestamps, and chainable namespaces (`aura.treasury.*`, `aura.dwallet.*`, `aura.governance.*`)
+- `AuraClient` — low-level client wrapping all 18 program instructions with full parameter control
 - strict Anchor account resolution via the generated IDL
-- PDA helpers and generated type exports
+- PDA helpers, error codes, event types, and validation helpers
 - the raw IDL exported at `@aura/sdk-ts/idl`
-- 71 unit tests (no network) and 14 devnet integration tests
+- 120 unit tests (no network) and 14 devnet integration tests
 - `npm run generate-idl` / `generate-idl:win` to sync the IDL from `anchor build` output
+- `docs/` — API reference and runnable examples for both API levels
 
 ---
 
@@ -375,13 +377,21 @@ packages/
   │
   └─ sdk-ts/
       ├─ src/
-      │   ├─ client.ts       # High-level TypeScript client
-      │   ├─ accounts.ts     # Typed account shapes for instruction helpers
-      │   ├─ constants.ts    # Program IDs, seeds, and generated type aliases
-      │   ├─ generated/      # Anchor-generated IDL and TS bindings
-      │   └─ pda.ts          # PDA helpers
-      ├─ dist/               # Published ESM runtime + type declarations
-      └─ package.json
+      │   ├─ aura.ts        # High-level facade (Aura class — recommended entry point)
+      │   ├─ client.ts      # Low-level client (AuraClient — full instruction control)
+      │   ├─ accounts.ts    # Typed account shapes for instruction helpers
+      │   ├─ constants.ts   # Program IDs, seeds, and generated type aliases
+      │   ├─ errors.ts      # AuraErrorCode enum and error helpers
+      │   ├─ events.ts      # On-chain event types and discriminators
+      │   ├─ validation.ts  # Input validation helpers
+      │   ├─ pda.ts         # PDA derivation helpers
+      │   └─ generated/     # Auto-generated from anchor build (gitignored)
+      ├─ docs/
+      │   ├─ high-level.md  # Aura facade API reference
+      │   ├─ low-level.md   # AuraClient API reference
+      │   └─ examples/      # Runnable examples for every major flow
+      ├─ tests/             # 120 unit tests + 14 devnet integration tests
+      └─ dist/              # Published ESM runtime + type declarations
 
 Anchor.toml    # anchor 1.0.0, solana 3.1.13
 Cargo.toml     # Rust workspace root
