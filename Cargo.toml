@@ -2,6 +2,7 @@
 members = [
     "programs/aura-core",
     "programs/aura-policy",
+    "packages/sdk-rs",
 ]
 resolver = "2"
 

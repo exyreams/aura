@@ -4,7 +4,7 @@
 
 AURA lets AI agents manage real crypto treasuries without exposing your strategy on-chain and without trusting a centralized approval server. Spending limits are stored as FHE ciphertexts — unreadable to anyone — and policy evaluation happens directly over those encrypted values via Ika's Encrypt network. When a transaction is approved, it is co-signed by an Ika dWallet, giving you native multi-chain execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism.
 
-**Status:** Core program and policy engine deployed on Solana devnet. Live smoke tests passing. TypeScript SDK available under `packages/sdk-ts/`.
+**Status:** Core program and policy engine deployed on Solana devnet. Live smoke tests passing. TypeScript and Rust SDKs available under `packages/`.
 
 ---
 
@@ -43,6 +43,7 @@ programs/
   └─ aura-policy/    # Pure Rust policy engine — rules, FHE graphs, types
 
 packages/
+  ├─ sdk-rs/         # Rust SDK for account decoding, PDAs, instructions, and RPC flows
   └─ sdk-ts/         # TypeScript SDK with typed client helpers and published ESM artifacts
 ```
 
@@ -51,6 +52,18 @@ packages/
 ---
 
 ## SDKs
+
+### `sdk-rs` (Rust)
+
+Located at [`packages/sdk-rs/`](packages/sdk-rs/), this crate reuses the real `aura-core` Anchor-generated accounts and instruction args, then adds:
+
+- treasury account decoding into both raw and rich domain forms
+- PDA derivation helpers for treasury and CPI authorities
+- typed builders for the full instruction surface
+- a synchronous RPC client with early signer/account validation
+- input validation utilities (`validate_agent_id`, `validate_amount_usd`, etc.)
+
+Verified with `cargo test -p aura-sdk` — 14 unit tests + 1 doc test passing.
 
 ### `sdk-ts` (TypeScript)
 
@@ -215,6 +228,7 @@ cargo test --workspace
 # Run tests for specific crate
 cargo test -p aura-core
 cargo test -p aura-policy
+cargo test -p aura-sdk
 
 # TypeScript SDK — unit tests (no network required)
 cd packages/sdk-ts
@@ -347,6 +361,18 @@ programs/
       │   └─ tests/          # Unit tests (engine rules, time/velocity, advanced, confidential)
       └─ Cargo.toml
 packages/
+  ├─ sdk-rs/
+  │   ├─ src/
+  │   │   ├─ accounts.rs     # Treasury account decoding helpers
+  │   │   ├─ client.rs       # High-level synchronous Rust client
+  │   │   ├─ constants.rs    # Seeds, limits, and RPC defaults
+  │   │   ├─ errors.rs       # SdkError enum
+  │   │   ├─ instructions.rs # Typed builders for every aura-core instruction
+  │   │   ├─ pda.rs          # PDA derivation helpers
+  │   │   ├─ types.rs        # Re-exports of on-chain program and policy types
+  │   │   └─ utils.rs        # Input validation helpers
+  │   └─ Cargo.toml
+  │
   └─ sdk-ts/
       ├─ src/
       │   ├─ client.ts       # High-level TypeScript client

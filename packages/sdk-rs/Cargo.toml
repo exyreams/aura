@@ -1,0 +1,20 @@
+[package]
+name = "aura-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "Rust SDK for the AURA autonomous treasury program on Solana"
+license = "MIT"
+repository = "https://github.com/exyreams/aura"
+readme = "README.md"
+publish = false
+keywords = ["solana", "anchor", "sdk", "aura"]
+
+[dependencies]
+anchor-lang = "1.0.0"
+aura-core = { path = "../../programs/aura-core", features = ["cpi"] }
+aura-policy = { path = "../../programs/aura-policy" }
+constant_time_eq = "=0.4.2"
+solana-client = "=3.1.12"
+solana-commitment-config = "=3.1.1"
+solana-sdk = "=3.0.0"
+thiserror = "2.0.18"
