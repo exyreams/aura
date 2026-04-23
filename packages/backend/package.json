@@ -1,0 +1,31 @@
+{
+  "name": "@aura/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend service for AURA confidential flows and agent execution",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "prebuild": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);const sdk=path.resolve(pkg,'../sdk-ts');process.argv=['node','tsc','-p',path.join(sdk,'tsconfig.json')];require(path.join(sdk,'node_modules/typescript/bin/tsc'));\"",
+    "build": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\"",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','--noEmit','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\""
+  },
+  "dependencies": {
+    "@aura/sdk-ts": "../../packages/sdk-ts",
+    "@encrypt.xyz/pre-alpha-solana-client": "^0.1.0",
+    "@ika.xyz/pre-alpha-solana-client": "^0.1.0",
+    "@solana/web3.js": "1.98.4",
+    "bn.js": "5.2.3",
+    "js-sha3": "0.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3"
+  }
+}

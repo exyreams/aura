@@ -2,6 +2,7 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { PageHeader, StatusPill, Surface } from "@/components/app/ui";
@@ -9,7 +10,8 @@ import {
   buildProposeTransactionArgs,
   sendWalletInstructions,
 } from "@/lib/aura-app";
-import { useAuraClient, useTreasury } from "@/lib/hooks";
+import { postBackend } from "@/lib/backend-client";
+import { useAppSettings, useAuraClient, useTreasury } from "@/lib/hooks";
 import { shortenAddress } from "@/lib/utils";
 
 const initialForm = {
@@ -30,6 +32,7 @@ export default function ProposeTransactionPage() {
   const wallet = useWallet();
   const { connection } = useConnection();
   const client = useAuraClient();
+  const settings = useAppSettings();
   const queryClient = useQueryClient();
   const treasuryQuery = useTreasury(pda);
   const entry = treasuryQuery.data;
@@ -61,8 +64,32 @@ export default function ProposeTransactionPage() {
         throw new Error("Connect a wallet first.");
       }
       if (mode === "confidential") {
-        throw new Error(
-          "Confidential proposal submission needs the Encrypt flow wired next; use the Confidential page to configure guardrails first.",
+        return await postBackend<{ signature: string }>(
+          settings.backendUrl,
+          "/v1/confidential/propose",
+          {
+            rpcUrl: settings.endpoint,
+            programId: settings.programId || undefined,
+            treasury: pda,
+            amountUsd: Number(form.amountUsd),
+            chain: Number(form.chain),
+            txType: Number(form.txType),
+            recipient: form.recipient,
+            protocolId: form.protocolId ? Number(form.protocolId) : undefined,
+            expectedOutputUsd: form.expectedOutputUsd
+              ? Number(form.expectedOutputUsd)
+              : undefined,
+            actualOutputUsd: form.actualOutputUsd
+              ? Number(form.actualOutputUsd)
+              : undefined,
+            quoteAgeSecs: form.quoteAgeSecs
+              ? Number(form.quoteAgeSecs)
+              : undefined,
+            counterpartyRiskScore: form.counterpartyRiskScore
+              ? Number(form.counterpartyRiskScore)
+              : undefined,
+            waitForOutput: true,
+          },
         );
       }
       const args = buildProposeTransactionArgs({
@@ -86,10 +113,14 @@ export default function ProposeTransactionPage() {
         { aiAuthority: wallet.publicKey, treasury: entry.publicKey },
         args,
       );
-      return await sendWalletInstructions(connection, wallet, [instruction]);
+      return {
+        signature: await sendWalletInstructions(connection, wallet, [
+          instruction,
+        ]),
+      };
     },
     onSuccess: async (result) => {
-      setSignature(result);
+      setSignature(result.signature);
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
       await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
     },
@@ -100,13 +131,13 @@ export default function ProposeTransactionPage() {
       <PageHeader
         eyebrow="Propose Transaction"
         title="Submit a policy-aware proposal."
-        copy={`The public path submits a live propose_transaction instruction for ${shortenAddress(pda, 8, 8)}.`}
+        copy={`Public mode uses the connected wallet, while confidential mode delegates Encrypt-backed proposal submission to the backend for ${shortenAddress(pda, 8, 8)}.`}
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Surface
           title="Proposal Form"
-          copy="Public mode is fully wired to the on-chain instruction."
+          copy="Both submission paths are live. Use the dedicated Confidential page for the full decryption and finalize lifecycle after submission."
         >
           <div className="space-y-5">
             <div className="flex gap-3">
@@ -165,9 +196,18 @@ export default function ProposeTransactionPage() {
 
             <div className="rounded-[1.3rem] border border-cyan-400/16 bg-cyan-400/8 p-4 text-sm leading-7 text-slate-300">
               {mode === "confidential"
-                ? "Confidential mode still needs the Encrypt deposit + ciphertext creation bridge. Public mode is live now."
+                ? "Confidential mode submits through the backend signer. Continue the decryption and execution steps on the Confidential page."
                 : "Public mode sends the real instruction through the connected wallet."}
             </div>
+
+            {mode === "confidential" ? (
+              <Link
+                href={`/app/treasuries/${pda}/confidential`}
+                className="button-secondary justify-between"
+              >
+                Open Confidential Lifecycle
+              </Link>
+            ) : null}
 
             <button
               type="button"

@@ -17,12 +17,14 @@ export interface AppSettingsContextValue {
   customRpcUrl: string;
   programId: string;
   resolvedProgramId?: PublicKey;
+  backendUrl: string;
   nimApiKey: string;
   currency: string;
   dateFormat: string;
   setNetwork: Dispatch<SetStateAction<"devnet" | "mainnet-beta">>;
   setCustomRpcUrl: Dispatch<SetStateAction<string>>;
   setProgramId: Dispatch<SetStateAction<string>>;
+  setBackendUrl: Dispatch<SetStateAction<string>>;
   setNimApiKey: Dispatch<SetStateAction<string>>;
   setCurrency: Dispatch<SetStateAction<string>>;
   setDateFormat: Dispatch<SetStateAction<string>>;

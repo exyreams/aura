@@ -1,17 +1,19 @@
 "use client";
 
 import { PageHeader, Surface } from "@/components/app/ui";
-import { useAppSettings } from "@/lib/hooks";
+import { useAppSettings, useBackendInfo } from "@/lib/hooks";
 
 export default function SettingsPage() {
   const settings = useAppSettings();
+  const backendInfoQuery = useBackendInfo();
+  const backendInfo = backendInfoQuery.data;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Settings"
         title="App-level configuration"
-        copy="These values are persisted locally and drive the wallet connection, RPC endpoint, program target, and agent preferences."
+        copy="These values are persisted locally and drive the wallet connection, RPC endpoint, program target, backend service, and agent preferences."
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -58,12 +60,21 @@ export default function SettingsPage() {
         <Surface title="Agent Credentials">
           <div className="grid gap-4">
             <label>
-              <span className="field-label">NIM API key</span>
+              <span className="field-label">Backend URL</span>
+              <input
+                className="input"
+                value={settings.backendUrl}
+                onChange={(event) => settings.setBackendUrl(event.target.value)}
+                placeholder="http://127.0.0.1:8787"
+              />
+            </label>
+            <label>
+              <span className="field-label">Model API key</span>
               <input
                 className="input"
                 value={settings.nimApiKey}
                 onChange={(event) => settings.setNimApiKey(event.target.value)}
-                placeholder="Stored locally in browser"
+                placeholder="Stored locally in browser for the agent backend"
               />
             </label>
           </div>
@@ -104,6 +115,12 @@ export default function SettingsPage() {
               ["Environment", settings.network],
               ["Resolved endpoint", settings.endpoint],
               ["Program ID", settings.programId || "SDK default"],
+              ["Backend URL", settings.backendUrl],
+              [
+                "Backend signer",
+                backendInfo?.publicKey ??
+                  (backendInfoQuery.isError ? "Unavailable" : "Loading"),
+              ],
               ["Currency", settings.currency],
               ["Date format", settings.dateFormat],
             ].map(([label, value]) => (

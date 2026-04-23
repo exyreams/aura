@@ -29,7 +29,7 @@ export default function GovernancePage() {
     required: account?.multisig?.requiredSignatures.toString() ?? "2",
     guardians:
       account?.multisig?.guardians
-        .map((guardian) => guardian.toBase58())
+        .map((guardian: PublicKey) => guardian.toBase58())
         .join(", ") ?? "",
   });
   const [swarmForm, setSwarmForm] = useState({
@@ -48,9 +48,9 @@ export default function GovernancePage() {
         requiredSignatures: Number(multisigForm.required),
         guardians: multisigForm.guardians
           .split(",")
-          .map((value) => value.trim())
+          .map((value: string) => value.trim())
           .filter(Boolean)
-          .map((value) => new PublicKey(value)),
+          .map((value: string) => new PublicKey(value)),
       });
       const instruction = await client.configureMultisigInstruction(
         { owner: wallet.publicKey, treasury: entry.publicKey },
@@ -72,7 +72,7 @@ export default function GovernancePage() {
         swarmId: swarmForm.swarmId,
         memberAgents: swarmForm.members
           .split(",")
-          .map((value) => value.trim())
+          .map((value: string) => value.trim())
           .filter(Boolean),
         sharedPoolLimitUsd: Number(swarmForm.poolLimit),
       });
@@ -141,7 +141,7 @@ export default function GovernancePage() {
               <p className="mt-1">
                 {account?.multisig
                   ? account.multisig.guardians
-                      .map((guardian) => guardian.toBase58())
+                      .map((guardian: PublicKey) => guardian.toBase58())
                       .join(", ")
                   : "No guardians"}
               </p>

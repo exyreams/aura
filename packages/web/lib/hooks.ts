@@ -11,6 +11,7 @@ import {
   fetchTreasury,
   type TreasuryEntry,
 } from "@/lib/aura-app";
+import { backendRequest } from "@/lib/backend-client";
 import { AppSettingsContext } from "@/lib/settings";
 
 export function useAppSettings() {
@@ -83,5 +84,20 @@ export function useRecentActivity(treasuries: TreasuryEntry[]) {
         settings.resolvedProgramId,
       ),
     enabled: treasuries.length > 0,
+  });
+}
+
+export function useBackendInfo() {
+  const settings = useAppSettings();
+
+  return useQuery({
+    queryKey: ["backend-info", settings.backendUrl],
+    queryFn: () =>
+      backendRequest<{
+        publicKey: string;
+        defaultRpcUrl: string;
+        defaultProgramId: string;
+      }>(settings.backendUrl, "/v1/service/info"),
+    retry: 1,
   });
 }

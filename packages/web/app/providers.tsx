@@ -32,6 +32,10 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
     "aura:program-id",
     "",
   );
+  const [backendUrl, setBackendUrl] = usePersistentState<string>(
+    "aura:backend-url",
+    "http://127.0.0.1:8787",
+  );
   const [nimApiKey, setNimApiKey] = usePersistentState<string>(
     "aura:nim-api-key",
     "",
@@ -62,12 +66,14 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       customRpcUrl,
       programId,
       resolvedProgramId,
+      backendUrl,
       nimApiKey,
       currency,
       dateFormat,
       setNetwork,
       setCustomRpcUrl,
       setProgramId,
+      setBackendUrl,
       setNimApiKey,
       setCurrency,
       setDateFormat,
@@ -77,6 +83,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       customRpcUrl,
       dateFormat,
       endpoint,
+      backendUrl,
       network,
       nimApiKey,
       programId,
@@ -84,6 +91,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       setCurrency,
       setCustomRpcUrl,
       setDateFormat,
+      setBackendUrl,
       setNetwork,
       setNimApiKey,
       setProgramId,

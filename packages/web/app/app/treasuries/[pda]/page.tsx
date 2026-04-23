@@ -119,7 +119,10 @@ export default function TreasuryDetailPage() {
       return [];
     }
     const currentLimit = Number(account.policyConfig.dailyLimitUsd.toString());
-    return account.policyState.recentAmounts.map((amount, index) => ({
+    const recentAmounts = account.policyState.recentAmounts as Array<{
+      toString(): string;
+    }>;
+    return recentAmounts.map((amount, index: number) => ({
       day: `Tx ${index + 1}`,
       spend: Number(amount.toString()),
       limit: currentLimit,
@@ -137,6 +140,14 @@ export default function TreasuryDetailPage() {
       </div>
     );
   }
+
+  const dwallets = account.dwallets as Array<{
+    chain: number;
+    dwalletId: string;
+    address: string;
+    dwalletAccount?: unknown;
+    balanceUsd: { toString(): string };
+  }>;
 
   return (
     <div className="space-y-6">
@@ -346,7 +357,7 @@ export default function TreasuryDetailPage() {
                 No dWallets registered yet.
               </p>
             ) : (
-              account.dwallets.map((dwallet) => (
+              dwallets.map((dwallet) => (
                 <div
                   key={`${dwallet.chain}-${dwallet.dwalletId}`}
                   className="rounded-[1.2rem] border border-white/8 bg-white/4 p-4"
