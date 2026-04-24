@@ -230,7 +230,7 @@ export function registerExecutionCommands(program: Command): void {
         } catch (err) {
           // Non-fatal — the message approval may already be signed or the
           // dWallet network may process it asynchronously
-          spinner.warn(`dWallet sign request: ${err instanceof Error ? err.message : String(err)}`);
+          spinner.setText(`dWallet sign request: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
 

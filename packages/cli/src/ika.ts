@@ -15,11 +15,12 @@ import {
   encodeReadCiphertextMessage,
   Chain as EncryptChain,
   DEVNET_PRE_ALPHA_GRPC_URL as ENCRYPT_GRPC_URL,
-} from "@encrypt.xyz/pre-alpha-solana-client/grpc";
+} from "./vendor/encrypt/grpc.js";
 import {
   createIkaClient,
-  DEVNET_PRE_ALPHA_GRPC_URL as IKA_GRPC_URL,
-} from "@ika.xyz/pre-alpha-solana-client/grpc";
+} from "./vendor/ika/grpc.js";
+
+const IKA_GRPC_URL = "pre-alpha-dev-1.ika.ika-network.net:443";
 
 export { ENCRYPT_GRPC_URL, IKA_GRPC_URL };
 

@@ -1,12 +1,17 @@
 {
-  "name": "@aura/cli",
+  "name": "@aura-protocol/cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Production-grade CLI for the AURA autonomous treasury program on Solana",
   "license": "MIT",
-  "repository": "https://github.com/exyreams/aura",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/exyreams/aura.git"
+  },
   "homepage": "https://github.com/exyreams/aura",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "aura": "./bin/aura.js"
   },
@@ -19,12 +24,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "prebuild": "node -e \"const path=require('node:path');const cli=path.dirname(process.env.npm_package_json);const sdk=path.resolve(cli,'../sdk-ts');process.argv=['node','tsc','-p',path.join(sdk,'tsconfig.json')];require(path.join(sdk,'node_modules/typescript/bin/tsc'));\"",
     "build": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\"",
     "test": "node -e \"const path=require('node:path');const {spawnSync}=require('node:child_process');const pkg=path.dirname(process.env.npm_package_json);const cli=path.join(pkg,'node_modules/tsx/dist/cli.mjs');const tests=['tests/config.test.ts','tests/domain.test.ts','tests/protocol.test.ts'];const result=spawnSync(process.execPath,[cli,'--test',...tests],{cwd:pkg,stdio:'inherit'});process.exit(result.status ?? 1);\"",
     "prepack": "npm run build"
   },
   "dependencies": {
+    "@aura-protocol/sdk-ts": "^0.1.0",
     "@encrypt.xyz/pre-alpha-solana-client": "^0.1.0",
     "@ika.xyz/pre-alpha-solana-client": "^0.1.0",
     "@inquirer/prompts": "8.4.2",
