@@ -1,4 +1,4 @@
-import { AURA_PROGRAM_ID, DEVNET_RPC_URL } from "@aura/sdk-ts";
+import { AURA_PROGRAM_ID, DEVNET_RPC_URL } from "@aura-protocol/sdk-ts";
 import path from "node:path";
 import { PublicKey } from "@solana/web3.js";
 

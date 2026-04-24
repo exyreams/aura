@@ -8,7 +8,7 @@ import {
   DWALLET_DEVNET_PROGRAM_ID,
   ENCRYPT_DEVNET_PROGRAM_ID,
   type TreasuryAccountRecord,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 import {
   ComputeBudgetProgram,
   Keypair,

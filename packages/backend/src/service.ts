@@ -6,7 +6,7 @@ import {
   type TreasuryAccountRecord,
   validateAddress,
   validateAmountUsd,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 import { Connection, PublicKey, SystemProgram } from "@solana/web3.js";
 import { loadConfig } from "./config.js";
 import {
