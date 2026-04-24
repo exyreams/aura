@@ -1,6 +1,6 @@
 "use client";
 
-import { AURA_PROGRAM_ID } from "@/lib/sdk";
+import { AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import {
   ArrowRight,

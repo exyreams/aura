@@ -10,7 +10,7 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@aura/sdk-ts": "../sdk-ts",
+    "@aura-protocol/sdk-ts": "^0.1.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.8",
@@ -40,6 +40,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.12",
     "@tailwindcss/postcss": "^4.2.3",
+    "@types/bn.js": "^5.2.0",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

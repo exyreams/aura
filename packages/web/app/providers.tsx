@@ -1,6 +1,6 @@
 "use client";
 
-import { AURA_PROGRAM_ID } from "@/lib/sdk";
+import { AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
 import {
   ConnectionProvider,
   WalletProvider,

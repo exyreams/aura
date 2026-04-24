@@ -15,7 +15,7 @@ import {
   validateGuardians,
   validateMultisigThreshold,
   validateSwarmMembers,
-} from "@/lib/sdk";
+} from "@aura-protocol/sdk-ts";
 import { EventParser } from "@coral-xyz/anchor";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import {

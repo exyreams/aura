@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAppSettings } from "@/lib/hooks";
-import { AURA_PROGRAM_ID } from "@/lib/sdk";
+import { AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
 import { appLinks } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
