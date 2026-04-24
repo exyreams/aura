@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "@aura/sdk-ts",
+      "name": "@aura-protocol/sdk-ts",
       "dependencies": {
         "@coral-xyz/anchor": "0.32.1",
       },

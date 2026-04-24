@@ -1,4 +1,4 @@
-# @aura/sdk-ts
+# @aura-protocol/sdk-ts
 
 TypeScript SDK for the AURA autonomous treasury program on Solana.
 
@@ -11,7 +11,7 @@ so it stays in sync with the deployed program.
 ## Installation
 
 ```bash
-npm install @aura/sdk-ts
+npm install @aura-protocol/sdk-ts
 ```
 
 **Peer dependencies** (install alongside):
@@ -27,7 +27,7 @@ npm install @solana/web3.js bn.js
 ```ts
 import BN from "bn.js";
 import { Connection, Keypair } from "@solana/web3.js";
-import { AuraClient } from "@aura/sdk-ts";
+import { AuraClient } from "@aura-protocol/sdk-ts";
 
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 const client = new AuraClient({ connection });
@@ -84,7 +84,7 @@ console.log("agentId:", account.agentId);
 ## AuraClient
 
 ```ts
-import { AuraClient } from "@aura/sdk-ts";
+import { AuraClient } from "@aura-protocol/sdk-ts";
 
 const client = new AuraClient({
   connection,               // Connection — required
@@ -258,7 +258,7 @@ import {
   deriveEncryptEventAuthorityAddress,
   deriveMessageApprovalAddress,
   AURA_PROGRAM_ID,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 
 const [treasury, bump] = deriveTreasuryAddress(owner, "my-agent", AURA_PROGRAM_ID);
 
@@ -278,7 +278,7 @@ import {
   ENCRYPT_DEVNET_PROGRAM_ID, // PublicKey — Ika Encrypt program
   DEVNET_RPC_URL,            // string — https://api.devnet.solana.com
   AURA_IDL,                  // the raw Anchor IDL object
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 
 // Type aliases derived from the IDL
 import type {
@@ -289,13 +289,13 @@ import type {
   ProposeConfidentialTransactionArgs,
   ConfigureMultisigArgs,
   ConfigureSwarmArgs,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 ```
 
-The raw IDL is also available at the `@aura/sdk-ts/idl` export path:
+The raw IDL is also available at the `@aura-protocol/sdk-ts/idl` export path:
 
 ```ts
-import idl from "@aura/sdk-ts/idl";
+import idl from "@aura-protocol/sdk-ts/idl";
 ```
 
 ---
@@ -306,7 +306,7 @@ All timestamp and amount parameters accept `BN | bigint | number | string` via
 the `BNish` type. The `toBN` helper is also exported if you need it directly:
 
 ```ts
-import { toBN } from "@aura/sdk-ts";
+import { toBN } from "@aura-protocol/sdk-ts";
 
 toBN(1000)           // number
 toBN(1000n)          // bigint
@@ -334,7 +334,7 @@ import type {
   ConfigureConfidentialVectorGuardrailsAccounts,
   ProposeConfidentialTransactionAccounts,
   ProposeConfidentialVectorTransactionAccounts,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 ```
 
 ---
@@ -344,7 +344,7 @@ import type {
 All on-chain errors are accessible via `AuraErrorCode`:
 
 ```ts
-import { AuraErrorCode, isAuraError, getAuraErrorCode } from "@aura/sdk-ts";
+import { AuraErrorCode, isAuraError, getAuraErrorCode } from "@aura-protocol/sdk-ts";
 
 try {
   await client.proposeTransaction(aiAuthority, accounts, args);
@@ -373,7 +373,7 @@ import {
   type TreasuryAuditEvent,
   type ProposalLifecycleEvent,
   type ExecutionLifecycleEvent,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 import { EventParser } from "@coral-xyz/anchor";
 
 // Parse events from a confirmed transaction
@@ -408,7 +408,7 @@ import {
   validateMultisigThreshold,
   validateGuardians,
   validateSwarmMembers,
-} from "@aura/sdk-ts";
+} from "@aura-protocol/sdk-ts";
 
 validateAgentId("my-agent");                    // throws if empty or > 64 bytes
 validateAmountUsd(100);                         // throws if zero

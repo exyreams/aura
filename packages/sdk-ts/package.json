@@ -1,10 +1,13 @@
 {
-  "name": "@aura/sdk-ts",
+  "name": "@aura-protocol/sdk-ts",
   "version": "0.1.0",
   "type": "module",
   "description": "TypeScript SDK for the AURA autonomous treasury program on Solana",
   "license": "MIT",
-  "repository": "https://github.com/exyreams/aura",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/exyreams/aura.git"
+  },
   "homepage": "https://github.com/exyreams/aura",
   "sideEffects": false,
   "engines": {

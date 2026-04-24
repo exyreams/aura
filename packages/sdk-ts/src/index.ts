@@ -1,5 +1,5 @@
 /**
- * Public API surface for `@aura/sdk-ts`.
+ * Public API surface for `@aura-protocol/sdk-ts`.
  *
  * Re-exports everything from each module so consumers can import from the
  * package root without knowing the internal file layout.

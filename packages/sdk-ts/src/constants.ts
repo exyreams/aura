@@ -12,7 +12,7 @@ import { PublicKey } from "@solana/web3.js";
 import type { AuraCore } from "./generated/aura_core.js";
 import idlJson from "./generated/aura_core.json" with { type: "json" };
 
-/** The raw Anchor IDL object. Exported at `@aura/sdk-ts/idl` as well. */
+/** The raw Anchor IDL object. Exported at `@aura-protocol/sdk-ts/idl` as well. */
 export const AURA_IDL = idlJson as AuraCore;
 
 /** The deployed `aura-core` program ID, read directly from the IDL address field. */

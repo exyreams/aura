@@ -9,7 +9,7 @@
  *
  * @example
  * ```typescript
- * import { Aura } from "@aura/sdk-ts";
+ * import { Aura } from "@aura-protocol/sdk-ts";
  * import { Keypair } from "@solana/web3.js";
  *
  * const aura = new Aura({

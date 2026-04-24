@@ -9,7 +9,7 @@ plain-number inputs so you never need to construct a `BN` manually.
 ## Setup
 
 ```typescript
-import { Aura } from "@aura/sdk-ts";
+import { Aura } from "@aura-protocol/sdk-ts";
 import { Keypair } from "@solana/web3.js";
 import { readFileSync } from "node:fs";
 
@@ -286,7 +286,7 @@ await client.collectOverrideSignature(guardian, accounts, now);
 ## Error Handling
 
 ```typescript
-import { AuraErrorCode, isAuraError } from "@aura/sdk-ts";
+import { AuraErrorCode, isAuraError } from "@aura-protocol/sdk-ts";
 
 try {
   await aura.treasury.propose({ treasury, amountUsd: 5_000, chain: 2, recipient: "0x..." });
@@ -310,7 +310,7 @@ try {
 Use the built-in validation helpers before submitting transactions:
 
 ```typescript
-import { validateAgentId, validateAmountUsd, validateGuardians } from "@aura/sdk-ts";
+import { validateAgentId, validateAmountUsd, validateGuardians } from "@aura-protocol/sdk-ts";
 
 validateAgentId("my-agent");           // throws if empty or > 64 bytes
 validateAmountUsd(500);                // throws if zero or negative

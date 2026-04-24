@@ -10,7 +10,7 @@ existing Anchor workflows, or access instructions not covered by the `Aura` faca
 ## Setup
 
 ```typescript
-import { AuraClient } from "@aura/sdk-ts";
+import { AuraClient } from "@aura-protocol/sdk-ts";
 import { Connection } from "@solana/web3.js";
 
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
