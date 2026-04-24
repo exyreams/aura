@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -12,11 +13,36 @@ import {
   YAxis,
 } from "recharts";
 
+function useChartReady() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
+  return ready;
+}
+
+function ChartPlaceholder() {
+  return (
+    <div
+      aria-hidden="true"
+      className="h-72 w-full rounded-[1.25rem] border border-white/8 bg-white/4"
+    />
+  );
+}
+
 export function SpendingBarChart({
   data,
 }: {
   data: Array<{ day: string; spend: number; limit: number }>;
 }) {
+  const ready = useChartReady();
+
+  if (!ready) {
+    return <ChartPlaceholder />;
+  }
+
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -60,6 +86,12 @@ export function AgentSpendChart({
 }: {
   data: Array<{ time: string; spend: number; approved: number }>;
 }) {
+  const ready = useChartReady();
+
+  if (!ready) {
+    return <ChartPlaceholder />;
+  }
+
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">

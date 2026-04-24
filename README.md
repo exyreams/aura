@@ -41,14 +41,70 @@ This means:
 programs/
   ├─ aura-core/      # Deployed Anchor program — treasury state machine
   └─ aura-policy/    # Pure Rust policy engine — rules, FHE graphs, types
-
 packages/
+  ├─ backend/        # HTTP service for confidential execution, Encrypt/dWallet ops, and agent runtime
   ├─ sdk-rs/         # Rust SDK for account decoding, PDAs, instructions, and RPC flows
   ├─ sdk-ts/         # TypeScript SDK with typed client helpers and published ESM artifacts
-  └─ cli/            # Terminal CLI for treasury operations, governance, and config management
+  ├─ cli/            # Terminal CLI for treasury operations, governance, and config management
+  └─ web/            # Next.js dashboard for treasury operations, settings, and agent control
 ```
 
 `aura-policy` has no Anchor dependency. It is used both by `aura-core` instruction handlers on-chain and by off-chain tooling for simulation and previewing. The SDKs wrap the deployed program surface without redefining it by hand, so client integrations stay aligned with the on-chain source of truth.
+
+For the server-side flows that should not live in the browser, AURA now also
+ships `packages/backend`, a standalone service used by the web app for the
+confidential Encrypt bridge, decryption/execution lifecycle, and autonomous
+agent runtime.
+
+## Quick Start
+
+### Programs
+
+```bash
+cargo test --workspace
+```
+
+### Backend
+
+```bash
+cd packages/backend
+bun run vendor:sync
+bun run dev
+```
+
+### Web
+
+```bash
+cd packages/web
+bun run dev
+```
+
+Default backend URL for the web app:
+
+```bash
+http://127.0.0.1:8787
+```
+
+## Validation Matrix
+
+Backend:
+
+```bash
+cd packages/backend
+bun run vendor:sync
+bun run typecheck
+bun run build
+```
+
+Web:
+
+```bash
+cd packages/web
+bun run lint
+bunx next typegen
+bunx tsc --noEmit
+bunx next build --webpack
+```
 
 ---
 

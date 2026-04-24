@@ -1,4 +1,5 @@
 import { AURA_PROGRAM_ID, DEVNET_RPC_URL } from "@aura/sdk-ts";
+import path from "node:path";
 import { PublicKey } from "@solana/web3.js";
 
 export interface BackendConfig {
@@ -10,13 +11,10 @@ export interface BackendConfig {
   defaultAgentIntervalMs: number;
 }
 
-function requireEnv(name: string) {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`Missing required env ${name}`);
-  }
-  return value;
-}
+const DEFAULT_KEYPAIR_PATH = path.resolve(
+  import.meta.dirname,
+  "../../../wallet/wallet.json",
+);
 
 export function loadConfig(): BackendConfig {
   return {
@@ -26,7 +24,8 @@ export function loadConfig(): BackendConfig {
     defaultProgramId: process.env.AURA_DEFAULT_PROGRAM_ID?.trim()
       ? new PublicKey(process.env.AURA_DEFAULT_PROGRAM_ID.trim())
       : AURA_PROGRAM_ID,
-    keypairPath: requireEnv("AURA_BACKEND_KEYPAIR"),
+    keypairPath:
+      process.env.AURA_BACKEND_KEYPAIR?.trim() || DEFAULT_KEYPAIR_PATH,
     defaultAgentIntervalMs: Number(process.env.AURA_AGENT_INTERVAL_MS || 30000),
   };
 }

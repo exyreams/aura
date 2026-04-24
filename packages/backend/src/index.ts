@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { loadEnvFile } from "node:process";
 import { loadConfig } from "./config.js";
 import {
   confirmPolicyDecryptionService,
@@ -15,6 +16,8 @@ import {
   submitConfidentialProposal,
 } from "./service.js";
 import type { AgentJobConfig } from "./types.js";
+
+loadEnvFile();
 
 const config = loadConfig();
 

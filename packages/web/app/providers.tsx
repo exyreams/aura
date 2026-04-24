@@ -1,15 +1,11 @@
 "use client";
 
+import { AURA_PROGRAM_ID } from "@/lib/sdk";
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  UnsafeBurnerWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useMemo, useState } from "react";
@@ -30,7 +26,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
   );
   const [programId, setProgramId] = usePersistentState<string>(
     "aura:program-id",
-    "",
+    AURA_PROGRAM_ID.toBase58(),
   );
   const [backendUrl, setBackendUrl] = usePersistentState<string>(
     "aura:backend-url",
@@ -108,14 +104,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
 function SolanaProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const settings = AppSettingsContext.useValue();
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-      new UnsafeBurnerWalletAdapter(),
-    ],
-    [],
-  );
+  const wallets = useMemo(() => [], []);
 
   return (
     <QueryClientProvider client={queryClient}>

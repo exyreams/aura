@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #07111f;
-  --foreground: #ecf7ff;
-  --muted: #9aadc6;
-  --card: rgba(10, 19, 35, 0.72);
-  --card-strong: rgba(4, 11, 22, 0.88);
-  --border: rgba(195, 232, 255, 0.12);
-  --primary: #5aa8ff;
-  --primary-foreground: #04111f;
-  --accent: #33f1c5;
-  --accent-foreground: #04111f;
+  --background: #08111b;
+  --foreground: #eef4fb;
+  --muted: #9fb0c4;
+  --card: rgba(10, 18, 31, 0.78);
+  --card-strong: rgba(7, 13, 23, 0.92);
+  --border: rgba(202, 220, 245, 0.12);
+  --primary: #7dd3fc;
+  --primary-foreground: #08111b;
+  --accent: #f6b93b;
+  --accent-foreground: #1b1304;
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #fb7185;
-  --font-sans-ui: "Inter", "Segoe UI", sans-serif;
+  --font-sans-ui: "Geist", "Inter", "Segoe UI", sans-serif;
   --font-mono-ui: "JetBrains Mono", "SFMono-Regular", "Consolas", monospace;
-  --shadow-glow: 0 24px 80px rgba(2, 10, 23, 0.45);
+  --shadow-glow: 0 30px 80px rgba(1, 5, 12, 0.4);
 }
 
 @theme inline {
@@ -50,9 +50,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans-ui);
   background-image:
-    radial-gradient(circle at top, rgba(90, 168, 255, 0.16), transparent 30%),
-    radial-gradient(circle at 20% 20%, rgba(51, 241, 197, 0.1), transparent 20%),
-    linear-gradient(180deg, #06101d 0%, #07111f 45%, #040913 100%);
+    radial-gradient(circle at top, rgba(125, 211, 252, 0.15), transparent 30%),
+    radial-gradient(circle at 20% 20%, rgba(246, 185, 59, 0.09), transparent 20%),
+    linear-gradient(180deg, #09131e 0%, #08111b 45%, #050a11 100%);
 }
 
 a {
@@ -77,8 +77,8 @@ button {
 .glass-panel {
   background: linear-gradient(
     180deg,
-    rgba(17, 28, 47, 0.82),
-    rgba(7, 14, 26, 0.72)
+    rgba(14, 24, 39, 0.9),
+    rgba(8, 13, 23, 0.84)
   );
   border: 1px solid var(--border);
   border-radius: 1.75rem;
@@ -99,7 +99,7 @@ button {
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #7dd3fc;
+  color: var(--accent);
 }
 
 .section-title {
@@ -132,12 +132,26 @@ button {
     transform 160ms ease,
     background-color 160ms ease,
     border-color 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    box-shadow 160ms ease;
+  min-height: 2.75rem;
+}
+
+.button-primary:focus-visible,
+.button-secondary:focus-visible,
+.button-ghost:focus-visible,
+.nav-link:focus-visible,
+.wallet-adapter-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(246, 185, 59, 0.95),
+    0 0 0 6px rgba(8, 17, 27, 0.9);
 }
 
 .button-primary {
   background: linear-gradient(135deg, var(--accent), var(--primary));
-  color: #04111f;
+  color: #07111f;
+  box-shadow: 0 18px 40px rgba(246, 185, 59, 0.22);
 }
 
 .button-primary:hover,
@@ -147,7 +161,7 @@ button {
 }
 
 .wallet-adapter-button.wallet-adapter-button-trigger {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: white;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -167,6 +181,116 @@ button {
   background: transparent;
   color: #d7e8f8;
   border: 1px solid rgba(215, 232, 248, 0.12);
+}
+
+.nav-link {
+  transition: color 160ms ease;
+}
+
+.nav-link:hover {
+  color: white;
+}
+
+.landing-mark,
+.landing-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    135deg,
+    rgba(246, 185, 59, 0.16),
+    rgba(125, 211, 252, 0.14)
+  );
+  color: white;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.landing-mark {
+  height: 2.75rem;
+  width: 2.75rem;
+  border-radius: 1rem;
+}
+
+.landing-icon {
+  height: 2.75rem;
+  width: 2.75rem;
+  border-radius: 1rem;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.landing-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-preview-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, black, transparent 80%);
+}
+
+.landing-orbit {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(50px);
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.landing-orbit-a {
+  top: -5rem;
+  right: -3rem;
+  height: 18rem;
+  width: 18rem;
+  background: rgba(125, 211, 252, 0.2);
+}
+
+.landing-orbit-b {
+  top: 14rem;
+  left: -6rem;
+  height: 14rem;
+  width: 14rem;
+  background: rgba(246, 185, 59, 0.18);
+}
+
+.landing-step-index,
+.metric-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.landing-step-index {
+  height: 2.75rem;
+  min-width: 2.75rem;
+  padding-inline: 0.85rem;
+  font-family: var(--font-mono-ui);
+  font-size: 0.8rem;
+}
+
+.metric-badge {
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.aura-wallet-button {
+  min-height: 2.75rem;
 }
 
 .status-dot {
@@ -257,6 +381,19 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #8ea8c8;
+}
+
+@media (max-width: 1279px) {
+  .page-shell {
+    width: min(1200px, calc(100vw - 1.25rem));
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .input,

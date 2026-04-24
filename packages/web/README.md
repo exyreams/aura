@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AURA Web
 
-## Getting Started
+Next.js dashboard for the AURA stack.
 
-First, run the development server:
+## Purpose
+
+This package is the browser-facing operator UI. It handles:
+
+- wallet connection
+- treasury discovery and detail pages
+- owner-signed treasury and governance actions
+- backend-assisted confidential execution controls
+- backend-assisted agent controls
+
+## Runtime Dependency
+
+The confidential lifecycle and agent pages depend on `packages/backend`.
+
+Default backend URL:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+http://127.0.0.1:8787
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+That value can be changed from the Settings page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+bun run dev
+```
 
-## Learn More
+## Validation
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+bun run lint
+bunx next typegen
+bunx tsc --noEmit
+bunx next build --webpack
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Files
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `app/providers.tsx`: wallet, React Query, and app settings providers
+- `lib/settings.ts`: persisted local settings
+- `lib/aura-app.ts`: SDK and account helpers
+- `lib/backend-client.ts`: backend request helpers
+- `app/app/treasuries/[pda]/confidential/page.tsx`: confidential lifecycle UI
+- `app/app/agent/page.tsx`: backend agent runtime UI
 
-## Deploy on Vercel
+## Related Docs
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`../../docs/WEB.md`](../../docs/WEB.md)
+- [`../../docs/Operations.md`](../../docs/Operations.md)

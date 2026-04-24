@@ -3,3 +3,9 @@ node_modules/
 dist/
 **/node_modules/
 **/dist/
+**/.env
+**/.env.local
+packages/backend/src/vendor/encrypt/generated/
+packages/backend/src/vendor/ika/generated/
+packages/backend/src/vendor/ika/bcs-types.ts
+wallet/
