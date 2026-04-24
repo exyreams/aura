@@ -496,6 +496,27 @@ packages/sdk-ts/
 
 ---
 
+## Build from Source
+
+```bash
+git clone https://github.com/exyreams/aura.git
+cd aura/packages/sdk-ts
+npm install
+npm run build
+```
+
+Run tests:
+
+```bash
+# Unit tests — no network required
+npm test
+
+# Devnet integration tests — requires funded wallet at ~/.config/solana/id.json
+npm run test:devnet
+```
+
+---
+
 ## Deployed Program
 
 ```

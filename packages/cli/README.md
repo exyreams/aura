@@ -1,8 +1,8 @@
-# @aura/cli
+# @aura-protocol/cli
 
 Terminal interface for the AURA autonomous treasury program on Solana.
 
-Built on top of `@aura/sdk-ts` with full integration of the Ika Encrypt and dWallet
+Built on top of `@aura-protocol/sdk-ts` with full integration of the Ika Encrypt and dWallet
 gRPC networks — the CLI drives the complete confidential proposal lifecycle end-to-end,
 including automatic FHE ciphertext creation, policy decryption, and dWallet co-signing.
 
@@ -24,26 +24,26 @@ including automatic FHE ciphertext creation, policy decryption, and dWallet co-s
 ## Prerequisites
 
 - Node.js >= 20
-- A funded Solana devnet wallet at `~/.config/solana/id.json`
-  - `solana airdrop 2 --url devnet`
+- A funded Solana devnet wallet
+  - Linux/macOS: `~/.config/solana/id.json`
+  - Windows: `%USERPROFILE%\.config\solana\id.json`
+  - Fund it: `solana airdrop 2 --url devnet`
 - Network access to Ika devnet gRPC services:
   - Encrypt: `pre-alpha-dev-1.encrypt.ika-network.net:443`
   - dWallet: `pre-alpha-dev-1.ika.ika-network.net:443`
 
 ---
 
-## Setup
+## Installation
 
 ```bash
-# From the monorepo root — build the SDK first, then the CLI
-cd packages/sdk-ts && npm run build
-cd ../cli && npm install && npm run build
+npm install -g @aura-protocol/cli
+```
 
-# Link globally
-npm link
+Or run without installing:
 
-# Or run directly
-node bin/aura.js --help
+```bash
+npx @aura-protocol/cli --help
 ```
 
 ---
@@ -298,10 +298,24 @@ AURA_DEFAULT_AGENT_ID="my-agent"
 
 ---
 
-## Build and Test
+## Build from Source
 
 ```bash
+git clone https://github.com/exyreams/aura.git
+cd aura/packages/cli
 npm install
 npm run build
+```
+
+Run tests:
+
+```bash
 npm test
+```
+
+Link locally for development:
+
+```bash
+npm link
+aura --help
 ```
