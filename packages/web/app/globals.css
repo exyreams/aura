@@ -1,22 +1,105 @@
 @import "tailwindcss";
 
 :root {
-  --background: #08111b;
-  --foreground: #eef4fb;
-  --muted: #9fb0c4;
-  --card: rgba(10, 18, 31, 0.78);
-  --card-strong: rgba(7, 13, 23, 0.92);
-  --border: rgba(202, 220, 245, 0.12);
-  --primary: #7dd3fc;
-  --primary-foreground: #08111b;
-  --accent: #f6b93b;
-  --accent-foreground: #1b1304;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --danger: #fb7185;
-  --font-sans-ui: "Geist", "Inter", "Segoe UI", sans-serif;
-  --font-mono-ui: "JetBrains Mono", "SFMono-Regular", "Consolas", monospace;
-  --shadow-glow: 0 30px 80px rgba(1, 5, 12, 0.4);
+  /* AURA Design System Colors - Dark Theme (Default) */
+  --bg: #0c0c0e;
+  --primary: #9ca3b0;
+  --secondary: #d1d5db;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --border: rgba(255, 255, 255, 0.1);
+  --card-bg: #141416;
+  --card-content: #0f0f11;
+  --grid: rgba(107, 114, 128, 0.04);
+  --input-bg: #0a0a0c;
+  --hover-bg: #202022;
+  --skeleton-from: rgba(255, 255, 255, 0.05);
+  --skeleton-via: rgba(255, 255, 255, 0.1);
+  --skeleton-to: rgba(255, 255, 255, 0.05);
+
+  /* Status Colors */
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.3);
+  --success-text: #10b981;
+
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.3);
+  --warning-text: #f59e0b;
+
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-border: rgba(239, 68, 68, 0.3);
+  --danger-text: #ef4444;
+
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.3);
+  --info-text: #3b82f6;
+
+  /* Fonts */
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Inter", sans-serif;
+
+  /* Legacy compatibility */
+  --background: #0c0c0e;
+  --foreground: #f3f4f6;
+  --muted: #9ca3af;
+  --card: rgba(255, 255, 255, 0.02);
+  --card-strong: rgba(255, 255, 255, 0.05);
+  --primary-foreground: #0c0c0e;
+  --accent: #6b7280;
+  --accent-foreground: #f3f4f6;
+  --font-sans-ui: "Inter", sans-serif;
+  --font-mono-ui: "JetBrains Mono", monospace;
+  --shadow-glow: 0 30px 80px rgba(0, 0, 0, 0.4);
+}
+
+/* Light Theme */
+.light {
+  --bg: #f9fafb;
+  --primary: #6b7280;
+  --secondary: #1f2937;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --border: rgba(0, 0, 0, 0.15);
+  --card-bg: #e5e7eb;
+  --card-content: #d1d5db;
+  --grid: rgba(75, 85, 99, 0.03);
+  --input-bg: #ffffff;
+  --hover-bg: #d1d5db;
+  --skeleton-from: #c4c8cf;
+  --skeleton-via: #9ca3af;
+  --skeleton-to: #c4c8cf;
+
+  /* Status Colors - Light Theme */
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.3);
+  --success-text: #059669;
+
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.3);
+  --warning-text: #d97706;
+
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-border: rgba(239, 68, 68, 0.3);
+  --danger-text: #dc2626;
+
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.3);
+  --info-text: #2563eb;
+
+  /* Legacy compatibility */
+  --background: #f9fafb;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --card-strong: #f3f4f6;
+  --primary-foreground: #ffffff;
+  --accent: #4b5563;
+  --accent-foreground: #111827;
+  --shadow-glow: 0 30px 80px rgba(0, 0, 0, 0.1);
 }
 
 @theme inline {
@@ -46,13 +129,130 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans-ui);
-  background-image:
-    radial-gradient(circle at top, rgba(125, 211, 252, 0.15), transparent 30%),
-    radial-gradient(circle at 20% 20%, rgba(246, 185, 59, 0.09), transparent 20%),
-    linear-gradient(180deg, #09131e 0%, #08111b 45%, #050a11 100%);
+  background: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Animations */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Spinner Animations - Optimized for performance */
+.spinner-container {
+  animation: spin 1.5s linear infinite;
+  will-change: transform;
+}
+
+.spinner-circle {
+  stroke-dasharray: 1, 150;
+  stroke-dashoffset: 0;
+  animation: spinner-dash 1.5s ease-in-out infinite;
+  will-change: stroke-dasharray, stroke-dashoffset;
+}
+
+@keyframes spinner-dash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
+  }
+}
+
+@keyframes spinner-pulse {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes spinner-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Scrollbar Styles - AURA Design System */
+/* WebKit (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Firefox - using @-moz-document to target only Firefox */
+@-moz-document url-prefix() {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--bg);
+  }
 }
 
 a {
@@ -64,9 +264,16 @@ button {
   cursor: pointer;
 }
 
+/* Text Selection - Dark Theme */
 ::selection {
-  background: rgba(90, 168, 255, 0.36);
-  color: white;
+  background: var(--primary);
+  color: var(--bg);
+}
+
+/* Text Selection - Light Theme */
+.light ::selection {
+  background: var(--primary);
+  color: var(--bg);
 }
 
 .page-shell {
