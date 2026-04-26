@@ -69,7 +69,7 @@ export function Bar({
   }, []);
 
   return (
-    <div className="bg-(--card-bg) border border-border rounded p-4 md:p-6 hover:border-primary transition-colors outline-none **:outline-none">
+    <div className="bg-(--card-bg) border border-border rounded p-4 md:p-6 transition-colors outline-none **:outline-none">
       <div className="mb-6">
         <h3 className="text-xl font-bold mb-1">{title}</h3>
         {description && (
