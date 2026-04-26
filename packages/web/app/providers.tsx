@@ -10,6 +10,7 @@ import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useMemo, useState } from "react";
 import { ThemeProvider } from "@/components/theme";
+import { FaviconSwitcher } from "@/components/theme/FaviconSwitcher";
 import {
   AppSettingsContext,
   type AppSettingsContextValue,
@@ -121,6 +122,7 @@ function SolanaProviders({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
+      <FaviconSwitcher />
       <AppSettingsProvider>
         <SolanaProviders>{children}</SolanaProviders>
       </AppSettingsProvider>
