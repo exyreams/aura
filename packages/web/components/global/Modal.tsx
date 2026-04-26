@@ -48,7 +48,7 @@ export const Modal: React.FC<ModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-200 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-9999 flex items-center justify-center p-4 overflow-y-auto"
           onClick={handleBackdropClick}
         >
           <motion.div
@@ -57,7 +57,7 @@ export const Modal: React.FC<ModalProps> = ({
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className={cn(
-              "bg-(--bg) border border-border rounded-sm shadow-2xl w-full max-w-md p-8",
+              "bg-(--bg) border border-border rounded-sm shadow-2xl w-full max-w-md p-8 my-8 max-h-[calc(100vh-4rem)] overflow-y-auto",
               className,
             )}
             onClick={(e) => e.stopPropagation()}

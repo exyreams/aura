@@ -35,7 +35,7 @@ export interface TableProps<T> {
   className?: string;
 }
 
-export function Table<T extends Record<string, unknown>>({
+export function Table<T>({
   columns,
   data,
   keyExtractor,
@@ -186,6 +186,10 @@ export function Table<T extends Record<string, unknown>>({
   }
 
   // Table with Data
+  const rowHeight = 57; // py-4 (16px top + 16px bottom) + content height (~25px)
+  const itemsPerPage = pagination?.itemsPerPage || 10;
+  const minHeight = rowHeight * itemsPerPage;
+
   return (
     <div className={cn("space-y-6", className)}>
       <div className="border border-border rounded-sm overflow-hidden bg-(--card-bg)">
@@ -208,7 +212,10 @@ export function Table<T extends Record<string, unknown>>({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody
+              className="divide-y divide-border"
+              style={{ minHeight: `${minHeight}px` }}
+            >
               {data.map((item) => (
                 <tr
                   key={keyExtractor(item)}
@@ -226,7 +233,9 @@ export function Table<T extends Record<string, unknown>>({
                     >
                       {column.render
                         ? column.render(item)
-                        : (item[column.key] as React.ReactNode)}
+                        : ((item as Record<string, unknown>)[
+                            column.key
+                          ] as React.ReactNode)}
                     </td>
                   ))}
                 </tr>

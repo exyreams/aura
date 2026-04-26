@@ -101,3 +101,5 @@ export function useBackendInfo() {
     retry: 1,
   });
 }
+
+export type { TreasuryEntry };

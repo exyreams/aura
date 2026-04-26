@@ -151,7 +151,7 @@ export function Navbar() {
 
           {isConnected ? (
             <>
-              <Link href="/app">
+              <Link href="/dashboard">
                 <Button
                   variant="primary"
                   size="small"
@@ -166,35 +166,35 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => setWalletMenuOpen(!walletMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-(--hover-bg) border border-border rounded-md hover:border-primary transition-all duration-200"
                 >
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <span className="font-mono text-[10px] text-(--text-main)">
                     {shortAddress}
                   </span>
                 </button>
 
                 {walletMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-(--card-bg) border border-border rounded-lg shadow-2xl overflow-hidden">
-                    <div className="p-4 border-b border-border bg-(--card-content)">
-                      <p className="text-xs font-mono text-(--text-muted) mb-1">
+                  <div className="absolute right-0 mt-2 w-56 bg-(--card-bg) border border-border rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3 border-b border-border bg-(--hover-bg)">
+                      <p className="text-[9px] font-mono text-(--text-muted) mb-1.5 uppercase tracking-wider">
                         Connected Wallet
                       </p>
-                      <p className="text-sm font-mono text-(--text-main) break-all">
+                      <p className="text-[10px] font-mono text-(--text-main) break-all leading-relaxed">
                         {walletAddress}
                       </p>
                     </div>
 
-                    <div className="p-2">
+                    <div className="p-1.5">
                       <button
                         type="button"
                         onClick={handleCopyAddress}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                       >
                         {copied ? (
-                          <Check className="w-4 h-4 text-primary" />
+                          <Check className="w-3.5 h-3.5 text-primary" />
                         ) : (
-                          <Copy className="w-4 h-4" />
+                          <Copy className="w-3.5 h-3.5" />
                         )}
                         <span>{copied ? "Copied!" : "Copy Address"}</span>
                       </button>
@@ -202,20 +202,20 @@ export function Navbar() {
                       <button
                         type="button"
                         onClick={handleViewExplorer}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="w-3.5 h-3.5" />
                         <span>View on Explorer</span>
                       </button>
 
-                      <div className="my-2 border-t border-border"></div>
+                      <div className="my-1.5 border-t border-border" />
 
                       <button
                         type="button"
                         onClick={handleDisconnect}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-danger hover:bg-(--hover-bg) rounded-md transition-colors"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-danger hover:bg-(--hover-bg) rounded-md transition-colors"
                       >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-3.5 h-3.5" />
                         <span>Disconnect</span>
                       </button>
                     </div>
