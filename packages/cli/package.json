@@ -29,7 +29,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@aura-protocol/sdk-ts": "^0.1.0",
+    "@aura-protocol/sdk-ts": "^0.1.1",
     "@encrypt.xyz/pre-alpha-solana-client": "^0.1.0",
     "@ika.xyz/pre-alpha-solana-client": "^0.1.0",
     "@inquirer/prompts": "8.4.2",

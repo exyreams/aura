@@ -5,7 +5,7 @@
     "": {
       "name": "@aura/cli",
       "dependencies": {
-        "@aura-protocol/sdk-ts": "^0.1.0",
+        "@aura-protocol/sdk-ts": "^0.1.1",
         "@encrypt.xyz/pre-alpha-solana-client": "^0.1.0",
         "@ika.xyz/pre-alpha-solana-client": "^0.1.0",
         "@inquirer/prompts": "8.4.2",
@@ -32,7 +32,7 @@
   "packages": {
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.3.0", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA=="],
 
-    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.1.0", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-vwZI0cyZ4ykB+E9PsoVRs4RvPpHEXp/o1RZ2u7CaRgaHJav39bvHlug4vjT7MPgJrqApvUAy1KmNmTGShoY23Q=="],
+    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.1.1", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-mBj0d/Qe7BIevkTPkYY4iE7jhJt6vV4XwhAX+hmGAPgKVyhqFZ32QD4OTisIA3p12q4Knlq2AGOsRxe0d2Q8IA=="],
 
     "@babel/runtime": ["@babel/runtime@7.29.2", "", {}, "sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g=="],
 

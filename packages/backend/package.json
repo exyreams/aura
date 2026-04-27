@@ -19,9 +19,9 @@
     "typecheck": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','--noEmit','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\""
   },
   "dependencies": {
-    "@aura-protocol/sdk-ts": "^0.1.0",
+    "@aura-protocol/sdk-ts": "^0.1.1",
     "@encrypt.xyz/pre-alpha-solana-client": "^0.1.0",
-    "@ika.xyz/pre-alpha-solana-client": "^0.1.0",
+    "@ika.xyz/pre-alpha-solana-client": "^0.1.1",
     "@solana/web3.js": "1.98.4",
     "bn.js": "5.2.3",
     "js-sha3": "0.9.3"
