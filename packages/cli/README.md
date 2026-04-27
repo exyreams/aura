@@ -292,7 +292,7 @@ AURA_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
 AURA_DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
 AURA_WALLET_PATH="/path/to/keypair.json"
 PAYER_KEYPAIR="/path/to/keypair.json"
-AURA_PROGRAM_ID="G4XjdmHtwwuTdw7VxWqTuTaL8WkZTKnCEnyaV5V6zgVW"
+AURA_PROGRAM_ID="2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya"
 AURA_DEFAULT_AGENT_ID="my-agent"
 ```
 

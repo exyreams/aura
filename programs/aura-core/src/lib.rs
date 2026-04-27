@@ -61,7 +61,7 @@ use instructions::{
     __cpi_client_accounts_register_dwallet, __cpi_client_accounts_request_policy_decryption,
 };
 
-declare_id!("G4XjdmHtwwuTdw7VxWqTuTaL8WkZTKnCEnyaV5V6zgVW");
+declare_id!("2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya");
 
 #[program]
 pub mod aura_core {
