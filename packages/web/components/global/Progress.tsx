@@ -11,13 +11,14 @@ export interface ProgressProps {
   showPercentage?: boolean;
   className?: string;
   animate?: boolean;
-  size?: "small" | "medium" | "large";
+  size?: "extraSmall" | "small" | "medium" | "large";
 }
 
 const sizeClasses = {
-  small: "h-1",
-  medium: "h-1.5",
-  large: "h-2",
+  extraSmall: "h-1.5",
+  small: "h-2",
+  medium: "h-2.5",
+  large: "h-3",
 };
 
 export const Progress: React.FC<ProgressProps> = ({
@@ -34,14 +35,14 @@ export const Progress: React.FC<ProgressProps> = ({
   return (
     <div className={cn("space-y-3", className)}>
       {(label || showPercentage) && (
-        <div className="flex justify-between mono text-[10px] text-slate-400">
+        <div className="flex justify-between mono text-[10px] text-(--text-muted)">
           {label && <span>{label}</span>}
           {showPercentage && <span>{Math.round(percentage)}%</span>}
         </div>
       )}
       <div
         className={cn(
-          "w-full bg-white/5 border border-white/5 overflow-hidden rounded-[1px]",
+          "w-full bg-white/5 border border-white/5 light:bg-black/10 light:border-black/5 overflow-hidden rounded-[1px]",
           sizeClasses[size],
         )}
       >
