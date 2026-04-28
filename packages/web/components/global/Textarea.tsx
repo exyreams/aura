@@ -5,15 +5,16 @@ export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
+  containerClassName?: string;
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, className, id, ...props }, ref) => {
+  ({ label, error, className, containerClassName, id, ...props }, ref) => {
     const textareaId =
       id || `textarea-${label?.toLowerCase().replace(/\s+/g, "-")}`;
 
     return (
-      <div className="space-y-2">
+      <div className={cn("space-y-2", containerClassName)}>
         {label && (
           <label
             htmlFor={textareaId}

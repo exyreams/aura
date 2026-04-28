@@ -35,6 +35,7 @@ interface BarProps {
   height?: number;
   isLoading?: boolean;
   emptyMessage?: string;
+  footer?: React.ReactNode;
 }
 
 export function Bar({
@@ -46,6 +47,7 @@ export function Bar({
   height = 300,
   isLoading = false,
   emptyMessage = "No data available",
+  footer,
 }: BarProps) {
   const [isDark, setIsDark] = useState(true);
   const isEmpty = !isLoading && (!data || data.length === 0);
@@ -150,6 +152,10 @@ export function Bar({
             ))}
           </RechartsBarChart>
         </ResponsiveContainer>
+      )}
+
+      {footer && (
+        <div className="mt-6 pt-6 border-t border-border">{footer}</div>
       )}
     </div>
   );
