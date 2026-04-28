@@ -45,12 +45,12 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
     {
       label: "Configure Confidential Guardrails",
       icon: <Shield size={16} />,
-      onClick: () => console.log("Configure Guardrails"),
+      onClick: () => router.push(`/dashboard/treasuries/${pda}/guardrails`),
     },
     {
-      label: "Configure Governance",
+      label: "Governance Configuration",
       icon: <Users size={16} />,
-      onClick: () => console.log("Configure Governance"),
+      onClick: () => router.push(`/dashboard/treasuries/${pda}/governance`),
     },
     {
       label: "Cancel Pending",
