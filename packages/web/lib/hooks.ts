@@ -87,6 +87,32 @@ export function useRecentActivity(treasuries: TreasuryEntry[]) {
   });
 }
 
+export function useTreasuryAuditTrail(
+  treasuryPda: string | undefined,
+  limit = 20,
+) {
+  const { connection } = useConnection();
+  const settings = useAppSettings();
+
+  return useQuery({
+    queryKey: [
+      "audit-trail",
+      treasuryPda,
+      settings.endpoint,
+      settings.programId,
+      limit,
+    ],
+    queryFn: () =>
+      fetchRecentActivity(
+        connection,
+        [new PublicKey(treasuryPda as string)],
+        settings.resolvedProgramId,
+        limit,
+      ),
+    enabled: Boolean(treasuryPda),
+  });
+}
+
 export function useBackendInfo() {
   const settings = useAppSettings();
 

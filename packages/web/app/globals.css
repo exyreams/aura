@@ -102,7 +102,11 @@
   --shadow-glow: 0 30px 80px rgba(0, 0, 0, 0.1);
 }
 
-@variant light (&:where(.light, .light *));
+@variant light {
+  &:where(.light, .light *) {
+    @slot;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -654,4 +658,27 @@ button {
     display: block;
     overflow-x: auto;
   }
+}
+/* Custom Scrollbar Utility */
+@utility slim-scrollbar {
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }

@@ -12,6 +12,7 @@ export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: React.ReactNode;
+  iconPosition?: "left" | "right";
   loading?: boolean;
   children: React.ReactNode;
 }
@@ -22,6 +23,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "primary",
       size = "medium",
       icon,
+      iconPosition = "left",
       loading = false,
       children,
       className,
@@ -79,8 +81,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           </>
         ) : (
           <>
-            {icon && <span>{icon}</span>}
+            {icon && iconPosition === "left" && <span>{icon}</span>}
             {children}
+            {icon && iconPosition === "right" && <span>{icon}</span>}
           </>
         )}
       </motion.button>

@@ -15,9 +15,15 @@ export interface TabsProps {
   tabs: Tab[];
   defaultTab?: string;
   onChange?: (tabId: string) => void;
+  layoutId?: string;
 }
 
-export const Tabs: React.FC<TabsProps> = ({ tabs, defaultTab, onChange }) => {
+export const Tabs: React.FC<TabsProps> = ({
+  tabs,
+  defaultTab,
+  onChange,
+  layoutId = "activeTab",
+}) => {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
 
   const handleTabChange = (tabId: string) => {
@@ -47,7 +53,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, defaultTab, onChange }) => {
               {tab.label}
               {isActive && (
                 <motion.div
-                  layoutId="activeTab"
+                  layoutId={layoutId}
                   className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary"
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />

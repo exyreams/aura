@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { AlertCircle, ExternalLink, Wallet, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/global/Button";
 
 interface WalletModalProps {
@@ -26,7 +27,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     }
   }, [connected, onClose]);
 
-  if (!mounted || !isOpen) return null;
+  if (!mounted) return null;
 
   const handleWalletClick = async (walletName: WalletName) => {
     try {
@@ -44,12 +45,16 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     (wallet) => wallet.readyState !== "Installed",
   );
 
-  return (
-    <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
+  const modalContent = (
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
       {/* Backdrop */}
       <button
         type="button"
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        style={{
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
         onClick={onClose}
         aria-label="Close modal"
       />
@@ -77,7 +82,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        <div className="p-6 max-h-[60vh] overflow-y-auto slim-scrollbar">
           {/* Installed Wallets */}
           {installedWallets.length > 0 && (
             <div className="space-y-3 mb-6">
@@ -184,4 +189,8 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
       </div>
     </div>
   );
+
+  if (!isOpen) return null;
+
+  return createPortal(modalContent, document.body);
 }

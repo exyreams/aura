@@ -221,7 +221,7 @@ export default function TreasuryDetailPage() {
             </div>
             <div className="h-3 rounded-full bg-white/8">
               <div
-                className="h-3 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-300"
+                className="h-3 rounded-full bg-linear-to-r from-cyan-400 to-emerald-300"
                 style={{
                   width: `${Math.min(
                     100,
