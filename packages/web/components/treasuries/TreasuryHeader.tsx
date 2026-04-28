@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
@@ -30,6 +31,7 @@ interface TreasuryHeaderProps {
 }
 
 export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,7 +40,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
     {
       label: "Propose Transaction",
       icon: <Send size={16} />,
-      onClick: () => console.log("Propose Transaction"),
+      onClick: () => router.push(`/dashboard/treasuries/${pda}/propose`),
     },
     {
       label: "Configure Confidential Guardrails",
