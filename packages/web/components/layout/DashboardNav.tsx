@@ -7,6 +7,7 @@ import {
   ExternalLink,
   LogOut,
   Menu,
+  Settings,
   Wallet,
   X,
 } from "lucide-react";
@@ -190,6 +191,17 @@ export function DashboardNav() {
 
                     <div className="my-1.5 border-t border-border" />
 
+                    <Link
+                      href="/dashboard/settings"
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
+                      onClick={() => setWalletMenuOpen(false)}
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Settings</span>
+                    </Link>
+
+                    <div className="my-1.5 border-t border-border" />
+
                     <button
                       type="button"
                       onClick={handleDisconnect}
@@ -287,6 +299,15 @@ export function DashboardNav() {
                     {copied ? "Copied!" : "Copy Address"}
                   </span>
                 </button>
+
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-(--text-main)" />
+                  <span className="text-sm text-(--text-main)">Settings</span>
+                </Link>
 
                 <button
                   type="button"
