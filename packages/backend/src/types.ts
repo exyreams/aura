@@ -16,3 +16,24 @@ export interface AgentJobConfig extends JsonRpcRequestBase {
   txType: number;
   chain: number;
 }
+
+export interface ApiResponseMeta {
+  requestId: string;
+  timestamp: string;
+}
+
+export interface ApiSuccessResponse<T> {
+  ok: true;
+  data: T;
+  meta: ApiResponseMeta;
+}
+
+export interface ApiErrorResponse {
+  ok: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  meta: ApiResponseMeta;
+}

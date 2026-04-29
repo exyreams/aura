@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura-backend:local
+    env_file:
+      - .env
+    environment:
+      AURA_BACKEND_KEYPAIR: /run/secrets/aura-backend-keypair.json
+    ports:
+      - "8787:8787"
+    restart: unless-stopped
+    volumes:
+      - ../../wallet/wallet.json:/run/secrets/aura-backend-keypair.json:ro

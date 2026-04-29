@@ -10,13 +10,15 @@
   },
   "scripts": {
     "vendor:sync": "node scripts/sync-grpc-vendor.mjs",
-    "predev": "bun run vendor:sync",
-    "pretypecheck": "bun run vendor:sync",
-    "prebuild": "bun run vendor:sync",
-    "build": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\"",
+    "predev": "npm run vendor:sync",
+    "pretypecheck": "npm run vendor:sync",
+    "prebuild": "npm run vendor:sync",
+    "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "typecheck": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','--noEmit','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\""
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "docker:build": "docker build -t aura-backend .",
+    "docker:run": "docker run --rm -p 8787:8787 --env-file .env aura-backend"
   },
   "dependencies": {
     "@aura-protocol/sdk-ts": "^0.1.1",

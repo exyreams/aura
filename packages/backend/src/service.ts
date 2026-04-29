@@ -31,11 +31,13 @@ import {
   waitForDecryptionReady,
   waitForMessageApproval,
 } from "./protocol.js";
+import { createLogger } from "./logger.js";
 import type { AgentJobConfig } from "./types.js";
 import { loadKeypair } from "./wallet.js";
 
 const config = loadConfig();
 const backendKeypair = loadKeypair(config.keypairPath);
+const serviceLogger = createLogger(config).child({ module: "service" });
 
 function buildConnection(rpcUrl?: string) {
   return new Connection(rpcUrl || config.defaultRpcUrl, "confirmed");
@@ -523,6 +525,11 @@ interface AgentJobState {
 const agentJobs = new Map<string, AgentJobState>();
 
 async function runAgentOnceInternal(job: AgentJobState) {
+  serviceLogger.info("agent.run_started", {
+    treasury: job.config.treasury,
+    mode: job.config.mode,
+    model: job.config.model,
+  });
   const { client } = buildClient(job.config.rpcUrl, job.config.programId);
   const treasury = new PublicKey(job.config.treasury);
   const account = await client.getTreasuryAccount(treasury);
@@ -532,6 +539,10 @@ async function runAgentOnceInternal(job: AgentJobState) {
     job.lastResult = decision;
     job.history.unshift({ timestamp: Date.now(), ...decision });
     job.history = job.history.slice(0, 20);
+    serviceLogger.info("agent.run_completed", {
+      treasury: job.config.treasury,
+      action: "HOLD",
+    });
     return decision;
   }
   const amountUsd = Math.min(job.config.maxTradeSizeUsd, decision.amountUsd);
@@ -558,6 +569,11 @@ async function runAgentOnceInternal(job: AgentJobState) {
   job.lastResult = { decision, result };
   job.history.unshift({ timestamp: Date.now(), decision, result });
   job.history = job.history.slice(0, 20);
+  serviceLogger.info("agent.run_completed", {
+    treasury: job.config.treasury,
+    action: "PROPOSE",
+    amountUsd,
+  });
   return result;
 }
 
@@ -574,16 +590,34 @@ export async function startAgentJob(configInput: AgentJobConfig) {
   if (existing?.timer) {
     clearInterval(existing.timer);
   }
-  await runAgentOnceInternal(job);
+  agentJobs.set(configInput.treasury, job);
+  serviceLogger.info("agent.started", {
+    treasury: configInput.treasury,
+    intervalMs: job.config.intervalMs,
+    mode: configInput.mode,
+  });
+  try {
+    await runAgentOnceInternal(job);
+    job.lastError = undefined;
+  } catch (error) {
+    job.lastError = error instanceof Error ? error.message : String(error);
+    serviceLogger.error("agent.initial_run_failed", {
+      treasury: configInput.treasury,
+      error,
+    });
+  }
   job.timer = setInterval(async () => {
     try {
       await runAgentOnceInternal(job);
       job.lastError = undefined;
     } catch (error) {
       job.lastError = error instanceof Error ? error.message : String(error);
+      serviceLogger.error("agent.interval_run_failed", {
+        treasury: configInput.treasury,
+        error,
+      });
     }
   }, job.config.intervalMs);
-  agentJobs.set(configInput.treasury, job);
   return serializeAgentJob(job);
 }
 
@@ -593,8 +627,17 @@ export async function runAgentOnce(configInput: AgentJobConfig) {
     running: false,
     history: [],
   };
-  const result = await runAgentOnceInternal(job);
-  return { result, job: serializeAgentJob(job) };
+  try {
+    const result = await runAgentOnceInternal(job);
+    return { result, job: serializeAgentJob(job) };
+  } catch (error) {
+    job.lastError = error instanceof Error ? error.message : String(error);
+    serviceLogger.error("agent.run_once_failed", {
+      treasury: configInput.treasury,
+      error,
+    });
+    throw error;
+  }
 }
 
 export function stopAgentJob(treasury: string) {
@@ -607,11 +650,23 @@ export function stopAgentJob(treasury: string) {
   }
   job.running = false;
   agentJobs.delete(treasury);
+  serviceLogger.info("agent.stopped", { treasury });
   return { stopped: true, treasury };
 }
 
 export function listAgentJobs() {
   return Array.from(agentJobs.values()).map(serializeAgentJob);
+}
+
+export function stopAllAgentJobs() {
+  for (const [treasury, job] of agentJobs.entries()) {
+    if (job.timer) {
+      clearInterval(job.timer);
+    }
+    job.running = false;
+    serviceLogger.info("agent.stopped", { treasury, reason: "shutdown" });
+  }
+  agentJobs.clear();
 }
 
 function serializeAgentJob(job: AgentJobState) {
