@@ -1,18 +1,13 @@
 "use client";
 
-import type { PublicKey } from "@solana/web3.js";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Card, Input, StatusPill } from "@/components/global";
+import type { TreasuryEntry } from "@/lib/hooks";
 
 interface MultisigConfigProps {
-  account?: {
-    multisig?: {
-      requiredSignatures: number;
-      guardians: PublicKey[];
-    };
-  };
+  account?: TreasuryEntry["account"];
   multisigForm: {
     required: string;
     guardians: string;
@@ -106,7 +101,10 @@ export function MultisigConfig({
                   </div>
                 ) : (
                   guardiansList.map((address) => (
-                    <div key={address || Math.random()} className="flex gap-2">
+                    <div
+                      key={address || `empty-${Math.random()}`}
+                      className="flex gap-2"
+                    >
                       <Input
                         className="mono text-xs"
                         value={address}

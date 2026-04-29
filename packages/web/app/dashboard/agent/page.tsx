@@ -15,6 +15,7 @@ import {
   useOwnedTreasuries,
   useRecentActivity,
 } from "@/lib/hooks";
+import { usePersistentState } from "@/lib/settings";
 
 interface AgentJob {
   treasury: string;
@@ -49,7 +50,7 @@ export default function AgentControlPage() {
   const treasuries = treasuriesQuery.data ?? [];
   const activityQuery = useRecentActivity(treasuries);
   const activity = activityQuery.data ?? [];
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = usePersistentState("aura:agent-form", initialForm);
 
   const jobsQuery = useQuery({
     queryKey: ["agent-status", settings.backendUrl],

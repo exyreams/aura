@@ -17,6 +17,9 @@ export const TreasuryStats = ({ treasury }: TreasuryStatsProps) => {
   const reputationVolume = Number(
     treasury.account.reputation.totalVolumeUsd.toString(),
   );
+  const successfulTransactions = Number(
+    treasury.account.reputation.successfulTransactions.toString(),
+  );
 
   return (
     <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -61,7 +64,7 @@ export const TreasuryStats = ({ treasury }: TreasuryStatsProps) => {
           {formatCurrency(reputationVolume)}
         </div>
         <div className="text-[10px] text-(--text-muted) uppercase font-mono">
-          {totalTx.toLocaleString()} successful tx
+          {successfulTransactions.toLocaleString()} successful tx
         </div>
       </Card>
     </section>

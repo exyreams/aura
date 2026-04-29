@@ -1,17 +1,11 @@
 "use client";
 
 import { Badge, Card, StatusPill } from "@/components/global";
+import type { TreasuryEntry } from "@/lib/hooks";
 import { shortenAddress } from "@/lib/utils";
 
 interface CurrentEncryptedStateProps {
-  account?: {
-    confidentialGuardrails?: {
-      dailyLimitCiphertext?: { toBase58: () => string };
-      perTxLimitCiphertext?: { toBase58: () => string };
-      spentTodayCiphertext?: { toBase58: () => string };
-      guardrailVectorCiphertext?: { toBase58: () => string };
-    };
-  };
+  account?: TreasuryEntry["account"];
 }
 
 export function CurrentEncryptedState({ account }: CurrentEncryptedStateProps) {

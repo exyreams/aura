@@ -1,11 +1,16 @@
 "use client";
 
 import { AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useMemo, useState } from "react";
@@ -14,6 +19,7 @@ import { FaviconSwitcher } from "@/components/theme/FaviconSwitcher";
 import {
   AppSettingsContext,
   type AppSettingsContextValue,
+  DEFAULT_BACKEND_URL,
   usePersistentState,
 } from "@/lib/settings";
 
@@ -32,7 +38,11 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
   );
   const [backendUrl, setBackendUrl] = usePersistentState<string>(
     "aura:backend-url",
-    "http://127.0.0.1:8787",
+    DEFAULT_BACKEND_URL,
+  );
+  const [backendAuthToken, setBackendAuthToken] = usePersistentState<string>(
+    "aura:backend-auth-token",
+    "",
   );
   const [nimApiKey, setNimApiKey] = usePersistentState<string>(
     "aura:nim-api-key",
@@ -65,6 +75,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       programId,
       resolvedProgramId,
       backendUrl,
+      backendAuthToken,
       nimApiKey,
       currency,
       dateFormat,
@@ -72,6 +83,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       setCustomRpcUrl,
       setProgramId,
       setBackendUrl,
+      setBackendAuthToken,
       setNimApiKey,
       setCurrency,
       setDateFormat,
@@ -82,6 +94,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       dateFormat,
       endpoint,
       backendUrl,
+      backendAuthToken,
       network,
       nimApiKey,
       programId,
@@ -90,6 +103,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       setCustomRpcUrl,
       setDateFormat,
       setBackendUrl,
+      setBackendAuthToken,
       setNetwork,
       setNimApiKey,
       setProgramId,
@@ -104,14 +118,31 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
 }
 
 function SolanaProviders({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
   const settings = AppSettingsContext.useValue();
-  const wallets = useMemo(() => [], []);
+  const network =
+    settings.network === "mainnet-beta"
+      ? WalletAdapterNetwork.Mainnet
+      : WalletAdapterNetwork.Devnet;
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })],
+    [network],
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={settings.endpoint}>
-        <WalletProvider wallets={wallets} autoConnect>
+        <WalletProvider wallets={wallets} autoConnect={true}>
           <WalletModalProvider>{children}</WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>

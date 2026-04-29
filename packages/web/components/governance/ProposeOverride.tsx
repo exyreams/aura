@@ -1,20 +1,12 @@
 "use client";
 
-import type { UseMutationResult } from "@tantml:react-query";
+import type { UseMutationResult } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 import { Badge, Button, Card, Input } from "@/components/global";
+import type { TreasuryEntry } from "@/lib/hooks";
 
 interface ProposeOverrideProps {
-  account?: {
-    multisig?: {
-      activeOverride?: {
-        newDailyLimitUsd: number;
-        proposedAt: number;
-        expiresAt: number;
-        signatures: number;
-      };
-    };
-  };
+  account?: TreasuryEntry["account"];
   overrideLimit: string;
   setOverrideLimit: Dispatch<SetStateAction<string>>;
   overrideProposeMutation: UseMutationResult<string, Error, void, unknown>;
@@ -28,7 +20,7 @@ export function ProposeOverride({
   overrideProposeMutation,
   overrideCollectMutation,
 }: ProposeOverrideProps) {
-  const activeOverride = account?.multisig?.activeOverride;
+  const activeOverride = account?.multisig?.pendingOverride;
 
   return (
     <Card className="p-10" hover={false}>
@@ -104,8 +96,8 @@ export function ProposeOverride({
                       ACTIVE-OVERRIDE
                     </div>
                     <h3 className="font-bold text-(--text-main) text-sm">
-                      ${(activeOverride.newDailyLimitUsd / 100).toFixed(2)}{" "}
-                      Limit Increase
+                      {activeOverride.newDailyLimitUsd.toString()} cents limit
+                      increase
                     </h3>
                   </div>
                   <Badge variant="paused" className="text-[8px]">
@@ -116,14 +108,14 @@ export function ProposeOverride({
                   <div className="flex justify-between text-xs">
                     <span className="text-(--text-muted)">Status</span>
                     <span className="text-(--text-main) mono font-bold">
-                      {activeOverride.signatures} signatures
+                      {activeOverride.signaturesCollected.length} signatures
                     </span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-(--text-muted)">Proposed</span>
+                    <span className="text-(--text-muted)">Expires</span>
                     <span className="text-(--text-muted) mono">
                       {new Date(
-                        activeOverride.proposedAt * 1000,
+                        Number(activeOverride.expiration.toString()) * 1000,
                       ).toLocaleString()}
                     </span>
                   </div>

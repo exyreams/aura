@@ -1,5 +1,7 @@
 "use client";
 
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   MoreVertical,
   Pause,
@@ -11,10 +13,12 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
+import { sendWalletInstructions } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
+import { useAppSettings, useAuraClient } from "@/lib/hooks";
 import { cn, shortenAddress } from "@/lib/utils";
 import { RegisterDWalletForm } from "./RegisterDWalletForm";
 
@@ -32,33 +36,97 @@ interface TreasuryHeaderProps {
 
 export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
   const router = useRouter();
+  const wallet = useWallet();
+  const { connection } = useConnection();
+  const client = useAuraClient();
+  const settings = useAppSettings();
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const actionOptions: ActionOption[] = [
-    {
-      label: "Propose Transaction",
-      icon: <Send size={16} />,
-      onClick: () => router.push(`/dashboard/treasuries/${pda}/propose`),
+  const pauseMutation = useMutation({
+    mutationFn: async () => {
+      if (!wallet.publicKey) {
+        throw new Error("Connect a wallet first.");
+      }
+      const instruction = await client.pauseExecutionInstruction(
+        { owner: wallet.publicKey, treasury: treasury.publicKey },
+        !treasury.account.executionPaused,
+        Math.floor(Date.now() / 1000),
+      );
+      return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    {
-      label: "Configure Confidential Guardrails",
-      icon: <Shield size={16} />,
-      onClick: () => router.push(`/dashboard/treasuries/${pda}/guardrails`),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
+      await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
+      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
     },
-    {
-      label: "Governance Configuration",
-      icon: <Users size={16} />,
-      onClick: () => router.push(`/dashboard/treasuries/${pda}/governance`),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      if (!wallet.publicKey) {
+        throw new Error("Connect a wallet first.");
+      }
+      const instruction = await client.cancelPendingInstruction(
+        { owner: wallet.publicKey, treasury: treasury.publicKey },
+        Math.floor(Date.now() / 1000),
+      );
+      return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    {
-      label: "Cancel Pending",
-      icon: <XCircle size={16} />,
-      onClick: () => console.log("Cancel Pending"),
-      disabled: true,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
+      await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
+      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
     },
-  ];
+  });
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const actionOptions: ActionOption[] = useMemo(
+    () => [
+      {
+        label: "Propose Transaction",
+        icon: <Send size={16} />,
+        onClick: () => router.push(`/dashboard/treasuries/${pda}/propose`),
+      },
+      {
+        label: "Configure Confidential Guardrails",
+        icon: <Shield size={16} />,
+        onClick: () => router.push(`/dashboard/treasuries/${pda}/guardrails`),
+      },
+      {
+        label: "Governance Configuration",
+        icon: <Users size={16} />,
+        onClick: () => router.push(`/dashboard/treasuries/${pda}/governance`),
+      },
+      {
+        label: "Cancel Pending",
+        icon: <XCircle size={16} />,
+        onClick: () => cancelMutation.mutate(),
+        disabled: !treasury.account.pending || cancelMutation.isPending,
+      },
+    ],
+    [cancelMutation, pda, router, treasury.account.pending],
+  );
 
   const handleActionClick = (action: ActionOption) => {
     if (!action.disabled) {
@@ -89,11 +157,16 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
             <span className="font-mono text-(--text-main) opacity-80">
               {shortenAddress(pda, 4, 4)}
             </span>{" "}
-            on <span className="text-(--text-main)">Devnet</span>
+            on <span className="text-(--text-main)">{settings.network}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" icon={<Pause size={14} />}>
+          <Button
+            variant="secondary"
+            icon={<Pause size={14} />}
+            loading={pauseMutation.isPending}
+            onClick={() => pauseMutation.mutate()}
+          >
             {treasury.account.executionPaused ? "Resume" : "Pause"} Treasury
           </Button>
           <Button
@@ -110,7 +183,9 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
               icon={<MoreVertical size={16} />}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="px-3"
-            />
+            >
+              More
+            </Button>
 
             <AnimatePresence>
               {isDropdownOpen && (
@@ -150,6 +225,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       <RegisterDWalletForm
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        treasury={treasury}
       />
     </>
   );

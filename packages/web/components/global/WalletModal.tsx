@@ -16,6 +16,7 @@ interface WalletModalProps {
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const { wallets, select, connect, connecting, connected } = useWallet();
   const [mounted, setMounted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -31,10 +32,14 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
   const handleWalletClick = async (walletName: WalletName) => {
     try {
+      setErrorMessage(null);
       select(walletName);
+      await Promise.resolve();
       await connect();
     } catch (error) {
-      console.error("Failed to connect wallet:", error);
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to connect wallet.",
+      );
     }
   };
 
@@ -83,6 +88,12 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto slim-scrollbar">
+          {errorMessage ? (
+            <div className="mb-4 rounded-lg border border-(--danger-border) bg-(--danger-bg) px-4 py-3 text-sm text-(--danger-text)">
+              {errorMessage}
+            </div>
+          ) : null}
+
           {/* Installed Wallets */}
           {installedWallets.length > 0 && (
             <div className="space-y-3 mb-6">

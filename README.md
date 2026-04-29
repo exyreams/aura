@@ -43,6 +43,7 @@ programs/
   └─ aura-policy/    # Pure Rust policy engine — rules, FHE graphs, types
 packages/
   ├─ backend/        # HTTP service for confidential execution, Encrypt/dWallet ops, and agent runtime
+  ├─ docs/           # Next.js documentation site for the full AURA stack
   ├─ sdk-rs/         # Rust SDK for account decoding, PDAs, instructions, and RPC flows
   ├─ sdk-ts/         # TypeScript SDK with typed client helpers and published ESM artifacts
   ├─ cli/            # Terminal CLI for treasury operations, governance, and config management
@@ -68,15 +69,24 @@ cargo test --workspace
 
 ```bash
 cd packages/backend
-bun run vendor:sync
-bun run dev
+npm install
+npm run dev
 ```
 
 ### Web
 
 ```bash
 cd packages/web
-bun run dev
+npm install
+npm run dev
+```
+
+### Docs
+
+```bash
+cd packages/docs
+npm install
+npm run dev
 ```
 
 Default backend URL for the web app:
@@ -91,19 +101,22 @@ Backend:
 
 ```bash
 cd packages/backend
-bun run vendor:sync
-bun run typecheck
-bun run build
+npm run typecheck
+npm run build
 ```
 
 Web:
 
 ```bash
 cd packages/web
-bun run lint
-bunx next typegen
-bunx tsc --noEmit
-bunx next build --webpack
+npm run build
+```
+
+Docs:
+
+```bash
+cd packages/docs
+npm run build
 ```
 
 ---
@@ -466,6 +479,12 @@ programs/
       │   └─ tests/          # Unit tests (engine rules, time/velocity, advanced, confidential)
       └─ Cargo.toml
 packages/
+  ├─ backend/
+  │   ├─ src/               # HTTP server, protocol helpers, validation, and agent runtime
+  │   ├─ scripts/           # gRPC vendor sync utilities
+  │   ├─ Dockerfile         # Container build for the backend service
+  │   └─ docker-compose.yml # Local container orchestration for Linux/macOS deployment
+  │
   ├─ sdk-rs/
   │   ├─ src/
   │   │   ├─ accounts.rs     # Treasury account decoding helpers
@@ -496,19 +515,23 @@ packages/
   │   ├─ tests/             # 120 unit tests + 14 devnet integration tests
   │   └─ dist/              # Published ESM runtime + type declarations
   └─ cli/
-      ├─ src/
-      │   ├─ commands/      # Config, treasury, dWallet, confidential, execution, and dashboard commands
-      │   ├─ config.ts      # ~/.aura/config.json resolution and IO
-      │   ├─ context.ts     # Wallet, RPC, and SDK client setup
-      │   ├─ dashboard.tsx  # Full-screen ink dashboard runtime
-      │   ├─ domain.ts      # Chain / transaction type parsing and labels
-      │   ├─ ika.ts         # Ika Encrypt + dWallet gRPC client wrappers
-      │   ├─ output.ts      # Tables, banners, spinners, and JSON serialization
-      │   ├─ protocol.ts    # Encrypt/dWallet helpers, deposit setup, and live polling
-      │   └─ treasury-view.ts # Shared treasury and proposal panel rendering
-      ├─ tests/             # CLI runtime and parsing tests
-      ├─ bin/               # `aura` entrypoint wrapper
-      └─ dist/              # Compiled ESM runtime
+  │   ├─ src/
+  │   │   ├─ commands/      # Config, treasury, dWallet, confidential, execution, and dashboard commands
+  │   │   ├─ config.ts      # ~/.aura/config.json resolution and IO
+  │   │   ├─ context.ts     # Wallet, RPC, and SDK client setup
+  │   │   ├─ dashboard.tsx  # Full-screen ink dashboard runtime
+  │   │   ├─ domain.ts      # Chain / transaction type parsing and labels
+  │   │   ├─ ika.ts         # Ika Encrypt + dWallet gRPC client wrappers
+  │   │   ├─ output.ts      # Tables, banners, spinners, and JSON serialization
+  │   │   ├─ protocol.ts    # Encrypt/dWallet helpers, deposit setup, and live polling
+  │   │   └─ treasury-view.ts # Shared treasury and proposal panel rendering
+  │   ├─ tests/             # CLI runtime and parsing tests
+  │   ├─ bin/               # `aura` entrypoint wrapper
+  │   └─ dist/              # Compiled ESM runtime
+  ├─ web/
+  │   ├─ app/              # Next.js landing page and dashboard routes
+  │   ├─ components/       # Shared UI primitives and treasury flows
+  │   └─ lib/              # SDK bindings, backend client, and local settings state
 
 Anchor.toml    # anchor 1.0.0, solana 3.1.13
 Cargo.toml     # Rust workspace root

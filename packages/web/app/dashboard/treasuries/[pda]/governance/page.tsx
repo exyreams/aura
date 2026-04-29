@@ -4,7 +4,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   GovernanceHeader,
   GovernanceHistory,
@@ -45,6 +45,25 @@ export default function GovernanceConfigurationPage() {
     poolLimit: account?.swarm?.sharedPoolLimitUsd.toString() ?? "0",
   });
   const [overrideLimit, setOverrideLimit] = useState("0");
+
+  useEffect(() => {
+    if (!account) {
+      return;
+    }
+
+    setMultisigForm({
+      required: account.multisig?.requiredSignatures.toString() ?? "2",
+      guardians:
+        account.multisig?.guardians
+          .map((guardian: PublicKey) => guardian.toBase58())
+          .join(", ") ?? "",
+    });
+    setSwarmForm({
+      swarmId: account.swarm?.swarmId ?? "",
+      members: account.swarm?.memberAgents.join(", ") ?? "",
+      poolLimit: account.swarm?.sharedPoolLimitUsd.toString() ?? "0",
+    });
+  }, [account]);
 
   const multisigMutation = useMutation({
     mutationFn: async () => {

@@ -59,7 +59,7 @@ export default function TreasuryDetailsPage() {
       </div>
 
       <div className="pt-8 border-t border-border">
-        <PendingProposals treasury={treasury} />
+        <PendingProposals treasury={treasury} pda={pda} />
       </div>
     </div>
   );

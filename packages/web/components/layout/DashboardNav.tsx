@@ -19,19 +19,21 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/global/Button";
 import { WalletModal } from "@/components/global/WalletModal";
 import { CompactThemeToggle } from "@/components/theme/CompactThemeToggle";
+import { useAppSettings } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/dashboard", label: "Overview", exact: true },
   { href: "/dashboard/treasuries", label: "Treasuries" },
   { href: "/dashboard/agent", label: "Agents" },
-  { href: "/dashboard/policies", label: "Policies" },
+  { href: "/dashboard/activity", label: "Activity" },
 ];
 
 export function DashboardNav() {
   const { resolvedTheme } = useTheme();
   const { publicKey, disconnect } = useWallet();
   const pathname = usePathname();
+  const settings = useAppSettings();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -97,7 +99,7 @@ export function DashboardNav() {
   const handleViewExplorer = () => {
     if (walletAddress) {
       window.open(
-        `https://explorer.solana.com/address/${walletAddress}?cluster=devnet`,
+        `https://explorer.solana.com/address/${walletAddress}?cluster=${settings.network}`,
         "_blank",
       );
     }

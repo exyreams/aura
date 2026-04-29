@@ -3,6 +3,7 @@
 import { Check, ExternalLink } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, Button } from "@/components/global";
+import { useAppSettings } from "@/lib/hooks";
 import { shortenAddress } from "@/lib/utils";
 
 interface ProposalSuccessProps {
@@ -12,6 +13,7 @@ interface ProposalSuccessProps {
 export function ProposalSuccess({ signature }: ProposalSuccessProps) {
   const router = useRouter();
   const { pda } = useParams();
+  const settings = useAppSettings();
 
   return (
     <div className="text-center animate-in fade-in zoom-in-95 duration-500">
@@ -38,7 +40,7 @@ export function ProposalSuccess({ signature }: ProposalSuccessProps) {
                 {shortenAddress(signature, 8, 8)}
               </code>
               <a
-                href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`}
+                href={`https://explorer.solana.com/tx/${signature}?cluster=${settings.network}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

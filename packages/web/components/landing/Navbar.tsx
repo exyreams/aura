@@ -17,10 +17,13 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/global/Button";
 import { WalletModal } from "@/components/global/WalletModal";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useAppSettings } from "@/lib/hooks";
+import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 export function Navbar() {
   const { resolvedTheme } = useTheme();
   const { publicKey, disconnect } = useWallet();
+  const settings = useAppSettings();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -71,6 +74,7 @@ export function Navbar() {
   const shortAddress = walletAddress
     ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
     : "";
+  const docsUrl = DEFAULT_DOCS_URL;
 
   const handleCopyAddress = async () => {
     if (walletAddress) {
@@ -88,7 +92,7 @@ export function Navbar() {
   const handleViewExplorer = () => {
     if (walletAddress) {
       window.open(
-        `https://explorer.solana.com/address/${walletAddress}?cluster=devnet`,
+        `https://explorer.solana.com/address/${walletAddress}?cluster=${settings.network}`,
         "_blank",
       );
     }
@@ -140,12 +144,14 @@ export function Navbar() {
           >
             FAQ
           </Link>
-          <Link
-            href="/docs"
+          <a
+            href={docsUrl}
+            target="_blank"
+            rel="noreferrer"
             className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) transition-colors"
           >
             Docs
-          </Link>
+          </a>
 
           <div className="h-4 w-px bg-border"></div>
 
@@ -296,13 +302,15 @@ export function Navbar() {
             >
               FAQ
             </Link>
-            <Link
-              href="/docs"
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noreferrer"
               onClick={() => setMobileMenuOpen(false)}
               className="font-mono text-sm uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) transition-colors py-2"
             >
               Docs
-            </Link>
+            </a>
 
             <div className="border-t border-border my-4"></div>
 
@@ -346,7 +354,10 @@ export function Navbar() {
                   </span>
                 </button>
 
-                <Link href="/app" onClick={() => setMobileMenuOpen(false)}>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   <Button
                     variant="primary"
                     className="font-mono! text-sm! uppercase! tracking-widest! w-full!"

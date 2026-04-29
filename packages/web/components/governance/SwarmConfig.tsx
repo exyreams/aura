@@ -3,16 +3,11 @@
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Card, Input, StatusPill } from "@/components/global";
+import type { TreasuryEntry } from "@/lib/hooks";
 import { formatCurrency } from "@/lib/utils";
 
 interface SwarmConfigProps {
-  account?: {
-    swarm?: {
-      swarmId: string;
-      memberAgents: string[];
-      sharedPoolLimitUsd: bigint;
-    };
-  };
+  account?: TreasuryEntry["account"];
   swarmForm: {
     swarmId: string;
     members: string;

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StatusPill } from "@/components/global/Badge";
 import { CHAINS, PROPOSAL_STATUSES, TX_TYPES } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
@@ -5,9 +6,10 @@ import { formatCurrency, shortenAddress } from "@/lib/utils";
 
 interface PendingProposalsProps {
   treasury: TreasuryEntry;
+  pda: string;
 }
 
-export const PendingProposals = ({ treasury }: PendingProposalsProps) => {
+export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const pending = treasury.account.pending;
   const hasPending = pending && Number(pending.proposalId.toString()) > 0;
 
@@ -32,6 +34,12 @@ export const PendingProposals = ({ treasury }: PendingProposalsProps) => {
         </div>
         <div className="p-8 text-center border border-dashed border-border rounded-sm">
           <p className="text-sm text-(--text-muted)">No pending proposals</p>
+          <Link
+            href={`/dashboard/treasuries/${pda}/propose`}
+            className="inline-flex mt-4 text-[10px] font-mono uppercase tracking-wider text-(--text-main) hover:text-primary transition-colors"
+          >
+            Create Proposal
+          </Link>
         </div>
       </div>
     );
@@ -123,12 +131,12 @@ export const PendingProposals = ({ treasury }: PendingProposalsProps) => {
                 </StatusPill>
               </td>
               <td className="px-4 py-4 text-right">
-                <button
-                  type="button"
+                <Link
+                  href={`/dashboard/treasuries/${pda}/propose`}
                   className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono uppercase text-(--text-main) hover:text-primary transition-colors"
                 >
                   VIEW DETAILS
-                </button>
+                </Link>
               </td>
             </tr>
           </tbody>

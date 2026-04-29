@@ -4,17 +4,10 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Card, Input } from "@/components/global";
+import type { TreasuryEntry } from "@/lib/hooks";
 
 interface VectorConfigFormProps {
-  account?: {
-    policyConfig: {
-      dailyLimitUsd: bigint;
-      perTxLimitUsd: bigint;
-    };
-    policyState: {
-      spentTodayUsd: bigint;
-    };
-  };
+  account?: TreasuryEntry["account"];
   vectorCiphertext: string;
   setVectorCiphertext: Dispatch<SetStateAction<string>>;
   vectorMutation: UseMutationResult<string, Error, void, unknown>;

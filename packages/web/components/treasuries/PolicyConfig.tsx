@@ -57,18 +57,20 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
         },
         {
           label: "MAX QUOTE AGE",
-          value: policy.maxQuoteAgeSecs ? `${policy.maxQuoteAgeSecs}s` : "N/A",
+          value: policy.maxQuoteAgeSecs
+            ? `${policy.maxQuoteAgeSecs.toString()}s`
+            : "N/A",
           variant: "default" as const,
         },
         {
           label: "MAX RISK SCORE",
-          value: `${policy.maxCounterpartyRiskScore}/10`,
+          value: `${policy.maxCounterpartyRiskScore}`,
           variant: "default" as const,
         },
         {
           label: "SHARED POOL",
-          value: swarm
-            ? formatCurrency(Number(swarm.sharedPoolLimitUsd.toString()))
+          value: policy.sharedPoolLimitUsd
+            ? formatCurrency(Number(policy.sharedPoolLimitUsd.toString()))
             : "N/A",
           variant: "default" as const,
         },

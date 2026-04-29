@@ -1,9 +1,7 @@
-import { useMemo } from "react";
 import { Bar } from "@/components/charts/Bar";
 import { Card } from "@/components/global/Card";
 import { Progress } from "@/components/global/Progress";
 import type { TreasuryEntry } from "@/lib/hooks";
-import { useTreasuryAuditTrail } from "@/lib/hooks";
 import { formatCurrency } from "@/lib/utils";
 
 interface SpendingProgressProps {
@@ -18,37 +16,16 @@ export const SpendingProgress = ({ treasury }: SpendingProgressProps) => {
     treasury.account.policyConfig.dailyLimitUsd.toString(),
   );
 
-  const { data: events } = useTreasuryAuditTrail(
-    treasury.publicKey.toBase58(),
-    50,
-  );
-
-  // Build chart data from real blockchain events
-  const chartData = useMemo(() => {
-    if (!events || events.length === 0) return [];
-
-    // Group approved transactions by day
-    const dailySpending = new Map<string, number>();
-
-    events.forEach((event) => {
-      if (event.kind === "proposal" && event.approved && event.timestamp) {
-        const date = new Date(event.timestamp * 1000);
-        const dayKey = date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
-
-        // Aggregate spending per day (placeholder amounts - would need actual transaction amounts from events)
-        const currentAmount = dailySpending.get(dayKey) || 0;
-        dailySpending.set(dayKey, currentAmount + 100);
-      }
-    });
-
-    // Convert to array and take last 7 days
-    return Array.from(dailySpending.entries())
-      .map(([day, amount]) => ({ day, amount }))
-      .slice(-7);
-  }, [events]);
+  const recentAmounts = treasury.account.policyState.recentAmounts as Array<{
+    toString(): string;
+  }>;
+  const chartData =
+    recentAmounts.length > 0
+      ? recentAmounts.map((amount, index) => ({
+          day: `Tx ${index + 1}`,
+          amount: Number(amount.toString()),
+        }))
+      : [{ day: "Current", amount: spentToday }];
 
   return (
     <Card className="lg:col-span-6 h-full flex flex-col" hover={false}>

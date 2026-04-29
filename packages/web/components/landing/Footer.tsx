@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 export function Footer() {
   const { resolvedTheme } = useTheme();
@@ -14,6 +15,7 @@ export function Footer() {
 
   const logoSrc =
     !mounted || resolvedTheme === "dark" ? "/logo-dark.svg" : "/logo-light.svg";
+  const docsUrl = DEFAULT_DOCS_URL;
 
   return (
     <footer className="border-t border-border py-16 px-6 md:px-[4vw]">
@@ -84,12 +86,14 @@ export function Footer() {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link
-                  href="/docs"
+                <a
+                  href={docsUrl}
+                  target="_blank"
+                  rel="noreferrer"
                   className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
                 >
                   Documentation
-                </Link>
+                </a>
               </li>
               <li>
                 <Link
@@ -109,7 +113,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/app"
+                  href="/dashboard"
                   className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
                 >
                   Dashboard

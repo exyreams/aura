@@ -9,6 +9,7 @@ import {
   fetchOwnedTreasuries,
   fetchRecentActivity,
   fetchTreasury,
+  type ParsedActivity,
   type TreasuryEntry,
 } from "@/lib/aura-app";
 import { backendRequest } from "@/lib/backend-client";
@@ -128,4 +129,4 @@ export function useBackendInfo() {
   });
 }
 
-export type { TreasuryEntry };
+export type { ParsedActivity, TreasuryEntry };

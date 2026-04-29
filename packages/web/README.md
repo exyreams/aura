@@ -22,21 +22,21 @@ Default backend URL:
 http://127.0.0.1:8787
 ```
 
-That value can be changed from the Settings page.
+That value can be changed from the Settings page or preconfigured with
+`NEXT_PUBLIC_AURA_BACKEND_URL`. The landing-page docs links can also be
+pointed at a deployed docs site with `NEXT_PUBLIC_DOCS_URL`.
 
 ## Run
 
 ```bash
-bun run dev
+npm install
+npm run dev
 ```
 
 ## Validation
 
 ```bash
-bun run lint
-bunx next typegen
-bunx tsc --noEmit
-bunx next build --webpack
+npm run build
 ```
 
 ## Key Files
@@ -45,10 +45,10 @@ bunx next build --webpack
 - `lib/settings.ts`: persisted local settings
 - `lib/aura-app.ts`: SDK and account helpers
 - `lib/backend-client.ts`: backend request helpers
-- `app/app/treasuries/[pda]/confidential/page.tsx`: confidential lifecycle UI
-- `app/app/agent/page.tsx`: backend agent runtime UI
+- `app/dashboard/treasuries/[pda]/propose/page.tsx`: proposal creation and confidential lifecycle controls
+- `app/dashboard/agent/page.tsx`: backend agent runtime UI
+- `app/dashboard/settings/page.tsx`: local RPC, backend, and auth configuration
 
 ## Related Docs
 
-- [`../../docs/WEB.md`](../../docs/WEB.md)
-- [`../../docs/Operations.md`](../../docs/Operations.md)
+The package-level docs are now surfaced through `packages/docs`.
