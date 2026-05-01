@@ -20,7 +20,7 @@
     },
   },
   "packages": {
-    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.1.1", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-mBj0d/Qe7BIevkTPkYY4iE7jhJt6vV4XwhAX+hmGAPgKVyhqFZ32QD4OTisIA3p12q4Knlq2AGOsRxe0d2Q8IA=="],
+    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.2.0", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-ezjsXXB8+2eIIFVdwYQ5YFc26H5mwYTohMsfWwQ7bLffodRZP426qeX43W1TRMA0tRBM9YgWE53UnTvR8A4MJQ=="],
 
     "@babel/runtime": ["@babel/runtime@7.29.2", "", {}, "sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g=="],
 
@@ -32,7 +32,7 @@
 
     "@coral-xyz/borsh": ["@coral-xyz/borsh@0.31.1", "", { "dependencies": { "bn.js": "^5.1.2", "buffer-layout": "^1.2.0" }, "peerDependencies": { "@solana/web3.js": "^1.69.0" } }, "sha512-9N8AU9F0ubriKfNE3g1WF0/4dtlGXoBN/hd1PvbNBamBNwRgHxH4P+o3Zt7rSEloW1HUs6LfZEchlx9fW7POYw=="],
 
-    "@encrypt.xyz/pre-alpha-solana-client": ["@encrypt.xyz/pre-alpha-solana-client@0.1.0", "", { "dependencies": { "@bufbuild/protobuf": "^2.11", "@grpc/grpc-js": "^1.12", "@protobuf-ts/grpcweb-transport": "^2.11", "@protobuf-ts/runtime": "^2.11", "@protobuf-ts/runtime-rpc": "^2.11" }, "peerDependencies": { "@solana/kit": "^6.4", "@solana/program-client-core": "^6.4", "typescript": "^5" } }, "sha512-Wk1Kb0pfMUOjcwo8TFcAmftKgjjW9nbXJbIurLseUEstyDYkKAG6RP9TJQlPndV0qdMiPoJ9lZvwvS/hRwic8Q=="],
+    "@encrypt.xyz/pre-alpha-solana-client": ["@encrypt.xyz/pre-alpha-solana-client@0.1.1", "", { "dependencies": { "@bufbuild/protobuf": "^2.11", "@grpc/grpc-js": "^1.12", "@protobuf-ts/grpcweb-transport": "^2.11", "@protobuf-ts/runtime": "^2.11", "@protobuf-ts/runtime-rpc": "^2.11" }, "peerDependencies": { "@solana/kit": "^6.4", "@solana/program-client-core": "^6.4", "typescript": "^5" } }, "sha512-F2TnvhTx0oAjik07QArt2TpVfgtEMFahH1J0IF8aUNvMJrvOrzsTOtlxWU0kw8cAuMaVH2ujSZiRMraRMCS6/Q=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.7", "", { "os": "aix", "cpu": "ppc64" }, "sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg=="],
 
