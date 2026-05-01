@@ -1,5 +1,5 @@
 use crate::{
-    config::{AnomalyAction, PolicyConfig},
+    config::{required_approval_level, AnomalyAction, ApprovalLevel, PolicyConfig},
     context::{PolicyEvaluationContext, TransactionContext},
     decision::{PolicyDecision, RiskFactor, RuleOutcome},
     helpers::{
@@ -45,6 +45,43 @@ pub fn evaluate_transaction(
     let (risk_score, risk_factors) = compute_risk_score(tx, config, &state);
     let regulatory_flags = compute_regulatory_flags(tx);
     let mut trace = Vec::new();
+
+    if config.scoped_pause.transaction_paused(tx) {
+        trace.push(RuleOutcome::failed(
+            "scoped_pause",
+            "transaction matches an active scoped pause",
+        ));
+        return deny(
+            state,
+            ViolationCode::ExecutionScopePaused,
+            effective_daily_limit_usd,
+            trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
+        );
+    }
+    trace.push(RuleOutcome::passed("scoped_pause", "scope is not paused"));
+
+    if let Err(violation) = config.budget_envelopes.check(tx) {
+        trace.push(RuleOutcome::failed(
+            "budget_envelope",
+            violation.to_string(),
+        ));
+        return deny(
+            state,
+            violation,
+            effective_daily_limit_usd,
+            trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
+        );
+    }
+    trace.push(RuleOutcome::passed(
+        "budget_envelope",
+        "scoped budgets available",
+    ));
 
     if tx.amount_usd > config.per_tx_limit_usd {
         trace.push(RuleOutcome::failed(
@@ -479,6 +516,34 @@ pub fn evaluate_transaction(
         ));
     }
 
+    if let Some(ladder) = config.approval_ladder {
+        let level = required_approval_level(&ladder, tx.amount_usd, u16::from(risk_score) * 100);
+        if level == ApprovalLevel::Deny {
+            trace.push(RuleOutcome::failed(
+                "approval_ladder",
+                "amount or risk score is above deny threshold",
+            ));
+            return deny(
+                state,
+                ViolationCode::ApprovalLadderDenied,
+                effective_daily_limit_usd,
+                trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
+            );
+        }
+        trace.push(RuleOutcome::passed(
+            "approval_ladder",
+            format!("required level {}", level.code()),
+        ));
+    } else {
+        trace.push(RuleOutcome::passed(
+            "approval_ladder",
+            "approval ladder not enabled",
+        ));
+    }
+
     state.spent_today_usd = projected_daily_spend;
     state.hourly_spent_usd = projected_hourly_spend;
     state.record_spend(tx.amount_usd);
@@ -531,6 +596,43 @@ pub fn evaluate_public_precheck(
     let (risk_score, risk_factors) = compute_risk_score(tx, config, &state);
     let regulatory_flags = compute_regulatory_flags(tx);
     let mut trace = Vec::new();
+
+    if config.scoped_pause.transaction_paused(tx) {
+        trace.push(RuleOutcome::failed(
+            "scoped_pause",
+            "transaction matches an active scoped pause",
+        ));
+        return deny(
+            state,
+            ViolationCode::ExecutionScopePaused,
+            effective_daily_limit_usd,
+            trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
+        );
+    }
+    trace.push(RuleOutcome::passed("scoped_pause", "scope is not paused"));
+
+    if let Err(violation) = config.budget_envelopes.check(tx) {
+        trace.push(RuleOutcome::failed(
+            "budget_envelope",
+            violation.to_string(),
+        ));
+        return deny(
+            state,
+            violation,
+            effective_daily_limit_usd,
+            trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
+        );
+    }
+    trace.push(RuleOutcome::passed(
+        "budget_envelope",
+        "scoped budgets available",
+    ));
 
     if tx.target_chain == Chain::Bitcoin
         && tx.amount_usd > config.bitcoin_manual_review_threshold_usd
@@ -754,6 +856,34 @@ pub fn evaluate_public_precheck(
         "confidential_spend_guardrails",
         "encrypted per-transaction and daily-limit checks deferred to Encrypt",
     ));
+
+    if let Some(ladder) = config.approval_ladder {
+        let level = required_approval_level(&ladder, tx.amount_usd, u16::from(risk_score) * 100);
+        if level == ApprovalLevel::Deny {
+            trace.push(RuleOutcome::failed(
+                "approval_ladder",
+                "amount or risk score is above deny threshold",
+            ));
+            return deny(
+                state,
+                ViolationCode::ApprovalLadderDenied,
+                effective_daily_limit_usd,
+                trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
+            );
+        }
+        trace.push(RuleOutcome::passed(
+            "approval_ladder",
+            format!("required level {}", level.code()),
+        ));
+    } else {
+        trace.push(RuleOutcome::passed(
+            "approval_ladder",
+            "approval ladder not enabled",
+        ));
+    }
 
     state.hourly_spent_usd = projected_hourly_spend;
     state.record_spend(tx.amount_usd);

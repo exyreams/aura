@@ -1,9 +1,13 @@
+pub mod explain;
 /// Output types produced by the policy engine.
 ///
 /// - `PolicyDecision` — the full result of evaluating one transaction
 /// - `RuleOutcome`    — a single rule's pass/fail result within a decision trace
 mod policy_decision;
+pub mod receipt;
 mod rule_outcome;
 
+pub use explain::{explain_decision, rule_outcome_bitmap};
 pub use policy_decision::{PolicyDecision, RiskFactor};
+pub use receipt::PolicyDecisionReceiptFields;
 pub use rule_outcome::RuleOutcome;

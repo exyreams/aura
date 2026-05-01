@@ -1,3 +1,4 @@
+pub mod exposure_state;
 /// Mutable policy state counters for `aura-policy`.
 ///
 /// `PolicyState` holds the spending counters that are updated after each
@@ -6,4 +7,5 @@
 /// writes the updated values into `PolicyDecision::next_state`.
 mod policy_state;
 
+pub use exposure_state::{ExposureGroupState, GroupMembership};
 pub use policy_state::{PolicyState, RecipientSpendRecord};

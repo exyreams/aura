@@ -1,4 +1,7 @@
-use super::reputation::ReputationPolicy;
+use super::{
+    approval_ladder::ApprovalLadder, envelopes::BudgetEnvelopeSet, liveness::LivenessConfig,
+    reputation::ReputationPolicy, scoped_pause::ScopedPauseControls,
+};
 
 use crate::types::{Chain, TransactionType};
 
@@ -45,6 +48,14 @@ pub struct PolicyConfig {
     pub anomaly_config: Option<AnomalyConfig>,
     /// Reputation-based multiplier policy applied to `daily_limit_usd`.
     pub reputation_policy: ReputationPolicy,
+    /// Optional scoped budget envelopes by chain/category/protocol.
+    pub budget_envelopes: BudgetEnvelopeSet,
+    /// Optional risk and amount based approval escalation ladder.
+    pub approval_ladder: Option<ApprovalLadder>,
+    /// Optional scoped pause controls.
+    pub scoped_pause: ScopedPauseControls,
+    /// External dependency freshness requirements.
+    pub liveness_config: LivenessConfig,
 }
 
 /// Per-recipient exposure rule.
@@ -106,6 +117,10 @@ impl Default for PolicyConfig {
             cooldown_config: None,
             anomaly_config: None,
             reputation_policy: ReputationPolicy::default(),
+            budget_envelopes: BudgetEnvelopeSet::default(),
+            approval_ladder: None,
+            scoped_pause: ScopedPauseControls::default(),
+            liveness_config: LivenessConfig::default(),
         }
     }
 }

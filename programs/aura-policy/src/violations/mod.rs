@@ -42,6 +42,26 @@ pub enum ViolationCode {
     AnomalyDetected,
     /// A cooldown rule blocked a large transaction.
     CooldownNotElapsed,
+    /// A scoped budget envelope daily cap would be exceeded.
+    BudgetEnvelopeDailyLimit,
+    /// A scoped budget envelope weekly cap would be exceeded.
+    BudgetEnvelopeWeeklyLimit,
+    /// Approval ladder denied the transaction outright.
+    ApprovalLadderDenied,
+    /// A scoped pause blocked the transaction.
+    ExecutionScopePaused,
+    /// Required external dependency liveness is stale.
+    ExternalDependencyStale,
+    /// Policy attestation is missing or stale.
+    PolicyAttestationMissing,
+    /// Batch proposal contained no items.
+    EmptyBatch,
+    /// Batch proposal exceeded the maximum item count.
+    BatchTooLarge,
+    /// Cross-treasury exposure group cap would be exceeded.
+    ExposureGroupLimitExceeded,
+    /// Pending execution timelock is still active.
+    PendingExecutionTimelockActive,
 }
 
 impl Display for ViolationCode {
@@ -64,6 +84,16 @@ impl Display for ViolationCode {
             Self::RecipientPerTransactionLimit => "recipient_per_transaction_limit",
             Self::AnomalyDetected => "anomaly_detected",
             Self::CooldownNotElapsed => "cooldown_not_elapsed",
+            Self::BudgetEnvelopeDailyLimit => "budget_envelope_daily_limit",
+            Self::BudgetEnvelopeWeeklyLimit => "budget_envelope_weekly_limit",
+            Self::ApprovalLadderDenied => "approval_ladder_denied",
+            Self::ExecutionScopePaused => "execution_scope_paused",
+            Self::ExternalDependencyStale => "external_dependency_stale",
+            Self::PolicyAttestationMissing => "policy_attestation_missing",
+            Self::EmptyBatch => "empty_batch",
+            Self::BatchTooLarge => "batch_too_large",
+            Self::ExposureGroupLimitExceeded => "exposure_group_limit_exceeded",
+            Self::PendingExecutionTimelockActive => "pending_execution_timelock_active",
         };
 
         write!(f, "{label}")

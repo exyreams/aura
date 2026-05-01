@@ -478,6 +478,7 @@ dependencies = [
  "encrypt-solana-dsl",
  "encrypt-solana-types",
  "encrypt-types",
+ "sha2",
 ]
 
 [[package]]

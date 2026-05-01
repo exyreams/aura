@@ -29,15 +29,21 @@ pub mod types;
 pub mod violations;
 
 pub use config::{
-    AnomalyAction, AnomalyConfig, CooldownConfig, PolicyConfig, RecipientLimit, ReputationPolicy,
-    TransactionTypeScope,
+    build_policy_preset, is_fresh, required_approval_level, AnomalyAction, AnomalyConfig,
+    ApprovalLadder, ApprovalLevel, BudgetEnvelope, BudgetEnvelopeScope, BudgetEnvelopeSet,
+    CooldownConfig, ExternalDependency, LivenessConfig, PauseScope, PolicyConfig, PolicyPresetKind,
+    RecipientLimit, ReputationPolicy, ScopedPauseControls, ScopedPauseEntry, TransactionTypeScope,
 };
 pub use context::{PolicyEvaluationContext, TransactionContext};
-pub use decision::{PolicyDecision, RiskFactor, RuleOutcome};
+pub use decision::{
+    explain_decision, rule_outcome_bitmap, PolicyDecision, PolicyDecisionReceiptFields, RiskFactor,
+    RuleOutcome,
+};
 pub use engine::{
-    compute_regulatory_flags, evaluate_batch, evaluate_public_precheck, evaluate_transaction,
-    REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD, REG_FLAG_HIGH_RISK_COUNTERPARTY,
-    REG_FLAG_REQUIRES_KYC,
+    compute_regulatory_flags, evaluate_batch, evaluate_batch_policy,
+    evaluate_policy_without_spend_mutation, evaluate_public_precheck, evaluate_transaction,
+    BatchPolicyDecision, BatchProposalItem, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
+    REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
 };
 pub use graphs::{
     advanced_policy_graph, batch_policy_graph, confidential_policy_graph,
@@ -45,8 +51,11 @@ pub use graphs::{
     confidential_spend_guardrails_vector_graph_bytes, execute_confidential_spend_guardrails_graph,
     execute_confidential_spend_guardrails_vector_graph, transaction_policy_graph, PolicyGraphSpec,
 };
-pub use helpers::{active_hourly_limit, protocol_allowed, slippage_bps};
-pub use state::{PolicyState, RecipientSpendRecord};
+pub use helpers::{
+    active_hourly_limit, confidential_commitment, diff_policy_config, policy_config_hash,
+    protocol_allowed, slippage_bps, PolicyConfigDiff,
+};
+pub use state::{ExposureGroupState, GroupMembership, PolicyState, RecipientSpendRecord};
 pub use types::{Chain, TransactionType};
 pub use violations::ViolationCode;
 
