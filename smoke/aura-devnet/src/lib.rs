@@ -66,6 +66,7 @@ pub const APPROVAL_PROOF_SLOT: u64 = 0;
 pub const DEFAULT_COMPUTE_UNIT_LIMIT: u32 = 1_400_000;
 pub const DEFAULT_HEAP_FRAME_BYTES: u32 = 256 * 1024;
 pub const COMPUTE_BUDGET_PROGRAM_ID: &str = "ComputeBudget111111111111111111111111111111";
+pub const AGENT_STATE_ACTIVE: u8 = 1;
 
 pub const DEVNET_RPC: &str = "https://api.devnet.solana.com";
 pub const DEVNET_RPC_ENV: &str = "AURA_DEVNET_RPC_URL";
@@ -180,6 +181,35 @@ pub fn mark_account_meta_signer(metas: &mut [AccountMeta], pubkey: Pubkey) -> an
         .ok_or_else(|| anyhow!("missing account meta for signer {pubkey}"))?;
     meta.is_signer = true;
     Ok(())
+}
+
+/// Move a newly-created treasury from provisioning to active so proposal
+/// instructions are allowed before a dWallet registration auto-activates it.
+pub fn activate_treasury(
+    client: &RpcClient,
+    payer: &Keypair,
+    treasury: Pubkey,
+    now: i64,
+) -> anyhow::Result<Signature> {
+    send_tx(
+        client,
+        payer,
+        vec![Instruction {
+            program_id: ID,
+            accounts: accounts::OwnerTreasury {
+                owner: payer.pubkey(),
+                treasury,
+            }
+            .to_account_metas(None),
+            data: instruction::TransitionAgentState {
+                target_state: AGENT_STATE_ACTIVE,
+                now,
+            }
+            .data(),
+        }],
+        &[],
+    )
+    .context("transition treasury to active")
 }
 
 // Account polling
@@ -892,6 +922,7 @@ pub async fn finalize_via_dwallet(
                 operator: payer.pubkey(),
                 treasury,
                 message_approval: approval_req.message_approval_account,
+                swarm_pool: None,
             }
             .to_account_metas(None),
             data: instruction::FinalizeExecution { now: now + 1 }.data(),

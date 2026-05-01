@@ -105,6 +105,7 @@ async fn run_confidential_scenario(
         &[],
     )
     .context("create_treasury failed")?;
+    activate_treasury(rpc, payer, treasury, created_at + 1).context("activate_treasury failed")?;
 
     if let Some(live_dw) = live {
         send_tx(
@@ -114,7 +115,7 @@ async fn run_confidential_scenario(
                 payer,
                 treasury,
                 live_dw,
-                created_at + 1,
+                created_at + 2,
             )],
             &[],
         )
@@ -136,7 +137,7 @@ async fn run_confidential_scenario(
             }
             .to_account_metas(None),
             data: instruction::ConfigureConfidentialGuardrails {
-                now: created_at + 2,
+                now: created_at + 3,
             }
             .data(),
         }],
@@ -181,7 +182,7 @@ async fn run_confidential_scenario(
                     target_chain: 2, // Solana
                     tx_type: 0,      // Transfer
                     protocol_id: None,
-                    current_timestamp: created_at + 3,
+                    current_timestamp: created_at + 4,
                     expected_output_usd: None,
                     actual_output_usd: None,
                     quote_age_secs: None,
@@ -227,7 +228,7 @@ async fn run_confidential_scenario(
             program_id: ID,
             accounts: req_metas,
             data: instruction::RequestPolicyDecryption {
-                now: created_at + 4,
+                now: created_at + 5,
             }
             .data(),
         }],
@@ -253,7 +254,7 @@ async fn run_confidential_scenario(
             }
             .to_account_metas(None),
             data: instruction::ConfirmPolicyDecryption {
-                now: created_at + 5,
+                now: created_at + 6,
             }
             .data(),
         }],
@@ -284,12 +285,12 @@ async fn run_confidential_scenario(
             treasury,
             dwallet_program,
             live_dw,
-            created_at + 6,
+            created_at + 7,
         )
         .await?;
     } else {
         ensure!(!pending.decision.approved, "expected denied result");
-        execute_denied(rpc, payer, treasury, created_at + 6)
+        execute_denied(rpc, payer, treasury, created_at + 7)
             .context("execute_pending (denial) failed")?;
         println!("  Denied proposal cleared.");
     }

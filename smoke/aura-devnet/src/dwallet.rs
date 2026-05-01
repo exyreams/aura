@@ -86,6 +86,11 @@ async fn main() -> anyhow::Result<()> {
             accounts: accounts::ProposeTransaction {
                 ai_authority: payer.pubkey(),
                 treasury,
+                session_key_account: None,
+                swarm_pool: None,
+                address_list: None,
+                compliance_oracle: None,
+                parent_treasury: None,
             }
             .to_account_metas(None),
             data: instruction::ProposeTransaction {
@@ -100,6 +105,7 @@ async fn main() -> anyhow::Result<()> {
                     quote_age_secs: Some(30),
                     counterparty_risk_score: Some(10),
                     recipient_or_contract: payer.pubkey().to_string(),
+                    sanctions_proof: Vec::new(),
                 },
             }
             .data(),

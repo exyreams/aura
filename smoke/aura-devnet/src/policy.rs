@@ -88,6 +88,8 @@ fn setup_treasury(
         &[],
     )
     .with_context(|| format!("create_treasury '{agent_id}'"))?;
+    activate_treasury(rpc, payer, treasury, created_at + 1)
+        .with_context(|| format!("activate_treasury '{agent_id}'"))?;
     Ok((treasury, created_at))
 }
 
