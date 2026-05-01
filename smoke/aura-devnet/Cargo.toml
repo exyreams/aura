@@ -8,15 +8,15 @@ license = "MIT"
 
 [[bin]]
 name = "dwallet"
-path = "src/dwallet.rs"
+path = "src/bin/dwallet.rs"
 
 [[bin]]
 name = "confidential"
-path = "src/confidential.rs"
+path = "src/bin/confidential.rs"
 
 [[bin]]
 name = "policy"
-path = "src/policy.rs"
+path = "src/bin/policy.rs"
 
 [dependencies]
 anyhow = "1"

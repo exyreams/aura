@@ -5,6 +5,11 @@
 //! gRPC, account polling, PDA derivation, and the shared on-chain instruction
 //! builders that are identical across scenarios.
 
+pub mod confidential;
+pub mod dwallet;
+pub mod policy;
+
+
 use std::{
     env,
     str::FromStr,
@@ -304,7 +309,6 @@ pub fn fetch_treasury_domain(
 // dWallet PDA / epoch helpers
 
 /// Derive the dWallet PDA from curve code and raw public key bytes.
-/// Mirrors `find_message_approval_pda_v2` in `cpi/dwallet.rs`.
 pub fn derive_dwallet_pda(curve: u16, public_key: &[u8], program_id: &Pubkey) -> Pubkey {
     let mut payload = Vec::with_capacity(2 + public_key.len());
     payload.extend_from_slice(&curve.to_le_bytes());
@@ -802,13 +806,8 @@ pub async fn finalize_via_dwallet(
         .cloned()
         .ok_or_else(|| anyhow!("Solana dWallet not registered on treasury {treasury}"))?;
 
-    let approval_req = build_message_approval_request(
-        &pending,
-        &dwallet_ref,
-        dwallet_program,
-        domain.deployment.dwallet_message_approval_layout,
-    )
-    .context("build_message_approval_request failed")?;
+    let approval_req = build_message_approval_request(&pending, &dwallet_ref, dwallet_program)
+        .context("build_message_approval_request failed")?;
 
     let (cpi_authority, _) = Pubkey::find_program_address(&[DWALLET_CPI_AUTHORITY_SEED], &ID);
 
@@ -822,7 +821,7 @@ pub async fn finalize_via_dwallet(
                 operator: payer.pubkey(),
                 treasury,
                 message_approval: Some(approval_req.message_approval_account),
-                dwallet_coordinator: approval_req.coordinator_account,
+                dwallet_coordinator: Some(approval_req.coordinator_account),
                 dwallet: Some(live.dwallet_pda),
                 caller_program: ID,
                 cpi_authority: Some(cpi_authority),

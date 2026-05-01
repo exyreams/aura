@@ -26,7 +26,7 @@ use aura_core::{
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::signature::{Keypair, Signer};
 
-use aura_devnet::*;
+use crate::*;
 
 /// Run one complete confidential scenario end-to-end.
 ///
@@ -299,8 +299,7 @@ async fn run_confidential_scenario(
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+pub async fn run() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let rpc = devnet_rpc();
     let encrypt_program: Pubkey = ENCRYPT_DEVNET_PROGRAM_ID.parse()?;

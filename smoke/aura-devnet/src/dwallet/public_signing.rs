@@ -18,10 +18,9 @@ use anyhow::{ensure, Context};
 use aura_core::{accounts, instruction, ProposeTransactionArgs, ID};
 use solana_sdk::signature::Signer;
 
-use aura_devnet::*;
+use crate::*;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+pub async fn run() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let rpc = devnet_rpc();
     let dwallet_program_id: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
