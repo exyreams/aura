@@ -202,6 +202,204 @@ pub fn configure_swarm(
     }
 }
 
+/// Builds `simulate_policy`.
+pub fn simulate_policy(
+    accounts: accounts::SimulatePolicy,
+    args: aura_core::SimulatePolicyArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::SimulatePolicy { args }.data(),
+    }
+}
+
+/// Builds `write_policy_receipt`.
+pub fn write_policy_receipt(
+    accounts: accounts::WritePolicyReceipt,
+    args: aura_core::WritePolicyReceiptArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::WritePolicyReceipt { args }.data(),
+    }
+}
+
+/// Builds `apply_policy_preset`.
+pub fn apply_policy_preset(
+    accounts: accounts::ApplyPolicyPreset,
+    args: aura_core::ApplyPolicyPresetArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ApplyPolicyPreset { args }.data(),
+    }
+}
+
+/// Builds `configure_budget_envelope`.
+pub fn configure_budget_envelope(
+    accounts: accounts::ConfigureBudgetEnvelope,
+    args: aura_core::ConfigureBudgetEnvelopeArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ConfigureBudgetEnvelope { args }.data(),
+    }
+}
+
+/// Builds `init_exposure_group`.
+pub fn init_exposure_group(
+    accounts: accounts::InitExposureGroup,
+    args: aura_core::InitExposureGroupArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::InitExposureGroup { args }.data(),
+    }
+}
+
+/// Builds `join_exposure_group`.
+pub fn join_exposure_group(accounts: accounts::JoinExposureGroup) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::JoinExposureGroup {}.data(),
+    }
+}
+
+/// Builds `configure_approval_ladder`.
+pub fn configure_approval_ladder(
+    accounts: accounts::ConfigureApprovalLadder,
+    args: aura_core::ConfigureApprovalLadderArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ConfigureApprovalLadder { args }.data(),
+    }
+}
+
+/// Builds `approve_pending_execution`.
+pub fn approve_pending_execution(
+    accounts: accounts::ApprovePendingExecution,
+    args: aura_core::ApprovePendingExecutionArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ApprovePendingExecution { args }.data(),
+    }
+}
+
+/// Builds `set_scoped_pause`.
+pub fn set_scoped_pause(
+    accounts: accounts::SetScopedPause,
+    args: aura_core::SetScopedPauseArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::SetScopedPause { args }.data(),
+    }
+}
+
+/// Builds `grant_operator_role`.
+pub fn grant_operator_role(
+    accounts: accounts::GrantOperatorRole,
+    args: aura_core::GrantOperatorRoleArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::GrantOperatorRole { args }.data(),
+    }
+}
+
+/// Builds `revoke_operator_role`.
+pub fn revoke_operator_role(accounts: accounts::RevokeOperatorRole, now: i64) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::RevokeOperatorRole { now }.data(),
+    }
+}
+
+/// Builds `init_external_liveness`.
+pub fn init_external_liveness(
+    accounts: accounts::InitExternalLiveness,
+    args: aura_core::InitExternalLivenessArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::InitExternalLiveness { args }.data(),
+    }
+}
+
+/// Builds `configure_liveness_guardrails`.
+pub fn configure_liveness_guardrails(
+    accounts: accounts::ConfigureLivenessGuardrails,
+    args: aura_core::ConfigureLivenessGuardrailsArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ConfigureLivenessGuardrails { args }.data(),
+    }
+}
+
+/// Builds `refresh_external_liveness`.
+pub fn refresh_external_liveness(
+    accounts: accounts::RefreshExternalLiveness,
+    args: aura_core::RefreshExternalLivenessArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::RefreshExternalLiveness { args }.data(),
+    }
+}
+
+/// Builds `attest_policy`.
+pub fn attest_policy(
+    accounts: accounts::AttestPolicy,
+    args: aura_core::AttestPolicyArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::AttestPolicy { args }.data(),
+    }
+}
+
+/// Builds `propose_batch`.
+pub fn propose_batch(
+    accounts: accounts::ProposeBatch,
+    args: aura_core::ProposeBatchArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ProposeBatch { args }.data(),
+    }
+}
+
+/// Builds `check_invariants`.
+pub fn check_invariants(
+    accounts: accounts::CheckInvariants,
+    args: aura_core::CheckInvariantsArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::CheckInvariants { args }.data(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anchor_lang::system_program::ID as SYSTEM_PROGRAM_ID;
@@ -246,6 +444,8 @@ mod tests {
             address_list: None,
             compliance_oracle: None,
             parent_treasury: None,
+            budget_envelope: None,
+            exposure_group: None,
         };
         let ix = propose_transaction(
             accounts,
@@ -264,7 +464,7 @@ mod tests {
             },
         );
         assert_eq!(ix.program_id, aura_core::ID);
-        assert_eq!(ix.accounts.len(), 7);
+        assert_eq!(ix.accounts.len(), 9);
         assert!(!ix.data.is_empty());
     }
 }

@@ -329,6 +329,8 @@ impl AuraClient {
             address_list: None,
             compliance_oracle: None,
             parent_treasury: None,
+            budget_envelope: None,
+            exposure_group: None,
         };
         self.with_program_id(instructions::propose_transaction(accounts, args))
     }
@@ -635,6 +637,105 @@ impl AuraClient {
         let instruction = self.configure_swarm_instruction(owner.pubkey(), treasury, args);
         self.send_instructions(owner, vec![instruction], &[])
     }
+
+    /// Builds `simulate_policy`.
+    pub fn simulate_policy_instruction(
+        &self,
+        accounts: aura_core::accounts::SimulatePolicy,
+        args: aura_core::SimulatePolicyArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::simulate_policy(accounts, args))
+    }
+
+    /// Builds `write_policy_receipt`.
+    pub fn write_policy_receipt_instruction(
+        &self,
+        accounts: aura_core::accounts::WritePolicyReceipt,
+        args: aura_core::WritePolicyReceiptArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::write_policy_receipt(accounts, args))
+    }
+
+    /// Builds `apply_policy_preset`.
+    pub fn apply_policy_preset_instruction(
+        &self,
+        accounts: aura_core::accounts::ApplyPolicyPreset,
+        args: aura_core::ApplyPolicyPresetArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::apply_policy_preset(accounts, args))
+    }
+
+    /// Builds `configure_budget_envelope`.
+    pub fn configure_budget_envelope_instruction(
+        &self,
+        accounts: aura_core::accounts::ConfigureBudgetEnvelope,
+        args: aura_core::ConfigureBudgetEnvelopeArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::configure_budget_envelope(accounts, args))
+    }
+
+    /// Builds `configure_approval_ladder`.
+    pub fn configure_approval_ladder_instruction(
+        &self,
+        accounts: aura_core::accounts::ConfigureApprovalLadder,
+        args: aura_core::ConfigureApprovalLadderArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::configure_approval_ladder(accounts, args))
+    }
+
+    /// Builds `approve_pending_execution`.
+    pub fn approve_pending_execution_instruction(
+        &self,
+        accounts: aura_core::accounts::ApprovePendingExecution,
+        args: aura_core::ApprovePendingExecutionArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::approve_pending_execution(accounts, args))
+    }
+
+    /// Builds `set_scoped_pause`.
+    pub fn set_scoped_pause_instruction(
+        &self,
+        accounts: aura_core::accounts::SetScopedPause,
+        args: aura_core::SetScopedPauseArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::set_scoped_pause(accounts, args))
+    }
+
+    /// Builds `refresh_external_liveness`.
+    pub fn refresh_external_liveness_instruction(
+        &self,
+        accounts: aura_core::accounts::RefreshExternalLiveness,
+        args: aura_core::RefreshExternalLivenessArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::refresh_external_liveness(accounts, args))
+    }
+
+    /// Builds `attest_policy`.
+    pub fn attest_policy_instruction(
+        &self,
+        accounts: aura_core::accounts::AttestPolicy,
+        args: aura_core::AttestPolicyArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::attest_policy(accounts, args))
+    }
+
+    /// Builds `propose_batch`.
+    pub fn propose_batch_instruction(
+        &self,
+        accounts: aura_core::accounts::ProposeBatch,
+        args: aura_core::ProposeBatchArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::propose_batch(accounts, args))
+    }
+
+    /// Builds `check_invariants`.
+    pub fn check_invariants_instruction(
+        &self,
+        accounts: aura_core::accounts::CheckInvariants,
+        args: aura_core::CheckInvariantsArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::check_invariants(accounts, args))
+    }
 }
 
 fn ensure_signer_matches(
@@ -708,6 +809,7 @@ mod tests {
             cpi_authority: None,
             dwallet_program: None,
             dwallet_coordinator: None,
+            external_liveness: None,
             system_program: SYSTEM_PROGRAM_ID,
         };
 
