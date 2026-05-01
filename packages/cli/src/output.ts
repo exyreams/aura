@@ -21,6 +21,14 @@ export function serializeForJson(value: unknown): unknown {
   if (value instanceof PublicKey) {
     return value.toBase58();
   }
+  if (
+    value &&
+    typeof value === "object" &&
+    "toBase58" in value &&
+    typeof (value as { toBase58: unknown }).toBase58 === "function"
+  ) {
+    return (value as { toBase58(): string }).toBase58();
+  }
   if (BN.isBN(value)) {
     return value.toString();
   }

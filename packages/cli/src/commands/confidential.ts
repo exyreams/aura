@@ -7,6 +7,7 @@ import {
   buildDryRunKeypair,
   deriveEncryptAccounts,
   ensureEncryptDeposit,
+  getActivePendingProposal,
   markInstructionSigner,
   resolvePendingPolicyOutput,
   resolvePendingRequestAccount,
@@ -364,7 +365,7 @@ export function registerConfidentialCommands(program: Command): void {
         emitJson(ctx.output, {
           treasury: treasuryState.treasury,
           guardrails: treasuryState.account.confidentialGuardrails,
-          pending: treasuryState.account.pending,
+          pending: getActivePendingProposal(treasuryState.account),
         });
         return;
       }
@@ -701,7 +702,7 @@ export function registerConfidentialCommands(program: Command): void {
       spinner.succeed("Policy decryption confirmed");
 
       const refreshed = await ctx.client.getTreasuryAccount(treasuryState.treasury);
-      const decision = refreshed.pending?.decision;
+      const decision = getActivePendingProposal(refreshed)?.decision;
 
       if (ctx.output.json) {
         emitJson(ctx.output, {

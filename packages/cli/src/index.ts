@@ -6,6 +6,7 @@ import { registerDashboardCommand } from "./commands/dashboard.js";
 import { registerDwalletCommands } from "./commands/dwallet.js";
 import { registerExecutionCommands } from "./commands/execution.js";
 import { registerGovernanceCommands } from "./commands/governance.js";
+import { registerPdaCommands } from "./commands/pda.js";
 import { registerTreasuryCommands } from "./commands/treasury.js";
 import { printError } from "./output.js";
 
@@ -32,6 +33,7 @@ export function createProgram(): Command {
   registerConfidentialCommands(program);
   registerExecutionCommands(program);
   registerGovernanceCommands(program);
+  registerPdaCommands(program);
   registerDashboardCommand(program);
 
   return program;

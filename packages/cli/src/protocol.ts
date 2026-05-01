@@ -20,6 +20,7 @@ import {
   deriveDwalletCpiAuthorityAddress,
   deriveEncryptCpiAuthorityAddress,
   deriveEncryptEventAuthorityAddress,
+  deriveMessageApprovalAddress as deriveCanonicalMessageApprovalAddress,
   DWALLET_DEVNET_PROGRAM_ID,
   ENCRYPT_DEVNET_PROGRAM_ID,
   type TreasuryAccountRecord,
@@ -33,23 +34,20 @@ const ENCRYPT_DEPOSIT_SEED = Buffer.from("encrypt_deposit");
 const NETWORK_ENCRYPTION_KEY_SEED = Buffer.from("network_encryption_key");
 const ENCRYPT_EVENT_AUTHORITY_SEED = Buffer.from("__event_authority");
 const DWALLET_COORDINATOR_SEED = Buffer.from("dwallet_coordinator");
-const DWALLET_SEED = Buffer.from("dwallet");
-const MESSAGE_APPROVAL_SEED = Buffer.from("message_approval");
 const ZERO_DIGEST = Buffer.alloc(32);
 const ZERO_PUBKEY = new PublicKey(new Uint8Array(32));
 
 const ENCRYPT_DEPOSIT_DISC = 14;
 const MESSAGE_APPROVAL_DISC = 14;
-const MESSAGE_APPROVAL_ACCOUNT_LEN_V2 = 304;
-const MESSAGE_APPROVAL_STATUS_OFFSET_V2 = 172;
-const MESSAGE_APPROVAL_STATUS_OFFSET_V1 = 139;
+const MESSAGE_APPROVAL_ACCOUNT_LEN = 304;
+const MESSAGE_APPROVAL_STATUS_OFFSET = 172;
 
 const DEFAULT_COMPUTE_UNIT_LIMIT = 1_400_000;
 const DEFAULT_HEAP_FRAME_BYTES = 256 * 1024;
 
 export const ENCRYPT_NETWORK_KEY = Uint8Array.from({ length: 32 }, () => 0x55);
 
-type PendingProposal = NonNullable<TreasuryAccountRecord["pending"]>;
+type PendingProposal = TreasuryAccountRecord["pendingQueue"][number];
 type DwalletRecord = TreasuryAccountRecord["dwallets"][number];
 type BufferAccountInfo = AccountInfo<Buffer<ArrayBufferLike>>;
 
@@ -97,12 +95,6 @@ function asBigInt(value: unknown): bigint {
   throw new Error(`Unsupported integer value: ${String(value)}`);
 }
 
-function fixedU16LE(value: number): Buffer {
-  const out = Buffer.alloc(2);
-  out.writeUInt16LE(value, 0);
-  return out;
-}
-
 function decodeOptionalDigest(value: string | null | undefined, label: string): Buffer {
   if (!value) {
     return Buffer.from(ZERO_DIGEST);
@@ -118,7 +110,7 @@ function decodeOptionalDigest(value: string | null | undefined, label: string): 
 function decodePublicKeyHex(value: string | null | undefined): Buffer {
   if (!value) {
     throw new Error(
-      "dWallet publicKeyHex is required for metadata-v2 message approval derivation",
+      "dWallet publicKeyHex is required for metadata message approval derivation",
     );
   }
   if (!/^[0-9a-fA-F]+$/.test(value) || value.length % 2 !== 0) {
@@ -238,11 +230,16 @@ export function resolveVectorGuardrail(account: TreasuryAccountRecord): PublicKe
   return ciphertext;
 }
 
+export function getActivePendingProposal(account: TreasuryAccountRecord): PendingProposal | null {
+  return account.pendingQueue[0] ?? null;
+}
+
 export function resolvePendingProposal(account: TreasuryAccountRecord): PendingProposal {
-  if (!account.pending) {
+  const pending = getActivePendingProposal(account);
+  if (!pending) {
     throw new Error("This treasury has no pending proposal.");
   }
-  return account.pending;
+  return pending;
 }
 
 export function resolvePendingPolicyOutput(account: TreasuryAccountRecord): PublicKey {
@@ -281,7 +278,7 @@ export function deriveApprovedExecutionAccounts(
   const messageApproval =
     pending.signatureRequest?.messageApprovalAccount
       ? new PublicKey(pending.signatureRequest.messageApprovalAccount)
-      : deriveMetadataV2MessageApprovalAddress(pending, dwallet, dwalletProgramId)[0];
+      : derivePendingMessageApprovalAddress(pending, dwallet, dwalletProgramId)[0];
   const [dwalletCoordinator] = deriveDwalletCoordinatorAddress(dwalletProgramId);
   const [cpiAuthority] = deriveDwalletCpiAuthorityAddress(auraProgramId);
 
@@ -296,30 +293,26 @@ export function deriveApprovedExecutionAccounts(
   };
 }
 
-export function deriveMetadataV2MessageApprovalAddress(
+export function derivePendingMessageApprovalAddress(
   pending: PendingProposal,
   dwallet: DwalletRecord,
   dwalletProgramId: PublicKey = DWALLET_DEVNET_PROGRAM_ID,
 ): [PublicKey, number] {
   const publicKey = decodePublicKeyHex(dwallet.publicKeyHex);
-  const payload = Buffer.concat([fixedU16LE(dwallet.curve), publicKey]);
-  const schemeSeed = fixedU16LE(dwallet.signatureScheme);
   const messageDigest = keccakDigest(buildPendingMessage(pending, dwallet));
   const metadataDigest = decodeOptionalDigest(
     dwallet.messageMetadataDigest,
     "dWallet messageMetadataDigest",
   );
 
-  const seeds: Uint8Array[] = [DWALLET_SEED];
-  for (let offset = 0; offset < payload.length; offset += 32) {
-    seeds.push(payload.subarray(offset, offset + 32));
-  }
-  seeds.push(MESSAGE_APPROVAL_SEED, schemeSeed, messageDigest);
-  if (!metadataDigest.equals(ZERO_DIGEST)) {
-    seeds.push(metadataDigest);
-  }
-
-  return PublicKey.findProgramAddressSync(seeds, dwalletProgramId);
+  return deriveCanonicalMessageApprovalAddress(
+    dwalletProgramId,
+    dwallet.curve,
+    publicKey,
+    dwallet.signatureScheme,
+    messageDigest,
+    metadataDigest,
+  );
 }
 
 export function buildMessageDigestHex(
@@ -541,17 +534,9 @@ export function parseMessageApprovalState(data: Buffer): MessageApprovalState {
     return "missing";
   }
 
-  if (data.length >= MESSAGE_APPROVAL_ACCOUNT_LEN_V2) {
-    const v2Status = data[MESSAGE_APPROVAL_STATUS_OFFSET_V2];
-    return v2Status === 1 ? "signed" : "pending";
-  }
-
-  const v1Status =
-    data.length > MESSAGE_APPROVAL_STATUS_OFFSET_V1
-      ? data[MESSAGE_APPROVAL_STATUS_OFFSET_V1]
-      : undefined;
-  if (v1Status !== undefined) {
-    return v1Status === 1 ? "signed" : "pending";
+  if (data.length >= MESSAGE_APPROVAL_ACCOUNT_LEN) {
+    const status = data[MESSAGE_APPROVAL_STATUS_OFFSET];
+    return status === 1 ? "signed" : "pending";
   }
 
   return "pending";

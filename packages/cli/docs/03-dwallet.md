@@ -65,7 +65,7 @@ aura dwallet register \
 --balance <usd>                    Current balance in USD (required)
 --dwallet-account <pubkey>         On-chain dWallet PDA (for live signing)
 --authorized-user <pubkey>         Authorized user pubkey (for live signing)
---message-metadata-digest <hex>    32-byte metadata digest for MetadataV2 signing
+--message-metadata-digest <hex>    32-byte metadata digest for metadata signing
 --public-key-hex <hex>             Raw dWallet public key bytes in hex
 ```
 

@@ -215,11 +215,26 @@ export function buildCreateTreasuryArgs(inputValue: {
         inputValue.bitcoinManualReviewThresholdUsd ?? 5000,
       ),
       sharedPoolLimitUsd: null,
+      weeklyLimitUsd: null,
+      monthlyLimitUsd: null,
+      recipientLimits: [],
+      cooldownConfig: null,
+      anomalyConfig: null,
       reputationPolicy: {
         highScoreThreshold: new BN(80),
         mediumScoreThreshold: new BN(50),
         highMultiplierBps: new BN(15_000),
         lowMultiplierBps: new BN(7_000),
+      },
+      budgetEnvelopes: [],
+      approvalLadder: null,
+      scopedPauseEntries: [],
+      livenessConfig: {
+        requireEncryptFreshness: false,
+        requireDwalletFreshness: false,
+        requireBalanceOracleFreshness: false,
+        requireComplianceOracleFreshness: false,
+        maxStalenessSecs: new BN(300),
       },
     },
     protocolFees: {
@@ -285,6 +300,7 @@ export function buildProposeTransactionArgs(inputValue: {
       inputValue.quoteAgeSecs !== undefined ? new BN(inputValue.quoteAgeSecs) : null,
     counterpartyRiskScore: inputValue.counterpartyRiskScore ?? null,
     recipientOrContract: inputValue.recipient,
+    sanctionsProof: [],
   };
 }
 

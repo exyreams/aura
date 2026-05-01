@@ -6,6 +6,7 @@ import type { CliContext } from "./context.js";
 import { formatTimestamp } from "./format.js";
 import { createTable } from "./output.js";
 import {
+  getActivePendingProposal,
   getMessageApprovalState,
   parseCiphertextVerified,
   parseDecryptionReady,
@@ -24,7 +25,7 @@ async function buildLivePanel(
   ctx: CliContext,
   account: TreasuryAccountRecord,
 ): Promise<string | undefined> {
-  const pending = account.pending;
+  const pending = getActivePendingProposal(account);
   if (!pending) {
     return undefined;
   }

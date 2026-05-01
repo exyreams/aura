@@ -60,7 +60,7 @@ export function registerDwalletCommands(program: Command): void {
     .option("--balance <usd>", "current balance in USD", Number)
     .option("--dwallet-account <pubkey>", "live dWallet PDA for execute/finalize flows")
     .option("--authorized-user <pubkey>", "authorized user pubkey for live dWallet signing")
-    .option("--message-metadata-digest <hex>", "32-byte metadata digest for MetadataV2 signing")
+    .option("--message-metadata-digest <hex>", "32-byte metadata digest for metadata signing")
     .option("--public-key-hex <hex>", "raw dWallet public key bytes in hex")
     .action(async function dwalletRegister() {
       const ctx = buildCliContext(this);

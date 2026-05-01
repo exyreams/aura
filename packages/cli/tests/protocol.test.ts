@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 
 import {
   deriveApprovedExecutionAccounts,
-  deriveMetadataV2MessageApprovalAddress,
+  derivePendingMessageApprovalAddress,
   parseCiphertextVerified,
   parseDecryptionReady,
   parseMessageApprovalState,
@@ -88,48 +88,53 @@ function sampleAccount(): TreasuryAccountRecord {
         signatureScheme: 5,
       },
     ],
-    pending: {
-      proposalId: 42n,
-      proposalDigest: "a".repeat(64),
-      policyGraphName: "confidential_spend_guardrails",
-      policyOutputDigest: "b".repeat(64),
-      policyOutputCiphertextAccount: TREASURY.toBase58(),
-      policyOutputFheType: 12,
-      targetChain: 2,
-      txType: 0,
-      amountUsd: 250n,
-      recipientOrContract: "Recipient1111111111111111111111111111111111",
-      protocolId: null,
-      submittedAt: 10n,
-      expiresAt: 900n,
-      lastUpdatedAt: 10n,
-      executionAttempts: 0,
-      status: 0,
-      decryptionRequest: null,
-      signatureRequest: null,
-      decision: {
-        approved: true,
-        violation: 0,
-        effectiveDailyLimitUsd: 1000n,
-        nextState: {
-          spentTodayUsd: 250n,
-          lastResetTimestamp: 10n,
-          hourlySpentUsd: 250n,
-          hourlyBucketStartedAt: 10n,
-          recentAmounts: [250n],
+    pendingQueue: [
+      {
+        proposalId: 42n,
+        proposalDigest: "a".repeat(64),
+        policyGraphName: "confidential_spend_guardrails",
+        policyOutputDigest: "b".repeat(64),
+        policyOutputCiphertextAccount: TREASURY.toBase58(),
+        policyOutputFheType: 12,
+        targetChain: 2,
+        txType: 0,
+        amountUsd: 250n,
+        recipientOrContract: "Recipient1111111111111111111111111111111111",
+        protocolId: null,
+        submittedAt: 10n,
+        expiresAt: 900n,
+        lastUpdatedAt: 10n,
+        executionAttempts: 0,
+        status: 0,
+        decryptionRequest: null,
+        signatureRequest: null,
+        decision: {
+          approved: true,
+          violation: 0,
+          effectiveDailyLimitUsd: 1000n,
+          riskScore: 0,
+          regulatoryFlags: 0,
+          nextState: {
+            spentTodayUsd: 250n,
+            lastResetTimestamp: 10n,
+            hourlySpentUsd: 250n,
+            hourlyBucketStartedAt: 10n,
+            recentAmounts: [250n],
+          },
+          riskFactors: [],
+          trace: [],
         },
-        trace: [],
       },
-    },
+    ],
     multisig: null,
     swarm: null,
   } as TreasuryAccountRecord;
 }
 
-test("deriveMetadataV2MessageApprovalAddress matches the expected devnet PDA", () => {
+test("derivePendingMessageApprovalAddress matches the expected devnet PDA", () => {
   const account = sampleAccount();
-  const [messageApproval] = deriveMetadataV2MessageApprovalAddress(
-    account.pending!,
+  const [messageApproval] = derivePendingMessageApprovalAddress(
+    account.pendingQueue[0],
     account.dwallets[0],
   );
 
@@ -168,17 +173,12 @@ test("live account parsers recognize ciphertext, decryption, and message approva
   decryption.data.writeUInt32LE(32, 99);
   decryption.data.writeUInt32LE(32, 103);
 
-  const messageApprovalV2 = Buffer.alloc(304);
-  messageApprovalV2[0] = 14;
-  messageApprovalV2[172] = 1;
-
-  const messageApprovalV1 = Buffer.alloc(142);
-  messageApprovalV1[0] = 14;
-  messageApprovalV1[139] = 0;
+  const messageApproval = Buffer.alloc(304);
+  messageApproval[0] = 14;
+  messageApproval[172] = 1;
 
   assert.equal(parseCiphertextVerified(ciphertext as never), true);
   assert.equal(parseDecryptionReady(decryption as never), true);
-  assert.equal(parseMessageApprovalState(messageApprovalV2), "signed");
-  assert.equal(parseMessageApprovalState(messageApprovalV1), "pending");
+  assert.equal(parseMessageApprovalState(messageApproval), "signed");
   assert.equal(parseMessageApprovalState(Buffer.alloc(2)), "missing");
 });

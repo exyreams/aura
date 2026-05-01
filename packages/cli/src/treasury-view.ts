@@ -15,6 +15,7 @@ import {
   formatUsd,
 } from "./format.js";
 import { createTable } from "./output.js";
+import { getActivePendingProposal } from "./protocol.js";
 import type { TreasuryAccountRecord } from "./sdk.js";
 
 export interface TreasurySections {
@@ -101,7 +102,7 @@ function renderDwallets(account: TreasuryAccountRecord): string | undefined {
 }
 
 function renderPending(account: TreasuryAccountRecord): string | undefined {
-  const pending = account.pending;
+  const pending = getActivePendingProposal(account);
   if (!pending) {
     return undefined;
   }

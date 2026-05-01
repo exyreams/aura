@@ -8,3 +8,4 @@
 | [04 — Confidential](./04-confidential.md) | deposit, guardrails scalar/vector, propose, request-decryption, confirm-decryption |
 | [05 — Execution](./05-execution.md) | execute (with dWallet auto-signing), finalize, watch |
 | [06 — Governance](./06-governance.md) | multisig, swarm, override propose/collect |
+| [07 — PDA Utilities](./07-pda.md) | treasury, CPI, message approval, and policy-control PDA derivation |

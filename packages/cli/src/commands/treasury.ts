@@ -13,6 +13,7 @@ import {
 } from "../output.js";
 import { type TreasuryAccountRecord, validateAgentId } from "../sdk.js";
 import { renderTreasurySections } from "../treasury-view.js";
+import { getActivePendingProposal } from "../protocol.js";
 import {
   buildCreateTreasuryArgs,
   buildProposeTransactionArgs,
@@ -342,7 +343,7 @@ export function registerTreasuryCommands(program: Command): void {
         treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
       });
 
-      if (!treasuryState.account.pending) {
+      if (!getActivePendingProposal(treasuryState.account)) {
         throw new Error("This treasury has no pending transaction to cancel.");
       }
 

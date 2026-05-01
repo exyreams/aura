@@ -17,6 +17,7 @@ including automatic FHE ciphertext creation, policy decryption, and dWallet co-s
 - Readable tables, spinners, and actionable error messages
 - `--json` output for piping and scripting
 - `--dry-run` to preview instructions without sending
+- PDA derivation for treasury, CPI, dWallet message approval, and policy-control records
 - Full-screen `ink` dashboard for live treasury monitoring
 
 ---
@@ -219,6 +220,31 @@ aura governance override propose \
 
 # Guardian co-signs the override proposal
 aura governance override collect --agent-id my-agent
+```
+
+### PDA Utilities
+
+```bash
+# Derive core program PDAs without loading a wallet
+aura pda treasury --owner <owner> --agent-id my-agent
+aura pda dwallet-cpi-authority
+aura pda encrypt-cpi-authority
+
+# Derive policy-control PDAs
+aura pda policy-receipt --treasury <treasury> --proposal-id 42
+aura pda budget-envelope --treasury <treasury> --envelope-id 7
+aura pda operator-role --treasury <treasury> --operator <operator>
+aura pda external-liveness --treasury <treasury>
+aura pda policy-attestation --treasury <treasury> --attester <attester> --policy-version 3
+aura pda batch-proposal --treasury <treasury> --batch-id 9
+aura pda invariant-report --treasury <treasury> --report-id 10
+
+# Derive the current dWallet MessageApproval PDA
+aura pda message-approval \
+  --curve 0 \
+  --signature-scheme 5 \
+  --public-key-hex <dwallet-public-key-hex> \
+  --message-digest <32-byte-hex>
 ```
 
 ### Dashboard

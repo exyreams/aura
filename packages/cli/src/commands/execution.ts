@@ -19,6 +19,7 @@ import {
 import {
   buildMessageDigestHex,
   deriveApprovedExecutionAccounts,
+  getActivePendingProposal,
   getMessageApprovalState,
   parseCiphertextVerified,
   parseDecryptionReady,
@@ -93,7 +94,7 @@ async function renderExecutionWatch(
 ): Promise<void> {
   const sections = renderTreasurySections(treasury, account);
   const live = createTable(["Live check", "Value"]);
-  const pending = account.pending;
+  const pending = getActivePendingProposal(account);
 
   if (pending?.policyOutputCiphertextAccount) {
     const policyOutput = new PublicKey(pending.policyOutputCiphertextAccount);
@@ -237,18 +238,19 @@ export function registerExecutionCommands(program: Command): void {
       spinner.succeed("Execution request submitted");
 
       const refreshed = await ctx.client.getTreasuryAccount(treasuryState.treasury);
+      const refreshedPending = getActivePendingProposal(refreshed);
       if (ctx.output.json) {
         emitJson(ctx.output, {
           treasury: treasuryState.treasury,
           signature,
           approved: pending.decision.approved,
           messageApproval: approvedAccounts?.messageApproval,
-          pending: refreshed.pending,
+          pending: refreshedPending,
         });
         return;
       }
 
-      if (!pending.decision.approved && !refreshed.pending) {
+      if (!pending.decision.approved && !refreshedPending) {
         printSuccess(ctx.output, `Denied proposal cleared: ${signature}`);
         return;
       }
@@ -326,7 +328,7 @@ export function registerExecutionCommands(program: Command): void {
           treasury: treasuryState.treasury,
           signature,
           totalTransactions: refreshed.totalTransactions,
-          pending: refreshed.pending,
+          pending: getActivePendingProposal(refreshed),
         });
         return;
       }
