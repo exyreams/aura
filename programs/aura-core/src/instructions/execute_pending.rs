@@ -14,7 +14,7 @@ use crate::{
         TreasuryAccount,
     },
     program_events::emit_execution_event,
-    state::{DWalletMessageApprovalLayout, ProposalStatus, SignatureScheme},
+    state::{ProposalStatus, SignatureScheme},
 };
 
 #[derive(Accounts)]
@@ -38,7 +38,7 @@ pub struct ExecutePending<'info> {
     pub cpi_authority: Option<UncheckedAccount<'info>>,
     /// CHECK: Official dWallet program account.
     pub dwallet_program: Option<UncheckedAccount<'info>>,
-    /// CHECK: DWalletCoordinator PDA on the dWallet program. Required for metadata-v2 approve_message flows.
+    /// CHECK: DWalletCoordinator PDA on the dWallet program. Required for approve_message flows.
     pub dwallet_coordinator: Option<UncheckedAccount<'info>>,
     pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
     pub system_program: Program<'info, System>,
@@ -142,16 +142,15 @@ pub fn handler(mut ctx: Context<ExecutePending>, now: i64) -> Result<()> {
         .dwallet_program
         .as_ref()
         .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
-    let dwallet_coordinator_info = ctx
+    let dwallet_coordinator = ctx
         .accounts
         .dwallet_coordinator
         .as_ref()
-        .map(|account| account.to_account_info());
+        .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
 
     approve_message_via_cpi(
-        signature.layout,
         &dwallet_program.to_account_info(),
-        dwallet_coordinator_info.as_ref(),
+        &dwallet_coordinator.to_account_info(),
         &message_approval.to_account_info(),
         &dwallet.to_account_info(),
         &ctx.accounts.caller_program.to_account_info(),
@@ -235,23 +234,17 @@ fn prepare_live_signature(
     )
     .map_err(crate::map_treasury_error)?;
 
-    let approval_request = build_message_approval_request(
-        &pending,
-        &dwallet_ref,
-        &expected_dwallet_program,
-        domain.deployment.dwallet_message_approval_layout,
-    )
-    .map_err(crate::map_treasury_error)?;
+    let approval_request =
+        build_message_approval_request(&pending, &dwallet_ref, &expected_dwallet_program)
+            .map_err(crate::map_treasury_error)?;
     if message_approval.key() != approval_request.message_approval_account {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
-    if let Some(expected_coordinator) = approval_request.coordinator_account {
-        let Some(dwallet_coordinator) = &ctx.accounts.dwallet_coordinator else {
-            return err!(crate::AuraCoreError::InvalidExternalAccountData);
-        };
-        if dwallet_coordinator.key() != expected_coordinator {
-            return err!(crate::AuraCoreError::InvalidExternalAccountData);
-        }
+    let Some(dwallet_coordinator) = &ctx.accounts.dwallet_coordinator else {
+        return err!(crate::AuraCoreError::InvalidExternalAccountData);
+    };
+    if dwallet_coordinator.key() != approval_request.coordinator_account {
+        return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
 
     let signature_request =
@@ -270,7 +263,6 @@ fn prepare_live_signature(
     ctx.accounts.treasury.updated_at = now;
 
     Ok(PreparedLiveSignature {
-        layout: domain.deployment.dwallet_message_approval_layout,
         cpi_authority_bump,
         message_digest: approval_request.message_digest,
         message_metadata_digest: approval_request.message_metadata_digest,
@@ -281,7 +273,6 @@ fn prepare_live_signature(
 }
 
 struct PreparedLiveSignature {
-    layout: DWalletMessageApprovalLayout,
     cpi_authority_bump: u8,
     message_digest: [u8; 32],
     message_metadata_digest: [u8; 32],

@@ -21,9 +21,9 @@ pub struct RegisterDwalletArgs {
     pub dwallet_account: Option<Pubkey>,
     /// Authorized user public key registered on the dWallet (required for live signing).
     pub authorized_user_pubkey: Option<Pubkey>,
-    /// Hex-encoded metadata digest for MetadataV2 PDA derivation.
+    /// Hex-encoded metadata digest for message approval PDA derivation.
     pub message_metadata_digest: Option<String>,
-    /// Hex-encoded raw public key bytes for MetadataV2 PDA derivation.
+    /// Hex-encoded raw public key bytes for message approval PDA derivation.
     pub public_key_hex: Option<String>,
     /// Unix timestamp used for the audit event.
     pub timestamp: i64,

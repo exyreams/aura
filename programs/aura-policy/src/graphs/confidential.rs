@@ -56,7 +56,7 @@ pub fn confidential_spend_guardrails_graph_bytes() -> Vec<u8> {
 /// Returns the spec for the scalar confidential guardrails graph.
 pub fn confidential_scalar_policy_graph() -> PolicyGraphSpec {
     PolicyGraphSpec {
-        name: "confidential_spend_guardrails_scalar_v1",
+        name: "confidential_spend_guardrails_scalar",
         outputs: &["violation_code", "next_spent_today"],
         uses_update_mode: true,
         requires_decryption: true,
@@ -135,7 +135,7 @@ pub fn confidential_spend_guardrails_vector_graph_bytes() -> Vec<u8> {
 /// Returns the spec for the vector confidential guardrails graph.
 pub fn confidential_policy_graph() -> PolicyGraphSpec {
     PolicyGraphSpec {
-        name: "confidential_spend_guardrails_vector_v3",
+        name: "confidential_spend_guardrails_vector",
         outputs: &["updated_guardrail_state_with_violation"],
         uses_update_mode: false,
         requires_decryption: true,

@@ -1,3 +1,9 @@
+//! Apply reusable policy presets to an existing treasury.
+//!
+//! Presets are deterministic policy configurations from `aura-policy`. Applying
+//! one increments the treasury policy version and records the tightening/loosening
+//! diff in the audit trail.
+
 use anchor_lang::prelude::*;
 use aura_policy::{build_policy_preset, diff_policy_config, PolicyPresetKind};
 
@@ -6,9 +12,12 @@ use crate::{
     program_accounts::TreasuryAccount,
 };
 
+/// Instruction data for `apply_policy_preset`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ApplyPolicyPresetArgs {
+    /// `PolicyPresetKind` code from `aura-policy`.
     pub preset_kind: u8,
+    /// Unix timestamp used for audit trail and owner activity updates.
     pub now: i64,
 }
 

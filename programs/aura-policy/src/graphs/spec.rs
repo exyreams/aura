@@ -5,7 +5,7 @@
 /// communicate graph capabilities to off-chain tooling.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyGraphSpec {
-    /// Unique name identifying this graph version (e.g. `"confidential_spend_guardrails_scalar_v1"`).
+    /// Unique name identifying this graph (e.g. `"confidential_spend_guardrails_scalar"`).
     pub name: &'static str,
     /// Names of the output ciphertext slots produced by this graph.
     pub outputs: &'static [&'static str],

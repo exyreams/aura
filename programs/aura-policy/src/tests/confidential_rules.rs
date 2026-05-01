@@ -229,7 +229,7 @@ fn public_precheck_defers_private_spend_limits_but_keeps_advanced_rules() {
 fn confidential_graph_spec_exposes_encrypt_metadata() {
     let spec = confidential_scalar_policy_graph();
 
-    assert_eq!(spec.name, "confidential_spend_guardrails_scalar_v1");
+    assert_eq!(spec.name, "confidential_spend_guardrails_scalar");
     assert!(spec.uses_update_mode);
     assert!(spec.requires_decryption);
 }
@@ -248,7 +248,7 @@ fn confidential_vector_graph_exposes_vector_metadata_and_ops() {
         }
     }
 
-    assert_eq!(spec.name, "confidential_spend_guardrails_vector_v3");
+    assert_eq!(spec.name, "confidential_spend_guardrails_vector");
     assert_eq!(graph.header().num_inputs(), 2);
     assert_eq!(graph.header().num_outputs(), 1);
     assert!(op_types.contains(&92), "vector graph should use assign");

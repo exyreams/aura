@@ -42,23 +42,41 @@ pub enum AuditKind {
     SwarmAttached,
     /// Emitted when a multisig override proposal reaches quorum and is applied.
     OverrideExecuted,
+    /// Emitted when an AI authority rotation is proposed.
     AiAuthorityRotationProposed,
+    /// Emitted when an AI authority rotation is executed and the new authority becomes active.
     AiAuthorityRotated,
+    /// Emitted when a configuration change is proposed.
     ConfigChangeProposed,
+    /// Emitted when a proposed configuration change is executed.
     ConfigChangeExecuted,
+    /// Emitted when a proposed configuration change is vetoed or rejected.
     ConfigChangeVetoed,
+    /// Emitted when the circuit breaker is triggered to halt operations.
     CircuitBreakerTripped,
+    /// Emitted when the circuit breaker is reset and operations resume.
     CircuitBreakerReset,
+    /// Emitted when a session key is issued for temporary authorization.
     SessionKeyIssued,
+    /// Emitted when a session key is revoked or expires.
     SessionKeyRevoked,
+    /// Emitted when the dead man's switch mechanism is triggered.
     DeadMansSwitchTriggered,
+    /// Emitted when an agent's state transitions between lifecycle stages.
     AgentStateTransitioned,
+    /// Emitted when a guardian is added to the treasury.
     GuardianAdded,
+    /// Emitted when a guardian is removed from the treasury.
     GuardianRemoved,
+    /// Emitted when an emergency shutdown is initiated.
     EmergencyShutdown,
+    /// Emitted when fees are collected from treasury operations.
     FeeCollected,
+    /// Emitted when a treasury state snapshot is taken.
     SnapshotTaken,
+    /// Emitted when the treasury joins a swarm shared pool.
     SwarmPoolJoined,
+    /// Emitted when the treasury balance is refreshed or updated.
     BalanceRefreshed,
 }
 

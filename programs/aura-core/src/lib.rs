@@ -521,14 +521,15 @@ pub use execution::{
 };
 pub use ext_cpi::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex, decrypt_u64,
-    decrypt_u64_lane, parse_ciphertext_account, parse_decryption_request_account,
-    parse_message_approval_account, parse_runtime_pubkey, pending_signature_request_from_live,
-    request_decryption_via_cpi, transfer_dwallet_via_cpi, transfer_future_sign_via_cpi,
-    verify_decryption_request_digest, verify_message_approval, zero_message_metadata_digest_hex,
-    AuraEncryptContext, DecryptionStatus, EncryptEvaluation, MessageApprovalRequest,
-    MessageApprovalStatus, OnchainCiphertext, OnchainDecryptionRequest, OnchainMessageApproval,
-    DWALLET_CPI_AUTHORITY_SEED, ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED,
-    ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64, MESSAGE_APPROVAL_SEED,
+    decrypt_u64_lane, find_message_approval_pda, parse_ciphertext_account,
+    parse_decryption_request_account, parse_message_approval_account, parse_runtime_pubkey,
+    pending_signature_request_from_live, request_decryption_via_cpi, transfer_dwallet_via_cpi,
+    transfer_future_sign_via_cpi, verify_decryption_request_digest, verify_message_approval,
+    zero_message_metadata_digest_hex, AuraEncryptContext, DecryptionStatus, EncryptEvaluation,
+    MessageApprovalRequest, MessageApprovalStatus, OnchainCiphertext, OnchainDecryptionRequest,
+    OnchainMessageApproval, DWALLET_CPI_AUTHORITY_SEED, ENCRYPT_CPI_AUTHORITY_SEED,
+    ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64,
+    MESSAGE_APPROVAL_SEED,
 };
 pub use governance::{EmergencyMultisig, OverrideProposal};
 pub use program_accounts::*;
@@ -539,12 +540,11 @@ pub use program_events::{
 pub use state::{
     AgentLifecycleState, AgentReputation, AgentSwarm, AgentTreasury, CircuitBreakerConfig,
     CircuitBreakerState, ComplianceMetadata, ConfidentialGuardrails, ConfigChangeKind,
-    DWalletCurve, DWalletMessageApprovalLayout, DWalletReference, DeadMansSwitch,
-    DeploymentCluster, ExecutionReceipt, GuardianChangeAction, PendingAiRotation,
-    PendingConfigChange, PendingDecryptionRequest, PendingGuardianChange, PendingSignatureRequest,
-    PendingTransaction, ProposalStatus, ProtocolDeployment, ProtocolFees, SignatureScheme,
-    DWALLET_DEVNET_GRPC_ENDPOINT, DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET_GRPC_ENDPOINT,
-    ENCRYPT_DEVNET_PROGRAM_ID,
+    DWalletCurve, DWalletReference, DeadMansSwitch, DeploymentCluster, ExecutionReceipt,
+    GuardianChangeAction, PendingAiRotation, PendingConfigChange, PendingDecryptionRequest,
+    PendingGuardianChange, PendingSignatureRequest, PendingTransaction, ProposalStatus,
+    ProtocolDeployment, ProtocolFees, SignatureScheme, DWALLET_DEVNET_GRPC_ENDPOINT,
+    DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET_GRPC_ENDPOINT, ENCRYPT_DEVNET_PROGRAM_ID,
 };
 
 #[cfg(test)]

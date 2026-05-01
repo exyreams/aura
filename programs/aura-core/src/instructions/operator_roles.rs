@@ -1,3 +1,8 @@
+//! Grant and revoke scoped operator permissions.
+//!
+//! Operator role accounts allow non-owner keys to perform narrow maintenance
+//! tasks such as simulations, liveness refreshes, and scoped pause updates.
+
 use anchor_lang::prelude::*;
 
 use crate::{
@@ -5,10 +10,14 @@ use crate::{
     program_accounts::{OperatorRoleAccount, TreasuryAccount, OPERATOR_ROLE_SPACE},
 };
 
+/// Instruction data for `grant_operator_role`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct GrantOperatorRoleArgs {
+    /// Bitmask of permissions from `role_permissions`.
     pub permission_mask: u64,
+    /// Unix timestamp after which the role is inactive.
     pub expires_at: i64,
+    /// Unix timestamp recorded as the grant time.
     pub now: i64,
 }
 

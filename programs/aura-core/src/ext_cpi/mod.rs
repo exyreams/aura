@@ -16,11 +16,11 @@ mod encrypt;
 
 pub use dwallet::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex,
-    parse_message_approval_account, parse_runtime_pubkey, pending_signature_request_from_live,
-    transfer_dwallet_via_cpi, transfer_future_sign_via_cpi, verify_message_approval,
-    zero_message_metadata_digest_hex, MessageApprovalRequest, MessageApprovalStatus,
-    OnchainMessageApproval, DWALLET_COORDINATOR_SEED, DWALLET_CPI_AUTHORITY_SEED,
-    MESSAGE_APPROVAL_SEED,
+    find_message_approval_pda, parse_message_approval_account, parse_runtime_pubkey,
+    pending_signature_request_from_live, transfer_dwallet_via_cpi, transfer_future_sign_via_cpi,
+    verify_message_approval, zero_message_metadata_digest_hex, MessageApprovalRequest,
+    MessageApprovalStatus, OnchainMessageApproval, DWALLET_COORDINATOR_SEED,
+    DWALLET_CPI_AUTHORITY_SEED, MESSAGE_APPROVAL_SEED,
 };
 
 pub use encrypt::{

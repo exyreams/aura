@@ -1,3 +1,8 @@
+//! Write signed policy attestation records.
+//!
+//! Attestations bind an attester to the exact hash of the treasury policy
+//! configuration for a given policy version.
+
 use anchor_lang::prelude::*;
 use sha2::{Digest, Sha256};
 
@@ -6,10 +11,14 @@ use crate::{
     program_accounts::{PolicyAttestationAccount, TreasuryAccount, POLICY_ATTESTATION_SPACE},
 };
 
+/// Instruction data for `attest_policy`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AttestPolicyArgs {
+    /// Caller-defined attestation type code.
     pub attestation_kind: u8,
+    /// SHA-256 hash expected for the treasury policy config record.
     pub expected_policy_hash: [u8; 32],
+    /// Unix timestamp recorded on the attestation.
     pub now: i64,
 }
 

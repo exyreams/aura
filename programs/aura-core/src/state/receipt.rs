@@ -34,7 +34,7 @@ pub struct ExecutionReceipt {
     pub message_approval_account: Option<String>,
     /// Hex-encoded Keccak-256 digest of the signed chain message.
     pub message_digest: Option<String>,
-    /// Hex-encoded metadata digest used in MetadataV2 PDA derivation.
+    /// Hex-encoded metadata digest used in message approval PDA derivation.
     pub message_metadata_digest: Option<String>,
     /// The canonical chain message string that was signed.
     pub signed_message: Option<String>,

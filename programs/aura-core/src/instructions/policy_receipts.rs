@@ -1,3 +1,8 @@
+//! Persist explainable policy decision receipts.
+//!
+//! Receipts turn pending proposal decisions into compact audit records that
+//! clients can index without replaying the full policy engine trace.
+
 use anchor_lang::prelude::*;
 use aura_policy::{explain_decision, required_approval_level, ApprovalLevel};
 
@@ -10,9 +15,12 @@ use crate::{
     program_events::emit_policy_receipt_event,
 };
 
+/// Instruction data for `write_policy_receipt`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct WritePolicyReceiptArgs {
+    /// Pending proposal identifier to snapshot into a receipt PDA.
     pub proposal_id: u64,
+    /// Unix timestamp recorded as receipt creation time.
     pub now: i64,
 }
 

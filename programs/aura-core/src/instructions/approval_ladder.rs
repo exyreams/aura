@@ -1,3 +1,8 @@
+//! Configure and satisfy approval ladder requirements for pending proposals.
+//!
+//! The ladder decides whether a proposal can execute immediately or needs
+//! guardian, multisig, timelock, or denial handling based on amount and risk.
+
 use anchor_lang::prelude::*;
 use aura_policy::{ApprovalLadder, ApprovalLevel};
 
@@ -6,16 +11,26 @@ use crate::{
     program_accounts::TreasuryAccount,
 };
 
+/// Instruction data for `configure_approval_ladder`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ConfigureApprovalLadderArgs {
+    /// Amount at or above which guardian approval is required.
     pub guardian_above_usd: u64,
+    /// Amount at or above which multisig approval is required.
     pub multisig_above_usd: u64,
+    /// Amount at or above which a timelock is required.
     pub timelock_above_usd: u64,
+    /// Amount at or above which execution is denied.
     pub deny_above_usd: u64,
+    /// Risk score in basis points at or above which guardian approval is required.
     pub risk_guardian_bps: u16,
+    /// Risk score in basis points at or above which multisig approval is required.
     pub risk_multisig_bps: u16,
+    /// Risk score in basis points at or above which a timelock is required.
     pub risk_timelock_bps: u16,
+    /// Timelock duration in seconds for timelock-level proposals.
     pub timelock_secs: i64,
+    /// Unix timestamp used for the config-change audit event.
     pub now: i64,
 }
 
@@ -61,10 +76,14 @@ pub fn configure_approval_ladder(
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)
 }
 
+/// Instruction data for `approve_pending_execution`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ApprovePendingExecutionArgs {
+    /// Pending proposal identifier to satisfy.
     pub proposal_id: u64,
+    /// `ApprovalLevel` code being supplied by the approver.
     pub approval_level: u8,
+    /// Unix timestamp used for validation and treasury sync.
     pub now: i64,
 }
 

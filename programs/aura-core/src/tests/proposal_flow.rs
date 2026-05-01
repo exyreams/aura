@@ -4,9 +4,9 @@ use aura_policy::{Chain, PolicyConfig, TransactionContext, TransactionType, Viol
 use crate::{
     build_chain_message, build_message_approval_request, deny_pending_transaction,
     expire_pending_transaction, finalize_signed_pending, mark_signature_requested,
-    pending_signature_request_from_live, propose_transaction, AgentTreasury,
-    DWalletMessageApprovalLayout, ProposalStatus, ProtocolDeployment, SignatureScheme,
-    TreasuryError, DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET_PROGRAM_ID,
+    pending_signature_request_from_live, propose_transaction, AgentTreasury, ProposalStatus,
+    ProtocolDeployment, SignatureScheme, TreasuryError, DWALLET_DEVNET_PROGRAM_ID,
+    ENCRYPT_DEVNET_PROGRAM_ID,
 };
 
 /// Builds a standard treasury used across proposal flow tests.
@@ -38,7 +38,7 @@ pub fn treasury() -> AgentTreasury {
             Some(Pubkey::new_unique().to_string()),
             Some(Pubkey::new_unique().to_string()),
             None,
-            None,
+            Some(hex::encode([0x44u8; 32])),
             1_700_000_001,
         )
         .expect("dwallet runtime metadata should be configured");
@@ -60,13 +60,8 @@ pub fn request_signature_for_pending(treasury: &mut AgentTreasury, now: i64) -> 
         .dwallet_program_id
         .parse()
         .expect("valid local dwallet program id");
-    let approval_request = build_message_approval_request(
-        &pending,
-        &dwallet,
-        &dwallet_program,
-        treasury.deployment.dwallet_message_approval_layout,
-    )
-    .expect("message approval request should build");
+    let approval_request = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+        .expect("message approval request should build");
     let dwallet_account: Pubkey = dwallet
         .dwallet_account
         .clone()
@@ -182,8 +177,12 @@ fn devnet_pre_alpha_uses_official_encrypt_and_dwallet_ids() {
     assert_eq!(deployment.encrypt_program_id, ENCRYPT_DEVNET_PROGRAM_ID);
     assert_eq!(deployment.dwallet_program_id, DWALLET_DEVNET_PROGRAM_ID);
     assert_eq!(
-        deployment.dwallet_message_approval_layout,
-        DWalletMessageApprovalLayout::MetadataV2
+        deployment.encrypt_grpc_endpoint,
+        crate::ENCRYPT_DEVNET_GRPC_ENDPOINT
+    );
+    assert_eq!(
+        deployment.dwallet_grpc_endpoint,
+        crate::DWALLET_DEVNET_GRPC_ENDPOINT
     );
 }
 

@@ -1,3 +1,8 @@
+//! Produce invariant reports for treasury health checks.
+//!
+//! Reports capture pass/fail/warning bitmaps for core account invariants so
+//! operators can monitor drift without mutating treasury business state.
+
 use anchor_lang::prelude::*;
 
 use crate::{
@@ -7,9 +12,12 @@ use crate::{
     program_accounts::{InvariantReportAccount, TreasuryAccount, INVARIANT_REPORT_SPACE},
 };
 
+/// Instruction data for `check_invariants`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CheckInvariantsArgs {
+    /// Caller-defined report identifier used in the report PDA seed.
     pub report_id: u64,
+    /// Unix timestamp recorded on the report account.
     pub now: i64,
 }
 

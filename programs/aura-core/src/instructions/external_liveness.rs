@@ -1,3 +1,8 @@
+//! Manage external dependency freshness records.
+//!
+//! Liveness accounts let sensitive instructions require recently refreshed
+//! Encrypt, dWallet, balance-oracle, or compliance-oracle evidence.
+
 use anchor_lang::prelude::*;
 
 use crate::{
@@ -10,9 +15,12 @@ use crate::{
     },
 };
 
+/// Instruction data for `init_external_liveness`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitExternalLivenessArgs {
+    /// Maximum allowed age, in seconds, for dependency freshness checks.
     pub max_staleness_secs: i64,
+    /// Unix timestamp used to initialize all dependency timestamps.
     pub now: i64,
 }
 
@@ -53,13 +61,20 @@ pub fn init_external_liveness(
     Ok(())
 }
 
+/// Instruction data for `configure_liveness_guardrails`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ConfigureLivenessGuardrailsArgs {
+    /// Require fresh Encrypt evidence before confidential proposal steps.
     pub require_encrypt_freshness: bool,
+    /// Require fresh dWallet evidence before finalization.
     pub require_dwallet_freshness: bool,
+    /// Require fresh balance-oracle evidence.
     pub require_balance_oracle_freshness: bool,
+    /// Require fresh compliance-oracle evidence.
     pub require_compliance_oracle_freshness: bool,
+    /// Maximum allowed dependency age in seconds.
     pub max_staleness_secs: i64,
+    /// Unix timestamp used for the config-change audit event.
     pub now: i64,
 }
 
@@ -100,9 +115,12 @@ pub fn configure_liveness_guardrails(
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)
 }
 
+/// Instruction data for `refresh_external_liveness`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RefreshExternalLivenessArgs {
+    /// Dependency code: 1 Encrypt, 2 dWallet, 3 balance oracle, 4 compliance oracle.
     pub dependency: u8,
+    /// Unix timestamp written to the selected dependency.
     pub now: i64,
 }
 

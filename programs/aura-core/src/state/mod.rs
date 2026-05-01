@@ -28,9 +28,8 @@ mod swarm;
 pub use agent_treasury::AgentTreasury;
 pub use confidential::ConfidentialGuardrails;
 pub use deployment::{
-    DWalletMessageApprovalLayout, DeploymentCluster, ProtocolDeployment,
-    DWALLET_DEVNET_GRPC_ENDPOINT, DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET_GRPC_ENDPOINT,
-    ENCRYPT_DEVNET_PROGRAM_ID,
+    DeploymentCluster, ProtocolDeployment, DWALLET_DEVNET_GRPC_ENDPOINT, DWALLET_DEVNET_PROGRAM_ID,
+    ENCRYPT_DEVNET_GRPC_ENDPOINT, ENCRYPT_DEVNET_PROGRAM_ID,
 };
 pub use dwallet::{DWalletCurve, DWalletReference, SignatureScheme};
 pub use fees::ProtocolFees;

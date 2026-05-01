@@ -49,7 +49,7 @@ pub struct PendingSignatureRequest {
     pub approval_id: String,
     /// Hex-encoded Keccak-256 digest of the chain message.
     pub message_digest: String,
-    /// Hex-encoded metadata digest included in the MetadataV2 PDA derivation.
+    /// Hex-encoded metadata digest included in the message approval PDA derivation.
     pub message_metadata_digest: String,
     /// Signature scheme used by the dWallet.
     pub signature_scheme: SignatureScheme,

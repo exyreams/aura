@@ -1,3 +1,8 @@
+//! Configure scoped execution pause entries.
+//!
+//! Scoped pauses let owners or authorized operators block specific chains,
+//! categories, recipients, protocols, confidential execution, or dWallet finalization.
+
 use anchor_lang::prelude::*;
 use aura_policy::{PauseScope, ScopedPauseEntry};
 
@@ -8,15 +13,24 @@ use crate::{
     program_accounts::{chain_from_code, role_permissions, OperatorRoleAccount, TreasuryAccount},
 };
 
+/// Instruction data for `set_scoped_pause`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SetScopedPauseArgs {
+    /// Scope kind: 0 all, 1 chain, 2 category, 3 recipient, 4 protocol, 5 confidential, 6 dWallet.
     pub scope_kind: u8,
+    /// Chain code when pausing a chain scope.
     pub chain: Option<u8>,
+    /// Transaction type code when pausing a category scope.
     pub tx_type: Option<u8>,
+    /// Recipient address when pausing a recipient scope.
     pub recipient: Option<String>,
+    /// Protocol identifier when pausing a protocol scope.
     pub protocol_id: Option<u8>,
+    /// Whether to add (`true`) or remove (`false`) the scoped pause entry.
     pub paused: bool,
+    /// Optional timestamp when the pause expires.
     pub expires_at: Option<i64>,
+    /// Unix timestamp used for role checks and audit events.
     pub now: i64,
 }
 

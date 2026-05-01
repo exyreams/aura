@@ -1,3 +1,8 @@
+//! Run non-mutating policy simulations.
+//!
+//! Simulations evaluate a hypothetical transaction against current treasury
+//! policy and write the result to a PDA without advancing spend counters.
+
 use anchor_lang::prelude::*;
 use aura_policy::{
     evaluate_policy_without_spend_mutation, explain_decision, required_approval_level,
@@ -13,18 +18,30 @@ use crate::{
     },
 };
 
+/// Instruction data for `simulate_policy`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SimulatePolicyArgs {
+    /// Caller-defined simulation identifier used in the result PDA seed.
     pub simulation_id: u64,
+    /// USD amount to evaluate.
     pub amount_usd: u64,
+    /// Target chain code.
     pub target_chain: u8,
+    /// Transaction type code.
     pub tx_type: u8,
+    /// Optional protocol identifier for protocol-scoped policies.
     pub protocol_id: Option<u8>,
+    /// Unix timestamp used for time-window and reset logic.
     pub current_timestamp: i64,
+    /// Expected output amount for slippage checks.
     pub expected_output_usd: Option<u64>,
+    /// Actual output amount for slippage checks.
     pub actual_output_usd: Option<u64>,
+    /// Quote age in seconds for freshness checks.
     pub quote_age_secs: Option<u64>,
+    /// Counterparty risk score for risk policy checks.
     pub counterparty_risk_score: Option<u8>,
+    /// Recipient address or contract identifier.
     pub recipient_or_contract: String,
 }
 

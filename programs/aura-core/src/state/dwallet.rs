@@ -118,9 +118,9 @@ pub struct DWalletReference {
     pub dwallet_account: Option<String>,
     /// Authorized user public key registered on the dWallet (required for live signing).
     pub authorized_user_pubkey: Option<String>,
-    /// Hex-encoded metadata digest for MetadataV2 PDA derivation.
+    /// Hex-encoded metadata digest for message approval PDA derivation.
     pub message_metadata_digest: Option<String>,
-    /// Hex-encoded raw public key bytes for MetadataV2 PDA derivation.
+    /// Hex-encoded raw public key bytes for message approval PDA derivation.
     pub public_key_hex: Option<String>,
     /// Elliptic curve used by this dWallet.
     pub curve: DWalletCurve,

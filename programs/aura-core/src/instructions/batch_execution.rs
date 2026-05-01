@@ -1,3 +1,8 @@
+//! Create policy-evaluated batch proposal records.
+//!
+//! Batch proposals let clients pre-check multiple actions as one aggregate
+//! request while still preserving per-item violations and approval requirements.
+
 use anchor_lang::prelude::*;
 use aura_policy::{evaluate_batch_policy, BatchProposalItem};
 
@@ -9,19 +14,29 @@ use crate::{
     },
 };
 
+/// One transaction-like item inside a batch proposal.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BatchProposalItemArgs {
+    /// USD amount evaluated for this item.
     pub amount_usd: u64,
+    /// Target chain code.
     pub chain: u8,
+    /// Transaction type code.
     pub tx_type: u8,
+    /// Recipient address or contract identifier.
     pub recipient_or_contract: String,
+    /// Optional protocol identifier for protocol-scoped policies.
     pub protocol_id: Option<u8>,
 }
 
+/// Instruction data for `propose_batch`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProposeBatchArgs {
+    /// Caller-defined batch identifier used in the batch PDA seed.
     pub batch_id: u64,
+    /// Unix timestamp used for policy evaluation and account creation.
     pub now: i64,
+    /// Batch items to evaluate in order.
     pub items: Vec<BatchProposalItemArgs>,
 }
 

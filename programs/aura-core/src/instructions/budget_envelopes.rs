@@ -1,3 +1,8 @@
+//! Configure scoped budget envelopes and shared exposure groups.
+//!
+//! Envelopes constrain spend by chain, transaction category, or protocol.
+//! Exposure groups let multiple treasuries share a daily aggregate risk cap.
+
 use anchor_lang::prelude::*;
 
 use crate::{
@@ -10,15 +15,24 @@ use crate::{
     },
 };
 
+/// Instruction data for `configure_budget_envelope`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ConfigureBudgetEnvelopeArgs {
+    /// Caller-defined envelope identifier used in the envelope PDA seed.
     pub envelope_id: u64,
+    /// Scope kind: 0 chain, 1 category, 2 protocol.
     pub scope_kind: u8,
+    /// Chain code when configuring a chain-scoped envelope.
     pub chain: Option<u8>,
+    /// Transaction type code when configuring a category-scoped envelope.
     pub tx_type: Option<u8>,
+    /// Protocol identifier when configuring a protocol-scoped envelope.
     pub protocol_id: Option<u8>,
+    /// Maximum spend for one day.
     pub daily_limit_usd: u64,
+    /// Optional maximum spend for one week; zero disables the weekly cap.
     pub weekly_limit_usd: u64,
+    /// Unix timestamp used for reset-day calculation and audit logging.
     pub now: i64,
 }
 
@@ -117,10 +131,14 @@ pub fn configure_budget_envelope(
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)
 }
 
+/// Instruction data for `init_exposure_group`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitExposureGroupArgs {
+    /// Caller-defined exposure group identifier.
     pub group_id: [u8; 16],
+    /// Maximum aggregate daily spend for all group members.
     pub daily_limit_usd: u64,
+    /// Unix timestamp used to initialize the group reset day.
     pub now_day: i64,
 }
 

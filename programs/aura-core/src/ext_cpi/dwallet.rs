@@ -9,8 +9,8 @@ use anchor_lang::{
 use crate::{
     execution::{build_chain_message, keccak_message_digest},
     state::{
-        DWalletCurve, DWalletMessageApprovalLayout, DWalletReference, PendingSignatureRequest,
-        PendingTransaction, SignatureScheme,
+        DWalletCurve, DWalletReference, PendingSignatureRequest, PendingTransaction,
+        SignatureScheme,
     },
     TreasuryError,
 };
@@ -21,14 +21,14 @@ type TreasuryResult<T> = std::result::Result<T, TreasuryError>;
 /// Must match the seed expected by the dWallet program's CPI authority check.
 pub const DWALLET_CPI_AUTHORITY_SEED: &[u8] = b"__ika_cpi_authority";
 
-/// Seed for the dWallet coordinator PDA, required by the MetadataV2 approve-message
+/// Seed for the dWallet coordinator PDA, required by the dWallet approve-message
 /// instruction as an additional read-only account.
 pub const DWALLET_COORDINATOR_SEED: &[u8] = b"dwallet_coordinator";
 
-/// Seed prefix used when deriving the dWallet PDA itself (part of the V2 PDA seeds).
+/// Seed prefix used when deriving the dWallet PDA itself.
 pub const DWALLET_SEED: &[u8] = b"dwallet";
 
-/// Seed used to derive the `MessageApproval` PDA for both layout versions.
+/// Seed used to derive the `MessageApproval` PDA.
 pub const MESSAGE_APPROVAL_SEED: &[u8] = b"message_approval";
 
 /// Instruction discriminator for `approve_message` in the dWallet program.
@@ -47,22 +47,18 @@ pub const MESSAGE_APPROVAL_ACCOUNT_DISCRIMINATOR: u8 = 14;
 /// by the dWallet program. Currently always `1` regardless of layout variant.
 pub const MESSAGE_APPROVAL_ACCOUNT_VERSION: u8 = 1;
 
-/// Fixed byte length of a fully-populated MetadataV2 `MessageApproval` account
+/// Fixed byte length of a fully-populated `MessageApproval` account
 /// (128-byte ECDSA/EdDSA signature + all header fields).
-pub const MESSAGE_APPROVAL_ACCOUNT_LEN_V2: usize = 312;
+pub const MESSAGE_APPROVAL_ACCOUNT_LEN: usize = 312;
 
-/// Minimum byte length of a LegacyV1 `MessageApproval` account
-/// (header fields only; signature bytes follow immediately after).
-pub const MESSAGE_APPROVAL_ACCOUNT_MIN_LEN_V1: usize = 142;
-
-// MetadataV2 account field offsets
+// MessageApproval account field offsets.
 //
 // Layout (bytes):
 //   [0]       discriminator
 //   [1]       version
 //   [2..34]   dwallet pubkey
 //   [34..66]  message_digest
-//   [66..98]  message_metadata_digest   ← added in V2; shifts all later fields by 32
+//   [66..98]  message_metadata_digest
 //   [98..130] approver pubkey
 //   [130..162] user_pubkey
 //   [162..164] signature_scheme (u16 LE)
@@ -71,41 +67,17 @@ pub const MESSAGE_APPROVAL_ACCOUNT_MIN_LEN_V1: usize = 142;
 //   [173..175] signature_len (u16 LE)
 //   [175..303] signature bytes (128 bytes max)
 //   [303]     bump
-const V2_OFFSET_DWALLET: usize = 2;
-const V2_OFFSET_MESSAGE_DIGEST: usize = 34;
-const V2_OFFSET_MESSAGE_METADATA_DIGEST: usize = 66;
-const V2_OFFSET_APPROVER: usize = 98;
-const V2_OFFSET_USER_PUBKEY: usize = 130;
-const V2_OFFSET_SIGNATURE_SCHEME: usize = 162;
-const V2_OFFSET_EPOCH: usize = 164;
-const V2_OFFSET_STATUS: usize = 172;
-const V2_OFFSET_SIGNATURE_LEN: usize = 173;
-const V2_OFFSET_SIGNATURE: usize = 175;
-const V2_OFFSET_BUMP: usize = 303;
-
-// LegacyV1 account field offsets
-//
-// Layout (bytes):
-//   [0]       discriminator
-//   [1]       version
-//   [2..34]   dwallet pubkey
-//   [34..66]  message_digest            ← no metadata digest field
-//   [66..98]  approver pubkey
-//   [98..130] user_pubkey
-//   [130]     signature_scheme (u8, not u16)
-//   [131..139] epoch (u64 LE)
-//   [139]     status (u8)
-//   [140..142] signature_len (u16 LE)
-//   [142+]    signature bytes
-const V1_OFFSET_DWALLET: usize = 2;
-const V1_OFFSET_MESSAGE_DIGEST: usize = 34;
-const V1_OFFSET_APPROVER: usize = 66;
-const V1_OFFSET_USER_PUBKEY: usize = 98;
-const V1_OFFSET_SIGNATURE_SCHEME: usize = 130;
-const V1_OFFSET_EPOCH: usize = 131;
-const V1_OFFSET_STATUS: usize = 139;
-const V1_OFFSET_SIGNATURE_LEN: usize = 140;
-const V1_OFFSET_SIGNATURE: usize = 142;
+const OFFSET_DWALLET: usize = 2;
+const OFFSET_MESSAGE_DIGEST: usize = 34;
+const OFFSET_MESSAGE_METADATA_DIGEST: usize = 66;
+const OFFSET_APPROVER: usize = 98;
+const OFFSET_USER_PUBKEY: usize = 130;
+const OFFSET_SIGNATURE_SCHEME: usize = 162;
+const OFFSET_EPOCH: usize = 164;
+const OFFSET_STATUS: usize = 172;
+const OFFSET_SIGNATURE_LEN: usize = 173;
+const OFFSET_SIGNATURE: usize = 175;
+const OFFSET_BUMP: usize = 303;
 
 /// Upper bound on signature byte length; guards against malformed account data.
 const MAX_SIGNATURE_LEN: usize = 128;
@@ -127,10 +99,8 @@ pub enum MessageApprovalStatus {
 /// `PendingSignatureRequest` on the treasury account.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageApprovalRequest {
-    /// Which on-chain account layout to use when building the CPI instruction.
-    pub layout: DWalletMessageApprovalLayout,
-    /// The coordinator PDA required by MetadataV2; `None` for LegacyV1.
-    pub coordinator_account: Option<Pubkey>,
+    /// The coordinator PDA required by the dWallet approve-message instruction.
+    pub coordinator_account: Pubkey,
     /// Human-readable chain message string (used for digest derivation and audit).
     pub message: String,
     /// Keccak-256 digest of `message`, passed as instruction data.
@@ -138,7 +108,7 @@ pub struct MessageApprovalRequest {
     /// Hex-encoded form of `message_digest`, stored in `PendingSignatureRequest`.
     pub message_digest_hex: String,
     /// Metadata digest from `DWalletReference::message_metadata_digest`, or all-zeros
-    /// for LegacyV1 / when no metadata digest is configured.
+    /// when no metadata digest is configured.
     pub message_metadata_digest: [u8; 32],
     /// Hex-encoded form of `message_metadata_digest`.
     pub message_metadata_digest_hex: String,
@@ -154,18 +124,15 @@ pub struct MessageApprovalRequest {
 
 /// Parsed representation of a `MessageApproval` account read from the dWallet program.
 ///
-/// Produced by `parse_message_approval_account`, which tries the MetadataV2
-/// layout first and falls back to LegacyV1 for accounts created by older
-/// dWallet program deployments.
+/// Produced by `parse_message_approval_account` from the current dWallet
+/// `MessageApproval` byte layout.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OnchainMessageApproval {
-    /// Which byte layout was used to parse this account.
-    pub layout: DWalletMessageApprovalLayout,
     /// The dWallet account this approval belongs to.
     pub dwallet: Pubkey,
     /// Keccak-256 digest of the signed message.
     pub message_digest: [u8; 32],
-    /// Metadata digest included in the V2 PDA derivation; all-zeros for LegacyV1.
+    /// Metadata digest included in the PDA derivation.
     pub message_metadata_digest: [u8; 32],
     /// The CPI authority that submitted the approval request.
     pub approver: Pubkey,
@@ -179,16 +146,15 @@ pub struct OnchainMessageApproval {
     pub status: MessageApprovalStatus,
     /// Raw signature bytes; non-empty only when `status == Signed`.
     pub signature: Vec<u8>,
-    /// PDA bump; always `0` for LegacyV1 accounts (field did not exist).
+    /// PDA bump stored by the dWallet program.
     pub bump: u8,
 }
 
 /// Derives all fields needed to call `approve_message` on the dWallet program.
 ///
 /// Builds the chain message from `pending` and `dwallet`, computes its
-/// Keccak-256 digest, resolves the metadata digest (or uses all-zeros for
-/// LegacyV1), and derives the `MessageApproval` PDA using the appropriate
-/// seed scheme for `layout`.
+/// Keccak-256 digest, resolves the metadata digest, and derives the canonical
+/// `MessageApproval` PDA.
 ///
 /// Returns a `MessageApprovalRequest` ready to be passed to
 /// `approve_message_via_cpi` and stored as a `PendingSignatureRequest`.
@@ -196,12 +162,7 @@ pub fn build_message_approval_request(
     pending: &PendingTransaction,
     dwallet: &DWalletReference,
     dwallet_program_id: &Pubkey,
-    layout: DWalletMessageApprovalLayout,
 ) -> TreasuryResult<MessageApprovalRequest> {
-    let dwallet_account = parse_runtime_pubkey(
-        dwallet.dwallet_account.as_deref(),
-        "dwallet_account must be configured for live dWallet signing",
-    )?;
     let message = build_chain_message(pending, dwallet);
     let message_digest = keccak_message_digest(&message);
     let message_digest_hex = hex::encode(message_digest);
@@ -214,27 +175,16 @@ pub fn build_message_approval_request(
         "message_metadata_digest must be a 32-byte hex digest",
     )?;
 
-    let (message_approval_account, message_approval_bump, coordinator_account) = match layout {
-        DWalletMessageApprovalLayout::LegacyV1 => {
-            let (approval, bump) =
-                find_message_approval_pda_v1(&dwallet_account, &message_digest, dwallet_program_id);
-            (approval, bump, None)
-        }
-        DWalletMessageApprovalLayout::MetadataV2 => {
-            let (approval, bump) = find_message_approval_pda_v2(
-                dwallet,
-                &message_digest,
-                &message_metadata_digest,
-                dwallet_program_id,
-            )?;
-            let (coordinator, _) =
-                Pubkey::find_program_address(&[DWALLET_COORDINATOR_SEED], dwallet_program_id);
-            (approval, bump, Some(coordinator))
-        }
-    };
+    let (message_approval_account, message_approval_bump) = find_message_approval_pda(
+        dwallet,
+        &message_digest,
+        &message_metadata_digest,
+        dwallet_program_id,
+    )?;
+    let (coordinator_account, _) =
+        Pubkey::find_program_address(&[DWALLET_COORDINATOR_SEED], dwallet_program_id);
 
     Ok(MessageApprovalRequest {
-        layout,
         coordinator_account,
         approval_id: format!("msgappr_{message_approval_account}"),
         message,
@@ -250,21 +200,17 @@ pub fn build_message_approval_request(
 
 /// Submits an `approve_message` CPI to the dWallet program.
 ///
-/// Builds the instruction data and account list for the given `layout`,
-/// then calls `invoke_signed` with the CPI authority PDA as the signer.
-///
-/// - `LegacyV1`: 6-account instruction; `signature_scheme` encoded as `u8`.
-/// - `MetadataV2`: 7-account instruction (adds `coordinator`); `signature_scheme`
-///   encoded as `u16 LE`; `message_metadata_digest` included in instruction data.
+/// Builds the current 7-account instruction, includes the message metadata
+/// digest in instruction data, and calls `invoke_signed` with the CPI authority
+/// PDA as the signer.
 ///
 /// The dWallet network processes the approval asynchronously. Poll
 /// `parse_message_approval_account` until `status == Signed` before calling
 /// `finalize_execution`.
 #[allow(clippy::too_many_arguments)]
 pub fn approve_message_via_cpi<'info>(
-    layout: DWalletMessageApprovalLayout,
     dwallet_program: &AccountInfo<'info>,
-    coordinator: Option<&AccountInfo<'info>>,
+    coordinator: &AccountInfo<'info>,
     message_approval: &AccountInfo<'info>,
     dwallet: &AccountInfo<'info>,
     caller_program: &AccountInfo<'info>,
@@ -278,73 +224,33 @@ pub fn approve_message_via_cpi<'info>(
     signature_scheme: SignatureScheme,
     approval_bump: u8,
 ) -> Result<()> {
-    let (accounts, account_infos, data) = match layout {
-        DWalletMessageApprovalLayout::LegacyV1 => {
-            let mut ix_data = Vec::with_capacity(67);
-            ix_data.push(IX_APPROVE_MESSAGE);
-            ix_data.push(approval_bump);
-            ix_data.extend_from_slice(&message_digest);
-            ix_data.extend_from_slice(&user_pubkey);
-            ix_data.push(signature_scheme.dwallet_scheme_code() as u8);
+    let mut data = Vec::with_capacity(100);
+    data.push(IX_APPROVE_MESSAGE);
+    data.push(approval_bump);
+    data.extend_from_slice(&message_digest);
+    data.extend_from_slice(&message_metadata_digest);
+    data.extend_from_slice(&user_pubkey);
+    data.extend_from_slice(&signature_scheme.dwallet_scheme_code().to_le_bytes());
 
-            (
-                vec![
-                    AccountMeta::new(message_approval.key(), false),
-                    AccountMeta::new_readonly(dwallet.key(), false),
-                    AccountMeta::new_readonly(caller_program.key(), false),
-                    AccountMeta::new_readonly(cpi_authority.key(), true),
-                    AccountMeta::new(payer.key(), true),
-                    AccountMeta::new_readonly(system_program.key(), false),
-                ],
-                vec![
-                    message_approval.clone(),
-                    dwallet.clone(),
-                    caller_program.clone(),
-                    cpi_authority.clone(),
-                    payer.clone(),
-                    system_program.clone(),
-                    dwallet_program.clone(),
-                ],
-                ix_data,
-            )
-        }
-        DWalletMessageApprovalLayout::MetadataV2 => {
-            let Some(coordinator) = coordinator else {
-                return err!(crate::AuraCoreError::InvalidExternalAccountData);
-            };
-
-            let mut ix_data = Vec::with_capacity(100);
-            ix_data.push(IX_APPROVE_MESSAGE);
-            ix_data.push(approval_bump);
-            ix_data.extend_from_slice(&message_digest);
-            ix_data.extend_from_slice(&message_metadata_digest);
-            ix_data.extend_from_slice(&user_pubkey);
-            ix_data.extend_from_slice(&signature_scheme.dwallet_scheme_code().to_le_bytes());
-
-            (
-                vec![
-                    AccountMeta::new_readonly(coordinator.key(), false),
-                    AccountMeta::new(message_approval.key(), false),
-                    AccountMeta::new_readonly(dwallet.key(), false),
-                    AccountMeta::new_readonly(caller_program.key(), false),
-                    AccountMeta::new_readonly(cpi_authority.key(), true),
-                    AccountMeta::new(payer.key(), true),
-                    AccountMeta::new_readonly(system_program.key(), false),
-                ],
-                vec![
-                    coordinator.clone(),
-                    message_approval.clone(),
-                    dwallet.clone(),
-                    caller_program.clone(),
-                    cpi_authority.clone(),
-                    payer.clone(),
-                    system_program.clone(),
-                    dwallet_program.clone(),
-                ],
-                ix_data,
-            )
-        }
-    };
+    let accounts = vec![
+        AccountMeta::new_readonly(coordinator.key(), false),
+        AccountMeta::new(message_approval.key(), false),
+        AccountMeta::new_readonly(dwallet.key(), false),
+        AccountMeta::new_readonly(caller_program.key(), false),
+        AccountMeta::new_readonly(cpi_authority.key(), true),
+        AccountMeta::new(payer.key(), true),
+        AccountMeta::new_readonly(system_program.key(), false),
+    ];
+    let account_infos = vec![
+        coordinator.clone(),
+        message_approval.clone(),
+        dwallet.clone(),
+        caller_program.clone(),
+        cpi_authority.clone(),
+        payer.clone(),
+        system_program.clone(),
+        dwallet_program.clone(),
+    ];
 
     let ix = Instruction {
         program_id: dwallet_program.key(),
@@ -438,11 +344,10 @@ pub fn transfer_future_sign_via_cpi<'info>(
 
 /// Parses a raw `MessageApproval` account from the dWallet program.
 ///
-/// Validates the discriminator and version bytes, then attempts to parse
-/// using the MetadataV2 layout. If the account is too short for V2 (i.e. it
-/// was created by an older dWallet deployment), falls back to LegacyV1.
+/// Validates the discriminator and version bytes, then parses the current
+/// `MessageApproval` byte layout. Legacy layouts are intentionally rejected.
 ///
-/// Returns `TreasuryError::InvalidAccountData` if neither layout matches.
+/// Returns `TreasuryError::InvalidAccountData` if the account is malformed.
 pub fn parse_message_approval_account(data: &[u8]) -> TreasuryResult<OnchainMessageApproval> {
     if data.is_empty() {
         return Err(TreasuryError::InvalidAccountData(
@@ -464,7 +369,7 @@ pub fn parse_message_approval_account(data: &[u8]) -> TreasuryResult<OnchainMess
         )));
     }
 
-    parse_message_approval_account_v2(data).or_else(|_| parse_message_approval_account_v1(data))
+    parse_current_message_approval_account(data)
 }
 
 /// Verifies that a parsed `MessageApproval` matches the stored `PendingSignatureRequest`.
@@ -589,25 +494,7 @@ pub fn parse_runtime_pubkey(value: Option<&str>, error_message: &str) -> Treasur
         .map_err(|_| TreasuryError::InvalidAccountData(error_message.to_string()))
 }
 
-/// Derives the LegacyV1 `MessageApproval` PDA.
-///
-/// Seeds: `[MESSAGE_APPROVAL_SEED, dwallet_account, message_digest]`
-fn find_message_approval_pda_v1(
-    dwallet_account: &Pubkey,
-    message_digest: &[u8; 32],
-    dwallet_program_id: &Pubkey,
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[
-            MESSAGE_APPROVAL_SEED,
-            dwallet_account.as_ref(),
-            message_digest,
-        ],
-        dwallet_program_id,
-    )
-}
-
-/// Derives the MetadataV2 `MessageApproval` PDA.
+/// Derives the canonical `MessageApproval` PDA.
 ///
 /// Seeds: `[DWALLET_SEED, <curve_code_le>, <public_key_chunks…>,
 ///          MESSAGE_APPROVAL_SEED, <scheme_le>, message_digest,
@@ -615,7 +502,7 @@ fn find_message_approval_pda_v1(
 ///
 /// Requires `dwallet.public_key_hex` to be set; returns
 /// `TreasuryError::InvalidAccountData` otherwise.
-fn find_message_approval_pda_v2(
+pub fn find_message_approval_pda(
     dwallet: &DWalletReference,
     message_digest: &[u8; 32],
     message_metadata_digest: &[u8; 32],
@@ -657,93 +544,47 @@ fn find_message_approval_pda_v2(
     Ok(Pubkey::find_program_address(&seed_refs, dwallet_program_id))
 }
 
-/// Parses a `MessageApproval` account using the MetadataV2 byte layout.
+/// Parses a `MessageApproval` account using the current byte layout.
 ///
-/// Fails if the account is shorter than `MESSAGE_APPROVAL_ACCOUNT_LEN_V2`.
-/// Called first by `parse_message_approval_account`; LegacyV1 is the fallback.
-fn parse_message_approval_account_v2(data: &[u8]) -> TreasuryResult<OnchainMessageApproval> {
-    if data.len() < MESSAGE_APPROVAL_ACCOUNT_LEN_V2 {
+/// Fails if the account is shorter than `MESSAGE_APPROVAL_ACCOUNT_LEN`.
+fn parse_current_message_approval_account(data: &[u8]) -> TreasuryResult<OnchainMessageApproval> {
+    if data.len() < MESSAGE_APPROVAL_ACCOUNT_LEN {
         return Err(TreasuryError::InvalidAccountData(format!(
             "message approval length {} is smaller than expected {}",
             data.len(),
-            MESSAGE_APPROVAL_ACCOUNT_LEN_V2
+            MESSAGE_APPROVAL_ACCOUNT_LEN
         )));
     }
 
-    let signature_len = read_signature_len(data, V2_OFFSET_SIGNATURE_LEN)?;
+    let signature_len = read_signature_len(data, OFFSET_SIGNATURE_LEN)?;
     let scheme_code = u16::from_le_bytes(
-        data[V2_OFFSET_SIGNATURE_SCHEME..V2_OFFSET_SIGNATURE_SCHEME + 2]
+        data[OFFSET_SIGNATURE_SCHEME..OFFSET_SIGNATURE_SCHEME + 2]
             .try_into()
             .map_err(|_| TreasuryError::InvalidAccountData("missing scheme code".to_string()))?,
     );
     let signature_scheme = signature_scheme_from_code(scheme_code)?;
     let epoch = u64::from_le_bytes(
-        data[V2_OFFSET_EPOCH..V2_OFFSET_EPOCH + 8]
+        data[OFFSET_EPOCH..OFFSET_EPOCH + 8]
             .try_into()
             .map_err(|_| TreasuryError::InvalidAccountData("missing epoch".to_string()))?,
     );
 
     Ok(OnchainMessageApproval {
-        layout: DWalletMessageApprovalLayout::MetadataV2,
-        dwallet: read_pubkey(data, V2_OFFSET_DWALLET)?,
-        message_digest: read_digest(data, V2_OFFSET_MESSAGE_DIGEST)?,
-        message_metadata_digest: read_digest(data, V2_OFFSET_MESSAGE_METADATA_DIGEST)?,
-        approver: read_pubkey(data, V2_OFFSET_APPROVER)?,
-        user_pubkey: read_pubkey(data, V2_OFFSET_USER_PUBKEY)?,
+        dwallet: read_pubkey(data, OFFSET_DWALLET)?,
+        message_digest: read_digest(data, OFFSET_MESSAGE_DIGEST)?,
+        message_metadata_digest: read_digest(data, OFFSET_MESSAGE_METADATA_DIGEST)?,
+        approver: read_pubkey(data, OFFSET_APPROVER)?,
+        user_pubkey: read_pubkey(data, OFFSET_USER_PUBKEY)?,
         signature_scheme,
         epoch,
-        status: approval_status_from_byte(data[V2_OFFSET_STATUS])?,
-        signature: read_signature_bytes(data, V2_OFFSET_SIGNATURE, signature_len)?,
-        bump: data[V2_OFFSET_BUMP],
-    })
-}
-
-/// Parses a `MessageApproval` account using the LegacyV1 byte layout.
-///
-/// Used as a fallback for accounts created by older dWallet program deployments
-/// that predate the MetadataV2 format. Key differences from V2:
-/// - No `message_metadata_digest` field (returned as all-zeros).
-/// - `signature_scheme` is a single `u8`, not a `u16`.
-/// - No `bump` field (returned as `0`).
-fn parse_message_approval_account_v1(data: &[u8]) -> TreasuryResult<OnchainMessageApproval> {
-    if data.len() < MESSAGE_APPROVAL_ACCOUNT_MIN_LEN_V1 {
-        return Err(TreasuryError::InvalidAccountData(format!(
-            "legacy message approval length {} is smaller than expected {}",
-            data.len(),
-            MESSAGE_APPROVAL_ACCOUNT_MIN_LEN_V1
-        )));
-    }
-
-    let signature_len = read_signature_len(data, V1_OFFSET_SIGNATURE_LEN)?;
-    let signature_scheme = signature_scheme_from_code(
-        data.get(V1_OFFSET_SIGNATURE_SCHEME)
-            .copied()
-            .ok_or_else(|| TreasuryError::InvalidAccountData("missing scheme code".to_string()))?
-            as u16,
-    )?;
-    let epoch = u64::from_le_bytes(
-        data[V1_OFFSET_EPOCH..V1_OFFSET_EPOCH + 8]
-            .try_into()
-            .map_err(|_| TreasuryError::InvalidAccountData("missing epoch".to_string()))?,
-    );
-
-    Ok(OnchainMessageApproval {
-        layout: DWalletMessageApprovalLayout::LegacyV1,
-        dwallet: read_pubkey(data, V1_OFFSET_DWALLET)?,
-        message_digest: read_digest(data, V1_OFFSET_MESSAGE_DIGEST)?,
-        message_metadata_digest: [0u8; 32],
-        approver: read_pubkey(data, V1_OFFSET_APPROVER)?,
-        user_pubkey: read_pubkey(data, V1_OFFSET_USER_PUBKEY)?,
-        signature_scheme,
-        epoch,
-        status: approval_status_from_byte(data[V1_OFFSET_STATUS])?,
-        signature: read_signature_bytes(data, V1_OFFSET_SIGNATURE, signature_len)?,
-        bump: 0,
+        status: approval_status_from_byte(data[OFFSET_STATUS])?,
+        signature: read_signature_bytes(data, OFFSET_SIGNATURE, signature_len)?,
+        bump: data[OFFSET_BUMP],
     })
 }
 
 /// Maps a `DWalletCurve` variant to the 2-byte little-endian seed code used
-/// in the MetadataV2 PDA derivation.
+/// in the message approval PDA derivation.
 fn curve_seed_code(curve: DWalletCurve) -> u16 {
     match curve {
         DWalletCurve::Secp256k1 => 0,
@@ -870,31 +711,29 @@ mod tests {
     }
 
     #[test]
-    fn parse_message_approval_layout_v2() {
+    fn parse_message_approval_current_layout() {
         let dwallet = Pubkey::new_unique();
         let approver = Pubkey::new_unique();
         let user = Pubkey::new_unique();
-        let mut data = vec![0u8; MESSAGE_APPROVAL_ACCOUNT_LEN_V2];
+        let mut data = vec![0u8; MESSAGE_APPROVAL_ACCOUNT_LEN];
         data[0] = MESSAGE_APPROVAL_ACCOUNT_DISCRIMINATOR;
         data[1] = MESSAGE_APPROVAL_ACCOUNT_VERSION;
-        data[V2_OFFSET_DWALLET..V2_OFFSET_DWALLET + 32].copy_from_slice(dwallet.as_ref());
-        data[V2_OFFSET_MESSAGE_DIGEST..V2_OFFSET_MESSAGE_DIGEST + 32].copy_from_slice(&[0x11; 32]);
-        data[V2_OFFSET_MESSAGE_METADATA_DIGEST..V2_OFFSET_MESSAGE_METADATA_DIGEST + 32]
+        data[OFFSET_DWALLET..OFFSET_DWALLET + 32].copy_from_slice(dwallet.as_ref());
+        data[OFFSET_MESSAGE_DIGEST..OFFSET_MESSAGE_DIGEST + 32].copy_from_slice(&[0x11; 32]);
+        data[OFFSET_MESSAGE_METADATA_DIGEST..OFFSET_MESSAGE_METADATA_DIGEST + 32]
             .copy_from_slice(&[0x22; 32]);
-        data[V2_OFFSET_APPROVER..V2_OFFSET_APPROVER + 32].copy_from_slice(approver.as_ref());
-        data[V2_OFFSET_USER_PUBKEY..V2_OFFSET_USER_PUBKEY + 32].copy_from_slice(user.as_ref());
-        data[V2_OFFSET_SIGNATURE_SCHEME..V2_OFFSET_SIGNATURE_SCHEME + 2]
+        data[OFFSET_APPROVER..OFFSET_APPROVER + 32].copy_from_slice(approver.as_ref());
+        data[OFFSET_USER_PUBKEY..OFFSET_USER_PUBKEY + 32].copy_from_slice(user.as_ref());
+        data[OFFSET_SIGNATURE_SCHEME..OFFSET_SIGNATURE_SCHEME + 2]
             .copy_from_slice(&5u16.to_le_bytes());
-        data[V2_OFFSET_EPOCH..V2_OFFSET_EPOCH + 8].copy_from_slice(&42u64.to_le_bytes());
-        data[V2_OFFSET_STATUS] = 1;
-        data[V2_OFFSET_SIGNATURE_LEN..V2_OFFSET_SIGNATURE_LEN + 2]
-            .copy_from_slice(&64u16.to_le_bytes());
-        data[V2_OFFSET_SIGNATURE..V2_OFFSET_SIGNATURE + 64].copy_from_slice(&[0xAB; 64]);
-        data[V2_OFFSET_BUMP] = 254;
+        data[OFFSET_EPOCH..OFFSET_EPOCH + 8].copy_from_slice(&42u64.to_le_bytes());
+        data[OFFSET_STATUS] = 1;
+        data[OFFSET_SIGNATURE_LEN..OFFSET_SIGNATURE_LEN + 2].copy_from_slice(&64u16.to_le_bytes());
+        data[OFFSET_SIGNATURE..OFFSET_SIGNATURE + 64].copy_from_slice(&[0xAB; 64]);
+        data[OFFSET_BUMP] = 254;
 
         let parsed = parse_message_approval_account(&data).expect("layout should parse");
 
-        assert_eq!(parsed.layout, DWalletMessageApprovalLayout::MetadataV2);
         assert_eq!(parsed.dwallet, dwallet);
         assert_eq!(parsed.approver, approver);
         assert_eq!(parsed.user_pubkey, user);
@@ -908,37 +747,19 @@ mod tests {
     }
 
     #[test]
-    fn parse_message_approval_layout_v1_is_still_supported() {
-        let dwallet = Pubkey::new_unique();
-        let approver = Pubkey::new_unique();
-        let user = Pubkey::new_unique();
+    fn parse_message_approval_rejects_legacy_sized_accounts() {
         let mut data = vec![0u8; 220];
         data[0] = MESSAGE_APPROVAL_ACCOUNT_DISCRIMINATOR;
         data[1] = MESSAGE_APPROVAL_ACCOUNT_VERSION;
-        data[V1_OFFSET_DWALLET..V1_OFFSET_DWALLET + 32].copy_from_slice(dwallet.as_ref());
-        data[V1_OFFSET_MESSAGE_DIGEST..V1_OFFSET_MESSAGE_DIGEST + 32].copy_from_slice(&[0x33; 32]);
-        data[V1_OFFSET_APPROVER..V1_OFFSET_APPROVER + 32].copy_from_slice(approver.as_ref());
-        data[V1_OFFSET_USER_PUBKEY..V1_OFFSET_USER_PUBKEY + 32].copy_from_slice(user.as_ref());
-        data[V1_OFFSET_SIGNATURE_SCHEME] = 0;
-        data[V1_OFFSET_EPOCH..V1_OFFSET_EPOCH + 8].copy_from_slice(&7u64.to_le_bytes());
-        data[V1_OFFSET_STATUS] = 1;
-        data[V1_OFFSET_SIGNATURE_LEN..V1_OFFSET_SIGNATURE_LEN + 2]
-            .copy_from_slice(&64u16.to_le_bytes());
-        data[V1_OFFSET_SIGNATURE..V1_OFFSET_SIGNATURE + 64].copy_from_slice(&[0xCD; 64]);
 
-        let parsed = parse_message_approval_account(&data).expect("legacy layout should parse");
+        let err = parse_message_approval_account(&data)
+            .expect_err("legacy-sized approval accounts must be rejected");
 
-        assert_eq!(parsed.layout, DWalletMessageApprovalLayout::LegacyV1);
-        assert_eq!(parsed.dwallet, dwallet);
-        assert_eq!(parsed.message_digest, [0x33; 32]);
-        assert_eq!(parsed.message_metadata_digest, [0u8; 32]);
-        assert_eq!(parsed.signature_scheme, SignatureScheme::EcdsaKeccak256);
-        assert_eq!(parsed.epoch, 7);
-        assert_eq!(parsed.signature.len(), 64);
+        assert!(matches!(err, TreasuryError::InvalidAccountData(_)));
     }
 
     #[test]
-    fn build_request_derives_legacy_message_approval_pda() {
+    fn build_request_requires_dwallet_public_key_hex() {
         let pending = sample_pending();
         let dwallet_account = Pubkey::new_unique();
         let dwallet = DWalletReference {
@@ -958,25 +779,14 @@ mod tests {
             signature_scheme: SignatureScheme::EcdsaKeccak256,
         };
 
-        let built = build_message_approval_request(
-            &pending,
-            &dwallet,
-            &Pubkey::new_unique(),
-            DWalletMessageApprovalLayout::LegacyV1,
-        )
-        .expect("request should build");
+        let err = build_message_approval_request(&pending, &dwallet, &Pubkey::new_unique())
+            .expect_err("canonical approval PDA derivation requires dWallet public key bytes");
 
-        assert_eq!(built.layout, DWalletMessageApprovalLayout::LegacyV1);
-        assert_eq!(
-            built.message_digest_hex,
-            hex::encode(keccak_message_digest(&built.message))
-        );
-        assert!(built.coordinator_account.is_none());
-        assert!(built.approval_id.starts_with("msgappr_"));
+        assert!(matches!(err, TreasuryError::InvalidAccountData(_)));
     }
 
     #[test]
-    fn build_request_derives_metadata_v2_message_approval_pda() {
+    fn build_request_derives_message_approval_pda() {
         let pending = sample_pending();
         let dwallet_program = Pubkey::new_unique();
         let dwallet = DWalletReference {
@@ -996,19 +806,27 @@ mod tests {
             signature_scheme: SignatureScheme::EddsaSha512,
         };
 
-        let built = build_message_approval_request(
-            &pending,
-            &dwallet,
-            &dwallet_program,
-            DWalletMessageApprovalLayout::MetadataV2,
-        )
-        .expect("request should build");
+        let built = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+            .expect("request should build");
 
         let (expected_coordinator, _) =
             Pubkey::find_program_address(&[DWALLET_COORDINATOR_SEED], &dwallet_program);
-        assert_eq!(built.layout, DWalletMessageApprovalLayout::MetadataV2);
-        assert_eq!(built.coordinator_account, Some(expected_coordinator));
+        let (expected_approval, expected_bump) = find_message_approval_pda(
+            &dwallet,
+            &built.message_digest,
+            &built.message_metadata_digest,
+            &dwallet_program,
+        )
+        .expect("canonical pda should derive");
+
+        assert_eq!(built.coordinator_account, expected_coordinator);
+        assert_eq!(built.message_approval_account, expected_approval);
+        assert_eq!(built.message_approval_bump, expected_bump);
         assert_eq!(built.message_metadata_digest_hex, hex::encode([0x55u8; 32]));
+        assert_eq!(
+            built.message_digest_hex,
+            hex::encode(keccak_message_digest(&built.message))
+        );
     }
 
     #[test]
@@ -1027,7 +845,6 @@ mod tests {
             requested_at: 7,
         };
         let approval = OnchainMessageApproval {
-            layout: DWalletMessageApprovalLayout::MetadataV2,
             dwallet,
             message_digest: [0x11u8; 32],
             message_metadata_digest: [0u8; 32],
