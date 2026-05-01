@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use aura_policy::TransactionContext;
+use aura_policy::{PauseScope, TransactionContext};
 
 use crate::{
     constants::TREASURY_SEED,
@@ -8,7 +8,9 @@ use crate::{
         ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
     },
     instructions::sync_treasury_account,
-    program_accounts::{chain_from_code, transaction_type_from_code, TreasuryAccount},
+    program_accounts::{
+        chain_from_code, transaction_type_from_code, ExternalLivenessAccount, TreasuryAccount,
+    },
 };
 
 /// Instruction data shared by `propose_confidential_transaction` and
@@ -74,6 +76,7 @@ pub struct ProposeConfidentialTransaction<'info> {
     pub network_encryption_key: UncheckedAccount<'info>,
     /// CHECK: Encrypt event authority PDA.
     pub event_authority: UncheckedAccount<'info>,
+    pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -88,14 +91,39 @@ pub fn handler(
     ctx: Context<ProposeConfidentialTransaction>,
     args: ProposeConfidentialTransactionArgs,
 ) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-    let guardrails = domain
+    require!(
+        !scoped_dependency_paused(
+            &ctx.accounts.treasury.policy_config,
+            PauseScope::ConfidentialExecution,
+            args.current_timestamp,
+        ),
+        crate::AuraCoreError::ExecutionScopePaused
+    );
+    if ctx
+        .accounts
+        .treasury
+        .policy_config
+        .liveness_config
+        .require_encrypt_freshness
+    {
+        let liveness = ctx
+            .accounts
+            .external_liveness
+            .as_ref()
+            .ok_or_else(|| error!(crate::AuraCoreError::ExternalDependencyStale))?;
+        require!(
+            liveness.treasury == ctx.accounts.treasury.key(),
+            crate::AuraCoreError::InvalidExternalAccountData
+        );
+        liveness.require_encrypt_fresh(args.current_timestamp)?;
+    }
+    let guardrails = ctx
+        .accounts
+        .treasury
         .confidential_guardrails
-        .clone()
+        .as_ref()
         .ok_or_else(|| error!(crate::AuraCoreError::ConfidentialGuardrailsNotConfigured))?;
-    let expected_encrypt_program: Pubkey = domain
-        .deployment
-        .encrypt_program_id
+    let expected_encrypt_program: Pubkey = crate::ENCRYPT_DEVNET_PROGRAM_ID
         .parse()
         .map_err(|_| error!(crate::AuraCoreError::InvalidDeployment))?;
     if ctx.accounts.encrypt_program.key() != expected_encrypt_program {
@@ -138,20 +166,47 @@ pub fn handler(
         true,
     )?;
 
-    if ctx.accounts.daily_limit_ciphertext.key().to_string()
-        != guardrails
-            .daily_limit_ciphertext
-            .ok_or_else(|| error!(crate::AuraCoreError::ConfidentialGuardrailsNotConfigured))?
-        || ctx.accounts.per_tx_limit_ciphertext.key().to_string()
-            != guardrails
-                .per_tx_limit_ciphertext
-                .ok_or_else(|| error!(crate::AuraCoreError::ConfidentialGuardrailsNotConfigured))?
-        || ctx.accounts.spent_today_ciphertext.key().to_string()
-            != guardrails
-                .spent_today_ciphertext
-                .ok_or_else(|| error!(crate::AuraCoreError::ConfidentialGuardrailsNotConfigured))?
+    if Some(ctx.accounts.daily_limit_ciphertext.key()) != guardrails.daily_limit_ciphertext
+        || Some(ctx.accounts.per_tx_limit_ciphertext.key()) != guardrails.per_tx_limit_ciphertext
+        || Some(ctx.accounts.spent_today_ciphertext.key()) != guardrails.spent_today_ciphertext
     {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
+    }
+
+    let tx = TransactionContext {
+        amount_usd: args.amount_usd,
+        target_chain: chain_from_code(args.target_chain)?,
+        tx_type: transaction_type_from_code(args.tx_type)?,
+        protocol_id: args.protocol_id,
+        current_timestamp: args.current_timestamp,
+        expected_output_usd: args.expected_output_usd,
+        actual_output_usd: args.actual_output_usd,
+        quote_age_secs: args.quote_age_secs,
+        counterparty_risk_score: args.counterparty_risk_score,
+        recipient_or_contract: Some(args.recipient_or_contract.clone()),
+    };
+
+    let amount_ciphertext_account = ctx.accounts.amount_ciphertext.key().to_string();
+    let policy_output_ciphertext_account = ctx.accounts.policy_output_ciphertext.key().to_string();
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    crate::propose_confidential_transaction(
+        &mut domain,
+        &ctx.accounts.ai_authority.key().to_string(),
+        tx,
+        args.recipient_or_contract,
+        &amount_ciphertext_account,
+        &policy_output_ciphertext_account,
+    )
+    .map_err(crate::map_treasury_error)?;
+    let should_execute_fhe = domain
+        .pending
+        .as_ref()
+        .and_then(|pending| pending.policy_output_ciphertext_account.as_ref())
+        .is_some();
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)?;
+    drop(domain);
+    if !should_execute_fhe {
+        return Ok(());
     }
 
     let encrypt_ctx = AuraEncryptContext {
@@ -175,44 +230,23 @@ pub fn handler(
         ctx.accounts.amount_ciphertext.to_account_info(),
         ctx.accounts.policy_output_ciphertext.to_account_info(),
     )?;
+    Ok(())
+}
 
-    let policy_output_fhe_type = {
-        let data = ctx.accounts.policy_output_ciphertext.try_borrow_data()?;
-        parse_ciphertext_account(&data)
-            .map_err(crate::map_treasury_error)?
-            .fhe_type
+fn scoped_dependency_paused(
+    config: &crate::program_accounts::PolicyConfigRecord,
+    scope: PauseScope,
+    now: i64,
+) -> bool {
+    let scope_kind = match scope {
+        PauseScope::ConfidentialExecution => 5,
+        PauseScope::DWalletFinalization => 6,
+        _ => return false,
     };
-
-    let tx = TransactionContext {
-        amount_usd: args.amount_usd,
-        target_chain: chain_from_code(args.target_chain)?,
-        tx_type: transaction_type_from_code(args.tx_type)?,
-        protocol_id: args.protocol_id,
-        current_timestamp: args.current_timestamp,
-        expected_output_usd: args.expected_output_usd,
-        actual_output_usd: args.actual_output_usd,
-        quote_age_secs: args.quote_age_secs,
-        counterparty_risk_score: args.counterparty_risk_score,
-        recipient_or_contract: Some(args.recipient_or_contract.clone()),
-    };
-
-    let amount_ciphertext_account = ctx.accounts.amount_ciphertext.key().to_string();
-    let policy_output_ciphertext_account = ctx.accounts.policy_output_ciphertext.key().to_string();
-    crate::propose_confidential_transaction(
-        &mut domain,
-        &ctx.accounts.ai_authority.key().to_string(),
-        tx,
-        args.recipient_or_contract,
-        &amount_ciphertext_account,
-        &policy_output_ciphertext_account,
-    )
-    .map_err(crate::map_treasury_error)?;
-
-    domain
-        .set_active_policy_output_fhe_type(policy_output_fhe_type)
-        .map_err(crate::map_treasury_error)?;
-
-    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
+    config
+        .scoped_pause_entries
+        .iter()
+        .any(|entry| entry.scope_kind == scope_kind && entry.expires_at.is_none_or(|ts| now < ts))
 }
 
 fn validate_u64_ciphertext(

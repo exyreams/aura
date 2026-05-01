@@ -39,53 +39,72 @@ pub mod state;
 pub use instructions::*;
 #[allow(unused_imports)]
 use instructions::{
-    __client_accounts_cancel_pending, __client_accounts_check_policy_cpi,
+    __client_accounts_apply_policy_preset, __client_accounts_approve_pending_execution,
+    __client_accounts_attest_policy, __client_accounts_cancel_pending,
+    __client_accounts_check_invariants, __client_accounts_check_policy_cpi,
     __client_accounts_close_activity_log, __client_accounts_close_address_list,
     __client_accounts_close_fee_vault, __client_accounts_close_health_score,
     __client_accounts_close_policy_history, __client_accounts_close_session_key,
     __client_accounts_close_snapshot, __client_accounts_collect_fees,
-    __client_accounts_collect_override_signature,
+    __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
+    __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_confidential_vector_guardrails,
-    __client_accounts_configure_multisig, __client_accounts_configure_swarm,
-    __client_accounts_confirm_policy_decryption, __client_accounts_create_treasury,
-    __client_accounts_execute_pending, __client_accounts_finalize_execution,
+    __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
+    __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
+    __client_accounts_create_treasury, __client_accounts_execute_pending,
+    __client_accounts_finalize_execution, __client_accounts_grant_operator_role,
     __client_accounts_init_activity_log, __client_accounts_init_address_list,
+    __client_accounts_init_exposure_group, __client_accounts_init_external_liveness,
     __client_accounts_init_fee_vault, __client_accounts_init_health_score,
     __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
-    __client_accounts_issue_session_key, __client_accounts_join_swarm,
-    __client_accounts_manage_address_list, __client_accounts_migrate_treasury,
-    __client_accounts_owner_treasury, __client_accounts_pause_execution,
+    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
+    __client_accounts_join_swarm, __client_accounts_manage_address_list,
+    __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
+    __client_accounts_pause_execution, __client_accounts_propose_batch,
     __client_accounts_propose_confidential_transaction,
     __client_accounts_propose_confidential_vector_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
-    __client_accounts_register_dwallet, __client_accounts_request_policy_decryption,
-    __client_accounts_revoke_session_key, __client_accounts_take_snapshot,
+    __client_accounts_refresh_external_liveness, __client_accounts_register_dwallet,
+    __client_accounts_request_policy_decryption, __client_accounts_revoke_operator_role,
+    __client_accounts_revoke_session_key, __client_accounts_set_scoped_pause,
+    __client_accounts_simulate_policy, __client_accounts_take_snapshot,
     __client_accounts_trigger_dead_mans_switch, __client_accounts_update_health_score,
-    __client_accounts_veto_config_change, __cpi_client_accounts_cancel_pending,
-    __cpi_client_accounts_check_policy_cpi, __cpi_client_accounts_close_activity_log,
-    __cpi_client_accounts_close_address_list, __cpi_client_accounts_close_fee_vault,
-    __cpi_client_accounts_close_health_score, __cpi_client_accounts_close_policy_history,
-    __cpi_client_accounts_close_session_key, __cpi_client_accounts_close_snapshot,
-    __cpi_client_accounts_collect_fees, __cpi_client_accounts_collect_override_signature,
+    __client_accounts_veto_config_change, __client_accounts_write_policy_receipt,
+    __cpi_client_accounts_apply_policy_preset, __cpi_client_accounts_approve_pending_execution,
+    __cpi_client_accounts_attest_policy, __cpi_client_accounts_cancel_pending,
+    __cpi_client_accounts_check_invariants, __cpi_client_accounts_check_policy_cpi,
+    __cpi_client_accounts_close_activity_log, __cpi_client_accounts_close_address_list,
+    __cpi_client_accounts_close_fee_vault, __cpi_client_accounts_close_health_score,
+    __cpi_client_accounts_close_policy_history, __cpi_client_accounts_close_session_key,
+    __cpi_client_accounts_close_snapshot, __cpi_client_accounts_collect_fees,
+    __cpi_client_accounts_collect_override_signature,
+    __cpi_client_accounts_configure_approval_ladder,
+    __cpi_client_accounts_configure_budget_envelope,
     __cpi_client_accounts_configure_confidential_guardrails,
     __cpi_client_accounts_configure_confidential_vector_guardrails,
-    __cpi_client_accounts_configure_multisig, __cpi_client_accounts_configure_swarm,
-    __cpi_client_accounts_confirm_policy_decryption, __cpi_client_accounts_create_treasury,
-    __cpi_client_accounts_execute_pending, __cpi_client_accounts_finalize_execution,
+    __cpi_client_accounts_configure_liveness_guardrails, __cpi_client_accounts_configure_multisig,
+    __cpi_client_accounts_configure_swarm, __cpi_client_accounts_confirm_policy_decryption,
+    __cpi_client_accounts_create_treasury, __cpi_client_accounts_execute_pending,
+    __cpi_client_accounts_finalize_execution, __cpi_client_accounts_grant_operator_role,
     __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
+    __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_init_external_liveness,
     __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
     __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
-    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_swarm,
-    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_migrate_treasury,
-    __cpi_client_accounts_owner_treasury, __cpi_client_accounts_pause_execution,
+    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
+    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
+    __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
+    __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
     __cpi_client_accounts_propose_confidential_transaction,
     __cpi_client_accounts_propose_confidential_vector_transaction,
     __cpi_client_accounts_propose_override, __cpi_client_accounts_propose_transaction,
-    __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_register_dwallet,
-    __cpi_client_accounts_request_policy_decryption, __cpi_client_accounts_revoke_session_key,
+    __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_refresh_external_liveness,
+    __cpi_client_accounts_register_dwallet, __cpi_client_accounts_request_policy_decryption,
+    __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_revoke_session_key,
+    __cpi_client_accounts_set_scoped_pause, __cpi_client_accounts_simulate_policy,
     __cpi_client_accounts_take_snapshot, __cpi_client_accounts_trigger_dead_mans_switch,
     __cpi_client_accounts_update_health_score, __cpi_client_accounts_veto_config_change,
+    __cpi_client_accounts_write_policy_receipt,
 };
 
 declare_id!("2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya");
@@ -387,16 +406,118 @@ pub mod aura_core {
     pub fn close_snapshot(ctx: Context<CloseSnapshot>) -> Result<()> {
         instructions::snapshots::close_snapshot(ctx)
     }
+
+    pub fn simulate_policy(ctx: Context<SimulatePolicy>, args: SimulatePolicyArgs) -> Result<()> {
+        instructions::policy_simulation::simulate_policy(ctx, args)
+    }
+
+    pub fn write_policy_receipt(
+        ctx: Context<WritePolicyReceipt>,
+        args: WritePolicyReceiptArgs,
+    ) -> Result<()> {
+        instructions::policy_receipts::write_policy_receipt(ctx, args)
+    }
+
+    pub fn apply_policy_preset(
+        ctx: Context<ApplyPolicyPreset>,
+        args: ApplyPolicyPresetArgs,
+    ) -> Result<()> {
+        instructions::apply_policy_preset::apply_policy_preset(ctx, args)
+    }
+
+    pub fn configure_budget_envelope(
+        ctx: Context<ConfigureBudgetEnvelope>,
+        args: ConfigureBudgetEnvelopeArgs,
+    ) -> Result<()> {
+        instructions::budget_envelopes::configure_budget_envelope(ctx, args)
+    }
+
+    pub fn init_exposure_group(
+        ctx: Context<InitExposureGroup>,
+        args: InitExposureGroupArgs,
+    ) -> Result<()> {
+        instructions::budget_envelopes::init_exposure_group(ctx, args)
+    }
+
+    pub fn join_exposure_group(ctx: Context<JoinExposureGroup>) -> Result<()> {
+        instructions::budget_envelopes::join_exposure_group(ctx)
+    }
+
+    pub fn configure_approval_ladder(
+        ctx: Context<ConfigureApprovalLadder>,
+        args: ConfigureApprovalLadderArgs,
+    ) -> Result<()> {
+        instructions::approval_ladder::configure_approval_ladder(ctx, args)
+    }
+
+    pub fn approve_pending_execution(
+        ctx: Context<ApprovePendingExecution>,
+        args: ApprovePendingExecutionArgs,
+    ) -> Result<()> {
+        instructions::approval_ladder::approve_pending_execution(ctx, args)
+    }
+
+    pub fn set_scoped_pause(ctx: Context<SetScopedPause>, args: SetScopedPauseArgs) -> Result<()> {
+        instructions::scoped_pause::set_scoped_pause(ctx, args)
+    }
+
+    pub fn grant_operator_role(
+        ctx: Context<GrantOperatorRole>,
+        args: GrantOperatorRoleArgs,
+    ) -> Result<()> {
+        instructions::operator_roles::grant_operator_role(ctx, args)
+    }
+
+    pub fn revoke_operator_role(ctx: Context<RevokeOperatorRole>, now: i64) -> Result<()> {
+        instructions::operator_roles::revoke_operator_role(ctx, now)
+    }
+
+    pub fn init_external_liveness(
+        ctx: Context<InitExternalLiveness>,
+        args: InitExternalLivenessArgs,
+    ) -> Result<()> {
+        instructions::external_liveness::init_external_liveness(ctx, args)
+    }
+
+    pub fn configure_liveness_guardrails(
+        ctx: Context<ConfigureLivenessGuardrails>,
+        args: ConfigureLivenessGuardrailsArgs,
+    ) -> Result<()> {
+        instructions::external_liveness::configure_liveness_guardrails(ctx, args)
+    }
+
+    pub fn refresh_external_liveness(
+        ctx: Context<RefreshExternalLiveness>,
+        args: RefreshExternalLivenessArgs,
+    ) -> Result<()> {
+        instructions::external_liveness::refresh_external_liveness(ctx, args)
+    }
+
+    pub fn attest_policy(ctx: Context<AttestPolicy>, args: AttestPolicyArgs) -> Result<()> {
+        instructions::policy_attestations::attest_policy(ctx, args)
+    }
+
+    pub fn propose_batch(ctx: Context<ProposeBatch>, args: ProposeBatchArgs) -> Result<()> {
+        instructions::batch_execution::propose_batch(ctx, args)
+    }
+
+    pub fn check_invariants(
+        ctx: Context<CheckInvariants>,
+        args: CheckInvariantsArgs,
+    ) -> Result<()> {
+        instructions::invariant_checks::check_invariants(ctx, args)
+    }
 }
 
 pub use audit::{AuditEvent, AuditKind, AuditTrail};
 pub use errors::TreasuryError;
 pub use execution::{
-    apply_confidential_policy_result, build_chain_message, confirm_pending_decryption,
-    deny_pending_transaction, evaluate_batch_preview, expire_pending_transaction,
-    finalize_signed_pending, generate_proposal_digest, hash_message, keccak_message_digest,
-    keccak_message_digest_hex, mark_pending_decryption_request, mark_signature_requested,
-    propose_confidential_transaction, propose_confidential_vector_transaction, propose_transaction,
+    apply_confidential_policy_result, approve_pending_execution, build_chain_message,
+    confirm_pending_decryption, deny_pending_transaction, enforce_pending_approval,
+    evaluate_batch_preview, expire_pending_transaction, finalize_signed_pending,
+    generate_proposal_digest, hash_message, keccak_message_digest, keccak_message_digest_hex,
+    mark_pending_decryption_request, mark_signature_requested, propose_confidential_transaction,
+    propose_confidential_vector_transaction, propose_transaction,
 };
 pub use ext_cpi::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex, decrypt_u64,
@@ -412,7 +533,9 @@ pub use ext_cpi::{
 pub use governance::{EmergencyMultisig, OverrideProposal};
 pub use program_accounts::*;
 pub use program_error::{map_treasury_error, AuraCoreError};
-pub use program_events::{emit_audit_events, emit_execution_event, emit_proposal_event};
+pub use program_events::{
+    emit_audit_events, emit_execution_event, emit_policy_receipt_event, emit_proposal_event,
+};
 pub use state::{
     AgentLifecycleState, AgentReputation, AgentSwarm, AgentTreasury, CircuitBreakerConfig,
     CircuitBreakerState, ComplianceMetadata, ConfidentialGuardrails, ConfigChangeKind,

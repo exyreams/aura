@@ -5,9 +5,10 @@ use crate::{
     execution::{expire_pending_transaction, mark_pending_decryption_request},
     ext_cpi::{
         is_supported_policy_scalar_fhe_type, parse_ciphertext_account, request_decryption_via_cpi,
-        ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_VECTOR_U64,
+        ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
+        ENCRYPT_FHE_VECTOR_U64,
     },
-    instructions::sync_treasury_account,
+    instructions::sync_treasury_pending_account,
     program_accounts::TreasuryAccount,
     state::PendingDecryptionRequest,
 };
@@ -54,19 +55,36 @@ pub struct RequestPolicyDecryption<'info> {
 /// `confirm_policy_decryption` must be called once the plaintext is ready.
 ///
 /// The operator must be the owner or AI authority.
-pub fn handler(ctx: Context<RequestPolicyDecryption>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-    expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
-    request_live_decryption(&ctx, domain.as_mut(), now)?;
-    sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)
+pub fn handler(mut ctx: Context<RequestPolicyDecryption>, now: i64) -> Result<()> {
+    let cpi_authority_bump = {
+        let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+        expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
+        prepare_live_decryption(&mut ctx, domain.as_mut(), now)?
+    };
+
+    request_decryption_via_cpi(
+        &ctx.accounts.encrypt_program.to_account_info(),
+        &ctx.accounts.config.to_account_info(),
+        &ctx.accounts.deposit.to_account_info(),
+        &ctx.accounts.request_account.to_account_info(),
+        &ctx.accounts.caller_program.to_account_info(),
+        &ctx.accounts.cpi_authority.to_account_info(),
+        &ctx.accounts.ciphertext.to_account_info(),
+        &ctx.accounts.operator.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.event_authority.to_account_info(),
+        cpi_authority_bump,
+    )?;
+
+    Ok(())
 }
 
 #[inline(never)]
-fn request_live_decryption(
-    ctx: &Context<RequestPolicyDecryption>,
+fn prepare_live_decryption(
+    ctx: &mut Context<RequestPolicyDecryption>,
     domain: &mut crate::AgentTreasury,
     now: i64,
-) -> Result<()> {
+) -> Result<u8> {
     let pending = domain
         .pending
         .clone()
@@ -112,35 +130,25 @@ fn request_live_decryption(
     if ctx.accounts.event_authority.key() != expected_event_authority {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
-    let ciphertext_data = ctx.accounts.ciphertext.try_borrow_data()?;
-    let ciphertext =
-        parse_ciphertext_account(&ciphertext_data).map_err(crate::map_treasury_error)?;
-    if ciphertext.fhe_type != expected_fhe_type {
-        return err!(crate::AuraCoreError::InvalidExternalAccountData);
-    }
-    if !is_supported_policy_scalar_fhe_type(ciphertext.fhe_type)
-        && ciphertext.fhe_type != ENCRYPT_FHE_VECTOR_U64
-    {
-        return err!(crate::AuraCoreError::InvalidExternalAccountData);
-    }
-    if ciphertext.status != 1 {
-        return err!(crate::AuraCoreError::PolicyOutputNotReady);
-    }
-    drop(ciphertext_data);
-
-    let digest = request_decryption_via_cpi(
-        &ctx.accounts.encrypt_program.to_account_info(),
-        &ctx.accounts.config.to_account_info(),
-        &ctx.accounts.deposit.to_account_info(),
-        &ctx.accounts.request_account.to_account_info(),
-        &ctx.accounts.caller_program.to_account_info(),
-        &ctx.accounts.cpi_authority.to_account_info(),
-        &ctx.accounts.ciphertext.to_account_info(),
-        &ctx.accounts.operator.to_account_info(),
-        &ctx.accounts.system_program.to_account_info(),
-        &ctx.accounts.event_authority.to_account_info(),
-        cpi_authority_bump,
-    )?;
+    let digest = {
+        let ciphertext_data = ctx.accounts.ciphertext.try_borrow_data()?;
+        let ciphertext =
+            parse_ciphertext_account(&ciphertext_data).map_err(crate::map_treasury_error)?;
+        let scalar_policy_output_matches = expected_fhe_type == ENCRYPT_FHE_UINT64
+            && is_supported_policy_scalar_fhe_type(ciphertext.fhe_type);
+        if ciphertext.fhe_type != expected_fhe_type && !scalar_policy_output_matches {
+            return err!(crate::AuraCoreError::InvalidExternalAccountData);
+        }
+        if !is_supported_policy_scalar_fhe_type(ciphertext.fhe_type)
+            && ciphertext.fhe_type != ENCRYPT_FHE_VECTOR_U64
+        {
+            return err!(crate::AuraCoreError::InvalidExternalAccountData);
+        }
+        if ciphertext.status != 1 {
+            return err!(crate::AuraCoreError::PolicyOutputNotReady);
+        }
+        ciphertext.digest
+    };
 
     mark_pending_decryption_request(
         domain,
@@ -156,5 +164,7 @@ fn request_live_decryption(
     )
     .map_err(crate::map_treasury_error)?;
 
-    Ok(())
+    sync_treasury_pending_account(&mut ctx.accounts.treasury, domain, now)?;
+
+    Ok(cpi_authority_bump)
 }

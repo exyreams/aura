@@ -6,8 +6,8 @@ use crate::{
     instructions::sync_treasury_account,
     program_accounts::{
         chain_from_code, sha256_address, transaction_type_from_code, verify_merkle_inclusion,
-        AddressListAccount, ComplianceOracleAccount, SessionKeyAccount, SwarmPoolAccount,
-        TreasuryAccount,
+        AddressListAccount, BudgetEnvelopeAccount, ComplianceOracleAccount, ExposureGroupAccount,
+        SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
     },
 };
 
@@ -54,6 +54,8 @@ pub struct ProposeTransaction<'info> {
     pub address_list: Option<Box<Account<'info, AddressListAccount>>>,
     pub compliance_oracle: Option<Box<Account<'info, ComplianceOracleAccount>>>,
     pub parent_treasury: Option<Box<Account<'info, TreasuryAccount>>>,
+    pub budget_envelope: Option<Box<Account<'info, BudgetEnvelopeAccount>>>,
+    pub exposure_group: Option<Box<Account<'info, ExposureGroupAccount>>>,
 }
 
 /// Proposes a public (non-confidential) transaction.
@@ -133,6 +135,25 @@ pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -
             args.amount_usd <= parent_remaining,
             crate::AuraCoreError::ParentLimitExceeded
         );
+    }
+
+    if let Some(envelope) = &ctx.accounts.budget_envelope {
+        require!(
+            envelope.treasury == ctx.accounts.treasury.key(),
+            crate::AuraCoreError::InvalidExternalAccountData
+        );
+        envelope.assert_available(
+            args.amount_usd,
+            args.target_chain,
+            args.tx_type,
+            args.protocol_id,
+            args.current_timestamp,
+        )?;
+    }
+
+    if let Some(group) = &ctx.accounts.exposure_group {
+        group.assert_member(ctx.accounts.treasury.key())?;
+        group.assert_available(args.amount_usd, args.current_timestamp)?;
     }
 
     if let Some(list) = &ctx.accounts.address_list {

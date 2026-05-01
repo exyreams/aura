@@ -1,10 +1,14 @@
-/// Anchor instruction handlers for ura-core.
+/// Anchor instruction handlers for `aura-core`.
 ///
 /// Each file in this module corresponds to one instruction or one closely
 /// related instruction family. Account contexts stay beside their handlers,
 /// while this index re-exports the stable public instruction surface.
 pub mod activity_log;
 pub mod address_lists;
+pub mod apply_policy_preset;
+pub mod approval_ladder;
+pub mod batch_execution;
+pub mod budget_envelopes;
 pub mod cancel_pending;
 pub mod collect_override_signature;
 pub mod configure_confidential_guardrails;
@@ -14,19 +18,26 @@ pub mod configure_swarm;
 pub mod confirm_policy_decryption;
 pub mod create_treasury;
 pub mod execute_pending;
+pub mod external_liveness;
 pub mod fee_vault;
 pub mod finalize_execution;
 pub mod health_score;
+pub mod invariant_checks;
 pub mod migration;
+pub mod operator_roles;
 pub mod pause_execution;
+pub mod policy_attestations;
 pub mod policy_history;
+pub mod policy_receipts;
 pub mod policy_services;
+pub mod policy_simulation;
 pub mod propose_confidential_transaction;
 pub mod propose_confidential_vector_transaction;
 pub mod propose_override;
 pub mod propose_transaction;
 pub mod register_dwallet;
 pub mod request_policy_decryption;
+pub mod scoped_pause;
 pub mod session_keys;
 pub mod snapshots;
 pub mod swarm_pool;
@@ -42,6 +53,32 @@ pub(crate) use address_lists::{
     __client_accounts_close_address_list, __client_accounts_init_address_list,
     __client_accounts_manage_address_list, __cpi_client_accounts_close_address_list,
     __cpi_client_accounts_init_address_list, __cpi_client_accounts_manage_address_list,
+};
+pub use apply_policy_preset::{ApplyPolicyPreset, ApplyPolicyPresetArgs};
+pub(crate) use apply_policy_preset::{
+    __client_accounts_apply_policy_preset, __cpi_client_accounts_apply_policy_preset,
+};
+pub use approval_ladder::{
+    ApprovePendingExecution, ApprovePendingExecutionArgs, ConfigureApprovalLadder,
+    ConfigureApprovalLadderArgs,
+};
+pub(crate) use approval_ladder::{
+    __client_accounts_approve_pending_execution, __client_accounts_configure_approval_ladder,
+    __cpi_client_accounts_approve_pending_execution,
+    __cpi_client_accounts_configure_approval_ladder,
+};
+pub use batch_execution::{BatchProposalItemArgs, ProposeBatch, ProposeBatchArgs};
+pub(crate) use batch_execution::{
+    __client_accounts_propose_batch, __cpi_client_accounts_propose_batch,
+};
+pub use budget_envelopes::{
+    ConfigureBudgetEnvelope, ConfigureBudgetEnvelopeArgs, InitExposureGroup, InitExposureGroupArgs,
+    JoinExposureGroup,
+};
+pub(crate) use budget_envelopes::{
+    __client_accounts_configure_budget_envelope, __client_accounts_init_exposure_group,
+    __client_accounts_join_exposure_group, __cpi_client_accounts_configure_budget_envelope,
+    __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_join_exposure_group,
 };
 pub use cancel_pending::CancelPending;
 pub(crate) use cancel_pending::__client_accounts_cancel_pending;
@@ -70,6 +107,16 @@ pub use create_treasury::{CreateTreasury, CreateTreasuryArgs};
 pub use execute_pending::ExecutePending;
 pub(crate) use execute_pending::__client_accounts_execute_pending;
 pub(crate) use execute_pending::__cpi_client_accounts_execute_pending;
+pub use external_liveness::{
+    ConfigureLivenessGuardrails, ConfigureLivenessGuardrailsArgs, InitExternalLiveness,
+    InitExternalLivenessArgs, RefreshExternalLiveness, RefreshExternalLivenessArgs,
+};
+pub(crate) use external_liveness::{
+    __client_accounts_configure_liveness_guardrails, __client_accounts_init_external_liveness,
+    __client_accounts_refresh_external_liveness,
+    __cpi_client_accounts_configure_liveness_guardrails,
+    __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_refresh_external_liveness,
+};
 pub use fee_vault::{CloseFeeVault, CollectFees, InitFeeVault};
 pub(crate) use fee_vault::{
     __client_accounts_close_fee_vault, __client_accounts_collect_fees,
@@ -85,21 +132,42 @@ pub(crate) use health_score::{
     __client_accounts_update_health_score, __cpi_client_accounts_close_health_score,
     __cpi_client_accounts_init_health_score, __cpi_client_accounts_update_health_score,
 };
+pub use invariant_checks::{CheckInvariants, CheckInvariantsArgs};
+pub(crate) use invariant_checks::{
+    __client_accounts_check_invariants, __cpi_client_accounts_check_invariants,
+};
 pub use migration::MigrateTreasury;
 pub(crate) use migration::__client_accounts_migrate_treasury;
 pub(crate) use migration::__cpi_client_accounts_migrate_treasury;
+pub use operator_roles::{GrantOperatorRole, GrantOperatorRoleArgs, RevokeOperatorRole};
+pub(crate) use operator_roles::{
+    __client_accounts_grant_operator_role, __client_accounts_revoke_operator_role,
+    __cpi_client_accounts_grant_operator_role, __cpi_client_accounts_revoke_operator_role,
+};
 pub use pause_execution::PauseExecution;
 pub(crate) use pause_execution::__client_accounts_pause_execution;
 pub(crate) use pause_execution::__cpi_client_accounts_pause_execution;
+pub use policy_attestations::{AttestPolicy, AttestPolicyArgs};
+pub(crate) use policy_attestations::{
+    __client_accounts_attest_policy, __cpi_client_accounts_attest_policy,
+};
 pub use policy_history::{ClosePolicyHistory, InitPolicyHistory};
 pub(crate) use policy_history::{
     __client_accounts_close_policy_history, __client_accounts_init_policy_history,
     __cpi_client_accounts_close_policy_history, __cpi_client_accounts_init_policy_history,
 };
+pub use policy_receipts::{WritePolicyReceipt, WritePolicyReceiptArgs};
+pub(crate) use policy_receipts::{
+    __client_accounts_write_policy_receipt, __cpi_client_accounts_write_policy_receipt,
+};
 pub use policy_services::{CheckPolicyCpi, CheckPolicyCpiArgs, RefreshDwalletBalance};
 pub(crate) use policy_services::{
     __client_accounts_check_policy_cpi, __client_accounts_refresh_dwallet_balance,
     __cpi_client_accounts_check_policy_cpi, __cpi_client_accounts_refresh_dwallet_balance,
+};
+pub use policy_simulation::{SimulatePolicy, SimulatePolicyArgs};
+pub(crate) use policy_simulation::{
+    __client_accounts_simulate_policy, __cpi_client_accounts_simulate_policy,
 };
 pub(crate) use propose_confidential_transaction::__client_accounts_propose_confidential_transaction;
 pub(crate) use propose_confidential_transaction::__cpi_client_accounts_propose_confidential_transaction;
@@ -121,6 +189,10 @@ pub use register_dwallet::{RegisterDwallet, RegisterDwalletArgs};
 pub use request_policy_decryption::RequestPolicyDecryption;
 pub(crate) use request_policy_decryption::__client_accounts_request_policy_decryption;
 pub(crate) use request_policy_decryption::__cpi_client_accounts_request_policy_decryption;
+pub use scoped_pause::{SetScopedPause, SetScopedPauseArgs};
+pub(crate) use scoped_pause::{
+    __client_accounts_set_scoped_pause, __cpi_client_accounts_set_scoped_pause,
+};
 pub use session_keys::{CloseSessionKey, IssueSessionKey, IssueSessionKeyArgs, RevokeSessionKey};
 pub(crate) use session_keys::{
     __client_accounts_close_session_key, __client_accounts_issue_session_key,
@@ -148,8 +220,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     program_accounts::{
-        lifecycle_state_code, AgentReputationRecord, ConfidentialGuardrailsRecord,
-        PendingProposalRecord, PolicyStateRecord, SwarmConfigRecord, TreasuryAccount,
+        lifecycle_state_code, ConfidentialGuardrailsRecord, PendingProposalRecord, TreasuryAccount,
     },
     program_events::{emit_audit_events, emit_proposal_event},
     AgentTreasury,
@@ -184,6 +255,15 @@ pub(crate) fn sync_treasury_pending_account(
     domain: &AgentTreasury,
     updated_at: i64,
 ) -> Result<()> {
+    sync_treasury_pending_account_with_events(account, domain, updated_at, true)
+}
+
+fn sync_treasury_pending_account_with_events(
+    account: &mut Account<'_, TreasuryAccount>,
+    domain: &AgentTreasury,
+    updated_at: i64,
+    emit_proposal: bool,
+) -> Result<()> {
     account.updated_at = updated_at;
     account.execution_paused = domain.execution_paused;
     account.agent_state = lifecycle_state_code(domain.agent_state);
@@ -203,37 +283,10 @@ pub(crate) fn sync_treasury_pending_account(
     }
 
     emit_audit_events(account.key(), domain.audit_trail.events());
-    if let Some(pending) = &domain.pending {
-        emit_proposal_event(account.key(), pending);
+    if emit_proposal {
+        if let Some(pending) = &domain.pending {
+            emit_proposal_event(account.key(), pending);
+        }
     }
-    Ok(())
-}
-
-/// Writes the compact set of treasury fields changed by finalization.
-pub(crate) fn sync_treasury_finalized_account(
-    account: &mut Account<'_, TreasuryAccount>,
-    domain: &AgentTreasury,
-    updated_at: i64,
-) -> Result<()> {
-    account.updated_at = updated_at;
-    account.total_transactions = domain.total_transactions;
-    account.execution_paused = domain.execution_paused;
-    account.agent_state = lifecycle_state_code(domain.agent_state);
-    account.policy_state = PolicyStateRecord::from_domain(&domain.policy_state);
-    account.last_large_tx_at = domain.last_large_tx_at;
-    account.last_large_tx_amount_usd = domain.last_large_tx_amount_usd;
-    account.reputation = AgentReputationRecord::from_domain(&domain.reputation);
-    account.confidential_guardrails = domain
-        .confidential_guardrails
-        .as_ref()
-        .map(ConfidentialGuardrailsRecord::from_domain);
-    account.swarm = domain
-        .swarm
-        .as_ref()
-        .map(SwarmConfigRecord::from_domain)
-        .transpose()?;
-    account.pending_queue.clear();
-
-    emit_audit_events(account.key(), domain.audit_trail.events());
     Ok(())
 }

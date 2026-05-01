@@ -1,15 +1,20 @@
 use anchor_lang::prelude::*;
+use aura_policy::PauseScope;
 
 use crate::{
     constants::TREASURY_SEED,
-    execution::{deny_pending_transaction, expire_pending_transaction, mark_signature_requested},
+    execution::{deny_pending_transaction, enforce_pending_approval, expire_pending_transaction},
     ext_cpi::{
         approve_message_via_cpi, build_message_approval_request, parse_runtime_pubkey,
         pending_signature_request_from_live, DWALLET_CPI_AUTHORITY_SEED,
     },
-    instructions::{sync_treasury_account, sync_treasury_pending_account},
-    program_accounts::TreasuryAccount,
+    instructions::sync_treasury_account,
+    program_accounts::{
+        proposal_status_code, ExternalLivenessAccount, PendingSignatureRequestRecord,
+        TreasuryAccount,
+    },
     program_events::emit_execution_event,
+    state::{DWalletMessageApprovalLayout, ProposalStatus, SignatureScheme},
 };
 
 #[derive(Accounts)]
@@ -35,6 +40,7 @@ pub struct ExecutePending<'info> {
     pub dwallet_program: Option<UncheckedAccount<'info>>,
     /// CHECK: DWalletCoordinator PDA on the dWallet program. Required for metadata-v2 approve_message flows.
     pub dwallet_coordinator: Option<UncheckedAccount<'info>>,
+    pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -48,49 +54,127 @@ pub struct ExecutePending<'info> {
 ///
 /// The operator must be the owner or AI authority. All dWallet-related
 /// accounts are optional and validated only when the proposal is approved.
-pub fn handler(ctx: Context<ExecutePending>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-    expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
-    let pending = domain
-        .pending
-        .as_ref()
-        .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
-    if pending.policy_output_ciphertext_account.is_some() {
-        let decrypt_ready = pending
-            .decryption_request
+pub fn handler(mut ctx: Context<ExecutePending>, now: i64) -> Result<()> {
+    let signature = {
+        let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+        expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
+        let pending = domain
+            .pending
             .as_ref()
-            .and_then(|request| request.plaintext_sha256.as_ref())
-            .is_some();
-        if !decrypt_ready {
-            return err!(crate::AuraCoreError::PolicyOutputNotReady);
+            .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
+        if pending.policy_output_ciphertext_account.is_some() {
+            let decrypt_ready = pending
+                .decryption_request
+                .as_ref()
+                .and_then(|request| request.plaintext_sha256.as_ref())
+                .is_some();
+            if !decrypt_ready {
+                return err!(crate::AuraCoreError::PolicyOutputNotReady);
+            }
         }
-    }
 
-    let approved = domain
-        .pending
+        let approved = domain
+            .pending
+            .as_ref()
+            .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?
+            .decision
+            .approved;
+
+        if !approved {
+            let receipt = deny_pending_transaction(domain.as_mut(), now)
+                .map_err(crate::map_treasury_error)?;
+            sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)?;
+            emit_execution_event(ctx.accounts.treasury.key(), &receipt);
+            return Ok(());
+        }
+        require!(
+            !domain
+                .policy_config
+                .scoped_pause
+                .dependency_paused(PauseScope::DWalletFinalization, now),
+            crate::AuraCoreError::ExecutionScopePaused
+        );
+        if domain
+            .policy_config
+            .liveness_config
+            .require_dwallet_freshness
+        {
+            let liveness = ctx
+                .accounts
+                .external_liveness
+                .as_ref()
+                .ok_or_else(|| error!(crate::AuraCoreError::ExternalDependencyStale))?;
+            require!(
+                liveness.treasury == ctx.accounts.treasury.key(),
+                crate::AuraCoreError::InvalidExternalAccountData
+            );
+            liveness.require_dwallet_fresh(now)?;
+        }
+        enforce_pending_approval(
+            domain
+                .pending
+                .as_ref()
+                .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?,
+            now,
+        )
+        .map_err(crate::map_treasury_error)?;
+
+        prepare_live_signature(&mut ctx, domain.as_mut(), now)?
+    };
+
+    let message_approval = ctx
+        .accounts
+        .message_approval
         .as_ref()
-        .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?
-        .decision
-        .approved;
+        .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
+    let dwallet = ctx
+        .accounts
+        .dwallet
+        .as_ref()
+        .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
+    let cpi_authority = ctx
+        .accounts
+        .cpi_authority
+        .as_ref()
+        .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
+    let dwallet_program = ctx
+        .accounts
+        .dwallet_program
+        .as_ref()
+        .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
+    let dwallet_coordinator_info = ctx
+        .accounts
+        .dwallet_coordinator
+        .as_ref()
+        .map(|account| account.to_account_info());
 
-    if !approved {
-        let receipt =
-            deny_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
-        sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)?;
-        emit_execution_event(ctx.accounts.treasury.key(), &receipt);
-        return Ok(());
-    }
+    approve_message_via_cpi(
+        signature.layout,
+        &dwallet_program.to_account_info(),
+        dwallet_coordinator_info.as_ref(),
+        &message_approval.to_account_info(),
+        &dwallet.to_account_info(),
+        &ctx.accounts.caller_program.to_account_info(),
+        &cpi_authority.to_account_info(),
+        &ctx.accounts.operator.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        signature.cpi_authority_bump,
+        signature.message_digest,
+        signature.message_metadata_digest,
+        signature.authorized_user,
+        signature.signature_scheme,
+        signature.message_approval_bump,
+    )?;
 
-    request_live_signature(&ctx, domain.as_mut(), now)?;
-    sync_treasury_pending_account(&mut ctx.accounts.treasury, domain.as_ref(), now)
+    Ok(())
 }
 
 #[inline(never)]
-fn request_live_signature(
-    ctx: &Context<ExecutePending>,
+fn prepare_live_signature(
+    ctx: &mut Context<ExecutePending>,
     domain: &mut crate::AgentTreasury,
     now: i64,
-) -> Result<()> {
+) -> Result<PreparedLiveSignature> {
     let pending = domain
         .pending
         .clone()
@@ -170,31 +254,38 @@ fn request_live_signature(
         }
     }
 
-    let dwallet_coordinator_info = ctx
-        .accounts
-        .dwallet_coordinator
-        .as_ref()
-        .map(|account| account.to_account_info());
-    approve_message_via_cpi(
-        domain.deployment.dwallet_message_approval_layout,
-        &dwallet_program.to_account_info(),
-        dwallet_coordinator_info.as_ref(),
-        &message_approval.to_account_info(),
-        &dwallet.to_account_info(),
-        &ctx.accounts.caller_program.to_account_info(),
-        &cpi_authority.to_account_info(),
-        &ctx.accounts.operator.to_account_info(),
-        &ctx.accounts.system_program.to_account_info(),
-        cpi_authority_bump,
-        approval_request.message_digest,
-        approval_request.message_metadata_digest,
-        authorized_user.to_bytes(),
-        approval_request.signature_scheme,
-        approval_request.message_approval_bump,
-    )?;
-
     let signature_request =
         pending_signature_request_from_live(&approval_request, &expected_dwallet_account, now);
-    mark_signature_requested(domain, signature_request, now).map_err(crate::map_treasury_error)?;
-    Ok(())
+    let pending_record = ctx
+        .accounts
+        .treasury
+        .pending_queue
+        .get_mut(0)
+        .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
+    pending_record.status = proposal_status_code(ProposalStatus::SignaturePending);
+    pending_record.last_updated_at = now;
+    pending_record.signature_request = Some(PendingSignatureRequestRecord::from_domain(
+        &signature_request,
+    ));
+    ctx.accounts.treasury.updated_at = now;
+
+    Ok(PreparedLiveSignature {
+        layout: domain.deployment.dwallet_message_approval_layout,
+        cpi_authority_bump,
+        message_digest: approval_request.message_digest,
+        message_metadata_digest: approval_request.message_metadata_digest,
+        authorized_user: authorized_user.to_bytes(),
+        signature_scheme: approval_request.signature_scheme,
+        message_approval_bump: approval_request.message_approval_bump,
+    })
+}
+
+struct PreparedLiveSignature {
+    layout: DWalletMessageApprovalLayout,
+    cpi_authority_bump: u8,
+    message_digest: [u8; 32],
+    message_metadata_digest: [u8; 32],
+    authorized_user: [u8; 32],
+    signature_scheme: SignatureScheme,
+    message_approval_bump: u8,
 }

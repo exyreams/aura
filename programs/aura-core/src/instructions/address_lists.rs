@@ -12,12 +12,13 @@ use crate::{
     },
     instructions::sync_treasury_account,
     program_accounts::{
-        chain_from_code, lifecycle_state_from_code, sha256_address, snapshot_policy_config,
-        swarm_pool_seeds, transaction_type_from_code, update_health_score, verify_merkle_inclusion,
-        ActivityLogAccount, AddressListAccount, ComplianceOracleAccount, FeeVaultAccount,
-        HealthScoreAccount, PolicyCheckResult, PolicyConfigRecord, PolicyHistoryAccount,
-        SessionKeyAccount, SnapshotAccount, SwarmPoolAccount, TreasuryAccount, ACTIVITY_LOG_SPACE,
-        ADDRESS_LIST_SPACE, POLICY_HISTORY_SPACE, SESSION_KEY_SPACE,
+        chain_from_code, lifecycle_state_from_code, role_permissions, sha256_address,
+        snapshot_policy_config, swarm_pool_seeds, transaction_type_from_code, update_health_score,
+        verify_merkle_inclusion, ActivityLogAccount, AddressListAccount, ComplianceOracleAccount,
+        FeeVaultAccount, HealthScoreAccount, OperatorRoleAccount, PolicyCheckResult,
+        PolicyConfigRecord, PolicyHistoryAccount, SessionKeyAccount, SnapshotAccount,
+        SwarmPoolAccount, TreasuryAccount, ACTIVITY_LOG_SPACE, ADDRESS_LIST_SPACE,
+        POLICY_HISTORY_SPACE, SESSION_KEY_SPACE,
     },
     state::{ConfigChangeKind, GuardianChangeAction, PendingConfigChange},
     AuraCoreError,
@@ -58,6 +59,18 @@ pub fn manage_address_list(
     addresses: Vec<String>,
     now: i64,
 ) -> Result<()> {
+    if ctx.accounts.operator.key() != ctx.accounts.treasury.owner {
+        ctx.accounts
+            .operator_role
+            .as_ref()
+            .ok_or_else(|| error!(AuraCoreError::OperatorRoleMissing))?
+            .assert_permission(
+                ctx.accounts.treasury.key(),
+                ctx.accounts.operator.key(),
+                role_permissions::MANAGE_ADDRESS_LISTS,
+                now,
+            )?;
+    }
     let list = &mut ctx.accounts.address_list;
     list.treasury = ctx.accounts.treasury.key();
     list.mode = mode;
@@ -70,13 +83,13 @@ pub fn manage_address_list(
 
 #[derive(Accounts)]
 pub struct ManageAddressList<'info> {
-    pub owner: Signer<'info>,
+    pub operator: Signer<'info>,
     #[account(
         seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
-        bump = treasury.bump,
-        constraint = treasury.owner == owner.key() @ AuraCoreError::UnauthorizedOwner
+        bump = treasury.bump
     )]
     pub treasury: Box<Account<'info, TreasuryAccount>>,
+    pub operator_role: Option<Box<Account<'info, OperatorRoleAccount>>>,
     #[account(
         mut,
         seeds = [ADDRESS_LIST_SEED, treasury.key().as_ref()],

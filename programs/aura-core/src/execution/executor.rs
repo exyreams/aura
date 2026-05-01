@@ -1,7 +1,8 @@
 use aura_policy::{
     advanced_policy_graph, confidential_policy_graph, confidential_scalar_policy_graph,
-    evaluate_batch, evaluate_public_precheck, evaluate_transaction, transaction_policy_graph,
-    PolicyDecision, RuleOutcome, TransactionContext, ViolationCode,
+    evaluate_batch, evaluate_public_precheck, evaluate_transaction, required_approval_level,
+    transaction_policy_graph, ApprovalLevel, PolicyDecision, RuleOutcome, TransactionContext,
+    ViolationCode,
 };
 
 use crate::{
@@ -80,8 +81,10 @@ pub fn propose_transaction(
         &policy_output_digest,
     );
 
-    let requires_guardian_cosign =
-        treasury.high_risk_require_guardian && decision.risk_score >= treasury.high_risk_threshold;
+    let approval = pending_approval_requirements(treasury, &decision, amount_usd, submitted_at);
+    let requires_guardian_cosign = treasury.high_risk_require_guardian
+        && decision.risk_score >= treasury.high_risk_threshold
+        || approval.required_level == ApprovalLevel::Guardian.code();
     treasury.push_pending(PendingTransaction {
         proposal_id,
         proposal_digest,
@@ -102,6 +105,9 @@ pub fn propose_transaction(
         decryption_request: None,
         signature_request: None,
         risk_score: decision.risk_score,
+        required_approval_level: approval.required_level,
+        satisfied_approval_level: approval.satisfied_level,
+        earliest_execution_at: approval.earliest_execution_at,
         requires_guardian_cosign,
         policy_version: treasury.current_policy_version,
         compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
@@ -188,8 +194,10 @@ pub fn propose_confidential_transaction(
         &policy_output_digest,
     );
 
-    let requires_guardian_cosign =
-        treasury.high_risk_require_guardian && decision.risk_score >= treasury.high_risk_threshold;
+    let approval = pending_approval_requirements(treasury, &decision, amount_usd, submitted_at);
+    let requires_guardian_cosign = treasury.high_risk_require_guardian
+        && decision.risk_score >= treasury.high_risk_threshold
+        || approval.required_level == ApprovalLevel::Guardian.code();
     treasury.push_pending(PendingTransaction {
         proposal_id,
         proposal_digest,
@@ -212,6 +220,9 @@ pub fn propose_confidential_transaction(
         decryption_request: None,
         signature_request: None,
         risk_score: decision.risk_score,
+        required_approval_level: approval.required_level,
+        satisfied_approval_level: approval.satisfied_level,
+        earliest_execution_at: approval.earliest_execution_at,
         requires_guardian_cosign,
         policy_version: treasury.current_policy_version,
         compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
@@ -308,8 +319,10 @@ pub fn propose_confidential_vector_transaction(
         &policy_output_digest,
     );
 
-    let requires_guardian_cosign =
-        treasury.high_risk_require_guardian && decision.risk_score >= treasury.high_risk_threshold;
+    let approval = pending_approval_requirements(treasury, &decision, amount_usd, submitted_at);
+    let requires_guardian_cosign = treasury.high_risk_require_guardian
+        && decision.risk_score >= treasury.high_risk_threshold
+        || approval.required_level == ApprovalLevel::Guardian.code();
     treasury.push_pending(PendingTransaction {
         proposal_id,
         proposal_digest,
@@ -332,6 +345,9 @@ pub fn propose_confidential_vector_transaction(
         decryption_request: None,
         signature_request: None,
         risk_score: decision.risk_score,
+        required_approval_level: approval.required_level,
+        satisfied_approval_level: approval.satisfied_level,
+        earliest_execution_at: approval.earliest_execution_at,
         requires_guardian_cosign,
         policy_version: treasury.current_policy_version,
         compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
@@ -385,6 +401,111 @@ pub fn expire_pending_transaction(
         return Err(TreasuryError::PendingTransactionExpired);
     }
 
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct PendingApprovalRequirements {
+    required_level: u8,
+    satisfied_level: u8,
+    earliest_execution_at: i64,
+}
+
+fn pending_approval_requirements(
+    treasury: &AgentTreasury,
+    decision: &PolicyDecision,
+    amount_usd: u64,
+    submitted_at: i64,
+) -> PendingApprovalRequirements {
+    let Some(ladder) = treasury.policy_config.approval_ladder else {
+        return PendingApprovalRequirements {
+            required_level: ApprovalLevel::None.code(),
+            satisfied_level: ApprovalLevel::None.code(),
+            earliest_execution_at: 0,
+        };
+    };
+
+    let level = required_approval_level(&ladder, amount_usd, u16::from(decision.risk_score) * 100);
+    let earliest_execution_at = if level == ApprovalLevel::Timelock {
+        submitted_at.saturating_add(ladder.timelock_secs)
+    } else {
+        0
+    };
+    let satisfied_level = match level {
+        ApprovalLevel::None => ApprovalLevel::None.code(),
+        ApprovalLevel::Timelock => ApprovalLevel::Timelock.code(),
+        ApprovalLevel::Deny => ApprovalLevel::None.code(),
+        ApprovalLevel::Guardian | ApprovalLevel::Multisig => ApprovalLevel::None.code(),
+    };
+
+    PendingApprovalRequirements {
+        required_level: level.code(),
+        satisfied_level,
+        earliest_execution_at,
+    }
+}
+
+pub fn approve_pending_execution(
+    treasury: &mut AgentTreasury,
+    approver: &str,
+    proposal_id: u64,
+    approval_level: ApprovalLevel,
+    now: i64,
+) -> Result<(), TreasuryError> {
+    let owner = treasury.owner.clone();
+    let is_guardian = treasury.multisig.as_ref().is_some_and(|multisig| {
+        multisig
+            .guardians
+            .iter()
+            .any(|guardian| guardian == approver)
+    });
+    let pending = treasury
+        .active_pending_mut()
+        .ok_or(TreasuryError::NoPendingTransaction)?;
+    if pending.proposal_id != proposal_id {
+        return Err(TreasuryError::InvalidAccountData(
+            "approval proposal id does not match active pending proposal".to_string(),
+        ));
+    }
+    let requested = approval_level.code();
+    if requested > pending.required_approval_level {
+        return Err(TreasuryError::InvalidAccountData(
+            "approval level exceeds pending requirement".to_string(),
+        ));
+    }
+    let authorized = match approval_level {
+        ApprovalLevel::None => true,
+        ApprovalLevel::Guardian => approver == owner || is_guardian,
+        ApprovalLevel::Multisig | ApprovalLevel::Timelock => approver == owner,
+        ApprovalLevel::Deny => false,
+    };
+    if !authorized {
+        return Err(TreasuryError::UnauthorizedGuardian);
+    }
+
+    pending.satisfied_approval_level = pending.satisfied_approval_level.max(requested);
+    pending.last_updated_at = now;
+    let detail = format!(
+        "proposal {proposal_id} approval level {} satisfied by {approver}",
+        approval_level.code()
+    );
+    treasury
+        .audit_trail
+        .record(AuditKind::ConfigChangeExecuted, detail, now);
+    treasury.sync_pending_front();
+    Ok(())
+}
+
+pub fn enforce_pending_approval(
+    pending: &PendingTransaction,
+    now: i64,
+) -> Result<(), TreasuryError> {
+    if pending.earliest_execution_at > 0 && now < pending.earliest_execution_at {
+        return Err(TreasuryError::PendingExecutionTimelockActive);
+    }
+    if pending.satisfied_approval_level < pending.required_approval_level {
+        return Err(TreasuryError::ApprovalLevelNotSatisfied);
+    }
     Ok(())
 }
 
@@ -671,6 +792,7 @@ pub fn finalize_signed_pending(
         .signature_request
         .as_ref()
         .ok_or(TreasuryError::MessageApprovalNotReady)?;
+    enforce_pending_approval(&pending, now)?;
 
     if let Some(decryption_request) = &pending.decryption_request {
         if decryption_request.verified_at.is_none() || decryption_request.plaintext_sha256.is_none()

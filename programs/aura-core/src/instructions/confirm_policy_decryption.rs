@@ -2,17 +2,16 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::TREASURY_SEED,
-    execution::{
-        apply_confidential_policy_result, confirm_pending_decryption, expire_pending_transaction,
-    },
     ext_cpi::{
         decode_digest_hex, decrypt_scalar_u64, decrypt_u64_lane,
         is_supported_policy_scalar_fhe_type, parse_decryption_request_account,
-        verify_decryption_request_digest, DecryptionStatus, ENCRYPT_FHE_VECTOR_U64,
+        verify_decryption_request_digest, DecryptionStatus, ENCRYPT_FHE_UINT64,
+        ENCRYPT_FHE_VECTOR_U64,
     },
-    instructions::sync_treasury_pending_account,
-    program_accounts::TreasuryAccount,
+    program_accounts::{violation_code, TreasuryAccount},
+    state::ENCRYPT_DEVNET_PROGRAM_ID,
 };
+use aura_policy::ViolationCode;
 
 #[derive(Accounts)]
 pub struct ConfirmPolicyDecryption<'info> {
@@ -37,20 +36,12 @@ pub struct ConfirmPolicyDecryption<'info> {
 /// `apply_confidential_policy_result`. The operator must be the owner or AI
 /// authority.
 pub fn handler(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-    expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
-    confirm_live_decryption(&ctx, domain.as_mut(), now)?;
-    sync_treasury_pending_account(&mut ctx.accounts.treasury, domain.as_ref(), now)
+    confirm_live_decryption(ctx, now)
 }
 
 #[inline(never)]
-fn confirm_live_decryption(
-    ctx: &Context<ConfirmPolicyDecryption>,
-    domain: &mut crate::AgentTreasury,
-    now: i64,
-) -> Result<()> {
+fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> Result<()> {
     let request_key = ctx.accounts.request_account.key();
-    let request_key_string = request_key.to_string();
     let (
         expected_request_account,
         expected_ciphertext_account,
@@ -58,9 +49,15 @@ fn confirm_live_decryption(
         expected_fhe_type,
         has_policy_output,
     ) = {
-        let pending = domain
-            .active_pending()
+        let pending = ctx
+            .accounts
+            .treasury
+            .pending_queue
+            .first()
             .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
+        if now > pending.expires_at {
+            return err!(crate::AuraCoreError::PendingTransactionExpired);
+        }
         let decrypt_request = pending
             .decryption_request
             .as_ref()
@@ -76,13 +73,17 @@ fn confirm_live_decryption(
         )
     };
 
-    if expected_request_account != request_key_string {
+    let expected_request_account: Pubkey = expected_request_account
+        .parse()
+        .map_err(|_| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
+    if expected_request_account != request_key {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
+    let expected_ciphertext_account: Pubkey = expected_ciphertext_account
+        .parse()
+        .map_err(|_| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
 
-    let expected_encrypt_program: Pubkey = domain
-        .deployment
-        .encrypt_program_id
+    let expected_encrypt_program: Pubkey = ENCRYPT_DEVNET_PROGRAM_ID
         .parse()
         .map_err(|_| error!(crate::AuraCoreError::InvalidDeployment))?;
     if *ctx.accounts.request_account.owner != expected_encrypt_program {
@@ -107,10 +108,12 @@ fn confirm_live_decryption(
             return err!(crate::AuraCoreError::InvalidExternalAccountData);
         }
 
-        if parsed.ciphertext.to_string() != expected_ciphertext_account {
+        if parsed.ciphertext != expected_ciphertext_account {
             return err!(crate::AuraCoreError::InvalidExternalAccountData);
         }
-        if parsed.fhe_type != expected_fhe_type {
+        let scalar_policy_output_matches = expected_fhe_type == ENCRYPT_FHE_UINT64
+            && is_supported_policy_scalar_fhe_type(parsed.fhe_type);
+        if parsed.fhe_type != expected_fhe_type && !scalar_policy_output_matches {
             return err!(crate::AuraCoreError::InvalidExternalAccountData);
         }
 
@@ -140,11 +143,70 @@ fn confirm_live_decryption(
             decrypted_next_spent_today,
         )
     };
-    confirm_pending_decryption(domain, &request_key_string, plaintext_sha256, now)
-        .map_err(crate::map_treasury_error)?;
-    if let Some(violation_code) = confidential_violation_code {
-        apply_confidential_policy_result(domain, violation_code, decrypted_next_spent_today, now)
-            .map_err(crate::map_treasury_error)?;
+
+    let mut next_guardrail_vector_ciphertext = None;
+    {
+        let pending = ctx
+            .accounts
+            .treasury
+            .pending_queue
+            .get_mut(0)
+            .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
+        let decrypt_request = pending
+            .decryption_request
+            .as_mut()
+            .ok_or_else(|| error!(crate::AuraCoreError::DecryptionNotReady))?;
+        decrypt_request.verified_at = Some(now);
+        decrypt_request.plaintext_sha256 = Some(plaintext_sha256);
+        pending.last_updated_at = now;
+
+        if let Some(violation_code_value) = confidential_violation_code {
+            match violation_code_value {
+                0 => {
+                    pending.decision.approved = true;
+                    pending.decision.violation = violation_code(ViolationCode::None);
+                    let expected_next_spent_today = pending
+                        .decision
+                        .next_state
+                        .spent_today_usd
+                        .saturating_add(pending.amount_usd);
+                    if let Some(decrypted_next_spent_today) = decrypted_next_spent_today {
+                        if decrypted_next_spent_today != expected_next_spent_today {
+                            return err!(crate::AuraCoreError::InvalidExternalAccountData);
+                        }
+                        pending.decision.next_state.spent_today_usd = decrypted_next_spent_today;
+                    } else {
+                        pending.decision.next_state.spent_today_usd = expected_next_spent_today;
+                    }
+                }
+                1 => {
+                    pending.decision.approved = false;
+                    pending.decision.violation = violation_code(ViolationCode::PerTransactionLimit);
+                }
+                2 => {
+                    pending.decision.approved = false;
+                    pending.decision.violation = violation_code(ViolationCode::DailyLimit);
+                }
+                _ => return err!(crate::AuraCoreError::InvalidExternalAccountData),
+            }
+            if expected_fhe_type == ENCRYPT_FHE_VECTOR_U64 {
+                next_guardrail_vector_ciphertext = pending
+                    .policy_output_ciphertext_account
+                    .as_ref()
+                    .map(|ciphertext| {
+                        ciphertext
+                            .parse()
+                            .map_err(|_| error!(crate::AuraCoreError::InvalidExternalAccountData))
+                    })
+                    .transpose()?;
+            }
+        }
+    }
+    ctx.accounts.treasury.updated_at = now;
+    if let Some(next_guardrail_vector_ciphertext) = next_guardrail_vector_ciphertext {
+        if let Some(guardrails) = ctx.accounts.treasury.confidential_guardrails.as_mut() {
+            guardrails.guardrail_vector_ciphertext = Some(next_guardrail_vector_ciphertext);
+        }
     }
 
     Ok(())
