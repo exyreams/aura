@@ -14,7 +14,7 @@ pub struct PauseExecution<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Pauses or resumes execution on the treasury.
@@ -24,7 +24,7 @@ pub struct PauseExecution<'info> {
 /// `paused = false`. Only the treasury owner may call this instruction.
 /// Emits `ExecutionPaused` or `ExecutionResumed` audit events accordingly.
 pub fn handler(ctx: Context<PauseExecution>, paused: bool, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     domain
         .set_execution_paused(&ctx.accounts.owner.key().to_string(), paused, now)
         .map_err(crate::map_treasury_error)?;

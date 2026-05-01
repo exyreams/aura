@@ -16,7 +16,7 @@ pub struct ConfigureConfidentialVectorGuardrails<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: Encrypt-owned ciphertext account containing [daily_limit, per_tx_limit, spent_today] as an EUint64Vector.
     pub guardrail_vector_ciphertext: UncheckedAccount<'info>,
 }
@@ -28,7 +28,7 @@ pub struct ConfigureConfidentialVectorGuardrails<'info> {
 /// `ENCRYPT_FHE_VECTOR_U64`, and have status `1` (verified).
 /// Only the treasury owner may call this instruction.
 pub fn handler(ctx: Context<ConfigureConfidentialVectorGuardrails>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let expected_encrypt_program: Pubkey = domain
         .deployment
         .encrypt_program_id

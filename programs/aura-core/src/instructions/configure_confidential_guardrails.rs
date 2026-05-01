@@ -16,7 +16,7 @@ pub struct ConfigureConfidentialGuardrails<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: Encrypt-owned ciphertext account for the encrypted daily limit.
     pub daily_limit_ciphertext: UncheckedAccount<'info>,
     /// CHECK: Encrypt-owned ciphertext account for the encrypted per-transaction limit.
@@ -33,7 +33,7 @@ pub struct ConfigureConfidentialGuardrails<'info> {
 /// have FHE type `ENCRYPT_FHE_UINT64`, and have status `1` (verified).
 /// Only the treasury owner may call this instruction.
 pub fn handler(ctx: Context<ConfigureConfidentialGuardrails>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let expected_encrypt_program: Pubkey = domain
         .deployment
         .encrypt_program_id

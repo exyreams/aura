@@ -38,7 +38,7 @@ pub struct RegisterDwallet<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Registers a dWallet for a specific chain on the treasury, or updates its
@@ -49,7 +49,7 @@ pub struct RegisterDwallet<'info> {
 /// also called to set the live-signing fields. Only the treasury owner may
 /// call this instruction. Emits a `DWalletRegistered` audit event.
 pub fn handler(ctx: Context<RegisterDwallet>, args: RegisterDwalletArgs) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let chain = chain_from_code(args.chain)?;
     domain
         .register_dwallet(

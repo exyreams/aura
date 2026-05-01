@@ -21,7 +21,7 @@ pub struct RequestPolicyDecryption<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == operator.key() || treasury.ai_authority == operator.key() @ crate::AuraCoreError::UnauthorizedExecutor
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: Decryption request PDA owned by the Encrypt program.
     #[account(mut)]
     pub request_account: UncheckedAccount<'info>,
@@ -55,7 +55,7 @@ pub struct RequestPolicyDecryption<'info> {
 ///
 /// The operator must be the owner or AI authority.
 pub fn handler(ctx: Context<RequestPolicyDecryption>, now: i64) -> Result<()> {
-    let mut domain = Box::new(ctx.accounts.treasury.to_domain()?);
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
     request_live_decryption(&ctx, domain.as_mut(), now)?;
     sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)

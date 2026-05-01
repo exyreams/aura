@@ -13,7 +13,7 @@ pub struct CollectOverrideSignature<'info> {
         seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
         bump = treasury.bump
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Adds the calling guardian's signature to the pending override proposal.
@@ -22,7 +22,7 @@ pub struct CollectOverrideSignature<'info> {
 /// applied immediately and the daily limit is updated. Emits an
 /// `OverrideExecuted` audit event if quorum is reached.
 pub fn handler(ctx: Context<CollectOverrideSignature>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let multisig = domain
         .multisig
         .as_mut()

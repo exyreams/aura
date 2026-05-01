@@ -209,7 +209,7 @@ pub struct OnchainCiphertext {
 
 /// Parsed representation of a `DecryptionRequest` account from the Encrypt program.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OnchainDecryptionRequest {
+pub struct OnchainDecryptionRequest<'a> {
     /// The `Ciphertext` account this request targets.
     pub ciphertext: Pubkey,
     /// Digest of the ciphertext at the time the request was submitted.
@@ -223,10 +223,10 @@ pub struct OnchainDecryptionRequest {
     /// Number of plaintext bytes written so far by the Encrypt network.
     pub bytes_written: u32,
     /// Plaintext bytes; `Some` only when `bytes_written == total_len`.
-    pub plaintext: Option<Vec<u8>>,
+    pub plaintext: Option<&'a [u8]>,
 }
 
-impl OnchainDecryptionRequest {
+impl OnchainDecryptionRequest<'_> {
     /// Derives the current decryption status from `bytes_written` and `total_len`.
     pub fn status(&self) -> DecryptionStatus {
         match (self.bytes_written, self.total_len) {
@@ -314,7 +314,9 @@ pub fn parse_ciphertext_account(data: &[u8]) -> TreasuryResult<OnchainCiphertext
 /// plaintext bytes are also read from the account tail.
 ///
 /// Returns `TreasuryError::InvalidAccountData` for any structural violation.
-pub fn parse_decryption_request_account(data: &[u8]) -> TreasuryResult<OnchainDecryptionRequest> {
+pub fn parse_decryption_request_account(
+    data: &[u8],
+) -> TreasuryResult<OnchainDecryptionRequest<'_>> {
     if data.len() < DR_HEADER_END {
         return Err(TreasuryError::InvalidAccountData(format!(
             "decryption request length {} is smaller than expected header {}",
@@ -354,7 +356,7 @@ pub fn parse_decryption_request_account(data: &[u8]) -> TreasuryResult<OnchainDe
                 end
             )));
         }
-        Some(data[DR_HEADER_END..end].to_vec())
+        Some(&data[DR_HEADER_END..end])
     } else {
         None
     };
@@ -455,7 +457,7 @@ fn parse_execute_graph_num_inputs(ix_data: &[u8]) -> Option<usize> {
 /// the expected digest. Used by `confirm_policy_decryption` to guard against
 /// a substituted ciphertext account.
 pub fn verify_decryption_request_digest(
-    request: &OnchainDecryptionRequest,
+    request: &OnchainDecryptionRequest<'_>,
     expected_digest: &[u8; 32],
 ) -> bool {
     &request.ciphertext_digest == expected_digest
@@ -464,7 +466,7 @@ pub fn verify_decryption_request_digest(
 /// Reads the decrypted `u64` value from lane 0 of a completed decryption request.
 ///
 /// Convenience wrapper around `decrypt_u64_lane(request, 0)`.
-pub fn decrypt_u64(request: &OnchainDecryptionRequest) -> TreasuryResult<u64> {
+pub fn decrypt_u64(request: &OnchainDecryptionRequest<'_>) -> TreasuryResult<u64> {
     decrypt_u64_lane(request, 0)
 }
 
@@ -472,7 +474,7 @@ pub fn decrypt_u64(request: &OnchainDecryptionRequest) -> TreasuryResult<u64> {
 ///
 /// Supports the scalar policy-output types produced by Encrypt graphs:
 /// `EBool`, `EUint8`, `EUint16`, `EUint32`, and `EUint64`.
-pub fn decrypt_scalar_u64(request: &OnchainDecryptionRequest) -> TreasuryResult<u64> {
+pub fn decrypt_scalar_u64(request: &OnchainDecryptionRequest<'_>) -> TreasuryResult<u64> {
     let plaintext = request.plaintext.as_deref().ok_or_else(|| {
         TreasuryError::InvalidAccountData(
             "decryption request does not contain completed plaintext bytes".to_string(),
@@ -536,7 +538,7 @@ pub fn is_supported_policy_scalar_fhe_type(fhe_type: u8) -> bool {
 /// limits). Returns `TreasuryError::InvalidAccountData` if the plaintext is
 /// absent or too short for the requested lane.
 pub fn decrypt_u64_lane(
-    request: &OnchainDecryptionRequest,
+    request: &OnchainDecryptionRequest<'_>,
     lane_index: usize,
 ) -> TreasuryResult<u64> {
     let plaintext = request.plaintext.as_deref().ok_or_else(|| {

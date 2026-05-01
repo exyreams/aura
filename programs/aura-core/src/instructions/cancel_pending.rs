@@ -14,14 +14,14 @@ pub struct CancelPending<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Cancels the pending transaction on the treasury.
 ///
 /// Only the treasury owner may cancel. Emits a `ProposalCancelled` audit event.
 pub fn handler(ctx: Context<CancelPending>, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     domain
         .cancel_pending(&ctx.accounts.owner.key().to_string(), now)
         .map_err(crate::map_treasury_error)?;

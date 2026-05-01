@@ -45,27 +45,22 @@ pub fn evaluate_batch_preview(
 pub fn propose_transaction(
     treasury: &mut AgentTreasury,
     ai_signer: &str,
-    tx: TransactionContext,
+    mut tx: TransactionContext,
     recipient_or_contract: impl Into<String>,
 ) -> Result<u64, TreasuryError> {
     if ai_signer != treasury.ai_authority {
         return Err(TreasuryError::UnauthorizedAi);
     }
 
-    if treasury.execution_paused {
-        return Err(TreasuryError::ExecutionPaused);
-    }
-
-    if treasury.pending.is_some() {
-        return Err(TreasuryError::PendingTransactionExists);
-    }
-
+    let recipient_or_contract = recipient_or_contract.into();
+    tx.recipient_or_contract = Some(recipient_or_contract.clone());
+    treasury.can_accept_proposal(tx.current_timestamp)?;
+    enforce_cooldown(treasury, &tx)?;
     let submitted_at = tx.current_timestamp;
     let target_chain = tx.target_chain;
     let tx_type = tx.tx_type;
     let protocol_id = tx.protocol_id;
     let amount_usd = tx.amount_usd;
-    let recipient_or_contract = recipient_or_contract.into();
     let decision = evaluate_transaction(
         &treasury.policy_config,
         &treasury.policy_state,
@@ -85,7 +80,9 @@ pub fn propose_transaction(
         &policy_output_digest,
     );
 
-    treasury.pending = Some(PendingTransaction {
+    let requires_guardian_cosign =
+        treasury.high_risk_require_guardian && decision.risk_score >= treasury.high_risk_threshold;
+    treasury.push_pending(PendingTransaction {
         proposal_id,
         proposal_digest,
         policy_graph_name: policy_graph_name.clone(),
@@ -104,8 +101,15 @@ pub fn propose_transaction(
         status: ProposalStatus::Proposed,
         decryption_request: None,
         signature_request: None,
+        risk_score: decision.risk_score,
+        requires_guardian_cosign,
+        policy_version: treasury.current_policy_version,
+        compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
+            0,
+            decision.regulatory_flags,
+        )),
         decision,
-    });
+    })?;
 
     treasury.audit_trail.record(
         AuditKind::ProposalCreated,
@@ -129,7 +133,7 @@ pub fn propose_transaction(
 pub fn propose_confidential_transaction(
     treasury: &mut AgentTreasury,
     ai_signer: &str,
-    tx: TransactionContext,
+    mut tx: TransactionContext,
     recipient_or_contract: impl Into<String>,
     amount_ciphertext_account: &str,
     policy_output_ciphertext_account: &str,
@@ -138,24 +142,19 @@ pub fn propose_confidential_transaction(
         return Err(TreasuryError::UnauthorizedAi);
     }
 
-    if treasury.execution_paused {
-        return Err(TreasuryError::ExecutionPaused);
-    }
-
-    if treasury.pending.is_some() {
-        return Err(TreasuryError::PendingTransactionExists);
-    }
-
     if treasury.confidential_guardrails.is_none() {
         return Err(TreasuryError::ConfidentialGuardrailsNotConfigured);
     }
 
+    let recipient_or_contract = recipient_or_contract.into();
+    tx.recipient_or_contract = Some(recipient_or_contract.clone());
+    treasury.can_accept_proposal(tx.current_timestamp)?;
+    enforce_cooldown(treasury, &tx)?;
     let submitted_at = tx.current_timestamp;
     let target_chain = tx.target_chain;
     let tx_type = tx.tx_type;
     let protocol_id = tx.protocol_id;
     let amount_usd = tx.amount_usd;
-    let recipient_or_contract = recipient_or_contract.into();
     let decision = evaluate_public_precheck(
         &treasury.policy_config,
         &treasury.policy_state,
@@ -189,7 +188,9 @@ pub fn propose_confidential_transaction(
         &policy_output_digest,
     );
 
-    treasury.pending = Some(PendingTransaction {
+    let requires_guardian_cosign =
+        treasury.high_risk_require_guardian && decision.risk_score >= treasury.high_risk_threshold;
+    treasury.push_pending(PendingTransaction {
         proposal_id,
         proposal_digest,
         policy_graph_name: policy_graph_name.clone(),
@@ -210,8 +211,15 @@ pub fn propose_confidential_transaction(
         status: ProposalStatus::Proposed,
         decryption_request: None,
         signature_request: None,
+        risk_score: decision.risk_score,
+        requires_guardian_cosign,
+        policy_version: treasury.current_policy_version,
+        compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
+            0,
+            decision.regulatory_flags,
+        )),
         decision,
-    });
+    })?;
 
     treasury.audit_trail.record(
         AuditKind::ProposalCreated,
@@ -234,7 +242,7 @@ pub fn propose_confidential_transaction(
 pub fn propose_confidential_vector_transaction(
     treasury: &mut AgentTreasury,
     ai_signer: &str,
-    tx: TransactionContext,
+    mut tx: TransactionContext,
     recipient_or_contract: impl Into<String>,
     guardrail_vector_ciphertext_account: &str,
     amount_vector_ciphertext_account: &str,
@@ -242,14 +250,6 @@ pub fn propose_confidential_vector_transaction(
 ) -> Result<u64, TreasuryError> {
     if ai_signer != treasury.ai_authority {
         return Err(TreasuryError::UnauthorizedAi);
-    }
-
-    if treasury.execution_paused {
-        return Err(TreasuryError::ExecutionPaused);
-    }
-
-    if treasury.pending.is_some() {
-        return Err(TreasuryError::PendingTransactionExists);
     }
 
     let guardrails = treasury
@@ -265,12 +265,15 @@ pub fn propose_confidential_vector_transaction(
         ));
     }
 
+    let recipient_or_contract = recipient_or_contract.into();
+    tx.recipient_or_contract = Some(recipient_or_contract.clone());
+    treasury.can_accept_proposal(tx.current_timestamp)?;
+    enforce_cooldown(treasury, &tx)?;
     let submitted_at = tx.current_timestamp;
     let target_chain = tx.target_chain;
     let tx_type = tx.tx_type;
     let protocol_id = tx.protocol_id;
     let amount_usd = tx.amount_usd;
-    let recipient_or_contract = recipient_or_contract.into();
     let decision = evaluate_public_precheck(
         &treasury.policy_config,
         &treasury.policy_state,
@@ -305,7 +308,9 @@ pub fn propose_confidential_vector_transaction(
         &policy_output_digest,
     );
 
-    treasury.pending = Some(PendingTransaction {
+    let requires_guardian_cosign =
+        treasury.high_risk_require_guardian && decision.risk_score >= treasury.high_risk_threshold;
+    treasury.push_pending(PendingTransaction {
         proposal_id,
         proposal_digest,
         policy_graph_name: policy_graph_name.clone(),
@@ -326,8 +331,15 @@ pub fn propose_confidential_vector_transaction(
         status: ProposalStatus::Proposed,
         decryption_request: None,
         signature_request: None,
+        risk_score: decision.risk_score,
+        requires_guardian_cosign,
+        policy_version: treasury.current_policy_version,
+        compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
+            0,
+            decision.regulatory_flags,
+        )),
         decision,
-    });
+    })?;
 
     treasury.audit_trail.record(
         AuditKind::ProposalCreated,
@@ -351,8 +363,7 @@ pub fn expire_pending_transaction(
 ) -> Result<(), TreasuryError> {
     let expired_id = {
         let pending = treasury
-            .pending
-            .as_mut()
+            .active_pending_mut()
             .ok_or(TreasuryError::NoPendingTransaction)?;
         pending.execution_attempts = pending.execution_attempts.saturating_add(1);
         pending.last_updated_at = now;
@@ -365,7 +376,7 @@ pub fn expire_pending_transaction(
     };
 
     if let Some(expired_id) = expired_id {
-        treasury.pending = None;
+        treasury.pop_front_pending();
         treasury.audit_trail.record(
             AuditKind::ProposalExpired,
             format!("proposal {expired_id} expired before execution"),
@@ -389,15 +400,16 @@ pub fn deny_pending_transaction(
     now: i64,
 ) -> Result<ExecutionReceipt, TreasuryError> {
     let pending = treasury
-        .pending
-        .clone()
+        .active_pending()
+        .cloned()
         .ok_or(TreasuryError::NoPendingTransaction)?;
     if pending.decision.approved {
         return Err(TreasuryError::PolicyDigestMismatch);
     }
 
-    treasury.pending = None;
+    treasury.pop_front_pending();
     treasury.reputation.record_failure();
+    treasury.record_policy_violation(now);
     treasury.audit_trail.record(
         AuditKind::ProposalDenied,
         format!(
@@ -443,6 +455,7 @@ pub fn deny_pending_transaction(
         transaction_fee_usd: 0,
         effective_daily_limit_usd: pending.decision.effective_daily_limit_usd,
         trace: pending.decision.trace.clone(),
+        compliance_metadata: pending.compliance_metadata,
     })
 }
 
@@ -458,8 +471,7 @@ pub fn mark_pending_decryption_request(
 ) -> Result<(), TreasuryError> {
     let proposal_id = {
         let pending = treasury
-            .pending
-            .as_mut()
+            .active_pending_mut()
             .ok_or(TreasuryError::NoPendingTransaction)?;
         pending.status = ProposalStatus::DecryptionRequested;
         pending.last_updated_at = now;
@@ -474,6 +486,7 @@ pub fn mark_pending_decryption_request(
         ),
         now,
     );
+    treasury.sync_pending_front();
     Ok(())
 }
 
@@ -491,8 +504,7 @@ pub fn confirm_pending_decryption(
 ) -> Result<(), TreasuryError> {
     let proposal_id = {
         let pending = treasury
-            .pending
-            .as_mut()
+            .active_pending_mut()
             .ok_or(TreasuryError::NoPendingTransaction)?;
         let request = pending
             .decryption_request
@@ -517,6 +529,7 @@ pub fn confirm_pending_decryption(
         ),
         now,
     );
+    treasury.sync_pending_front();
     Ok(())
 }
 
@@ -538,8 +551,7 @@ pub fn apply_confidential_policy_result(
 ) -> Result<(), TreasuryError> {
     let mut next_guardrail_vector_ciphertext = None;
     let pending = treasury
-        .pending
-        .as_mut()
+        .active_pending_mut()
         .ok_or(TreasuryError::NoPendingTransaction)?;
 
     let (approved, violation, detail) = match violation_code {
@@ -600,6 +612,7 @@ pub fn apply_confidential_policy_result(
             guardrails.guardrail_vector_ciphertext = Some(next_guardrail_vector_ciphertext);
         }
     }
+    treasury.sync_pending_front();
     Ok(())
 }
 
@@ -614,8 +627,7 @@ pub fn mark_signature_requested(
 ) -> Result<(), TreasuryError> {
     let proposal_id = {
         let pending = treasury
-            .pending
-            .as_mut()
+            .active_pending_mut()
             .ok_or(TreasuryError::NoPendingTransaction)?;
         pending.status = ProposalStatus::SignaturePending;
         pending.last_updated_at = now;
@@ -630,6 +642,7 @@ pub fn mark_signature_requested(
         ),
         now,
     );
+    treasury.sync_pending_front();
     Ok(())
 }
 
@@ -651,8 +664,8 @@ pub fn finalize_signed_pending(
     now: i64,
 ) -> Result<ExecutionReceipt, TreasuryError> {
     let pending = treasury
-        .pending
-        .clone()
+        .active_pending()
+        .cloned()
         .ok_or(TreasuryError::NoPendingTransaction)?;
     let signature_request = pending
         .signature_request
@@ -673,7 +686,13 @@ pub fn finalize_signed_pending(
     if let Some(swarm) = treasury.swarm.as_mut() {
         swarm.record_spend(pending.amount_usd);
     }
-    treasury.pending = None;
+    if let Some(cooldown) = treasury.policy_config.cooldown_config {
+        if pending.amount_usd >= cooldown.threshold_usd {
+            treasury.last_large_tx_at = Some(now);
+            treasury.last_large_tx_amount_usd = pending.amount_usd;
+        }
+    }
+    treasury.pop_front_pending();
 
     treasury.audit_trail.record(
         AuditKind::SignatureCommitted,
@@ -722,5 +741,32 @@ pub fn finalize_signed_pending(
         transaction_fee_usd: fee,
         effective_daily_limit_usd: pending.decision.effective_daily_limit_usd,
         trace: pending.decision.trace.clone(),
+        compliance_metadata: pending.compliance_metadata,
     })
+}
+
+fn enforce_cooldown(
+    treasury: &AgentTreasury,
+    tx: &TransactionContext,
+) -> Result<(), TreasuryError> {
+    let Some(cooldown) = treasury.policy_config.cooldown_config else {
+        return Ok(());
+    };
+
+    if tx.amount_usd < cooldown.threshold_usd {
+        return Ok(());
+    }
+
+    let Some(last_at) = treasury.last_large_tx_at else {
+        return Ok(());
+    };
+
+    let elapsed = tx.current_timestamp.saturating_sub(last_at);
+    if elapsed < cooldown.cooldown_secs {
+        return Err(TreasuryError::CooldownNotElapsed {
+            remaining_secs: cooldown.cooldown_secs - elapsed,
+        });
+    }
+
+    Ok(())
 }

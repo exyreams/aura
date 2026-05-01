@@ -39,7 +39,7 @@ pub struct CreateTreasury<'info> {
         seeds = [TREASURY_SEED, owner.key().as_ref(), args.agent_id.as_bytes()],
         bump
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -50,14 +50,14 @@ pub struct CreateTreasury<'info> {
 pub fn handler(ctx: Context<CreateTreasury>, args: CreateTreasuryArgs) -> Result<()> {
     let deployment = ProtocolDeployment::devnet_pre_alpha(crate::ID.to_string())
         .map_err(crate::map_treasury_error)?;
-    let mut domain = AgentTreasury::new(
+    let mut domain = Box::new(AgentTreasury::new(
         args.agent_id,
         ctx.accounts.owner.key().to_string(),
         args.ai_authority.to_string(),
         args.created_at,
         args.policy_config.to_domain(),
         deployment,
-    );
+    ));
     domain.pending_transaction_ttl_secs = args.pending_transaction_ttl_secs;
     domain.protocol_fees = args.protocol_fees.to_domain();
 

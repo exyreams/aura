@@ -7,8 +7,8 @@ use crate::{
         parse_message_approval_account, parse_runtime_pubkey, verify_message_approval,
         DWALLET_CPI_AUTHORITY_SEED,
     },
-    instructions::sync_treasury_account,
-    program_accounts::TreasuryAccount,
+    instructions::sync_treasury_finalized_account,
+    program_accounts::{SwarmPoolAccount, TreasuryAccount},
     program_events::emit_execution_event,
 };
 
@@ -21,9 +21,11 @@ pub struct FinalizeExecution<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == operator.key() || treasury.ai_authority == operator.key() @ crate::AuraCoreError::UnauthorizedExecutor
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: Signed MessageApproval account owned by the dWallet program.
     pub message_approval: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub swarm_pool: Option<Box<Account<'info, SwarmPoolAccount>>>,
 }
 
 /// Finalizes an approved pending transaction by verifying the dWallet signature
@@ -37,10 +39,26 @@ pub struct FinalizeExecution<'info> {
 ///
 /// The operator must be the owner or AI authority.
 pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
-    let mut domain = Box::new(ctx.accounts.treasury.to_domain()?);
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
+    if let Some(pool) = &ctx.accounts.swarm_pool {
+        if let Some(swarm) = domain.swarm.as_mut() {
+            require!(
+                swarm.swarm_id == pool.swarm_id,
+                crate::AuraCoreError::InvalidExternalAccountData
+            );
+            swarm.total_swarm_spent_usd = pool.total_spent_usd;
+        }
+    }
+    let finalized_amount_usd = domain
+        .active_pending()
+        .map(|pending| pending.amount_usd)
+        .unwrap_or(0);
     let receipt = finalize_live_signature(&ctx, domain.as_mut(), now)?;
-    sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)?;
+    if let Some(pool) = &mut ctx.accounts.swarm_pool {
+        pool.record_spend(ctx.accounts.treasury.key(), finalized_amount_usd, now);
+    }
+    sync_treasury_finalized_account(&mut ctx.accounts.treasury, domain.as_ref(), now)?;
     emit_execution_event(ctx.accounts.treasury.key(), &receipt);
     Ok(())
 }
@@ -52,8 +70,8 @@ fn finalize_live_signature(
     now: i64,
 ) -> Result<crate::ExecutionReceipt> {
     let pending = domain
-        .pending
-        .clone()
+        .active_pending()
+        .cloned()
         .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
     let signature_request = pending
         .signature_request

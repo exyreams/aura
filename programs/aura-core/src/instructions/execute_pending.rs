@@ -7,7 +7,7 @@ use crate::{
         approve_message_via_cpi, build_message_approval_request, parse_runtime_pubkey,
         pending_signature_request_from_live, DWALLET_CPI_AUTHORITY_SEED,
     },
-    instructions::sync_treasury_account,
+    instructions::{sync_treasury_account, sync_treasury_pending_account},
     program_accounts::TreasuryAccount,
     program_events::emit_execution_event,
 };
@@ -21,7 +21,7 @@ pub struct ExecutePending<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == operator.key() || treasury.ai_authority == operator.key() @ crate::AuraCoreError::UnauthorizedExecutor
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: MessageApproval PDA on the dWallet program. Required when the pending proposal is approved.
     #[account(mut)]
     pub message_approval: Option<UncheckedAccount<'info>>,
@@ -49,7 +49,7 @@ pub struct ExecutePending<'info> {
 /// The operator must be the owner or AI authority. All dWallet-related
 /// accounts are optional and validated only when the proposal is approved.
 pub fn handler(ctx: Context<ExecutePending>, now: i64) -> Result<()> {
-    let mut domain = Box::new(ctx.accounts.treasury.to_domain()?);
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
     let pending = domain
         .pending
@@ -82,7 +82,7 @@ pub fn handler(ctx: Context<ExecutePending>, now: i64) -> Result<()> {
     }
 
     request_live_signature(&ctx, domain.as_mut(), now)?;
-    sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)
+    sync_treasury_pending_account(&mut ctx.accounts.treasury, domain.as_ref(), now)
 }
 
 #[inline(never)]

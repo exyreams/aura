@@ -27,7 +27,7 @@ pub struct ConfigureSwarm<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Attaches or replaces the swarm shared-pool configuration on the treasury.
@@ -40,7 +40,7 @@ pub fn handler(ctx: Context<ConfigureSwarm>, args: ConfigureSwarmArgs) -> Result
         AuraCoreError::InvalidDeployment
     );
 
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let swarm = AgentSwarm::new(
         args.swarm_id,
         args.member_agents,

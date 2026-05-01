@@ -13,7 +13,7 @@ pub struct ProposeOverride<'info> {
         seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
         bump = treasury.bump
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Submits a new emergency override proposal from a guardian.
@@ -23,7 +23,7 @@ pub struct ProposeOverride<'info> {
 /// the override is applied in the same instruction. Emits `OverrideExecuted`
 /// if quorum is reached.
 pub fn handler(ctx: Context<ProposeOverride>, new_daily_limit_usd: u64, now: i64) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let multisig = domain
         .multisig
         .as_mut()

@@ -26,7 +26,7 @@ pub struct ConfigureMultisig<'info> {
         bump = treasury.bump,
         constraint = treasury.owner == owner.key() @ AuraCoreError::UnauthorizedOwner
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
 }
 
 /// Attaches or replaces the emergency multisig configuration on the treasury.
@@ -42,11 +42,12 @@ pub fn handler(ctx: Context<ConfigureMultisig>, args: ConfigureMultisigArgs) -> 
         AuraCoreError::InvalidGuardianConfiguration
     );
 
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let multisig = EmergencyMultisig {
         required_signatures: usize::from(args.required_signatures),
         guardians: args.guardians.iter().map(ToString::to_string).collect(),
         pending_override: None,
+        pending_guardian_change: None,
     };
     domain.attach_multisig(multisig, args.timestamp);
 

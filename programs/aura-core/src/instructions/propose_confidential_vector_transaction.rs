@@ -22,7 +22,7 @@ pub struct ProposeConfidentialVectorTransaction<'info> {
         bump = treasury.bump,
         constraint = treasury.ai_authority == ai_authority.key() @ crate::AuraCoreError::UnauthorizedAi
     )]
-    pub treasury: Account<'info, TreasuryAccount>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: Encrypt-owned ciphertext account containing [daily_limit, per_tx_limit, spent_today].
     pub guardrail_vector_ciphertext: UncheckedAccount<'info>,
     /// CHECK: Encrypt-owned ciphertext account containing the proposed amount in lane 0.
@@ -59,7 +59,7 @@ pub fn handler(
     ctx: Context<ProposeConfidentialVectorTransaction>,
     args: ProposeConfidentialTransactionArgs,
 ) -> Result<()> {
-    let mut domain = ctx.accounts.treasury.to_domain()?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let guardrails = domain
         .confidential_guardrails
         .clone()
@@ -147,6 +147,7 @@ pub fn handler(
         actual_output_usd: args.actual_output_usd,
         quote_age_secs: args.quote_age_secs,
         counterparty_risk_score: args.counterparty_risk_score,
+        recipient_or_contract: Some(args.recipient_or_contract.clone()),
     };
 
     let guardrail_vector_ciphertext_account =
@@ -168,9 +169,9 @@ pub fn handler(
     )
     .map_err(crate::map_treasury_error)?;
 
-    if let Some(pending) = domain.pending.as_mut() {
-        pending.policy_output_fhe_type = Some(policy_output_fhe_type);
-    }
+    domain
+        .set_active_policy_output_fhe_type(policy_output_fhe_type)
+        .map_err(crate::map_treasury_error)?;
 
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
 }
