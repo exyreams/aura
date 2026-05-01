@@ -257,8 +257,8 @@ Evaluation modes:
 
 FHE graphs:
 
-- **Scalar graph** (`confidential_spend_guardrails_scalar_v1`) — takes separate encrypted daily limit, per-tx limit, spent-today, and amount inputs, then outputs a violation code plus next spent-today value.
-- **Vector graph** (`confidential_spend_guardrails_vector_v3`) — takes a single encrypted vector encoding `[daily_limit, per_tx_limit, spent_today]`, then returns an updated vector with the violation code embedded.
+- **Scalar graph** (`confidential_spend_guardrails_scalar`) — takes separate encrypted daily limit, per-tx limit, spent-today, and amount inputs, then outputs a violation code plus next spent-today value.
+- **Vector graph** (`confidential_spend_guardrails_vector`) — takes a single encrypted vector encoding `[daily_limit, per-tx limit, spent_today]`, then returns an updated vector with the violation code embedded.
 - **Advanced/batch graph specs** — describe multi-rule confidential evaluation surfaces for future graph upgrades while keeping public policy simulation aligned with the on-chain model.
 
 ---
