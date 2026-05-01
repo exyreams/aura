@@ -268,7 +268,8 @@ await aura.governance.configureSwarm({
 ## Accessing the Low-Level Client
 
 For operations not covered by the facade (confidential FHE proposals, execution
-lifecycle, override signatures), access the underlying `AuraClient` directly:
+lifecycle, override signatures, policy-control records), access the underlying
+`AuraClient` directly:
 
 ```typescript
 const client = aura.lowLevel;
@@ -279,6 +280,9 @@ await client.executePending(operator, accounts, now);
 await client.finalizeExecution(operator, accounts, now);
 await client.proposeOverride(guardian, accounts, newDailyLimitUsd, now);
 await client.collectOverrideSignature(guardian, accounts, now);
+await client.simulatePolicy(payer, accounts, args);
+await client.configureBudgetEnvelope(owner, accounts, args);
+await client.checkInvariants(payer, accounts, args);
 ```
 
 ---

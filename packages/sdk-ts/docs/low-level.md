@@ -43,6 +43,11 @@ const [encryptCpiAuthority] = client.deriveEncryptCpiAuthority();
 const [eventAuthority] = client.deriveEncryptEventAuthority(encryptProgramId);
 ```
 
+Standalone helpers from `pda.ts` cover the policy-control accounts added to the
+program surface: policy simulation results, policy receipts, budget envelopes,
+exposure groups, operator roles, external liveness, policy attestations, batch
+proposals, and invariant reports.
+
 ---
 
 ## Account Fetching
@@ -85,7 +90,7 @@ const sig = await client.sendInstructions(payer, [ix1.instruction, ix2]);
 
 ---
 
-## All 18 Instructions
+## Instruction Surface
 
 ### `create_treasury`
 
@@ -462,6 +467,194 @@ await client.configureSwarm(
     timestamp: new BN(Math.floor(Date.now() / 1000)),
   },
 );
+```
+
+---
+
+## Policy-Control Instructions
+
+These methods expose the latest policy-control surface. They are intentionally
+low-level because most callers need to supply derived PDA accounts and choose
+whether to compose the instruction with other program calls.
+
+### `simulate_policy`
+
+Evaluates a hypothetical spend without mutating treasury spend counters and
+writes the result to a policy simulation PDA.
+
+```typescript
+await client.simulatePolicy(
+  payer,
+  {
+    payer: payer.publicKey,
+    treasury,
+    operatorRole: null,
+    simulationResult,
+    systemProgram: SystemProgram.programId,
+  },
+  {
+    simulationId: new BN(1),
+    amountUsd: new BN(500),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: new BN(Math.floor(Date.now() / 1000)),
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: null,
+    recipientOrContract: "0xdeadbeef...",
+  },
+);
+```
+
+### `write_policy_receipt`
+
+Persists an explainable receipt for a pending proposal.
+
+```typescript
+await client.writePolicyReceipt(
+  payer,
+  {
+    payer: payer.publicKey,
+    treasury,
+    receipt,
+    attestation: null,
+    systemProgram: SystemProgram.programId,
+  },
+  { proposalId: new BN(42), now: new BN(Math.floor(Date.now() / 1000)) },
+);
+```
+
+### Owner policy configuration
+
+```typescript
+await client.applyPolicyPreset(owner, { owner: owner.publicKey, treasury }, {
+  presetKind: 1,
+  now: new BN(now),
+});
+
+await client.configureBudgetEnvelope(owner, {
+  owner: owner.publicKey,
+  treasury,
+  budgetEnvelope,
+  systemProgram: SystemProgram.programId,
+}, {
+  envelopeId: new BN(7),
+  scopeKind: 0,
+  chain: 2,
+  txType: null,
+  protocolId: null,
+  dailyLimitUsd: new BN(2_500),
+  weeklyLimitUsd: new BN(10_000),
+  now: new BN(now),
+});
+
+await client.configureApprovalLadder(owner, { owner: owner.publicKey, treasury }, {
+  guardianAboveUsd: new BN(5_000),
+  multisigAboveUsd: new BN(25_000),
+  timelockAboveUsd: new BN(50_000),
+  denyAboveUsd: new BN(100_000),
+  riskGuardianBps: 6_000,
+  riskMultisigBps: 8_000,
+  riskTimelockBps: 9_000,
+  timelockSecs: new BN(3_600),
+  now: new BN(now),
+});
+```
+
+### Operator and liveness controls
+
+```typescript
+await client.grantOperatorRole(owner, {
+  owner: owner.publicKey,
+  operator: operator.publicKey,
+  treasury,
+  operatorRole,
+  systemProgram: SystemProgram.programId,
+}, {
+  permissionMask: new BN(0xffff),
+  expiresAt: new BN(now + 86_400),
+  now: new BN(now),
+});
+
+await client.setScopedPause(operator, {
+  operator: operator.publicKey,
+  treasury,
+  operatorRole,
+}, {
+  scopeKind: 5,
+  chain: null,
+  txType: null,
+  recipient: null,
+  protocolId: null,
+  paused: true,
+  expiresAt: null,
+  now: new BN(now),
+});
+
+await client.initExternalLiveness(owner, {
+  owner: owner.publicKey,
+  treasury,
+  liveness,
+  systemProgram: SystemProgram.programId,
+}, {
+  maxStalenessSecs: new BN(300),
+  now: new BN(now),
+});
+
+await client.refreshExternalLiveness(operator, {
+  operator: operator.publicKey,
+  treasury,
+  operatorRole,
+  liveness,
+}, {
+  dependency: 1,
+  now: new BN(now),
+});
+```
+
+### Attestations, batches, and invariant reports
+
+```typescript
+await client.attestPolicy(payer, attester, {
+  payer: payer.publicKey,
+  attester: attester.publicKey,
+  treasury,
+  attestation,
+  systemProgram: SystemProgram.programId,
+}, {
+  attestationKind: 1,
+  expectedPolicyHash,
+  now: new BN(now),
+});
+
+await client.proposeBatch(payer, {
+  payer: payer.publicKey,
+  treasury,
+  batch,
+  systemProgram: SystemProgram.programId,
+}, {
+  batchId: new BN(9),
+  now: new BN(now),
+  items: [{
+    amountUsd: new BN(500),
+    chain: 2,
+    txType: 0,
+    recipientOrContract: "0xdeadbeef...",
+    protocolId: null,
+  }],
+});
+
+await client.checkInvariants(payer, {
+  payer: payer.publicKey,
+  treasury,
+  report,
+  systemProgram: SystemProgram.programId,
+}, {
+  reportId: new BN(10),
+  now: new BN(now),
+});
 ```
 
 ---

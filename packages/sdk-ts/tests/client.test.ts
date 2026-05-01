@@ -7,12 +7,27 @@ import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   AURA_PROGRAM_ID,
   AuraClient,
+  type ApplyPolicyPresetArgs,
+  type ApprovePendingExecutionArgs,
+  type AttestPolicyArgs,
+  type CheckInvariantsArgs,
+  type ConfigureApprovalLadderArgs,
+  type ConfigureBudgetEnvelopeArgs,
+  type ConfigureLivenessGuardrailsArgs,
   type ConfigureMultisigArgs,
   type ConfigureSwarmArgs,
   type CreateTreasuryArgs,
+  type GrantOperatorRoleArgs,
+  type InitExposureGroupArgs,
+  type InitExternalLivenessArgs,
+  type ProposeBatchArgs,
   type ProposeConfidentialTransactionArgs,
   type ProposeTransactionArgs,
+  type RefreshExternalLivenessArgs,
   type RegisterDwalletArgs,
+  type SetScopedPauseArgs,
+  type SimulatePolicyArgs,
+  type WritePolicyReceiptArgs,
 } from "../src/index.js";
 
 // helpers
@@ -43,11 +58,26 @@ function defaultCreateTreasuryArgs(owner: PublicKey): CreateTreasuryArgs {
       maxCounterpartyRiskScore: 70,
       bitcoinManualReviewThresholdUsd: new BN(5_000),
       sharedPoolLimitUsd: null,
+      weeklyLimitUsd: null,
+      monthlyLimitUsd: null,
+      recipientLimits: [],
+      cooldownConfig: null,
+      anomalyConfig: null,
       reputationPolicy: {
         highScoreThreshold: new BN(80),
         mediumScoreThreshold: new BN(50),
         highMultiplierBps: new BN(15_000),
         lowMultiplierBps: new BN(7_000),
+      },
+      budgetEnvelopes: [],
+      approvalLadder: null,
+      scopedPauseEntries: [],
+      livenessConfig: {
+        requireEncryptFreshness: false,
+        requireDwalletFreshness: false,
+        requireBalanceOracleFreshness: false,
+        requireComplianceOracleFreshness: false,
+        maxStalenessSecs: new BN(300),
       },
     },
     protocolFees: {
@@ -70,6 +100,7 @@ function defaultProposeTransactionArgs(): ProposeTransactionArgs {
     quoteAgeSecs: null,
     counterpartyRiskScore: null,
     recipientOrContract: "recipient",
+    sanctionsProof: [],
   };
 }
 
@@ -85,6 +116,7 @@ function defaultConfidentialArgs(): ProposeConfidentialTransactionArgs {
     quoteAgeSecs: null,
     counterpartyRiskScore: null,
     recipientOrContract: "0xdeadbeef",
+    sanctionsProof: [],
   };
 }
 
@@ -797,6 +829,279 @@ test("finalizeExecution rejects operator mismatch", async () => {
         ...randomAccounts(["operator", "treasury", "messageApproval"] as const),
       },
       new BN(1),
+    ),
+    /operator/,
+  );
+});
+
+function defaultSimulatePolicyArgs(): SimulatePolicyArgs {
+  return {
+    simulationId: new BN(1),
+    amountUsd: new BN(250),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: new BN(100),
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: null,
+    recipientOrContract: "recipient",
+  };
+}
+
+function defaultWritePolicyReceiptArgs(): WritePolicyReceiptArgs {
+  return { proposalId: new BN(1), now: new BN(100) };
+}
+
+function defaultApplyPolicyPresetArgs(): ApplyPolicyPresetArgs {
+  return { presetKind: 1, now: new BN(100) };
+}
+
+function defaultConfigureBudgetEnvelopeArgs(): ConfigureBudgetEnvelopeArgs {
+  return {
+    envelopeId: new BN(1),
+    scopeKind: 0,
+    chain: 2,
+    txType: null,
+    protocolId: null,
+    dailyLimitUsd: new BN(1_000),
+    weeklyLimitUsd: new BN(5_000),
+    now: new BN(100),
+  };
+}
+
+function defaultInitExposureGroupArgs(): InitExposureGroupArgs {
+  return {
+    groupId: Array.from(new Uint8Array(16).fill(0x11)),
+    dailyLimitUsd: new BN(10_000),
+    nowDay: new BN(100),
+  };
+}
+
+function defaultConfigureApprovalLadderArgs(): ConfigureApprovalLadderArgs {
+  return {
+    guardianAboveUsd: new BN(100),
+    multisigAboveUsd: new BN(500),
+    timelockAboveUsd: new BN(1_000),
+    denyAboveUsd: new BN(5_000),
+    riskGuardianBps: 2_500,
+    riskMultisigBps: 5_000,
+    riskTimelockBps: 7_500,
+    timelockSecs: new BN(60),
+    now: new BN(100),
+  };
+}
+
+function defaultApprovePendingExecutionArgs(): ApprovePendingExecutionArgs {
+  return { proposalId: new BN(1), approvalLevel: 1, now: new BN(100) };
+}
+
+function defaultSetScopedPauseArgs(): SetScopedPauseArgs {
+  return {
+    scopeKind: 0,
+    chain: null,
+    txType: null,
+    recipient: null,
+    protocolId: null,
+    paused: true,
+    expiresAt: null,
+    now: new BN(100),
+  };
+}
+
+function defaultGrantOperatorRoleArgs(): GrantOperatorRoleArgs {
+  return {
+    permissionMask: new BN(1),
+    expiresAt: new BN(1_000),
+    now: new BN(100),
+  };
+}
+
+function defaultInitExternalLivenessArgs(): InitExternalLivenessArgs {
+  return { maxStalenessSecs: new BN(300), now: new BN(100) };
+}
+
+function defaultConfigureLivenessGuardrailsArgs(): ConfigureLivenessGuardrailsArgs {
+  return {
+    requireEncryptFreshness: true,
+    requireDwalletFreshness: true,
+    requireBalanceOracleFreshness: false,
+    requireComplianceOracleFreshness: false,
+    maxStalenessSecs: new BN(300),
+    now: new BN(100),
+  };
+}
+
+function defaultRefreshExternalLivenessArgs(): RefreshExternalLivenessArgs {
+  return { dependency: 1, now: new BN(100) };
+}
+
+function defaultAttestPolicyArgs(): AttestPolicyArgs {
+  return {
+    attestationKind: 1,
+    expectedPolicyHash: Array.from(new Uint8Array(32).fill(0x22)),
+    now: new BN(100),
+  };
+}
+
+function defaultProposeBatchArgs(): ProposeBatchArgs {
+  return {
+    batchId: new BN(1),
+    now: new BN(100),
+    items: [
+      {
+        amountUsd: new BN(100),
+        chain: 2,
+        txType: 0,
+        recipientOrContract: "recipient",
+        protocolId: null,
+      },
+    ],
+  };
+}
+
+function defaultCheckInvariantsArgs(): CheckInvariantsArgs {
+  return { reportId: new BN(1), now: new BN(100) };
+}
+
+test("policy-control instruction builders decode", async () => {
+  const client = makeClient();
+  const owner = Keypair.generate().publicKey;
+  const operator = Keypair.generate().publicKey;
+  const payer = Keypair.generate().publicKey;
+  const attester = Keypair.generate().publicKey;
+  const treasury = Keypair.generate().publicKey;
+  const systemProgram = SystemProgram.programId;
+  const accounts = randomAccounts([
+    "budgetEnvelope",
+    "exposureGroup",
+    "operatorRole",
+    "liveness",
+    "simulationResult",
+    "receipt",
+    "attestation",
+    "batch",
+    "report",
+  ] as const);
+
+  const instructions = [
+    await client.simulatePolicyInstruction(
+      { payer, treasury, operatorRole: null, simulationResult: accounts.simulationResult, systemProgram },
+      defaultSimulatePolicyArgs(),
+    ),
+    await client.writePolicyReceiptInstruction(
+      { payer, treasury, receipt: accounts.receipt, attestation: null, systemProgram },
+      defaultWritePolicyReceiptArgs(),
+    ),
+    await client.applyPolicyPresetInstruction(
+      { owner, treasury },
+      defaultApplyPolicyPresetArgs(),
+    ),
+    await client.configureBudgetEnvelopeInstruction(
+      { owner, treasury, budgetEnvelope: accounts.budgetEnvelope, systemProgram },
+      defaultConfigureBudgetEnvelopeArgs(),
+    ),
+    await client.initExposureGroupInstruction(
+      { authority: owner, exposureGroup: accounts.exposureGroup, systemProgram },
+      defaultInitExposureGroupArgs(),
+    ),
+    await client.joinExposureGroupInstruction({
+      authority: owner,
+      exposureGroup: accounts.exposureGroup,
+      treasury,
+    }),
+    await client.configureApprovalLadderInstruction(
+      { owner, treasury },
+      defaultConfigureApprovalLadderArgs(),
+    ),
+    await client.approvePendingExecutionInstruction(
+      { approver: owner, treasury },
+      defaultApprovePendingExecutionArgs(),
+    ),
+    await client.setScopedPauseInstruction(
+      { operator, treasury, operatorRole: null },
+      defaultSetScopedPauseArgs(),
+    ),
+    await client.grantOperatorRoleInstruction(
+      { owner, operator, treasury, operatorRole: accounts.operatorRole, systemProgram },
+      defaultGrantOperatorRoleArgs(),
+    ),
+    await client.revokeOperatorRoleInstruction(
+      { owner, treasury, operatorRole: accounts.operatorRole },
+      new BN(100),
+    ),
+    await client.initExternalLivenessInstruction(
+      { owner, treasury, liveness: accounts.liveness, systemProgram },
+      defaultInitExternalLivenessArgs(),
+    ),
+    await client.configureLivenessGuardrailsInstruction(
+      { owner, treasury },
+      defaultConfigureLivenessGuardrailsArgs(),
+    ),
+    await client.refreshExternalLivenessInstruction(
+      { operator, treasury, operatorRole: null, liveness: accounts.liveness },
+      defaultRefreshExternalLivenessArgs(),
+    ),
+    await client.attestPolicyInstruction(
+      { payer, attester, treasury, attestation: accounts.attestation, systemProgram },
+      defaultAttestPolicyArgs(),
+    ),
+    await client.proposeBatchInstruction(
+      { payer, treasury, batch: accounts.batch, systemProgram },
+      defaultProposeBatchArgs(),
+    ),
+    await client.checkInvariantsInstruction(
+      { payer, treasury, report: accounts.report, systemProgram },
+      defaultCheckInvariantsArgs(),
+    ),
+  ];
+
+  assert.deepEqual(
+    instructions.map((instruction) => client.coder.decode(instruction.data)?.name),
+    [
+      "simulate_policy",
+      "write_policy_receipt",
+      "apply_policy_preset",
+      "configure_budget_envelope",
+      "init_exposure_group",
+      "join_exposure_group",
+      "configure_approval_ladder",
+      "approve_pending_execution",
+      "set_scoped_pause",
+      "grant_operator_role",
+      "revoke_operator_role",
+      "init_external_liveness",
+      "configure_liveness_guardrails",
+      "refresh_external_liveness",
+      "attest_policy",
+      "propose_batch",
+      "check_invariants",
+    ],
+  );
+});
+
+test("policy-control send helpers reject signer mismatches before RPC", async () => {
+  const client = makeClient();
+  const signer = Keypair.generate();
+  await assert.rejects(
+    client.configureApprovalLadder(
+      signer,
+      { owner: Keypair.generate().publicKey, treasury: Keypair.generate().publicKey },
+      defaultConfigureApprovalLadderArgs(),
+    ),
+    /owner/,
+  );
+  await assert.rejects(
+    client.refreshExternalLiveness(
+      signer,
+      {
+        operator: Keypair.generate().publicKey,
+        treasury: Keypair.generate().publicKey,
+        operatorRole: null,
+        liveness: Keypair.generate().publicKey,
+      },
+      defaultRefreshExternalLivenessArgs(),
     ),
     /operator/,
   );

@@ -328,11 +328,26 @@ export class Aura {
           options.bitcoinManualReviewThresholdUsd ?? 5_000,
         ),
         sharedPoolLimitUsd: null,
+        weeklyLimitUsd: null,
+        monthlyLimitUsd: null,
+        recipientLimits: [],
+        cooldownConfig: null,
+        anomalyConfig: null,
         reputationPolicy: {
           highScoreThreshold: new BN(80),
           mediumScoreThreshold: new BN(50),
           highMultiplierBps: new BN(15_000),
           lowMultiplierBps: new BN(7_000),
+        },
+        budgetEnvelopes: [],
+        approvalLadder: null,
+        scopedPauseEntries: [],
+        livenessConfig: {
+          requireEncryptFreshness: false,
+          requireDwalletFreshness: false,
+          requireBalanceOracleFreshness: false,
+          requireComplianceOracleFreshness: false,
+          maxStalenessSecs: new BN(300),
         },
       },
       protocolFees: {
@@ -383,6 +398,7 @@ export class Aura {
       quoteAgeSecs: options.quoteAgeSecs ? new BN(options.quoteAgeSecs) : null,
       counterpartyRiskScore: options.counterpartyRiskScore ?? null,
       recipientOrContract: options.recipient,
+      sanctionsProof: [],
     };
 
     return await this.client.proposeTransaction(

@@ -13,10 +13,11 @@ test("AuraErrorCode: all codes start at 6000", () => {
   assert.equal(AuraErrorCode.UnauthorizedAi, 6000);
   assert.equal(AuraErrorCode.UnauthorizedOwner, 6001);
   assert.equal(AuraErrorCode.InvalidGuardianConfiguration, 6026);
+  assert.equal(AuraErrorCode.ExposureGroupUnauthorized, 6051);
 });
 
-test("AuraErrorCode: has 27 entries", () => {
-  assert.equal(Object.keys(AuraErrorCode).length, 27);
+test("AuraErrorCode: has 52 entries", () => {
+  assert.equal(Object.keys(AuraErrorCode).length, 52);
 });
 
 // isAuraError

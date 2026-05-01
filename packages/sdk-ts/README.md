@@ -245,6 +245,54 @@ await client.configureSwarm(owner, treasury, {
 });
 ```
 
+### Policy controls
+
+The low-level client exposes the latest policy-control program surface directly.
+Each method has an `*Instruction` builder and a send helper with signer checks.
+
+```ts
+await client.applyPolicyPreset(owner, { owner: owner.publicKey, treasury }, {
+  presetKind: 1,
+  now: new BN(now),
+});
+
+await client.configureApprovalLadder(owner, { owner: owner.publicKey, treasury }, {
+  guardianAboveUsd: new BN(5_000),
+  multisigAboveUsd: new BN(25_000),
+  timelockAboveUsd: new BN(50_000),
+  denyAboveUsd: new BN(100_000),
+  riskGuardianBps: 6_000,
+  riskMultisigBps: 8_000,
+  riskTimelockBps: 9_000,
+  timelockSecs: new BN(3_600),
+  now: new BN(now),
+});
+
+await client.setScopedPause(operator, {
+  operator: operator.publicKey,
+  treasury,
+  operatorRole: null,
+}, {
+  scopeKind: 5,
+  chain: null,
+  txType: null,
+  recipient: null,
+  protocolId: null,
+  paused: true,
+  expiresAt: null,
+  now: new BN(now),
+});
+```
+
+Covered policy-control methods:
+
+- `simulatePolicy`, `writePolicyReceipt`, `applyPolicyPreset`
+- `configureBudgetEnvelope`, `initExposureGroup`, `joinExposureGroup`
+- `configureApprovalLadder`, `approvePendingExecution`, `setScopedPause`
+- `grantOperatorRole`, `revokeOperatorRole`
+- `initExternalLiveness`, `configureLivenessGuardrails`, `refreshExternalLiveness`
+- `attestPolicy`, `proposeBatch`, `checkInvariants`
+
 ---
 
 ## PDA Helpers (standalone)
@@ -258,15 +306,34 @@ import {
   deriveEncryptCpiAuthorityAddress,
   deriveEncryptEventAuthorityAddress,
   deriveMessageApprovalAddress,
+  derivePolicyReceiptAddress,
+  deriveBudgetEnvelopeAddress,
+  deriveOperatorRoleAddress,
   AURA_PROGRAM_ID,
 } from "@aura-protocol/sdk-ts";
 
 const [treasury, bump] = deriveTreasuryAddress(owner, "my-agent", AURA_PROGRAM_ID);
 
-// Message approval PDA — requires a 32-byte digest
-const digest = new Uint8Array(32); // your sha256 digest
-const [approval] = deriveMessageApprovalAddress(dwalletProgramId, dwalletAccount, digest);
+// Current dWallet MessageApproval PDA.
+const digest = new Uint8Array(32); // Keccak-256 message digest
+const [approval] = deriveMessageApprovalAddress(
+  dwalletProgramId,
+  0,                  // curve code
+  publicKeyBytes,
+  5,                  // signature scheme code
+  digest,
+  metadataDigest,     // optional 32-byte digest
+);
+
+// Policy-control PDAs.
+const [receipt] = derivePolicyReceiptAddress(treasury, 42, AURA_PROGRAM_ID);
+const [envelope] = deriveBudgetEnvelopeAddress(treasury, 7, AURA_PROGRAM_ID);
+const [role] = deriveOperatorRoleAddress(treasury, operator, AURA_PROGRAM_ID);
 ```
+
+The standalone PDA helpers also include policy simulation, exposure group,
+external liveness, policy attestation, batch proposal, and invariant report
+derivations.
 
 ---
 
@@ -290,6 +357,13 @@ import type {
   ProposeConfidentialTransactionArgs,
   ConfigureMultisigArgs,
   ConfigureSwarmArgs,
+  SimulatePolicyArgs,
+  WritePolicyReceiptArgs,
+  ConfigureBudgetEnvelopeArgs,
+  ConfigureApprovalLadderArgs,
+  GrantOperatorRoleArgs,
+  ProposeBatchArgs,
+  CheckInvariantsArgs,
 } from "@aura-protocol/sdk-ts";
 ```
 
@@ -335,6 +409,13 @@ import type {
   ConfigureConfidentialVectorGuardrailsAccounts,
   ProposeConfidentialTransactionAccounts,
   ProposeConfidentialVectorTransactionAccounts,
+  SimulatePolicyAccounts,
+  WritePolicyReceiptAccounts,
+  ConfigureBudgetEnvelopeAccounts,
+  SetScopedPauseAccounts,
+  GrantOperatorRoleAccounts,
+  ProposeBatchAccounts,
+  CheckInvariantsAccounts,
 } from "@aura-protocol/sdk-ts";
 ```
 

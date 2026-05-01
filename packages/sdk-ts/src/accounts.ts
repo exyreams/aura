@@ -9,6 +9,9 @@
 
 import type { PublicKey } from "@solana/web3.js";
 
+/** Optional Anchor account value. Pass `null` when the instruction path does not use it. */
+export type OptionalAccount = PublicKey | null;
+
 /** Accounts required by any instruction that the treasury owner signs. */
 export interface OwnerTreasuryAccounts {
   /** The treasury owner — must be a signer. */
@@ -24,6 +27,29 @@ export interface AiAuthorityTreasuryAccounts {
   /** The treasury PDA. */
   treasury: PublicKey;
 }
+
+/** Optional policy-control accounts accepted by public proposal instructions. */
+export interface OptionalPolicyControlAccounts {
+  /** Optional session key authorization account. */
+  sessionKeyAccount?: OptionalAccount;
+  /** Optional shared swarm pool account. */
+  swarmPool?: OptionalAccount;
+  /** Optional address list account. */
+  addressList?: OptionalAccount;
+  /** Optional compliance oracle account. */
+  complianceOracle?: OptionalAccount;
+  /** Optional parent treasury account for child spend budgets. */
+  parentTreasury?: OptionalAccount;
+  /** Optional budget envelope account. */
+  budgetEnvelope?: OptionalAccount;
+  /** Optional exposure group account. */
+  exposureGroup?: OptionalAccount;
+}
+
+/** Accounts for `propose_transaction`. */
+export interface ProposeTransactionAccounts
+  extends AiAuthorityTreasuryAccounts,
+    OptionalPolicyControlAccounts {}
 
 /** Accounts required by guardian override instructions. */
 export interface GuardianTreasuryAccounts {
@@ -101,6 +127,8 @@ export interface ProposeConfidentialTransactionAccounts
   networkEncryptionKey: PublicKey;
   /** Encrypt program event authority PDA (`[b"__event_authority"]`). */
   eventAuthority: PublicKey;
+  /** Optional liveness record when policy requires fresh Encrypt evidence. */
+  externalLiveness?: OptionalAccount;
   /** System program. */
   systemProgram: PublicKey;
 }
@@ -135,6 +163,8 @@ export interface ProposeConfidentialVectorTransactionAccounts
   networkEncryptionKey: PublicKey;
   /** Encrypt program event authority PDA. */
   eventAuthority: PublicKey;
+  /** Optional liveness record when policy requires fresh Encrypt evidence. */
+  externalLiveness?: OptionalAccount;
   /** System program. */
   systemProgram: PublicKey;
 }
@@ -147,17 +177,19 @@ export interface ProposeConfidentialVectorTransactionAccounts
  */
 export interface ExecutePendingAccounts extends OperatorTreasuryAccounts {
   /** The `MessageApproval` PDA derived on the dWallet program. */
-  messageApproval: PublicKey;
+  messageApproval?: OptionalAccount;
   /** The dWallet account that will co-sign the transaction. */
-  dwallet: PublicKey;
+  dwallet?: OptionalAccount;
   /** The AURA program itself, passed as the CPI caller. */
   callerProgram: PublicKey;
   /** AURA's dWallet CPI authority PDA (`[b"__ika_cpi_authority"]`). */
-  cpiAuthority: PublicKey;
+  cpiAuthority?: OptionalAccount;
   /** Ika dWallet program ID. */
-  dwalletProgram: PublicKey;
+  dwalletProgram?: OptionalAccount;
   /** dWallet coordinator account. */
-  dwalletCoordinator: PublicKey;
+  dwalletCoordinator?: OptionalAccount;
+  /** Optional liveness record when policy requires fresh dWallet evidence. */
+  externalLiveness?: OptionalAccount;
   /** System program. */
   systemProgram: PublicKey;
 }
@@ -211,4 +243,152 @@ export interface ConfirmPolicyDecryptionAccounts extends OperatorTreasuryAccount
 export interface FinalizeExecutionAccounts extends OperatorTreasuryAccounts {
   /** The `MessageApproval` PDA that holds the dWallet signature. */
   messageApproval: PublicKey;
+  /** Optional swarm pool account updated after finalization. */
+  swarmPool?: OptionalAccount;
+  /** Optional budget envelope account updated after finalization. */
+  budgetEnvelope?: OptionalAccount;
+  /** Optional exposure group account updated after finalization. */
+  exposureGroup?: OptionalAccount;
+  /** Optional liveness record when policy requires fresh dWallet evidence. */
+  externalLiveness?: OptionalAccount;
+}
+
+/** Accounts for `simulate_policy`. */
+export interface SimulatePolicyAccounts {
+  /** Payer funding the simulation result account. */
+  payer: PublicKey;
+  /** Treasury being simulated. */
+  treasury: PublicKey;
+  /** Optional operator role proving simulation permission. */
+  operatorRole?: OptionalAccount;
+  /** PDA that stores the simulation result. */
+  simulationResult: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `write_policy_receipt`. */
+export interface WritePolicyReceiptAccounts {
+  /** Payer funding the receipt account. */
+  payer: PublicKey;
+  /** Treasury whose pending proposal is being snapshotted. */
+  treasury: PublicKey;
+  /** PDA that stores the immutable receipt. */
+  receipt: PublicKey;
+  /** Optional policy attestation to link with the receipt. */
+  attestation?: OptionalAccount;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `configure_budget_envelope`. */
+export interface ConfigureBudgetEnvelopeAccounts extends OwnerTreasuryAccounts {
+  /** PDA for the scoped envelope record. */
+  budgetEnvelope: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `init_exposure_group`. */
+export interface InitExposureGroupAccounts {
+  /** Authority that owns exposure group membership. */
+  authority: PublicKey;
+  /** PDA for the exposure group. */
+  exposureGroup: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `join_exposure_group`. */
+export interface JoinExposureGroupAccounts {
+  /** Exposure group authority. */
+  authority: PublicKey;
+  /** Exposure group PDA. */
+  exposureGroup: PublicKey;
+  /** Treasury being added to the exposure group. */
+  treasury: PublicKey;
+}
+
+/** Accounts for `approve_pending_execution`. */
+export interface ApprovePendingExecutionAccounts {
+  /** Owner or guardian satisfying the pending approval requirement. */
+  approver: PublicKey;
+  /** Treasury containing the pending proposal. */
+  treasury: PublicKey;
+}
+
+/** Accounts for `set_scoped_pause`. */
+export interface SetScopedPauseAccounts extends OperatorTreasuryAccounts {
+  /** Optional role account when a non-owner operator manages scoped pauses. */
+  operatorRole?: OptionalAccount;
+}
+
+/** Accounts for `grant_operator_role`. */
+export interface GrantOperatorRoleAccounts extends OwnerTreasuryAccounts {
+  /** Operator receiving permissions. */
+  operator: PublicKey;
+  /** PDA storing the role grant. */
+  operatorRole: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `revoke_operator_role`. */
+export interface RevokeOperatorRoleAccounts extends OwnerTreasuryAccounts {
+  /** Role account being revoked. */
+  operatorRole: PublicKey;
+}
+
+/** Accounts for `init_external_liveness`. */
+export interface InitExternalLivenessAccounts extends OwnerTreasuryAccounts {
+  /** PDA storing external dependency freshness. */
+  liveness: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `refresh_external_liveness`. */
+export interface RefreshExternalLivenessAccounts extends OperatorTreasuryAccounts {
+  /** Optional role account when a delegated operator refreshes liveness. */
+  operatorRole?: OptionalAccount;
+  /** Liveness account to update. */
+  liveness: PublicKey;
+}
+
+/** Accounts for `attest_policy`. */
+export interface AttestPolicyAccounts {
+  /** Payer funding the attestation account. */
+  payer: PublicKey;
+  /** Attester signing the policy hash. */
+  attester: PublicKey;
+  /** Treasury whose current policy is being attested. */
+  treasury: PublicKey;
+  /** PDA storing the attestation. */
+  attestation: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `propose_batch`. */
+export interface ProposeBatchAccounts {
+  /** Payer funding the batch proposal account. */
+  payer: PublicKey;
+  /** Treasury used for batch simulation. */
+  treasury: PublicKey;
+  /** PDA storing the batch result. */
+  batch: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `check_invariants`. */
+export interface CheckInvariantsAccounts {
+  /** Payer funding the invariant report account. */
+  payer: PublicKey;
+  /** Treasury being checked. */
+  treasury: PublicKey;
+  /** PDA storing the invariant report. */
+  report: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
 }
