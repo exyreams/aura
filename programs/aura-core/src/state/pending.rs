@@ -1,6 +1,6 @@
 use aura_policy::{Chain, PolicyDecision, TransactionType};
 
-use crate::state::SignatureScheme;
+use crate::state::{ComplianceMetadata, SignatureScheme};
 
 /// Lifecycle stage of a pending proposal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,4 +101,12 @@ pub struct PendingTransaction {
     pub signature_request: Option<PendingSignatureRequest>,
     /// The policy decision recorded at proposal time.
     pub decision: PolicyDecision,
+    /// Composite risk score copied from `decision` for quick access.
+    pub risk_score: u8,
+    /// Whether execution requires a guardian co-signature.
+    pub requires_guardian_cosign: bool,
+    /// Policy version used when this proposal was evaluated.
+    pub policy_version: u32,
+    /// Optional compliance metadata attached at proposal time.
+    pub compliance_metadata: Option<ComplianceMetadata>,
 }

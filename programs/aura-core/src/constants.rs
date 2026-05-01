@@ -35,3 +35,42 @@ pub const MAX_SWARM_ID_LEN: usize = 64;
 pub const MAX_SWARM_MEMBERS: usize = 16;
 /// Maximum byte length of a swarm member agent ID string.
 pub const MAX_SWARM_MEMBER_LEN: usize = 64;
+
+/// Current treasury account schema version after the advanced feature upgrade.
+pub const CURRENT_SCHEMA_VERSION: u8 = 2;
+/// Maximum pending proposals stored in the multi-slot queue.
+pub const MAX_PENDING_QUEUE_DEPTH: usize = 3;
+/// Activity log PDA seed.
+pub const ACTIVITY_LOG_SEED: &[u8] = b"activity_log";
+/// Maximum number of on-chain activity records kept in the ring buffer.
+pub const ACTIVITY_LOG_MAX_ENTRIES: usize = 128;
+/// Shared swarm pool PDA seed.
+pub const SWARM_POOL_SEED: &[u8] = b"swarm_pool";
+/// Session key PDA seed.
+pub const SESSION_KEY_SEED: &[u8] = b"session_key";
+/// Address list PDA seed.
+pub const ADDRESS_LIST_SEED: &[u8] = b"address_list";
+/// Policy history PDA seed.
+pub const POLICY_HISTORY_SEED: &[u8] = b"policy_history";
+/// Protocol fee vault PDA seed.
+pub const FEE_VAULT_SEED: &[u8] = b"fee_vault";
+/// Compliance oracle PDA seed.
+pub const COMPLIANCE_ORACLE_SEED: &[u8] = b"compliance_oracle";
+/// Health score PDA seed.
+pub const HEALTH_SCORE_SEED: &[u8] = b"health_score";
+/// Periodic snapshot PDA seed.
+pub const SNAPSHOT_SEED: &[u8] = b"treasury_snapshot";
+/// Policy check result PDA seed.
+pub const POLICY_CHECK_SEED: &[u8] = b"policy_check";
+/// AI authority rotation delay.
+pub const AI_ROTATION_TIMELOCK_SECS: i64 = 86_400;
+/// Timelock applied to dangerous config changes.
+pub const CONFIG_CHANGE_TIMELOCK_SECS: i64 = 48 * 3_600;
+/// Guardian veto window for pending config changes.
+pub const VETO_WINDOW_SECS: i64 = 24 * 3_600;
+/// Default owner inactivity threshold for dead man's switch.
+pub const DEFAULT_DEAD_MANS_SWITCH_THRESHOLD_SECS: i64 = 90 * 86_400;
+/// Staleness threshold for dWallet balance oracle data.
+pub const BALANCE_STALE_THRESHOLD_SECS: i64 = 3_600;
+/// Minimum time between snapshots.
+pub const SNAPSHOT_MIN_INTERVAL_SECS: i64 = 6 * 3_600;

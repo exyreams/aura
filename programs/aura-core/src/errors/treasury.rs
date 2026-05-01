@@ -54,6 +54,20 @@ pub enum TreasuryError {
     PendingTransactionExpired,
     /// An operation requires an active override proposal but none exists.
     NoActiveOverride,
+    /// A timelock has not elapsed yet.
+    TimelockNotElapsed,
+    /// Cooldown rule blocked a large transaction.
+    CooldownNotElapsed { remaining_secs: i64 },
+    /// High-risk proposal requires a guardian co-signature.
+    HighRiskTransactionRequiresGuardian,
+    /// Agent lifecycle transition is not allowed.
+    InvalidStateTransition,
+    /// Child proposal exceeds parent treasury remaining limit.
+    ParentLimitExceeded,
+    /// Address list or sanctions policy rejected the recipient.
+    RecipientRejected,
+    /// Statistical anomaly was detected and configured to deny.
+    AnomalyDetected,
 }
 
 impl Display for TreasuryError {
@@ -87,6 +101,20 @@ impl Display for TreasuryError {
             Self::ExecutionPaused => write!(f, "treasury execution is paused"),
             Self::PendingTransactionExpired => write!(f, "pending transaction expired"),
             Self::NoActiveOverride => write!(f, "no active override"),
+            Self::TimelockNotElapsed => write!(f, "timelock period has not elapsed"),
+            Self::CooldownNotElapsed { remaining_secs } => {
+                write!(
+                    f,
+                    "cooldown period has not elapsed: {remaining_secs}s remaining"
+                )
+            }
+            Self::HighRiskTransactionRequiresGuardian => {
+                write!(f, "high risk transaction requires guardian co-signature")
+            }
+            Self::InvalidStateTransition => write!(f, "invalid agent state transition"),
+            Self::ParentLimitExceeded => write!(f, "parent treasury limit exceeded"),
+            Self::RecipientRejected => write!(f, "recipient rejected by address controls"),
+            Self::AnomalyDetected => write!(f, "anomaly detected in transaction pattern"),
         }
     }
 }

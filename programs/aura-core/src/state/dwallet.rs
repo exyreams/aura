@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use aura_policy::Chain;
 
+use crate::constants::BALANCE_STALE_THRESHOLD_SECS;
+
 /// Elliptic curve used by a dWallet for key generation and signing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DWalletCurve {
@@ -104,6 +106,10 @@ pub struct DWalletReference {
     pub address: String,
     /// Current balance in USD, used for policy context.
     pub balance_usd: u64,
+    /// Unix timestamp when `balance_usd` was refreshed.
+    pub balance_updated_at: i64,
+    /// Optional oracle account that is allowed to refresh the stored balance.
+    pub balance_oracle: Option<String>,
     /// The authority that controls this dWallet (PDA string for on-chain use).
     pub authority: String,
     /// Seed string used to derive the CPI authority PDA.
@@ -136,5 +142,9 @@ impl DWalletReference {
                 (DWalletCurve::Secp256k1, SignatureScheme::EcdsaKeccak256)
             }
         }
+    }
+
+    pub fn is_balance_stale(&self, now: i64) -> bool {
+        now.saturating_sub(self.balance_updated_at) > BALANCE_STALE_THRESHOLD_SECS
     }
 }

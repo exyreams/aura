@@ -1,4 +1,8 @@
-use crate::{errors::TreasuryError, governance::OverrideProposal};
+use crate::{
+    errors::TreasuryError,
+    governance::OverrideProposal,
+    state::{GuardianChangeAction, PendingGuardianChange},
+};
 
 /// A set of trusted guardians that can collectively override the treasury's
 /// daily spending limit via a quorum-gated proposal.
@@ -14,6 +18,8 @@ pub struct EmergencyMultisig {
     pub guardians: Vec<String>,
     /// The currently pending override proposal, if any.
     pub pending_override: Option<OverrideProposal>,
+    /// Pending guardian add/remove change awaiting quorum.
+    pub pending_guardian_change: Option<PendingGuardianChange>,
 }
 
 impl EmergencyMultisig {
@@ -79,5 +85,81 @@ impl EmergencyMultisig {
                     && proposal.signatures_collected.len() >= self.required_signatures
             })
             .unwrap_or(false)
+    }
+
+    pub fn propose_guardian_change(
+        &mut self,
+        proposer: &str,
+        action: GuardianChangeAction,
+        target_guardian: String,
+        now: i64,
+    ) -> Result<(), TreasuryError> {
+        if !self.guardians.iter().any(|known| known == proposer) {
+            return Err(TreasuryError::UnauthorizedGuardian);
+        }
+
+        self.pending_guardian_change = Some(PendingGuardianChange {
+            action,
+            target_guardian,
+            signatures: vec![proposer.to_string()],
+            proposed_at: now,
+            expires_at: now + 86_400,
+        });
+        Ok(())
+    }
+
+    pub fn collect_guardian_change_signature(
+        &mut self,
+        guardian: &str,
+    ) -> Result<(), TreasuryError> {
+        if !self.guardians.iter().any(|known| known == guardian) {
+            return Err(TreasuryError::UnauthorizedGuardian);
+        }
+
+        let change = self
+            .pending_guardian_change
+            .as_mut()
+            .ok_or(TreasuryError::NoActiveOverride)?;
+        if !change.signatures.iter().any(|known| known == guardian) {
+            change.signatures.push(guardian.to_string());
+        }
+        Ok(())
+    }
+
+    pub fn execute_guardian_change(
+        &mut self,
+        now: i64,
+    ) -> Result<GuardianChangeAction, TreasuryError> {
+        let change = self
+            .pending_guardian_change
+            .take()
+            .ok_or(TreasuryError::NoActiveOverride)?;
+
+        if now > change.expires_at || change.signatures.len() < self.required_signatures {
+            self.pending_guardian_change = Some(change);
+            return Err(TreasuryError::NoActiveOverride);
+        }
+
+        match change.action {
+            GuardianChangeAction::Add => {
+                if !self
+                    .guardians
+                    .iter()
+                    .any(|known| known == &change.target_guardian)
+                {
+                    self.guardians.push(change.target_guardian);
+                }
+            }
+            GuardianChangeAction::Remove => {
+                self.guardians
+                    .retain(|guardian| guardian != &change.target_guardian);
+                self.required_signatures = self.required_signatures.min(self.guardians.len());
+                if self.required_signatures == 0 && !self.guardians.is_empty() {
+                    self.required_signatures = 1;
+                }
+            }
+        }
+
+        Ok(change.action)
     }
 }

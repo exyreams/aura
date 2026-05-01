@@ -39,26 +39,53 @@ pub mod state;
 pub use instructions::*;
 #[allow(unused_imports)]
 use instructions::{
-    __client_accounts_cancel_pending, __client_accounts_collect_override_signature,
+    __client_accounts_cancel_pending, __client_accounts_check_policy_cpi,
+    __client_accounts_close_activity_log, __client_accounts_close_address_list,
+    __client_accounts_close_fee_vault, __client_accounts_close_health_score,
+    __client_accounts_close_policy_history, __client_accounts_close_session_key,
+    __client_accounts_close_snapshot, __client_accounts_collect_fees,
+    __client_accounts_collect_override_signature,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_confidential_vector_guardrails,
     __client_accounts_configure_multisig, __client_accounts_configure_swarm,
     __client_accounts_confirm_policy_decryption, __client_accounts_create_treasury,
     __client_accounts_execute_pending, __client_accounts_finalize_execution,
-    __client_accounts_pause_execution, __client_accounts_propose_confidential_transaction,
+    __client_accounts_init_activity_log, __client_accounts_init_address_list,
+    __client_accounts_init_fee_vault, __client_accounts_init_health_score,
+    __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
+    __client_accounts_issue_session_key, __client_accounts_join_swarm,
+    __client_accounts_manage_address_list, __client_accounts_migrate_treasury,
+    __client_accounts_owner_treasury, __client_accounts_pause_execution,
+    __client_accounts_propose_confidential_transaction,
     __client_accounts_propose_confidential_vector_transaction, __client_accounts_propose_override,
-    __client_accounts_propose_transaction, __client_accounts_register_dwallet,
-    __client_accounts_request_policy_decryption, __cpi_client_accounts_cancel_pending,
-    __cpi_client_accounts_collect_override_signature,
+    __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
+    __client_accounts_register_dwallet, __client_accounts_request_policy_decryption,
+    __client_accounts_revoke_session_key, __client_accounts_take_snapshot,
+    __client_accounts_trigger_dead_mans_switch, __client_accounts_update_health_score,
+    __client_accounts_veto_config_change, __cpi_client_accounts_cancel_pending,
+    __cpi_client_accounts_check_policy_cpi, __cpi_client_accounts_close_activity_log,
+    __cpi_client_accounts_close_address_list, __cpi_client_accounts_close_fee_vault,
+    __cpi_client_accounts_close_health_score, __cpi_client_accounts_close_policy_history,
+    __cpi_client_accounts_close_session_key, __cpi_client_accounts_close_snapshot,
+    __cpi_client_accounts_collect_fees, __cpi_client_accounts_collect_override_signature,
     __cpi_client_accounts_configure_confidential_guardrails,
     __cpi_client_accounts_configure_confidential_vector_guardrails,
     __cpi_client_accounts_configure_multisig, __cpi_client_accounts_configure_swarm,
     __cpi_client_accounts_confirm_policy_decryption, __cpi_client_accounts_create_treasury,
     __cpi_client_accounts_execute_pending, __cpi_client_accounts_finalize_execution,
-    __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_confidential_transaction,
+    __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
+    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
+    __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
+    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_swarm,
+    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_migrate_treasury,
+    __cpi_client_accounts_owner_treasury, __cpi_client_accounts_pause_execution,
+    __cpi_client_accounts_propose_confidential_transaction,
     __cpi_client_accounts_propose_confidential_vector_transaction,
     __cpi_client_accounts_propose_override, __cpi_client_accounts_propose_transaction,
-    __cpi_client_accounts_register_dwallet, __cpi_client_accounts_request_policy_decryption,
+    __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_register_dwallet,
+    __cpi_client_accounts_request_policy_decryption, __cpi_client_accounts_revoke_session_key,
+    __cpi_client_accounts_take_snapshot, __cpi_client_accounts_trigger_dead_mans_switch,
+    __cpi_client_accounts_update_health_score, __cpi_client_accounts_veto_config_change,
 };
 
 declare_id!("2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya");
@@ -168,6 +195,198 @@ pub mod aura_core {
     pub fn configure_swarm(ctx: Context<ConfigureSwarm>, args: ConfigureSwarmArgs) -> Result<()> {
         instructions::configure_swarm::handler(ctx, args)
     }
+
+    pub fn init_activity_log(ctx: Context<InitActivityLog>) -> Result<()> {
+        instructions::activity_log::init_activity_log(ctx)
+    }
+
+    pub fn init_swarm_pool(ctx: Context<InitSwarmPool>, args: InitSwarmPoolArgs) -> Result<()> {
+        instructions::swarm_pool::init_swarm_pool(ctx, args)
+    }
+
+    pub fn join_swarm(ctx: Context<JoinSwarm>, now: i64) -> Result<()> {
+        instructions::swarm_pool::join_swarm(ctx, now)
+    }
+
+    pub fn propose_ai_rotation(
+        ctx: Context<OwnerTreasury>,
+        new_ai_authority: Pubkey,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::propose_ai_rotation(ctx, new_ai_authority, now)
+    }
+
+    pub fn execute_ai_rotation(ctx: Context<OwnerTreasury>, now: i64) -> Result<()> {
+        instructions::treasury_admin::execute_ai_rotation(ctx, now)
+    }
+
+    pub fn cancel_ai_rotation(ctx: Context<OwnerTreasury>, now: i64) -> Result<()> {
+        instructions::treasury_admin::cancel_ai_rotation(ctx, now)
+    }
+
+    pub fn propose_config_change(
+        ctx: Context<OwnerTreasury>,
+        change_id: u64,
+        new_policy_config: PolicyConfigRecord,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::propose_config_change(ctx, change_id, new_policy_config, now)
+    }
+
+    pub fn execute_config_change(
+        ctx: Context<OwnerTreasury>,
+        change_id: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::execute_config_change(ctx, change_id, now)
+    }
+
+    pub fn veto_config_change(
+        ctx: Context<VetoConfigChange>,
+        change_id: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::veto_config_change(ctx, change_id, now)
+    }
+
+    pub fn issue_session_key(
+        ctx: Context<IssueSessionKey>,
+        args: IssueSessionKeyArgs,
+    ) -> Result<()> {
+        instructions::session_keys::issue_session_key(ctx, args)
+    }
+
+    pub fn revoke_session_key(ctx: Context<RevokeSessionKey>, now: i64) -> Result<()> {
+        instructions::session_keys::revoke_session_key(ctx, now)
+    }
+
+    pub fn trigger_dead_mans_switch(ctx: Context<TriggerDeadMansSwitch>, now: i64) -> Result<()> {
+        instructions::treasury_admin::trigger_dead_mans_switch(ctx, now)
+    }
+
+    pub fn transition_agent_state(
+        ctx: Context<OwnerTreasury>,
+        target_state: u8,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::transition_agent_state(ctx, target_state, now)
+    }
+
+    pub fn propose_guardian_rotation(
+        ctx: Context<VetoConfigChange>,
+        action: u8,
+        target_guardian: Pubkey,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::propose_guardian_rotation(ctx, action, target_guardian, now)
+    }
+
+    pub fn execute_guardian_rotation(ctx: Context<VetoConfigChange>, now: i64) -> Result<()> {
+        instructions::treasury_admin::execute_guardian_rotation(ctx, now)
+    }
+
+    pub fn emergency_shutdown(
+        ctx: Context<OwnerTreasury>,
+        recovery_pubkey: Pubkey,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::emergency_shutdown(ctx, recovery_pubkey, now)
+    }
+
+    pub fn init_address_list(
+        ctx: Context<InitAddressList>,
+        mode: u8,
+        chain: u8,
+        now: i64,
+    ) -> Result<()> {
+        instructions::address_lists::init_address_list(ctx, mode, chain, now)
+    }
+
+    pub fn manage_address_list(
+        ctx: Context<ManageAddressList>,
+        mode: u8,
+        chain: u8,
+        addresses: Vec<String>,
+        now: i64,
+    ) -> Result<()> {
+        instructions::address_lists::manage_address_list(ctx, mode, chain, addresses, now)
+    }
+
+    pub fn init_fee_vault(
+        ctx: Context<InitFeeVault>,
+        protocol_fee_recipient: Pubkey,
+        now: i64,
+    ) -> Result<()> {
+        instructions::fee_vault::init_fee_vault(ctx, protocol_fee_recipient, now)
+    }
+
+    pub fn collect_fees(ctx: Context<CollectFees>, now: i64) -> Result<()> {
+        instructions::fee_vault::collect_fees(ctx, now)
+    }
+
+    pub fn refresh_dwallet_balance(
+        ctx: Context<RefreshDwalletBalance>,
+        chain_code: u8,
+        now: i64,
+    ) -> Result<()> {
+        instructions::policy_services::refresh_dwallet_balance(ctx, chain_code, now)
+    }
+
+    pub fn check_policy_cpi(ctx: Context<CheckPolicyCpi>, args: CheckPolicyCpiArgs) -> Result<()> {
+        instructions::policy_services::check_policy_cpi(ctx, args)
+    }
+
+    pub fn migrate_treasury(ctx: Context<MigrateTreasury>) -> Result<()> {
+        instructions::migration::migrate_treasury(ctx)
+    }
+
+    pub fn init_policy_history(ctx: Context<InitPolicyHistory>) -> Result<()> {
+        instructions::policy_history::init_policy_history(ctx)
+    }
+
+    pub fn record_policy_snapshot(ctx: Context<InitPolicyHistory>, now: i64) -> Result<()> {
+        instructions::policy_history::record_policy_snapshot(ctx, now)
+    }
+
+    pub fn init_health_score(ctx: Context<InitHealthScore>, now: i64) -> Result<()> {
+        instructions::health_score::init_health_score(ctx, now)
+    }
+
+    pub fn refresh_health_score(ctx: Context<UpdateHealthScore>, now: i64) -> Result<()> {
+        instructions::health_score::refresh_health_score(ctx, now)
+    }
+
+    pub fn take_snapshot(ctx: Context<TakeSnapshot>, snapshot_index: u32, now: i64) -> Result<()> {
+        instructions::snapshots::take_snapshot(ctx, snapshot_index, now)
+    }
+
+    pub fn close_session_key(ctx: Context<CloseSessionKey>) -> Result<()> {
+        instructions::session_keys::close_session_key(ctx)
+    }
+
+    pub fn close_activity_log(ctx: Context<CloseActivityLog>) -> Result<()> {
+        instructions::activity_log::close_activity_log(ctx)
+    }
+
+    pub fn close_address_list(ctx: Context<CloseAddressList>) -> Result<()> {
+        instructions::address_lists::close_address_list(ctx)
+    }
+
+    pub fn close_policy_history(ctx: Context<ClosePolicyHistory>) -> Result<()> {
+        instructions::policy_history::close_policy_history(ctx)
+    }
+
+    pub fn close_health_score(ctx: Context<CloseHealthScore>) -> Result<()> {
+        instructions::health_score::close_health_score(ctx)
+    }
+
+    pub fn close_fee_vault(ctx: Context<CloseFeeVault>) -> Result<()> {
+        instructions::fee_vault::close_fee_vault(ctx)
+    }
+
+    pub fn close_snapshot(ctx: Context<CloseSnapshot>) -> Result<()> {
+        instructions::snapshots::close_snapshot(ctx)
+    }
 }
 
 pub use audit::{AuditEvent, AuditKind, AuditTrail};
@@ -195,11 +414,14 @@ pub use program_accounts::*;
 pub use program_error::{map_treasury_error, AuraCoreError};
 pub use program_events::{emit_audit_events, emit_execution_event, emit_proposal_event};
 pub use state::{
-    AgentReputation, AgentSwarm, AgentTreasury, ConfidentialGuardrails, DWalletCurve,
-    DWalletMessageApprovalLayout, DWalletReference, DeploymentCluster, ExecutionReceipt,
-    PendingDecryptionRequest, PendingSignatureRequest, PendingTransaction, ProposalStatus,
-    ProtocolDeployment, ProtocolFees, SignatureScheme, DWALLET_DEVNET_GRPC_ENDPOINT,
-    DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET_GRPC_ENDPOINT, ENCRYPT_DEVNET_PROGRAM_ID,
+    AgentLifecycleState, AgentReputation, AgentSwarm, AgentTreasury, CircuitBreakerConfig,
+    CircuitBreakerState, ComplianceMetadata, ConfidentialGuardrails, ConfigChangeKind,
+    DWalletCurve, DWalletMessageApprovalLayout, DWalletReference, DeadMansSwitch,
+    DeploymentCluster, ExecutionReceipt, GuardianChangeAction, PendingAiRotation,
+    PendingConfigChange, PendingDecryptionRequest, PendingGuardianChange, PendingSignatureRequest,
+    PendingTransaction, ProposalStatus, ProtocolDeployment, ProtocolFees, SignatureScheme,
+    DWALLET_DEVNET_GRPC_ENDPOINT, DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET_GRPC_ENDPOINT,
+    ENCRYPT_DEVNET_PROGRAM_ID,
 };
 
 #[cfg(test)]

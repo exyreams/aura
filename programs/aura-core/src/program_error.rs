@@ -67,6 +67,30 @@ pub enum AuraCoreError {
     InvalidProposalStatus,
     #[msg("invalid guardian configuration")]
     InvalidGuardianConfiguration,
+    #[msg("timelock period has not elapsed yet")]
+    TimelockNotElapsed,
+    #[msg("recipient address is on the sanctions list")]
+    SanctionedAddress,
+    #[msg("recipient address is blacklisted")]
+    RecipientBlacklisted,
+    #[msg("recipient address is not on the whitelist")]
+    RecipientNotWhitelisted,
+    #[msg("cooldown period between large transactions has not elapsed")]
+    CooldownNotElapsed,
+    #[msg("high risk transaction requires guardian co-signature")]
+    HighRiskTransactionRequiresGuardian,
+    #[msg("invalid agent state transition")]
+    InvalidStateTransition,
+    #[msg("parent treasury limit exceeded")]
+    ParentLimitExceeded,
+    #[msg("anomaly detected in transaction pattern")]
+    AnomalyDetected,
+    #[msg("session key expired or revoked")]
+    SessionKeyInactive,
+    #[msg("session key scope does not allow this proposal")]
+    SessionKeyScopeViolation,
+    #[msg("account cannot be closed while still active")]
+    AccountStillActive,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.
@@ -107,5 +131,14 @@ pub fn map_treasury_error(error: TreasuryError) -> anchor_lang::error::Error {
             error!(AuraCoreError::PendingTransactionExpired)
         }
         TreasuryError::NoActiveOverride => error!(AuraCoreError::NoActiveOverride),
+        TreasuryError::TimelockNotElapsed => error!(AuraCoreError::TimelockNotElapsed),
+        TreasuryError::CooldownNotElapsed { .. } => error!(AuraCoreError::CooldownNotElapsed),
+        TreasuryError::HighRiskTransactionRequiresGuardian => {
+            error!(AuraCoreError::HighRiskTransactionRequiresGuardian)
+        }
+        TreasuryError::InvalidStateTransition => error!(AuraCoreError::InvalidStateTransition),
+        TreasuryError::ParentLimitExceeded => error!(AuraCoreError::ParentLimitExceeded),
+        TreasuryError::RecipientRejected => error!(AuraCoreError::RecipientBlacklisted),
+        TreasuryError::AnomalyDetected => error!(AuraCoreError::AnomalyDetected),
     }
 }

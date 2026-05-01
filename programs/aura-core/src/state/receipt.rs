@@ -1,6 +1,6 @@
 use aura_policy::{RuleOutcome, ViolationCode};
 
-use crate::state::{ProposalStatus, SignatureScheme};
+use crate::state::{ComplianceMetadata, ProposalStatus, SignatureScheme};
 
 /// The outcome record produced after a proposal is executed or denied.
 ///
@@ -48,4 +48,6 @@ pub struct ExecutionReceipt {
     pub effective_daily_limit_usd: u64,
     /// Full policy rule evaluation trace.
     pub trace: Vec<RuleOutcome>,
+    /// Optional compliance metadata copied from the proposal.
+    pub compliance_metadata: Option<ComplianceMetadata>,
 }

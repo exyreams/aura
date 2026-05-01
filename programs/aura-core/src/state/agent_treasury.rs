@@ -4,7 +4,13 @@ use aura_policy::{Chain, PolicyConfig, PolicyEvaluationContext, PolicyState, Tra
 
 use crate::{
     audit::{AuditKind, AuditTrail},
+    constants::MAX_PENDING_QUEUE_DEPTH,
     governance::EmergencyMultisig,
+    state::safety_controls::{
+        audit_lifecycle_label, check_circuit_breaker_auto_resume,
+        ensure_valid_lifecycle_transition, register_circuit_breaker_violation, AgentLifecycleState,
+        CircuitBreakerState, DeadMansSwitch, PendingAiRotation, PendingConfigChange,
+    },
     state::{
         AgentReputation, AgentSwarm, ConfidentialGuardrails, DWalletCurve, DWalletReference,
         PendingTransaction, ProtocolDeployment, ProtocolFees, SignatureScheme,
@@ -39,6 +45,9 @@ pub struct AgentTreasury {
     pub confidential_guardrails: Option<ConfidentialGuardrails>,
     /// The single in-flight proposal, if any.
     pub pending: Option<PendingTransaction>,
+    /// Multi-slot pending proposal queue. `pending` mirrors the queue front
+    /// for backward-compatible handlers and older clients.
+    pub pending_queue: Vec<PendingTransaction>,
     /// Append-only log of all treasury actions (not persisted on-chain).
     pub audit_trail: AuditTrail,
     /// Total number of proposals that have been executed.
@@ -47,8 +56,46 @@ pub struct AgentTreasury {
     pub next_proposal_id: u64,
     /// When `true`, `propose_transaction` and `execute_pending` are blocked.
     pub execution_paused: bool,
+    /// Full lifecycle state for the agent treasury.
+    pub agent_state: AgentLifecycleState,
     /// How long (in seconds) a pending transaction remains valid before expiring.
     pub pending_transaction_ttl_secs: i64,
+    /// Policy/rule version applied to newly-created proposals.
+    pub current_policy_version: u32,
+    /// Pending AI authority rotation awaiting timelock expiry.
+    pub pending_ai_rotation: Option<PendingAiRotation>,
+    /// Pending dangerous config change awaiting timelock expiry.
+    pub pending_config_change: Option<PendingConfigChange>,
+    /// Auto-pause state tracking policy violations.
+    pub circuit_breaker: CircuitBreakerState,
+    /// Last timestamp when the owner signed an owner-only instruction.
+    pub last_owner_activity_at: i64,
+    /// Optional dead man's switch configuration.
+    pub dead_mans_switch: Option<DeadMansSwitch>,
+    /// High risk proposals at or above this score require guardian co-signing.
+    pub high_risk_threshold: u8,
+    /// Whether high-risk guardian co-signing is enforced.
+    pub high_risk_require_guardian: bool,
+    /// Last timestamp of a large transaction subject to cooldown.
+    pub last_large_tx_at: Option<i64>,
+    /// Amount of the last large transaction subject to cooldown.
+    pub last_large_tx_amount_usd: u64,
+    /// Parent treasury, if this treasury is a child agent.
+    pub parent_treasury: Option<String>,
+    /// Child treasury pubkeys spawned from this treasury.
+    pub child_agents: Vec<String>,
+    /// Optional total child spend budget.
+    pub child_spend_budget_usd: Option<u64>,
+    /// Whether recipient sanctions checks are required for proposals.
+    pub sanctions_check_enabled: bool,
+    /// Optional compliance oracle account pubkey.
+    pub compliance_oracle: Option<String>,
+    /// Emergency shutdown timestamp.
+    pub shutdown_initiated_at: Option<i64>,
+    /// Recovery pubkey used by emergency shutdown.
+    pub shutdown_recovery_pubkey: Option<String>,
+    /// Last periodic snapshot timestamp.
+    pub last_snapshot_at: Option<i64>,
     /// Agent reputation counters used for limit scaling.
     pub reputation: AgentReputation,
     /// Protocol fee schedule applied to executed transactions.
@@ -89,11 +136,31 @@ impl AgentTreasury {
             policy_state: PolicyState::default(),
             confidential_guardrails: None,
             pending: None,
+            pending_queue: Vec::new(),
             audit_trail,
             total_transactions: 0,
             next_proposal_id: 1,
             execution_paused: false,
+            agent_state: AgentLifecycleState::Provisioning,
             pending_transaction_ttl_secs: 900,
+            current_policy_version: 1,
+            pending_ai_rotation: None,
+            pending_config_change: None,
+            circuit_breaker: CircuitBreakerState::default(),
+            last_owner_activity_at: creation_timestamp,
+            dead_mans_switch: None,
+            high_risk_threshold: 70,
+            high_risk_require_guardian: false,
+            last_large_tx_at: None,
+            last_large_tx_amount_usd: 0,
+            parent_treasury: None,
+            child_agents: Vec::new(),
+            child_spend_budget_usd: None,
+            sanctions_check_enabled: false,
+            compliance_oracle: None,
+            shutdown_initiated_at: None,
+            shutdown_recovery_pubkey: None,
+            last_snapshot_at: None,
             reputation: AgentReputation::default(),
             protocol_fees: ProtocolFees::default(),
             multisig: None,
@@ -158,6 +225,8 @@ impl AgentTreasury {
                 chain,
                 address: address.into(),
                 balance_usd,
+                balance_updated_at: timestamp,
+                balance_oracle: None,
                 authority: authority.into(),
                 cpi_authority_seed: cpi_authority_seed.into(),
                 dwallet_account: None,
@@ -174,6 +243,15 @@ impl AgentTreasury {
             format!("registered {chain} custody with {curve}/{signature_scheme}"),
             timestamp,
         );
+
+        if self.agent_state == AgentLifecycleState::Provisioning {
+            self.agent_state = AgentLifecycleState::Active;
+            self.audit_trail.record(
+                AuditKind::AgentStateTransitioned,
+                "agent activated after first dwallet registration",
+                timestamp,
+            );
+        }
 
         Ok(())
     }
@@ -338,6 +416,12 @@ impl AgentTreasury {
         }
 
         self.execution_paused = paused;
+        self.agent_state = if paused {
+            AgentLifecycleState::Suspended
+        } else {
+            AgentLifecycleState::Active
+        };
+        self.last_owner_activity_at = now;
         self.audit_trail.record(
             if paused {
                 AuditKind::ExecutionPaused
@@ -361,7 +445,7 @@ impl AgentTreasury {
             return Err(crate::TreasuryError::UnauthorizedOwner);
         }
 
-        let Some(pending) = self.pending.take() else {
+        let Some(pending) = self.pop_front_pending() else {
             return Ok(false);
         };
 
@@ -374,6 +458,264 @@ impl AgentTreasury {
         Ok(true)
     }
 
+    pub fn pending_count(&self) -> usize {
+        self.pending_queue
+            .len()
+            .max(usize::from(self.pending.is_some()))
+    }
+
+    pub fn sync_pending_front(&mut self) {
+        if self.pending_queue.is_empty() {
+            if let Some(pending) = self.pending.take() {
+                self.pending_queue.push(pending);
+            }
+        }
+        self.pending = self.pending_queue.first().cloned();
+    }
+
+    pub fn push_pending(
+        &mut self,
+        pending: PendingTransaction,
+    ) -> Result<(), crate::TreasuryError> {
+        self.sync_pending_front();
+        if self.pending_queue.len() >= MAX_PENDING_QUEUE_DEPTH {
+            return Err(crate::TreasuryError::PendingTransactionExists);
+        }
+        self.pending_queue.push(pending);
+        self.sync_pending_front();
+        Ok(())
+    }
+
+    pub fn active_pending(&self) -> Option<&PendingTransaction> {
+        self.pending_queue.first().or(self.pending.as_ref())
+    }
+
+    pub fn active_pending_mut(&mut self) -> Option<&mut PendingTransaction> {
+        self.sync_pending_front();
+        self.pending_queue.first_mut()
+    }
+
+    pub fn replace_active_pending(&mut self, pending: PendingTransaction) {
+        self.sync_pending_front();
+        if let Some(front) = self.pending_queue.first_mut() {
+            *front = pending;
+        } else {
+            self.pending_queue.push(pending);
+        }
+        self.sync_pending_front();
+    }
+
+    pub fn set_active_policy_output_fhe_type(
+        &mut self,
+        fhe_type: u8,
+    ) -> Result<(), crate::TreasuryError> {
+        let pending = self
+            .active_pending_mut()
+            .ok_or(crate::TreasuryError::NoPendingTransaction)?;
+        pending.policy_output_fhe_type = Some(fhe_type);
+        self.sync_pending_front();
+        Ok(())
+    }
+
+    pub fn pop_front_pending(&mut self) -> Option<PendingTransaction> {
+        self.sync_pending_front();
+        let pending = if self.pending_queue.is_empty() {
+            self.pending.take()
+        } else {
+            self.pending = None;
+            Some(self.pending_queue.remove(0))
+        };
+        self.sync_pending_front();
+        pending
+    }
+
+    pub fn remove_pending_by_id(&mut self, proposal_id: u64) -> Option<PendingTransaction> {
+        self.sync_pending_front();
+        let idx = self
+            .pending_queue
+            .iter()
+            .position(|pending| pending.proposal_id == proposal_id)?;
+        self.pending = None;
+        let removed = self.pending_queue.remove(idx);
+        self.sync_pending_front();
+        Some(removed)
+    }
+
+    pub fn can_accept_proposal(&mut self, now: i64) -> Result<(), crate::TreasuryError> {
+        if check_circuit_breaker_auto_resume(&mut self.execution_paused, &self.circuit_breaker, now)
+        {
+            self.agent_state = AgentLifecycleState::Active;
+            self.audit_trail.record(
+                AuditKind::ExecutionResumed,
+                "circuit breaker auto-resumed after cooldown",
+                now,
+            );
+        }
+
+        if self.execution_paused || !self.agent_state.permits_new_proposals() {
+            return Err(crate::TreasuryError::ExecutionPaused);
+        }
+
+        if self.pending_queue.len() >= MAX_PENDING_QUEUE_DEPTH {
+            return Err(crate::TreasuryError::PendingTransactionExists);
+        }
+
+        Ok(())
+    }
+
+    pub fn record_policy_violation(&mut self, now: i64) {
+        if register_circuit_breaker_violation(
+            &mut self.circuit_breaker,
+            &mut self.execution_paused,
+            now,
+        ) {
+            self.agent_state = AgentLifecycleState::Suspended;
+            self.audit_trail.record(
+                AuditKind::CircuitBreakerTripped,
+                format!(
+                    "circuit breaker tripped after {} violations in {}s",
+                    self.circuit_breaker.config.violation_threshold,
+                    self.circuit_breaker.config.window_secs
+                ),
+                now,
+            );
+        }
+    }
+
+    pub fn transition_agent_state(
+        &mut self,
+        target: AgentLifecycleState,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        ensure_valid_lifecycle_transition(self.agent_state, target, self.pending_count())?;
+        self.agent_state = target;
+        self.execution_paused = matches!(
+            target,
+            AgentLifecycleState::Suspended
+                | AgentLifecycleState::Decommissioning
+                | AgentLifecycleState::Decommissioned
+        );
+        self.audit_trail.record(
+            AuditKind::AgentStateTransitioned,
+            format!("agent state -> {}", audit_lifecycle_label(target)),
+            now,
+        );
+        Ok(())
+    }
+
+    pub fn propose_ai_rotation(
+        &mut self,
+        owner: &str,
+        new_ai_authority: String,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        if owner != self.owner {
+            return Err(crate::TreasuryError::UnauthorizedOwner);
+        }
+
+        self.pending_ai_rotation = Some(PendingAiRotation::new(
+            new_ai_authority.clone(),
+            now,
+            owner.to_string(),
+        ));
+        self.last_owner_activity_at = now;
+        self.audit_trail.record(
+            AuditKind::AiAuthorityRotationProposed,
+            format!("ai authority rotation to {new_ai_authority} proposed"),
+            now,
+        );
+        Ok(())
+    }
+
+    pub fn execute_ai_rotation(&mut self, now: i64) -> Result<(), crate::TreasuryError> {
+        let rotation = self
+            .pending_ai_rotation
+            .clone()
+            .ok_or(crate::TreasuryError::NoActiveOverride)?;
+        if now < rotation.executable_after {
+            return Err(crate::TreasuryError::TimelockNotElapsed);
+        }
+
+        let old_ai = std::mem::replace(&mut self.ai_authority, rotation.new_ai_authority.clone());
+        self.pending_ai_rotation = None;
+        self.audit_trail.record(
+            AuditKind::AiAuthorityRotated,
+            format!(
+                "ai authority rotated from {} to {}",
+                old_ai, rotation.new_ai_authority
+            ),
+            now,
+        );
+        Ok(())
+    }
+
+    pub fn trigger_dead_mans_switch(&mut self, now: i64) -> Result<(), crate::TreasuryError> {
+        let switch = self
+            .dead_mans_switch
+            .as_mut()
+            .ok_or(crate::TreasuryError::NoPendingTransaction)?;
+        if !switch.enabled || switch.triggered {
+            return Err(crate::TreasuryError::ExecutionPaused);
+        }
+
+        let inactivity = now.saturating_sub(self.last_owner_activity_at);
+        if inactivity < switch.inactivity_threshold_secs {
+            return Err(crate::TreasuryError::TimelockNotElapsed);
+        }
+
+        switch.triggered = true;
+        switch.triggered_at = Some(now);
+        self.execution_paused = true;
+        self.agent_state = AgentLifecycleState::Suspended;
+        self.audit_trail.record(
+            AuditKind::DeadMansSwitchTriggered,
+            format!(
+                "dead man's switch triggered after {}s inactivity, recovery: {}",
+                inactivity, switch.recovery_authority
+            ),
+            now,
+        );
+        Ok(())
+    }
+
+    pub fn emergency_shutdown(
+        &mut self,
+        caller: &str,
+        recovery_pubkey: String,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        let guardian_authorized = self
+            .multisig
+            .as_ref()
+            .is_some_and(|multisig| multisig.guardians.iter().any(|guardian| guardian == caller));
+        if caller != self.owner && !guardian_authorized {
+            return Err(crate::TreasuryError::UnauthorizedOwner);
+        }
+
+        self.sync_pending_front();
+        for pending in self.pending_queue.drain(..) {
+            self.audit_trail.record(
+                AuditKind::ProposalCancelled,
+                format!(
+                    "proposal {} cancelled by emergency shutdown",
+                    pending.proposal_id
+                ),
+                now,
+            );
+        }
+        self.pending = None;
+        self.execution_paused = true;
+        self.agent_state = AgentLifecycleState::Decommissioning;
+        self.shutdown_initiated_at = Some(now);
+        self.shutdown_recovery_pubkey = Some(recovery_pubkey.clone());
+        self.audit_trail.record(
+            AuditKind::EmergencyShutdown,
+            format!("emergency shutdown initiated, recovery: {recovery_pubkey}"),
+            now,
+        );
+        Ok(())
+    }
+
     /// Builds a `PolicyEvaluationContext` for `transaction`, injecting the
     /// current reputation score and swarm pool spend so the policy engine can
     /// apply reputation scaling and shared-pool limit checks.
@@ -382,6 +724,19 @@ impl AgentTreasury {
             transaction,
             reputation_score: Some(self.reputation.score()),
             shared_spent_usd: self.swarm.as_ref().map(|swarm| swarm.total_swarm_spent_usd),
+        }
+    }
+
+    pub fn policy_context_with_shared_spend(
+        &self,
+        transaction: TransactionContext,
+        shared_spent_usd: Option<u64>,
+    ) -> PolicyEvaluationContext {
+        PolicyEvaluationContext {
+            transaction,
+            reputation_score: Some(self.reputation.score()),
+            shared_spent_usd: shared_spent_usd
+                .or_else(|| self.swarm.as_ref().map(|swarm| swarm.total_swarm_spent_usd)),
         }
     }
 }
