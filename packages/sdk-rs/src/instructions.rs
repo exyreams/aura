@@ -241,6 +241,11 @@ mod tests {
         let accounts = accounts::ProposeTransaction {
             ai_authority: Pubkey::new_unique(),
             treasury: Pubkey::new_unique(),
+            session_key_account: None,
+            swarm_pool: None,
+            address_list: None,
+            compliance_oracle: None,
+            parent_treasury: None,
         };
         let ix = propose_transaction(
             accounts,
@@ -255,10 +260,11 @@ mod tests {
                 quote_age_secs: None,
                 counterparty_risk_score: None,
                 recipient_or_contract: "dest".to_string(),
+                sanctions_proof: Vec::new(),
             },
         );
         assert_eq!(ix.program_id, aura_core::ID);
-        assert_eq!(ix.accounts.len(), 2);
+        assert_eq!(ix.accounts.len(), 7);
         assert!(!ix.data.is_empty());
     }
 }

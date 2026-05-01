@@ -324,6 +324,11 @@ impl AuraClient {
         let accounts = aura_core::accounts::ProposeTransaction {
             ai_authority,
             treasury,
+            session_key_account: None,
+            swarm_pool: None,
+            address_list: None,
+            compliance_oracle: None,
+            parent_treasury: None,
         };
         self.with_program_id(instructions::propose_transaction(accounts, args))
     }
