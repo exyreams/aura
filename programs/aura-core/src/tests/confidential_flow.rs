@@ -42,6 +42,7 @@ fn propose_approved_confidential(treasury: &mut crate::AgentTreasury, now: i64) 
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
         &Pubkey::new_unique().to_string(),
@@ -72,6 +73,7 @@ fn propose_approved_confidential_vector(treasury: &mut crate::AgentTreasury, now
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
         &guardrail_vector,
@@ -113,6 +115,32 @@ fn mark_and_confirm_decryption(
         now + 1,
     )
     .expect("decryption should verify");
+}
+
+#[test]
+fn live_ciphertext_type_update_persists_to_pending_queue() {
+    let mut treasury = treasury();
+    configure_guardrails(&mut treasury, 1_700_000_010);
+    propose_approved_confidential(&mut treasury, 1_700_000_020);
+
+    treasury
+        .set_active_policy_output_fhe_type(2)
+        .expect("active pending should be updated");
+
+    assert_eq!(
+        treasury
+            .pending
+            .as_ref()
+            .and_then(|pending| pending.policy_output_fhe_type),
+        Some(2)
+    );
+    assert_eq!(
+        treasury
+            .pending_queue
+            .first()
+            .and_then(|pending| pending.policy_output_fhe_type),
+        Some(2)
+    );
 }
 
 #[test]

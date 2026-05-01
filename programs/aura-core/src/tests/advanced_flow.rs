@@ -1,9 +1,17 @@
-use aura_policy::{Chain, TransactionContext, TransactionType, ViolationCode};
+use aura_policy::{Chain, PolicyConfig, TransactionContext, TransactionType, ViolationCode};
 
 use crate::{
-    deny_pending_transaction, evaluate_batch_preview, finalize_signed_pending, propose_transaction,
-    AgentReputation, AgentSwarm, EmergencyMultisig, TreasuryError,
+    audit::{AuditEvent, AuditKind},
+    deny_pending_transaction, evaluate_batch_preview, finalize_signed_pending,
+    program_accounts::{
+        sha256_address, snapshot_policy_config, update_health_score, verify_merkle_inclusion,
+        ActivityLogAccount, HealthScoreAccount, MemberSpendRecord, PolicyHistoryAccount,
+        SessionKeyAccount, SwarmPoolAccount,
+    },
+    propose_transaction, AgentLifecycleState, AgentReputation, AgentSwarm, ConfigChangeKind,
+    DeadMansSwitch, EmergencyMultisig, GuardianChangeAction, PendingConfigChange, TreasuryError,
 };
+use anchor_lang::prelude::Pubkey;
 
 use super::proposal_flow::{request_signature_for_pending, treasury};
 
@@ -14,6 +22,7 @@ fn multisig_override_can_raise_daily_limit() {
         required_signatures: 2,
         guardians: vec!["g1".to_string(), "g2".to_string(), "g3".to_string()],
         pending_override: None,
+        pending_guardian_change: None,
     };
 
     multisig.propose("g1", 25_000, 1_700_000_000).unwrap();
@@ -47,6 +56,7 @@ fn swarm_limit_constrains_shared_pool_spend() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     )
@@ -89,6 +99,7 @@ fn reputation_adjusts_effective_daily_limit() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     )
@@ -121,6 +132,7 @@ fn batch_evaluation_uses_current_stateful_context() {
                 actual_output_usd: None,
                 quote_age_secs: None,
                 counterparty_risk_score: None,
+                recipient_or_contract: Some("0xrecipient".to_string()),
             },
             TransactionContext {
                 amount_usd: 700,
@@ -132,6 +144,7 @@ fn batch_evaluation_uses_current_stateful_context() {
                 actual_output_usd: None,
                 quote_age_secs: None,
                 counterparty_risk_score: None,
+                recipient_or_contract: Some("0xrecipient".to_string()),
             },
         ],
     );
@@ -157,5 +170,354 @@ fn duplicate_dwallet_registration_is_rejected() {
     assert!(matches!(
         result,
         Err(TreasuryError::DWalletAlreadyRegistered(Chain::Ethereum))
+    ));
+}
+
+fn queued_tx(amount_usd: u64, timestamp: i64) -> TransactionContext {
+    TransactionContext {
+        amount_usd,
+        target_chain: Chain::Ethereum,
+        tx_type: TransactionType::Transfer,
+        protocol_id: None,
+        current_timestamp: timestamp,
+        expected_output_usd: None,
+        actual_output_usd: None,
+        quote_age_secs: None,
+        counterparty_risk_score: None,
+        recipient_or_contract: Some("0xrecipient".to_string()),
+    }
+}
+
+#[test]
+fn proposal_queue_accepts_three_slots_and_rejects_fourth() {
+    let mut treasury = treasury();
+    let ai = treasury.ai_authority.clone();
+
+    for index in 0..3 {
+        let id = propose_transaction(
+            &mut treasury,
+            &ai,
+            queued_tx(100 + index, 43_200 + index as i64),
+            format!("0xrecipient{index}"),
+        )
+        .expect("queue slot should accept proposal");
+        assert_eq!(id, index + 1);
+    }
+
+    let result = propose_transaction(&mut treasury, &ai, queued_tx(100, 43_300), "0xoverflow");
+
+    assert!(matches!(
+        result,
+        Err(TreasuryError::PendingTransactionExists)
+    ));
+    assert_eq!(treasury.pending_count(), 3);
+    assert_eq!(treasury.pending.as_ref().map(|p| p.proposal_id), Some(1));
+}
+
+#[test]
+fn ai_rotation_requires_timelock_before_key_changes() {
+    let mut treasury = treasury();
+    let owner = treasury.owner.clone();
+    let new_ai = anchor_lang::prelude::Pubkey::new_unique().to_string();
+    let old_ai = treasury.ai_authority.clone();
+
+    treasury
+        .propose_ai_rotation(&owner, new_ai.clone(), 100)
+        .expect("owner can propose rotation");
+
+    let early = treasury.execute_ai_rotation(100 + 3_600);
+    assert!(matches!(early, Err(TreasuryError::TimelockNotElapsed)));
+    assert_eq!(treasury.ai_authority, old_ai);
+
+    treasury
+        .execute_ai_rotation(100 + crate::constants::AI_ROTATION_TIMELOCK_SECS)
+        .expect("rotation should execute after timelock");
+    assert_eq!(treasury.ai_authority, new_ai);
+    assert!(treasury.pending_ai_rotation.is_none());
+}
+
+#[test]
+fn config_change_records_timelock_and_policy_payload() {
+    let treasury = treasury();
+    let mut next_policy = treasury.policy_config.clone();
+    next_policy.daily_limit_usd = 20_000;
+
+    let change =
+        PendingConfigChange::policy_limits(42, 1_000, treasury.owner.clone(), next_policy.clone());
+
+    assert_eq!(change.change_id, 42);
+    assert_eq!(change.kind, ConfigChangeKind::PolicyLimits);
+    assert_eq!(
+        change.executable_after,
+        1_000 + crate::constants::CONFIG_CHANGE_TIMELOCK_SECS
+    );
+    assert_eq!(
+        change
+            .new_policy_config
+            .as_ref()
+            .map(|policy| policy.daily_limit_usd),
+        Some(20_000)
+    );
+    assert!(!change.vetoed);
+}
+
+#[test]
+fn circuit_breaker_auto_pauses_after_violation_spike() {
+    let mut treasury = treasury();
+    treasury.circuit_breaker.config.violation_threshold = 2;
+    treasury.policy_config.per_tx_limit_usd = 10;
+    let ai = treasury.ai_authority.clone();
+
+    for index in 0..2 {
+        propose_transaction(
+            &mut treasury,
+            &ai,
+            queued_tx(100, 43_200 + index),
+            format!("0xdenied{index}"),
+        )
+        .expect("denied proposal should still be queued");
+        let receipt = deny_pending_transaction(&mut treasury, 43_300 + index)
+            .expect("denial should clear proposal");
+        assert!(!receipt.approved);
+    }
+
+    assert!(treasury.execution_paused);
+    assert_eq!(treasury.agent_state, AgentLifecycleState::Suspended);
+    assert_eq!(treasury.circuit_breaker.total_trips, 1);
+}
+
+#[test]
+fn lifecycle_deadman_guardian_rotation_and_shutdown_paths_work() {
+    let mut treasury = treasury();
+    assert_eq!(treasury.agent_state, AgentLifecycleState::Active);
+
+    treasury
+        .transition_agent_state(AgentLifecycleState::Suspended, 100)
+        .expect("active can suspend");
+    treasury
+        .transition_agent_state(AgentLifecycleState::Active, 101)
+        .expect("suspended can resume");
+
+    treasury.dead_mans_switch = Some(DeadMansSwitch {
+        enabled: true,
+        inactivity_threshold_secs: 10,
+        triggered: false,
+        triggered_at: None,
+        recovery_authority: "recovery".to_string(),
+    });
+    treasury.last_owner_activity_at = 100;
+    treasury
+        .trigger_dead_mans_switch(111)
+        .expect("inactivity threshold should trigger");
+    assert!(treasury.execution_paused);
+
+    let mut multisig = EmergencyMultisig {
+        required_signatures: 2,
+        guardians: vec!["g1".to_string(), "g2".to_string()],
+        pending_override: None,
+        pending_guardian_change: None,
+    };
+    multisig
+        .propose_guardian_change("g1", GuardianChangeAction::Add, "g3".to_string(), 200)
+        .expect("guardian can propose rotation");
+    multisig
+        .collect_guardian_change_signature("g2")
+        .expect("guardian can cosign rotation");
+    let action = multisig
+        .execute_guardian_change(201)
+        .expect("quorum can execute rotation");
+    assert_eq!(action, GuardianChangeAction::Add);
+    assert!(multisig.guardians.contains(&"g3".to_string()));
+
+    treasury.attach_multisig(multisig, 202);
+    let owner = treasury.owner.clone();
+    treasury
+        .emergency_shutdown(&owner, "recovery".to_string(), 203)
+        .expect("owner can initiate shutdown");
+    assert_eq!(treasury.agent_state, AgentLifecycleState::Decommissioning);
+    assert_eq!(
+        treasury.shutdown_recovery_pubkey.as_deref(),
+        Some("recovery")
+    );
+}
+
+#[test]
+fn cooldown_blocks_large_transactions_until_delay_elapsed() {
+    let mut treasury = treasury();
+    treasury.policy_config = PolicyConfig {
+        cooldown_config: Some(aura_policy::CooldownConfig {
+            threshold_usd: 500,
+            cooldown_secs: 60,
+        }),
+        ..treasury.policy_config.clone()
+    };
+    treasury.last_large_tx_at = Some(1_000);
+    let ai = treasury.ai_authority.clone();
+
+    let result = propose_transaction(&mut treasury, &ai, queued_tx(600, 1_030), "0xlarge");
+
+    assert!(matches!(
+        result,
+        Err(TreasuryError::CooldownNotElapsed { remaining_secs: 30 })
+    ));
+
+    propose_transaction(&mut treasury, &ai, queued_tx(600, 1_061), "0xlarge")
+        .expect("cooldown should elapse");
+}
+
+#[test]
+fn activity_log_ring_buffer_keeps_recent_queryable_history() {
+    let treasury_key = Pubkey::new_unique();
+    let owner = Pubkey::new_unique();
+    let mut log = ActivityLogAccount {
+        bump: 1,
+        treasury: treasury_key,
+        owner,
+        total_events: 0,
+        ring_head: 0,
+        capacity: 2,
+        events: Vec::new(),
+    };
+
+    log.append(
+        &AuditEvent::new(AuditKind::ProposalCreated, "proposal 1", 10),
+        100,
+        Some(1),
+        Some(100),
+        Some(2),
+        owner,
+        0,
+    );
+    log.append(
+        &AuditEvent::new(AuditKind::ProposalExecuted, "proposal 1 executed", 20),
+        101,
+        Some(1),
+        Some(100),
+        Some(2),
+        owner,
+        0,
+    );
+    log.append(
+        &AuditEvent::new(AuditKind::ProposalDenied, "proposal 2 denied", 30),
+        102,
+        Some(2),
+        Some(900),
+        Some(2),
+        owner,
+        1,
+    );
+
+    assert_eq!(log.total_events, 3);
+    assert_eq!(log.events.len(), 2);
+    assert_eq!(log.ring_head, 1);
+    assert_eq!(log.events[0].seq, 2);
+    assert!(log.events[0].was_violation);
+    assert_eq!(log.events[1].seq, 1);
+}
+
+#[test]
+fn advanced_pda_helpers_track_history_health_swarm_and_session_limits() {
+    let mut treasury = treasury();
+    let treasury_key = Pubkey::new_unique();
+    let owner = Pubkey::new_unique();
+
+    let mut pool = SwarmPoolAccount {
+        bump: 1,
+        swarm_id_hash: [7; 32],
+        swarm_id: "swarm-01".to_string(),
+        creator: owner,
+        shared_pool_limit_usd: 1_000,
+        total_spent_usd: 0,
+        member_count: 0,
+        created_at: 100,
+        last_spend_at: 100,
+        member_spend: Vec::<MemberSpendRecord>::new(),
+    };
+    pool.record_spend(treasury_key, 250, 120);
+    pool.record_spend(treasury_key, 50, 130);
+    assert_eq!(pool.total_spent_usd, 300);
+    assert_eq!(pool.member_count, 1);
+    assert_eq!(pool.member_spend[0].spent_usd, 300);
+
+    let session_key = Pubkey::new_unique();
+    let mut session = SessionKeyAccount {
+        bump: 1,
+        treasury: treasury_key,
+        session_key,
+        issued_by: owner,
+        issued_at: 100,
+        expires_at: 1_000,
+        revoked: false,
+        max_amount_usd_per_tx: Some(500),
+        max_daily_spend_usd: Some(700),
+        session_spent_today_usd: 250,
+        session_last_reset: 100,
+        allowed_chains: vec![2],
+        allowed_tx_types: vec![0],
+        max_proposal_count: Some(1),
+        proposals_submitted: 0,
+    };
+    assert!(session.allows(300, 2, 0, 200));
+    session.proposals_submitted = 1;
+    assert!(!session.allows(300, 2, 0, 200));
+
+    let mut history = PolicyHistoryAccount {
+        bump: 1,
+        treasury: treasury_key,
+        version_count: 0,
+        ring_head: 0,
+        snapshots: Vec::new(),
+    };
+    snapshot_policy_config(&mut history, &treasury.policy_config, owner, 200);
+    assert_eq!(history.version_count, 1);
+    assert_eq!(
+        history.snapshots[0].daily_limit_usd,
+        treasury.policy_config.daily_limit_usd
+    );
+
+    treasury.policy_state.spent_today_usd = 500;
+    let mut health = HealthScoreAccount {
+        bump: 1,
+        treasury: treasury_key,
+        score: 0,
+        last_updated_at: 0,
+        last_updated_slot: 0,
+        reputation_score: 0,
+        policy_utilization_score: 0,
+        violation_rate_score: 0,
+        operational_score: 0,
+        liquidity_score: 0,
+        execution_paused: false,
+        circuit_breaker_active: false,
+        pending_queue_depth: 0,
+        days_since_last_violation: 0,
+    };
+    update_health_score(&mut health, treasury_key, &treasury, 300, 99);
+    assert_eq!(health.last_updated_slot, 99);
+    assert_eq!(health.treasury, treasury_key);
+    assert!(health.score > 0);
+}
+
+#[test]
+fn sanctions_merkle_helper_verifies_non_empty_proofs() {
+    use sha2::{Digest, Sha256};
+
+    let leaf_a = sha256_address("0xA");
+    let leaf_b = sha256_address("0xB");
+    let mut hasher = Sha256::new();
+    if leaf_a <= leaf_b {
+        hasher.update(leaf_a);
+        hasher.update(leaf_b);
+    } else {
+        hasher.update(leaf_b);
+        hasher.update(leaf_a);
+    }
+    let root: [u8; 32] = hasher.finalize().into();
+
+    assert!(verify_merkle_inclusion(&root, &leaf_a, &[leaf_b]));
+    assert!(!verify_merkle_inclusion(
+        &root,
+        &sha256_address("0xC"),
+        &[leaf_b]
     ));
 }

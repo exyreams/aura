@@ -102,6 +102,7 @@ fn happy_path_propose_and_finalize_execution() {
             actual_output_usd: Some(497),
             quote_age_secs: Some(45),
             counterparty_risk_score: Some(25),
+            recipient_or_contract: Some("0xUNISWAP".to_string()),
         },
         "0xUNISWAP",
     )
@@ -148,6 +149,7 @@ fn denied_transactions_clear_pending_state() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     )
@@ -204,6 +206,7 @@ fn proposal_expires_before_execution_if_ttl_passes() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     )
@@ -240,6 +243,7 @@ fn owner_can_pause_and_cancel_pending_transactions() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     );
@@ -263,6 +267,7 @@ fn owner_can_pause_and_cancel_pending_transactions() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     )
@@ -293,6 +298,7 @@ fn signed_message_matches_live_message_builder() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         },
         "0xrecipient",
     )
