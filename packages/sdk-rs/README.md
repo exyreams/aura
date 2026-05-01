@@ -251,6 +251,57 @@ client.configure_swarm(&owner, treasury, ConfigureSwarmArgs {
 })?;
 ```
 
+### Policy controls
+
+The Rust client exposes the latest policy-control entrypoints as both
+instruction builders and send helpers:
+
+```rust,no_run
+use aura_sdk::types::{ConfigureApprovalLadderArgs, SetScopedPauseArgs};
+
+client.configure_approval_ladder(
+    &owner,
+    aura_sdk::anchor_accounts::ConfigureApprovalLadder {
+        owner: owner.pubkey(),
+        treasury,
+    },
+    ConfigureApprovalLadderArgs {
+        guardian_above_usd: 5_000,
+        multisig_above_usd: 25_000,
+        timelock_above_usd: 50_000,
+        deny_above_usd: 100_000,
+        risk_guardian_bps: 6_000,
+        risk_multisig_bps: 8_000,
+        risk_timelock_bps: 9_000,
+        timelock_secs: 3_600,
+        now,
+    },
+)?;
+
+client.set_scoped_pause(
+    &operator,
+    aura_sdk::anchor_accounts::SetScopedPause {
+        operator: operator.pubkey(),
+        treasury,
+        operator_role: None,
+    },
+    SetScopedPauseArgs {
+        scope_kind: 5,
+        chain: None,
+        tx_type: None,
+        recipient: None,
+        protocol_id: None,
+        paused: true,
+        expires_at: None,
+        now,
+    },
+)?;
+```
+
+Covered methods include simulations, policy receipts, presets, budget
+envelopes, exposure groups, approval ladders, scoped pauses, operator roles,
+external liveness, policy attestations, batch proposals, and invariant reports.
+
 ---
 
 ## PDA Helpers (standalone)
@@ -262,14 +313,30 @@ use aura_sdk::pda::{
     derive_encrypt_cpi_authority_pda,
     derive_encrypt_event_authority_pda,
     derive_message_approval_pda,
+    derive_policy_receipt_pda,
+    derive_budget_envelope_pda,
+    derive_operator_role_pda,
 };
 use aura_sdk::AURA_DEVNET_PROGRAM_ID;
 
 let (treasury, bump) = derive_treasury_pda(&owner, "my-agent", &AURA_DEVNET_PROGRAM_ID);
 
-// Message approval PDA — requires a 32-byte digest
-let digest: [u8; 32] = sha256_of_message;
-let (approval, _) = derive_message_approval_pda(&dwallet_program_id, &dwallet_account, &digest);
+// Current dWallet MessageApproval PDA.
+let digest: [u8; 32] = keccak_message_digest;
+let metadata_digest: Option<&[u8; 32]> = None;
+let (approval, _) = derive_message_approval_pda(
+    &dwallet_program_id,
+    0,              // curve code
+    &public_key,
+    5,              // signature scheme code
+    &digest,
+    metadata_digest,
+);
+
+// Policy-control PDAs.
+let (receipt, _) = derive_policy_receipt_pda(&treasury, 42, &AURA_DEVNET_PROGRAM_ID);
+let (envelope, _) = derive_budget_envelope_pda(&treasury, 7, &AURA_DEVNET_PROGRAM_ID);
+let (role, _) = derive_operator_role_pda(&treasury, &operator, &AURA_DEVNET_PROGRAM_ID);
 ```
 
 ---
@@ -283,6 +350,9 @@ use aura_sdk::types::{
     // Instruction args
     CreateTreasuryArgs, RegisterDwalletArgs, ProposeTransactionArgs,
     ProposeConfidentialTransactionArgs, ConfigureMultisigArgs, ConfigureSwarmArgs,
+    SimulatePolicyArgs, WritePolicyReceiptArgs, ConfigureBudgetEnvelopeArgs,
+    ConfigureApprovalLadderArgs, SetScopedPauseArgs, GrantOperatorRoleArgs,
+    InitExternalLivenessArgs, ProposeBatchArgs, CheckInvariantsArgs,
 
     // Account state
     TreasuryAccount, AgentTreasury, PendingTransaction, DWalletReference,

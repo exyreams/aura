@@ -647,6 +647,18 @@ impl AuraClient {
         self.with_program_id(instructions::simulate_policy(accounts, args))
     }
 
+    /// Submits `simulate_policy`.
+    pub fn simulate_policy(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::SimulatePolicy,
+        args: aura_core::SimulatePolicyArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        let instruction = self.simulate_policy_instruction(accounts, args);
+        self.send_instructions(payer, vec![instruction], &[])
+    }
+
     /// Builds `write_policy_receipt`.
     pub fn write_policy_receipt_instruction(
         &self,
@@ -654,6 +666,18 @@ impl AuraClient {
         args: aura_core::WritePolicyReceiptArgs,
     ) -> Instruction {
         self.with_program_id(instructions::write_policy_receipt(accounts, args))
+    }
+
+    /// Submits `write_policy_receipt`.
+    pub fn write_policy_receipt(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::WritePolicyReceipt,
+        args: aura_core::WritePolicyReceiptArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        let instruction = self.write_policy_receipt_instruction(accounts, args);
+        self.send_instructions(payer, vec![instruction], &[])
     }
 
     /// Builds `apply_policy_preset`.
@@ -665,6 +689,18 @@ impl AuraClient {
         self.with_program_id(instructions::apply_policy_preset(accounts, args))
     }
 
+    /// Submits `apply_policy_preset`.
+    pub fn apply_policy_preset(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::ApplyPolicyPreset,
+        args: aura_core::ApplyPolicyPresetArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.apply_policy_preset_instruction(accounts, args);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
     /// Builds `configure_budget_envelope`.
     pub fn configure_budget_envelope_instruction(
         &self,
@@ -672,6 +708,58 @@ impl AuraClient {
         args: aura_core::ConfigureBudgetEnvelopeArgs,
     ) -> Instruction {
         self.with_program_id(instructions::configure_budget_envelope(accounts, args))
+    }
+
+    /// Submits `configure_budget_envelope`.
+    pub fn configure_budget_envelope(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::ConfigureBudgetEnvelope,
+        args: aura_core::ConfigureBudgetEnvelopeArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.configure_budget_envelope_instruction(accounts, args);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_exposure_group`.
+    pub fn init_exposure_group_instruction(
+        &self,
+        accounts: aura_core::accounts::InitExposureGroup,
+        args: aura_core::InitExposureGroupArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::init_exposure_group(accounts, args))
+    }
+
+    /// Submits `init_exposure_group`.
+    pub fn init_exposure_group(
+        &self,
+        authority: &Keypair,
+        accounts: aura_core::accounts::InitExposureGroup,
+        args: aura_core::InitExposureGroupArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(authority, accounts.authority, "authority")?;
+        let instruction = self.init_exposure_group_instruction(accounts, args);
+        self.send_instructions(authority, vec![instruction], &[])
+    }
+
+    /// Builds `join_exposure_group`.
+    pub fn join_exposure_group_instruction(
+        &self,
+        accounts: aura_core::accounts::JoinExposureGroup,
+    ) -> Instruction {
+        self.with_program_id(instructions::join_exposure_group(accounts))
+    }
+
+    /// Submits `join_exposure_group`.
+    pub fn join_exposure_group(
+        &self,
+        authority: &Keypair,
+        accounts: aura_core::accounts::JoinExposureGroup,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(authority, accounts.authority, "authority")?;
+        let instruction = self.join_exposure_group_instruction(accounts);
+        self.send_instructions(authority, vec![instruction], &[])
     }
 
     /// Builds `configure_approval_ladder`.
@@ -683,6 +771,18 @@ impl AuraClient {
         self.with_program_id(instructions::configure_approval_ladder(accounts, args))
     }
 
+    /// Submits `configure_approval_ladder`.
+    pub fn configure_approval_ladder(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::ConfigureApprovalLadder,
+        args: aura_core::ConfigureApprovalLadderArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.configure_approval_ladder_instruction(accounts, args);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
     /// Builds `approve_pending_execution`.
     pub fn approve_pending_execution_instruction(
         &self,
@@ -690,6 +790,18 @@ impl AuraClient {
         args: aura_core::ApprovePendingExecutionArgs,
     ) -> Instruction {
         self.with_program_id(instructions::approve_pending_execution(accounts, args))
+    }
+
+    /// Submits `approve_pending_execution`.
+    pub fn approve_pending_execution(
+        &self,
+        approver: &Keypair,
+        accounts: aura_core::accounts::ApprovePendingExecution,
+        args: aura_core::ApprovePendingExecutionArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(approver, accounts.approver, "approver")?;
+        let instruction = self.approve_pending_execution_instruction(accounts, args);
+        self.send_instructions(approver, vec![instruction], &[])
     }
 
     /// Builds `set_scoped_pause`.
@@ -701,6 +813,102 @@ impl AuraClient {
         self.with_program_id(instructions::set_scoped_pause(accounts, args))
     }
 
+    /// Submits `set_scoped_pause`.
+    pub fn set_scoped_pause(
+        &self,
+        operator: &Keypair,
+        accounts: aura_core::accounts::SetScopedPause,
+        args: aura_core::SetScopedPauseArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(operator, accounts.operator, "operator")?;
+        let instruction = self.set_scoped_pause_instruction(accounts, args);
+        self.send_instructions(operator, vec![instruction], &[])
+    }
+
+    /// Builds `grant_operator_role`.
+    pub fn grant_operator_role_instruction(
+        &self,
+        accounts: aura_core::accounts::GrantOperatorRole,
+        args: aura_core::GrantOperatorRoleArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::grant_operator_role(accounts, args))
+    }
+
+    /// Submits `grant_operator_role`.
+    pub fn grant_operator_role(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::GrantOperatorRole,
+        args: aura_core::GrantOperatorRoleArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.grant_operator_role_instruction(accounts, args);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `revoke_operator_role`.
+    pub fn revoke_operator_role_instruction(
+        &self,
+        accounts: aura_core::accounts::RevokeOperatorRole,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::revoke_operator_role(accounts, now))
+    }
+
+    /// Submits `revoke_operator_role`.
+    pub fn revoke_operator_role(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::RevokeOperatorRole,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.revoke_operator_role_instruction(accounts, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_external_liveness`.
+    pub fn init_external_liveness_instruction(
+        &self,
+        accounts: aura_core::accounts::InitExternalLiveness,
+        args: aura_core::InitExternalLivenessArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::init_external_liveness(accounts, args))
+    }
+
+    /// Submits `init_external_liveness`.
+    pub fn init_external_liveness(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitExternalLiveness,
+        args: aura_core::InitExternalLivenessArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.init_external_liveness_instruction(accounts, args);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `configure_liveness_guardrails`.
+    pub fn configure_liveness_guardrails_instruction(
+        &self,
+        accounts: aura_core::accounts::ConfigureLivenessGuardrails,
+        args: aura_core::ConfigureLivenessGuardrailsArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::configure_liveness_guardrails(accounts, args))
+    }
+
+    /// Submits `configure_liveness_guardrails`.
+    pub fn configure_liveness_guardrails(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::ConfigureLivenessGuardrails,
+        args: aura_core::ConfigureLivenessGuardrailsArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.configure_liveness_guardrails_instruction(accounts, args);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
     /// Builds `refresh_external_liveness`.
     pub fn refresh_external_liveness_instruction(
         &self,
@@ -708,6 +916,18 @@ impl AuraClient {
         args: aura_core::RefreshExternalLivenessArgs,
     ) -> Instruction {
         self.with_program_id(instructions::refresh_external_liveness(accounts, args))
+    }
+
+    /// Submits `refresh_external_liveness`.
+    pub fn refresh_external_liveness(
+        &self,
+        operator: &Keypair,
+        accounts: aura_core::accounts::RefreshExternalLiveness,
+        args: aura_core::RefreshExternalLivenessArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(operator, accounts.operator, "operator")?;
+        let instruction = self.refresh_external_liveness_instruction(accounts, args);
+        self.send_instructions(operator, vec![instruction], &[])
     }
 
     /// Builds `attest_policy`.
@@ -719,6 +939,25 @@ impl AuraClient {
         self.with_program_id(instructions::attest_policy(accounts, args))
     }
 
+    /// Submits `attest_policy`.
+    pub fn attest_policy(
+        &self,
+        payer: &Keypair,
+        attester: &Keypair,
+        accounts: aura_core::accounts::AttestPolicy,
+        args: aura_core::AttestPolicyArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        ensure_signer_matches(attester, accounts.attester, "attester")?;
+        let instruction = self.attest_policy_instruction(accounts, args);
+        let extra_signers = if payer.pubkey() == attester.pubkey() {
+            Vec::new()
+        } else {
+            vec![attester]
+        };
+        self.send_instructions(payer, vec![instruction], &extra_signers)
+    }
+
     /// Builds `propose_batch`.
     pub fn propose_batch_instruction(
         &self,
@@ -728,6 +967,18 @@ impl AuraClient {
         self.with_program_id(instructions::propose_batch(accounts, args))
     }
 
+    /// Submits `propose_batch`.
+    pub fn propose_batch(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::ProposeBatch,
+        args: aura_core::ProposeBatchArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        let instruction = self.propose_batch_instruction(accounts, args);
+        self.send_instructions(payer, vec![instruction], &[])
+    }
+
     /// Builds `check_invariants`.
     pub fn check_invariants_instruction(
         &self,
@@ -735,6 +986,18 @@ impl AuraClient {
         args: aura_core::CheckInvariantsArgs,
     ) -> Instruction {
         self.with_program_id(instructions::check_invariants(accounts, args))
+    }
+
+    /// Submits `check_invariants`.
+    pub fn check_invariants(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::CheckInvariants,
+        args: aura_core::CheckInvariantsArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        let instruction = self.check_invariants_instruction(accounts, args);
+        self.send_instructions(payer, vec![instruction], &[])
     }
 }
 
@@ -814,6 +1077,26 @@ mod tests {
         };
 
         let error = client.execute_pending(&signer, accounts, 1).unwrap_err();
+        assert!(matches!(error, SdkError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn policy_control_send_helpers_reject_mismatched_signers_before_rpc() {
+        let client = AuraClient::devnet();
+        let signer = Keypair::new();
+        let accounts = aura_core::accounts::ApprovePendingExecution {
+            approver: Pubkey::new_unique(),
+            treasury: Pubkey::new_unique(),
+        };
+        let args = aura_core::ApprovePendingExecutionArgs {
+            proposal_id: 1,
+            approval_level: 1,
+            now: 10,
+        };
+
+        let error = client
+            .approve_pending_execution(&signer, accounts, args)
+            .unwrap_err();
         assert!(matches!(error, SdkError::InvalidParameter(_)));
     }
 }
