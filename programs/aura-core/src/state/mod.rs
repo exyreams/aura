@@ -22,6 +22,7 @@ mod fees;
 mod pending;
 mod receipt;
 mod reputation;
+mod safety_controls;
 mod swarm;
 
 pub use agent_treasury::AgentTreasury;
@@ -38,4 +39,10 @@ pub use pending::{
 };
 pub use receipt::ExecutionReceipt;
 pub use reputation::AgentReputation;
+pub use safety_controls::{
+    AgentLifecycleState, CircuitBreakerConfig, CircuitBreakerState, ComplianceMetadata,
+    ConfigChangeKind, DeadMansSwitch, GuardianChangeAction, PendingAiRotation, PendingConfigChange,
+    PendingGuardianChange, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
+    REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
+};
 pub use swarm::AgentSwarm;

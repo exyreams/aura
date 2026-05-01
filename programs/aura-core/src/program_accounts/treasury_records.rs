@@ -1,0 +1,238 @@
+use super::*;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct PendingAiRotationRecord {
+    pub new_ai_authority: Pubkey,
+    pub proposed_at: i64,
+    pub executable_after: i64,
+    pub proposed_by: Pubkey,
+}
+
+impl PendingAiRotationRecord {
+    pub fn from_domain(domain: &PendingAiRotation) -> Result<Self> {
+        Ok(Self {
+            new_ai_authority: parse_pubkey(&domain.new_ai_authority)?,
+            proposed_at: domain.proposed_at,
+            executable_after: domain.executable_after,
+            proposed_by: parse_pubkey(&domain.proposed_by)?,
+        })
+    }
+
+    pub fn to_domain(&self) -> Result<PendingAiRotation> {
+        Ok(PendingAiRotation {
+            new_ai_authority: self.new_ai_authority.to_string(),
+            proposed_at: self.proposed_at,
+            executable_after: self.executable_after,
+            proposed_by: self.proposed_by.to_string(),
+        })
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct PendingConfigChangeRecord {
+    pub change_id: u64,
+    pub kind: u8,
+    pub proposed_at: i64,
+    pub executable_after: i64,
+    pub proposed_by: Pubkey,
+    pub vetoed: bool,
+    pub new_policy_config: Option<PolicyConfigRecord>,
+    #[max_len(10)]
+    pub new_multisig_guardians: Vec<Pubkey>,
+    pub new_multisig_required_sigs: Option<u8>,
+}
+
+impl PendingConfigChangeRecord {
+    pub fn from_domain(domain: &PendingConfigChange) -> Result<Self> {
+        Ok(Self {
+            change_id: domain.change_id,
+            kind: config_change_kind_code(domain.kind),
+            proposed_at: domain.proposed_at,
+            executable_after: domain.executable_after,
+            proposed_by: parse_pubkey(&domain.proposed_by)?,
+            vetoed: domain.vetoed,
+            new_policy_config: domain
+                .new_policy_config
+                .as_ref()
+                .map(PolicyConfigRecord::from_domain),
+            new_multisig_guardians: domain
+                .new_multisig_guardians
+                .iter()
+                .map(|guardian| parse_pubkey(guardian))
+                .collect::<Result<Vec<_>>>()?,
+            new_multisig_required_sigs: domain.new_multisig_required_sigs,
+        })
+    }
+
+    pub fn to_domain(&self) -> Result<PendingConfigChange> {
+        Ok(PendingConfigChange {
+            change_id: self.change_id,
+            kind: config_change_kind_from_code(self.kind)?,
+            proposed_at: self.proposed_at,
+            executable_after: self.executable_after,
+            proposed_by: self.proposed_by.to_string(),
+            vetoed: self.vetoed,
+            new_policy_config: self
+                .new_policy_config
+                .as_ref()
+                .map(PolicyConfigRecord::to_domain),
+            new_multisig_guardians: self
+                .new_multisig_guardians
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+            new_multisig_required_sigs: self.new_multisig_required_sigs,
+        })
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct CircuitBreakerConfigRecord {
+    pub enabled: bool,
+    pub violation_threshold: u32,
+    pub window_secs: i64,
+    pub auto_resume_after_secs: Option<i64>,
+}
+
+impl CircuitBreakerConfigRecord {
+    pub fn from_domain(domain: &CircuitBreakerConfig) -> Self {
+        Self {
+            enabled: domain.enabled,
+            violation_threshold: domain.violation_threshold,
+            window_secs: domain.window_secs,
+            auto_resume_after_secs: domain.auto_resume_after_secs,
+        }
+    }
+
+    pub fn to_domain(&self) -> CircuitBreakerConfig {
+        CircuitBreakerConfig {
+            enabled: self.enabled,
+            violation_threshold: self.violation_threshold,
+            window_secs: self.window_secs,
+            auto_resume_after_secs: self.auto_resume_after_secs,
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct CircuitBreakerRecord {
+    pub violation_count_window: u32,
+    pub window_started_at: i64,
+    pub total_trips: u32,
+    pub last_trip_at: Option<i64>,
+    pub config: CircuitBreakerConfigRecord,
+}
+
+impl CircuitBreakerRecord {
+    pub fn from_domain(domain: &CircuitBreakerState) -> Self {
+        Self {
+            violation_count_window: domain.violation_count_window,
+            window_started_at: domain.window_started_at,
+            total_trips: domain.total_trips,
+            last_trip_at: domain.last_trip_at,
+            config: CircuitBreakerConfigRecord::from_domain(&domain.config),
+        }
+    }
+
+    pub fn to_domain(&self) -> CircuitBreakerState {
+        CircuitBreakerState {
+            violation_count_window: self.violation_count_window,
+            window_started_at: self.window_started_at,
+            total_trips: self.total_trips,
+            last_trip_at: self.last_trip_at,
+            config: self.config.to_domain(),
+        }
+    }
+}
+
+impl Default for CircuitBreakerRecord {
+    fn default() -> Self {
+        Self::from_domain(&CircuitBreakerState::default())
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct DeadMansSwitchRecord {
+    pub enabled: bool,
+    pub inactivity_threshold_secs: i64,
+    pub triggered: bool,
+    pub triggered_at: Option<i64>,
+    pub recovery_authority: Pubkey,
+}
+
+impl DeadMansSwitchRecord {
+    pub fn from_domain(domain: &DeadMansSwitch) -> Result<Self> {
+        Ok(Self {
+            enabled: domain.enabled,
+            inactivity_threshold_secs: domain.inactivity_threshold_secs,
+            triggered: domain.triggered,
+            triggered_at: domain.triggered_at,
+            recovery_authority: parse_pubkey(&domain.recovery_authority)?,
+        })
+    }
+
+    pub fn to_domain(&self) -> Result<DeadMansSwitch> {
+        Ok(DeadMansSwitch {
+            enabled: self.enabled,
+            inactivity_threshold_secs: self.inactivity_threshold_secs,
+            triggered: self.triggered,
+            triggered_at: self.triggered_at,
+            recovery_authority: self.recovery_authority.to_string(),
+        })
+    }
+}
+
+/// Serialized form of `ConfidentialGuardrails`.
+/// Ciphertext account addresses are stored as `Option<Pubkey>` rather than
+/// `Option<String>` to save space and enable Anchor's `InitSpace` derivation.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct ConfidentialGuardrailsRecord {
+    pub daily_limit_ciphertext: Option<Pubkey>,
+    pub per_tx_limit_ciphertext: Option<Pubkey>,
+    pub spent_today_ciphertext: Option<Pubkey>,
+    pub guardrail_vector_ciphertext: Option<Pubkey>,
+}
+
+impl ConfidentialGuardrailsRecord {
+    pub fn from_domain(domain: &ConfidentialGuardrails) -> Self {
+        Self {
+            daily_limit_ciphertext: domain
+                .daily_limit_ciphertext
+                .as_deref()
+                .map(parse_pubkey)
+                .transpose()
+                .expect("stored confidential daily limit ciphertext must be a pubkey when present"),
+            per_tx_limit_ciphertext: domain
+                .per_tx_limit_ciphertext
+                .as_deref()
+                .map(parse_pubkey)
+                .transpose()
+                .expect("stored confidential per-tx ciphertext must be a pubkey when present"),
+            spent_today_ciphertext: domain
+                .spent_today_ciphertext
+                .as_deref()
+                .map(parse_pubkey)
+                .transpose()
+                .expect("stored confidential spent-today ciphertext must be a pubkey when present"),
+            guardrail_vector_ciphertext: domain
+                .guardrail_vector_ciphertext
+                .as_deref()
+                .map(parse_pubkey)
+                .transpose()
+                .expect(
+                    "stored confidential guardrail vector ciphertext must be a pubkey when present",
+                ),
+        }
+    }
+
+    pub fn to_domain(&self) -> ConfidentialGuardrails {
+        ConfidentialGuardrails {
+            daily_limit_ciphertext: self.daily_limit_ciphertext.map(|key| key.to_string()),
+            per_tx_limit_ciphertext: self.per_tx_limit_ciphertext.map(|key| key.to_string()),
+            spent_today_ciphertext: self.spent_today_ciphertext.map(|key| key.to_string()),
+            guardrail_vector_ciphertext: self
+                .guardrail_vector_ciphertext
+                .map(|key| key.to_string()),
+        }
+    }
+}
