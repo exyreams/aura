@@ -14,7 +14,9 @@ export function Footer() {
   }, []);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark" ? "/logo-dark.svg" : "/logo-light.svg";
+    !mounted || resolvedTheme === "dark"
+      ? "/dark-logo-wordmark.svg"
+      : "/light-logo-wordmark.svg";
   const docsUrl = DEFAULT_DOCS_URL;
 
   return (

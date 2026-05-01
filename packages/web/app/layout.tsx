@@ -4,11 +4,14 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AURA Dashboard",
+  title: "AURA — Autonomous Universal Resource Agent",
   description:
     "AURA is the control plane for AI treasury agents with policy-aware execution and confidential guardrails.",
   icons: {
     icon: [
+      {
+        url: "/favicon.ico",
+      },
       {
         url: "/favicon-dark.ico",
         media: "(prefers-color-scheme: dark)",

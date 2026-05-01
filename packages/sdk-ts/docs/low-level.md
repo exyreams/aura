@@ -1,9 +1,10 @@
 # `AuraClient` — Low-Level API
 
-`AuraClient` is the direct wrapper over all 18 `aura-core` program instructions.
-It gives you full control over every parameter, account, and timestamp. Use it
-when you need to compose instructions into custom transactions, integrate with
-existing Anchor workflows, or access instructions not covered by the `Aura` facade.
+`AuraClient` is the direct wrapper over the core `aura-core` treasury,
+confidential execution, dWallet, and governance flows. It gives you full control
+over every parameter, account, and timestamp. Use it when you need to compose
+instructions into custom transactions, integrate with existing Anchor workflows,
+or access instructions not covered by the `Aura` facade.
 
 ---
 

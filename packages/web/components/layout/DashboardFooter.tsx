@@ -14,7 +14,9 @@ export function DashboardFooter() {
   }, []);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark" ? "/logo-dark.svg" : "/logo-light.svg";
+    !mounted || resolvedTheme === "dark"
+      ? "/dark-logo-wordmark.svg"
+      : "/light-logo-wordmark.svg";
 
   return (
     <footer className="py-12 px-8 lg:px-12 bg-(--bg)">

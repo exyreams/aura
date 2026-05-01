@@ -2,9 +2,10 @@
 
 TypeScript SDK for the AURA autonomous treasury program on Solana.
 
-Wraps all 18 `aura-core` instructions with a typed client, automatic PDA
-derivation, and account deserialization — built directly from the Anchor IDL
-so it stays in sync with the deployed program.
+Wraps the core `aura-core` treasury, confidential execution, dWallet, and
+governance flows with a typed client, automatic PDA derivation, and account
+deserialization — built directly from the Anchor IDL so it stays aligned with
+the deployed program.
 
 ---
 
@@ -475,7 +476,7 @@ get a fully typed experience via the `.d.ts` files.
 ```
 packages/sdk-ts/
 ├─ src/
-│   ├─ client.ts       # AuraClient — all 18 instructions + account fetching
+│   ├─ client.ts       # AuraClient — core instruction flows + account fetching
 │   ├─ accounts.ts     # Typed account structs for each instruction group
 │   ├─ constants.ts    # Program IDs, seeds, IDL, and type aliases
 │   ├─ pda.ts          # PDA derivation helpers

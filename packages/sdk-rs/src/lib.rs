@@ -5,7 +5,8 @@
 //! types from `aura-core` and adds the off-chain pieces clients need:
 //!
 //! - PDA derivation helpers
-//! - instruction builders for all 18 entrypoints
+//! - instruction builders for treasury, confidential execution, governance,
+//!   and policy-control flows
 //! - treasury account decoding
 //! - a synchronous RPC client for fetches and transaction submission
 //!

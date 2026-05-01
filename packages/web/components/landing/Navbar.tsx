@@ -56,7 +56,9 @@ export function Navbar() {
   }, [walletMenuOpen]);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark" ? "/logo-dark.svg" : "/logo-light.svg";
+    !mounted || resolvedTheme === "dark"
+      ? "/dark-logo-wordmark.svg"
+      : "/light-logo-wordmark.svg";
 
   // Theme-aware background
   const navBg =

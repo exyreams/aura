@@ -65,7 +65,9 @@ export function DashboardNav() {
   }, [walletMenuOpen]);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark" ? "/logo-dark.svg" : "/logo-light.svg";
+    !mounted || resolvedTheme === "dark"
+      ? "/dark-logo-wordmark.svg"
+      : "/light-logo-wordmark.svg";
 
   const navBg =
     !mounted || resolvedTheme === "dark"

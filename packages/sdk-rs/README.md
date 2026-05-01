@@ -2,9 +2,10 @@
 
 Rust SDK for the AURA autonomous treasury program on Solana.
 
-Wraps all 18 `aura-core` instructions with a typed client, automatic PDA
-derivation, and account deserialization — built directly from the real
-Anchor-generated types so it stays in sync with the deployed program.
+Wraps the deployed `aura-core` instruction and account types with a typed
+client, automatic PDA derivation, and account deserialization — built directly
+from the real Anchor-generated types so it stays in sync with the deployed
+program.
 
 ---
 

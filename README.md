@@ -1,24 +1,39 @@
+![AURA banner](packages/web/public/banner.png)
+
 # AURA — Autonomous Universal Resource Agent
 
 **Encrypted guardrails for autonomous AI agent treasuries on Solana.**
 
 AURA lets AI agents manage real crypto treasuries without exposing your strategy on-chain and without trusting a centralized approval server. Spending limits are stored as FHE ciphertexts — unreadable to anyone — and policy evaluation happens directly over those encrypted values via Ika's Encrypt network. When a transaction is approved, it is co-signed by an Ika dWallet, giving you native multi-chain execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism.
 
-**Status:** Core program and policy engine deployed on Solana devnet. Live smoke tests passing. TypeScript and Rust SDKs plus the operator CLI with confidential/execution flows and a live dashboard all live under `packages/`.
+> [!WARNING]
+> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change quickly. Do not use this code to secure production funds or serious treasury operations until a stable release and audit are published.
+
+## Advanced Feature Surface
+
+AURA combines confidential treasury policy, dWallet execution, and operational safety controls so autonomous agents can act without receiving unrestricted key custody.
+
+- **Confidential spend guardrails:** daily limits, per-transaction limits, and running spend counters can be stored as scalar or vector FHE ciphertexts. The program can evaluate encrypted spend limits without exposing the limit values on-chain.
+- **dWallet-backed execution:** approved proposals move through message approval, signature verification, and finalization against Ika dWallet records, enabling multi-chain execution without handing the agent a raw private key.
+- **Policy receipts and history:** decisions can be recorded as explainable receipts, policy history snapshots, activity entries, and attestations so operators can audit what was checked, why it passed or failed, and which policy version was active.
+- **Governance and emergency controls:** treasury owners can configure emergency multisig, guardian overrides, scoped pauses, AI authority rotation, dangerous-config timelocks, session keys, and emergency shutdown recovery paths.
+- **Budget and risk segmentation:** budget envelopes, exposure groups, swarm shared pools, child spend budgets, protocol allowlists, address lists, slippage caps, quote freshness, counterparty risk, velocity limits, and time-window limits let teams scope agent behavior by use case.
+- **Operational health and liveness:** health scoring, external liveness records, invariant reports, snapshots, policy service metadata, deployment metadata, and migration hooks provide the operational layer needed to monitor and upgrade a live treasury system.
+- **Heap-aware live execution:** confidential proposal, decryption, dWallet execution, and finalization paths persist only the necessary state around external CPIs, reducing SBF heap pressure for large treasury accounts.
 
 ---
 
 ## The Problem
 
-Every AI agent wallet in existence today forces a tradeoff:
+AI agents can already reason about trades, treasury movement, and operational tasks, but most wallet systems still treat them like ordinary hot-wallet users. That creates three hard problems:
 
-| Approach | What breaks |
+| Problem | Why it matters |
 |---|---|
-| Give the AI direct key access | One bug or compromise = total loss, no guardrails |
-| Public on-chain spending limits | MEV bots read your limits and front-run every trade |
-| Centralized approval server | Single point of failure, not truly autonomous |
+| Direct key access | A prompt injection, model bug, or compromised runtime can drain the treasury. |
+| Public spending policy | Competitors, MEV searchers, and attackers can inspect limits, infer strategy, and route around known controls. |
+| Centralized approval middleware | The agent is no longer autonomous, and the middleware becomes a single point of failure. |
 
-AURA eliminates all three. Spending limits live as FHE ciphertexts that nobody can read — not you, not the validator, not a competing agent. Policy evaluation runs over encrypted data. The result is a system where the AI agent genuinely cannot exceed its limits, and nobody can infer what those limits are from the chain.
+AURA's core idea is to let the agent submit useful actions while the treasury enforces cryptographic and policy boundaries around those actions. Limits can stay encrypted, policy decisions can be audited, and execution can be co-signed by dWallet infrastructure instead of exposing raw treasury keys to the agent.
 
 ---
 
@@ -129,11 +144,11 @@ Located at [`packages/sdk-rs/`](packages/sdk-rs/), this crate reuses the real `a
 
 - treasury account decoding into both raw and rich domain forms
 - PDA derivation helpers for treasury and CPI authorities
-- typed builders for the full instruction surface
+- typed builders for treasury, confidential execution, governance, and advanced policy-control instructions
 - a synchronous RPC client with early signer/account validation
 - input validation utilities (`validate_agent_id`, `validate_amount_usd`, etc.)
 
-Verified with `cargo test -p aura-sdk` — 14 unit tests + 1 doc test passing.
+Verified with `cargo test -p aura-sdk` — 26 unit tests + 1 doc test passing.
 
 ### `sdk-ts` (TypeScript)
 
@@ -142,7 +157,7 @@ Located at [`packages/sdk-ts/`](packages/sdk-ts/), this package ships compiled E
 The package includes:
 
 - `Aura` — high-level facade with plain-number inputs, automatic timestamps, and chainable namespaces (`aura.treasury.*`, `aura.dwallet.*`, `aura.governance.*`)
-- `AuraClient` — low-level client wrapping all 18 program instructions with full parameter control
+- `AuraClient` — low-level client wrapping the core treasury, confidential execution, dWallet, and governance flows with full parameter control
 - strict Anchor account resolution via the generated IDL
 - PDA helpers, error codes, event types, and validation helpers
 - the raw IDL exported at `@aura/sdk-ts/idl`
@@ -193,67 +208,58 @@ aura dashboard --agent-id my-agent
 
 ---
 
-## What Is Implemented
+## Available Feature Set
 
 ### `aura-core` (Anchor Program)
 
-The on-chain coordinator. Owns the `TreasuryAccount` PDA and exposes the full instruction set.
+The on-chain coordinator owns treasury PDAs, policy-control records, dWallet metadata, pending execution state, and audit/event surfaces. The current IDL exposes the live program interface used by the SDKs, CLI, smoke tests, and dashboard integrations.
 
-**Instructions:**
+Available program capabilities:
 
-| Instruction | Description |
-|---|---|
-| `create_treasury` | Initialize a new agent treasury PDA |
-| `register_dwallet` | Register a dWallet for a specific chain |
-| `configure_confidential_guardrails` | Set scalar FHE ciphertexts (daily, per-tx, spent-today) |
-| `configure_confidential_vector_guardrails` | Set a single vector FHE ciphertext encoding all three |
-| `propose_transaction` | Submit a public (non-encrypted) proposal |
-| `propose_confidential_transaction` | Submit a scalar FHE proposal |
-| `propose_confidential_vector_transaction` | Submit a vector FHE proposal |
-| `request_policy_decryption` | Request Encrypt network to decrypt the policy output |
-| `confirm_policy_decryption` | Verify the decrypted result and apply the decision |
-| `execute_pending` | Submit `approve_message` CPI to dWallet once approved |
-| `finalize_execution` | Verify the dWallet signature and close the proposal |
-| `cancel_pending` | Owner cancels a pending proposal |
-| `pause_execution` | Owner pauses or resumes the treasury |
-| `configure_multisig` | Attach an emergency guardian override set |
-| `propose_override` | Guardian proposes a daily limit increase |
-| `collect_override_signature` | Guardian co-signs the override proposal |
-| `configure_swarm` | Attach a shared pool limit for a group of agents |
-
-Verified with `cargo test -p aura-core`.
+- **Treasury lifecycle:** create treasury, register dWallets, pause/resume execution, cancel pending proposals, treasury admin changes, migrations, fee vault setup, and protocol-fee accounting.
+- **Confidential execution:** configure scalar/vector FHE guardrails, propose scalar/vector confidential transactions, request/confirm Encrypt decryption, execute approved pending transactions, and finalize signed dWallet approvals.
+- **Governance and safety controls:** configure emergency multisig, propose/collect guardian overrides, emergency shutdown, AI authority rotation, dangerous-config timelocks, session keys, and scoped operator roles.
+- **Policy-control accounts:** policy receipts, policy history, policy attestations, budget envelopes, exposure groups, external liveness records, role records, batch records, and invariant reports.
+- **Operational observability:** activity log, snapshots, health score, address lists, hashed recipients, Merkle inclusion verification, swarm pool records, and policy service metadata.
 
 ---
 
 ### `aura-policy` (Library Crate)
 
-The policy engine. Evaluates transactions against 11 configurable spending rules.
+The pure Rust policy engine is used by the program, SDKs, smoke harness, and off-chain previews. It evaluates public policy rules locally and defers encrypted spend checks to Encrypt for confidential proposals.
 
-**Rules evaluated in order:**
+Policy controls now cover:
 
-1. `per_tx_limit` — amount ≤ per-transaction limit
-2. `daily_limit` — projected daily spend ≤ effective daily limit (reputation-adjusted)
-3. `bitcoin_manual_review` — Bitcoin amounts below the manual review threshold
-4. `time_window_limit` — projected hourly spend ≤ daytime or nighttime hourly limit
-5. `protocol_whitelist` — DeFi protocol ID present in encrypted bitmap
-6. `slippage_limit` — computed slippage ≤ max basis points
-7. `quote_freshness` — price quote age ≤ max allowed age
-8. `counterparty_risk` — risk score ≤ configured maximum
-9. `shared_pool_limit` — projected swarm spend ≤ collective pool limit
-10. `velocity_limit` — rolling 10-transaction window sum ≤ velocity cap
+1. Per-transaction limits.
+2. Daily limits with reputation-adjusted effective caps.
+3. Bitcoin/manual-review thresholds.
+4. Time-window and hourly limits.
+5. Protocol allowlists.
+6. Slippage limits.
+7. Quote freshness.
+8. Counterparty risk.
+9. Shared swarm pool limits.
+10. Velocity limits.
+11. Budget envelopes with daily and weekly scopes.
+12. Approval ladders for escalation, timelock, guardian, and multisig levels.
+13. Scoped pause for execution modes, chains, categories, recipients, and protocols.
+14. External liveness checks for dependency freshness.
+15. Exposure-group accounting and limits.
 
-**Evaluation modes:**
+Policy tooling includes reusable presets, deterministic policy hashes, diff classification, explainable receipts, batch simulation, batch evaluation, and expanded violation codes for the new controls.
 
-- `evaluate_transaction` — full public evaluation, all 10 rules
-- `evaluate_public_precheck` — public rules only; defers per-tx and daily limits to Encrypt for confidential proposals
-- `evaluate_batch` — sequential evaluation threading state forward, used for off-chain simulation
+Evaluation modes:
 
-**FHE Graphs:**
+- `evaluate_transaction` — full public evaluation with all policy rules.
+- `evaluate_public_precheck` — public-only checks for confidential proposals before Encrypt handles encrypted spend limits.
+- `evaluate_batch` — sequential evaluation that threads mutable state forward.
+- `simulate_batch` / preview helpers — off-chain review of proposed batches before execution.
 
-- **Scalar graph** (`confidential_spend_guardrails_scalar_v1`) — takes 4 separate `EUint64` ciphertexts, outputs `(violation_code, next_spent_today)`
-- **Vector graph** (`confidential_spend_guardrails_vector_v3`) — takes a single `EUint64Vector` encoding `[daily_limit, per_tx_limit, spent_today]`, outputs an updated vector with `lane[3] = violation_code`
+FHE graphs:
 
-Verified with `cargo test -p aura-policy`.
+- **Scalar graph** (`confidential_spend_guardrails_scalar_v1`) — takes separate encrypted daily limit, per-tx limit, spent-today, and amount inputs, then outputs a violation code plus next spent-today value.
+- **Vector graph** (`confidential_spend_guardrails_vector_v3`) — takes a single encrypted vector encoding `[daily_limit, per_tx_limit, spent_today]`, then returns an updated vector with the violation code embedded.
+- **Advanced/batch graph specs** — describe multi-rule confidential evaluation surfaces for future graph upgrades while keeping public policy simulation aligned with the on-chain model.
 
 ---
 
@@ -368,7 +374,7 @@ anchor deploy --provider.cluster "https://devnet.helius-rpc.com/?api-key=<YOUR_K
 
 ### Smoke Tests (Live Devnet Integration)
 
-The `smoke/aura-devnet/` directory contains three integration tests that run against live devnet services.
+The `smoke/aura-devnet/` directory contains live devnet smoke binaries for dWallet execution, confidential Encrypt flows, and policy behavior. The policy smoke currently exercises a 12-scenario matrix against the deployed devnet program.
 
 **Prerequisites:**
 - Solana CLI configured with a funded devnet wallet (`~/.config/solana/id.json`)
@@ -427,10 +433,12 @@ cargo run --bin dwallet
 cargo run --bin confidential
 
 # 3. Policy Engine Test
-# Tests: All 11 policy rules in isolation and batch evaluation
-# Verifies: Public policy evaluation, reputation scaling, time windows, velocity limits
+# Tests: 12 live policy scenarios across limits, lifecycle, governance, swarms, dWallet registration, and reconfiguration
+# Verifies: Public policy evaluation, reputation scaling, time windows, velocity limits, and advanced policy-control account plumbing
 cargo run --bin policy
 ```
+
+The live policy scenario matrix covers per-transaction deny/approve, daily-limit deny/approve, cancel pending, pause/resume, multisig override, swarm shared-pool enforcement, single-guardian override, multi-chain dWallet registration, reputation scaling, and guardrail reconfiguration mid-lifecycle.
 
 ---
 
@@ -458,11 +466,11 @@ programs/
   │   │   ├─ execution/      # Proposal lifecycle state machine
   │   │   ├─ ext_cpi/        # dWallet and Encrypt CPI adapters
   │   │   ├─ governance/     # Emergency multisig override
-  │   │   ├─ instructions/   # One file per Anchor instruction handler
-  │   │   ├─ program_accounts/ # On-chain account serialization layer
+  │   │   ├─ instructions/   # Domain-named Anchor instruction handlers
+  │   │   ├─ program_accounts/ # Split on-chain account serialization records
   │   │   ├─ program_events/ # On-chain event emission
-  │   │   ├─ state/          # Domain model (AgentTreasury, PendingTransaction, etc.)
-  │   │   └─ tests/          # Integration tests (proposal, confidential, governance, advanced)
+  │   │   ├─ state/          # Treasury, pending, receipt, reputation, safety, and swarm domain models
+  │   │   └─ tests/          # Proposal, confidential, governance, advanced, and policy-control flows
   │   └─ Cargo.toml
   │
   └─ aura-policy/
@@ -476,7 +484,7 @@ programs/
       │   ├─ state/          # PolicyState (mutable spending counters)
       │   ├─ types/          # Chain and TransactionType enums
       │   ├─ violations/     # ViolationCode enum
-      │   └─ tests/          # Unit tests (engine rules, time/velocity, advanced, confidential)
+      │   └─ tests/          # Engine, time/velocity, confidential, advanced, and policy-control rules
       └─ Cargo.toml
 packages/
   ├─ backend/
@@ -491,7 +499,7 @@ packages/
   │   │   ├─ client.rs       # High-level synchronous Rust client
   │   │   ├─ constants.rs    # Seeds, limits, and RPC defaults
   │   │   ├─ errors.rs       # SdkError enum
-  │   │   ├─ instructions.rs # Typed builders for every aura-core instruction
+  │   │   ├─ instructions.rs # Typed builders for aura-core instruction flows
   │   │   ├─ pda.rs          # PDA derivation helpers
   │   │   ├─ types.rs        # Re-exports of on-chain program and policy types
   │   │   └─ utils.rs        # Input validation helpers

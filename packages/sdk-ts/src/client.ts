@@ -1,9 +1,10 @@
 /**
  * High-level TypeScript client for the AURA autonomous treasury program.
  *
- * `AuraClient` wraps all 18 `aura-core` instructions with typed account
- * structs, automatic PDA derivation, and early signer validation. Every
- * instruction is available in two forms:
+ * `AuraClient` wraps the core `aura-core` treasury, confidential execution,
+ * dWallet, and governance flows with typed account structs, automatic PDA
+ * derivation, and early signer validation. Every instruction is available in
+ * two forms:
  *
  * - `*Instruction(...)` — returns a `TransactionInstruction` for composing
  *   into your own transaction.
@@ -404,8 +405,8 @@ export class AuraClient {
 
   /**
    * Builds a `propose_transaction` instruction.
-   * Submits a public (non-encrypted) proposal. The policy engine evaluates
-   * all 10 rules synchronously on-chain.
+   * Submits a public (non-encrypted) proposal. The policy engine evaluates the
+   * configured public policy rules synchronously on-chain.
    */
   async proposeTransactionInstruction(
     accounts: AiAuthorityTreasuryAccounts,
