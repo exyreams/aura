@@ -130,6 +130,7 @@ fn hourly_bucket_resets_after_one_hour() {
         spent_today_usd: 400,
         last_reset_timestamp: 1_000,
         recent_amounts: vec![400],
+        ..PolicyState::default()
     };
 
     // 3_601 seconds after bucket started — should reset
@@ -240,6 +241,7 @@ fn evaluate_transaction_simple_approves_within_limits() {
         actual_output_usd: None,
         quote_age_secs: None,
         counterparty_risk_score: None,
+        recipient_or_contract: Some("0xrecipient".to_string()),
     };
 
     let decision = evaluate_transaction_simple(&config, &state, tx);
@@ -264,6 +266,7 @@ fn evaluate_transaction_simple_denies_above_per_tx_limit() {
         actual_output_usd: None,
         quote_age_secs: None,
         counterparty_risk_score: None,
+        recipient_or_contract: Some("0xrecipient".to_string()),
     };
 
     let decision = evaluate_transaction_simple(&config, &state, tx);

@@ -28,10 +28,17 @@ pub mod state;
 pub mod types;
 pub mod violations;
 
-pub use config::{PolicyConfig, ReputationPolicy};
+pub use config::{
+    AnomalyAction, AnomalyConfig, CooldownConfig, PolicyConfig, RecipientLimit, ReputationPolicy,
+    TransactionTypeScope,
+};
 pub use context::{PolicyEvaluationContext, TransactionContext};
-pub use decision::{PolicyDecision, RuleOutcome};
-pub use engine::{evaluate_batch, evaluate_public_precheck, evaluate_transaction};
+pub use decision::{PolicyDecision, RiskFactor, RuleOutcome};
+pub use engine::{
+    compute_regulatory_flags, evaluate_batch, evaluate_public_precheck, evaluate_transaction,
+    REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD, REG_FLAG_HIGH_RISK_COUNTERPARTY,
+    REG_FLAG_REQUIRES_KYC,
+};
 pub use graphs::{
     advanced_policy_graph, batch_policy_graph, confidential_policy_graph,
     confidential_scalar_policy_graph, confidential_spend_guardrails_graph_bytes,
@@ -39,7 +46,7 @@ pub use graphs::{
     execute_confidential_spend_guardrails_vector_graph, transaction_policy_graph, PolicyGraphSpec,
 };
 pub use helpers::{active_hourly_limit, protocol_allowed, slippage_bps};
-pub use state::PolicyState;
+pub use state::{PolicyState, RecipientSpendRecord};
 pub use types::{Chain, TransactionType};
 pub use violations::ViolationCode;
 

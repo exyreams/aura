@@ -5,5 +5,5 @@
 mod policy_decision;
 mod rule_outcome;
 
-pub use policy_decision::PolicyDecision;
+pub use policy_decision::{PolicyDecision, RiskFactor};
 pub use rule_outcome::RuleOutcome;

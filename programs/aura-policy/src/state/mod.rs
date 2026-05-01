@@ -6,4 +6,4 @@
 /// writes the updated values into `PolicyDecision::next_state`.
 mod policy_state;
 
-pub use policy_state::PolicyState;
+pub use policy_state::{PolicyState, RecipientSpendRecord};

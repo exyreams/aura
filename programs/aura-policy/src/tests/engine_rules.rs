@@ -20,6 +20,7 @@ pub fn base_tx() -> TransactionContext {
         actual_output_usd: Some(498),
         quote_age_secs: Some(60),
         counterparty_risk_score: Some(20),
+        recipient_or_contract: Some("0xUNISWAP".to_string()),
     }
 }
 
@@ -60,6 +61,7 @@ fn resets_daily_state_after_twenty_four_hours() {
         hourly_spent_usd: 400,
         hourly_bucket_started_at: 10,
         recent_amounts: vec![400, 250],
+        ..PolicyState::default()
     };
     let mut tx = base_tx();
     tx.amount_usd = 900;

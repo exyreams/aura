@@ -1,5 +1,7 @@
 use super::reputation::ReputationPolicy;
 
+use crate::types::{Chain, TransactionType};
+
 /// The complete set of spending rules configured on an agent treasury.
 ///
 /// All monetary values are in USD. The default configuration is conservative:
@@ -31,8 +33,57 @@ pub struct PolicyConfig {
     /// Maximum total USD that all swarm members may spend collectively.
     /// `None` means no swarm pool limit is enforced.
     pub shared_pool_limit_usd: Option<u64>,
+    /// Optional 7-day aggregate limit using the on-chain rolling daily buckets.
+    pub weekly_limit_usd: Option<u64>,
+    /// Optional 30-day aggregate limit.
+    pub monthly_limit_usd: Option<u64>,
+    /// Per-recipient exposure limits for exact chain/address matches.
+    pub recipient_limits: Vec<RecipientLimit>,
+    /// Optional cooldown rule for large transactions.
+    pub cooldown_config: Option<CooldownConfig>,
+    /// Optional statistical outlier detection configuration.
+    pub anomaly_config: Option<AnomalyConfig>,
     /// Reputation-based multiplier policy applied to `daily_limit_usd`.
     pub reputation_policy: ReputationPolicy,
+}
+
+/// Per-recipient exposure rule.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecipientLimit {
+    pub chain: Chain,
+    pub address: String,
+    pub daily_limit_usd: u64,
+    pub per_tx_limit_usd: Option<u64>,
+}
+
+/// Minimum delay between transactions at or above `threshold_usd`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CooldownConfig {
+    pub threshold_usd: u64,
+    pub cooldown_secs: i64,
+}
+
+/// Action taken when anomaly detection flags an outlier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnomalyAction {
+    Deny,
+    FlagForReview,
+    RequireGuardianCosign,
+}
+
+/// Integer-only anomaly detection configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AnomalyConfig {
+    pub enabled: bool,
+    pub z_score_threshold_bps: u64,
+    pub min_sample_size: usize,
+    pub action: AnomalyAction,
+}
+
+/// Optional transaction type allow-list for delegated/session contexts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TransactionTypeScope {
+    pub allowed_tx_types: Vec<TransactionType>,
 }
 
 impl Default for PolicyConfig {
@@ -49,6 +100,11 @@ impl Default for PolicyConfig {
             max_counterparty_risk_score: Some(70),
             bitcoin_manual_review_threshold_usd: 5_000,
             shared_pool_limit_usd: None,
+            weekly_limit_usd: None,
+            monthly_limit_usd: None,
+            recipient_limits: Vec::new(),
+            cooldown_config: None,
+            anomaly_config: None,
             reputation_policy: ReputationPolicy::default(),
         }
     }

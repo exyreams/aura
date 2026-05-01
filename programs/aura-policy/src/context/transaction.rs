@@ -27,4 +27,6 @@ pub struct TransactionContext {
     pub quote_age_secs: Option<u64>,
     /// Counterparty risk score (0–100), checked against `max_counterparty_risk_score`.
     pub counterparty_risk_score: Option<u8>,
+    /// Destination address/contract for recipient-specific policy rules.
+    pub recipient_or_contract: Option<String>,
 }

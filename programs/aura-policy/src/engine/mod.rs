@@ -11,4 +11,8 @@ mod batch;
 mod evaluator;
 
 pub use batch::evaluate_batch;
-pub use evaluator::{evaluate_public_precheck, evaluate_transaction, evaluate_transaction_simple};
+pub use evaluator::{
+    compute_regulatory_flags, evaluate_public_precheck, evaluate_transaction,
+    evaluate_transaction_simple, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
+    REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
+};

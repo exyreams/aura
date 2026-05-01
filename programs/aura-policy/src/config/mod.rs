@@ -5,5 +5,8 @@
 mod limits;
 mod reputation;
 
-pub use limits::PolicyConfig;
+pub use limits::{
+    AnomalyAction, AnomalyConfig, CooldownConfig, PolicyConfig, RecipientLimit,
+    TransactionTypeScope,
+};
 pub use reputation::ReputationPolicy;

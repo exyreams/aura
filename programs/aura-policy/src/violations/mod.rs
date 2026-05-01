@@ -30,6 +30,18 @@ pub enum ViolationCode {
     CounterpartyRisk,
     /// Projected swarm pool spend would exceed `shared_pool_limit_usd`.
     SharedPoolLimit,
+    /// Projected 7-day spend would exceed `weekly_limit_usd`.
+    WeeklyLimit,
+    /// Projected 30-day spend would exceed `monthly_limit_usd`.
+    MonthlyLimit,
+    /// Recipient-specific daily exposure would be exceeded.
+    RecipientDailyLimit,
+    /// Recipient-specific per-transaction exposure would be exceeded.
+    RecipientPerTransactionLimit,
+    /// Statistical anomaly detection flagged the amount as an outlier.
+    AnomalyDetected,
+    /// A cooldown rule blocked a large transaction.
+    CooldownNotElapsed,
 }
 
 impl Display for ViolationCode {
@@ -46,6 +58,12 @@ impl Display for ViolationCode {
             Self::QuoteStale => "quote_stale",
             Self::CounterpartyRisk => "counterparty_risk",
             Self::SharedPoolLimit => "shared_pool_limit",
+            Self::WeeklyLimit => "weekly_limit",
+            Self::MonthlyLimit => "monthly_limit",
+            Self::RecipientDailyLimit => "recipient_daily_limit",
+            Self::RecipientPerTransactionLimit => "recipient_per_transaction_limit",
+            Self::AnomalyDetected => "anomaly_detected",
+            Self::CooldownNotElapsed => "cooldown_not_elapsed",
         };
 
         write!(f, "{label}")

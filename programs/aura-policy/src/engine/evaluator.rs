@@ -1,14 +1,20 @@
 use crate::{
-    config::PolicyConfig,
+    config::{AnomalyAction, PolicyConfig},
     context::{PolicyEvaluationContext, TransactionContext},
-    decision::{PolicyDecision, RuleOutcome},
+    decision::{PolicyDecision, RiskFactor, RuleOutcome},
     helpers::{
-        active_hourly_limit, normalize_state, protocol_allowed, push_recent_amount, slippage_bps,
+        active_hourly_limit, address_hash, compute_stats_integer, normalize_state,
+        protocol_allowed, push_recent_amount, slippage_bps, z_score_bps,
     },
-    state::PolicyState,
+    state::{PolicyState, RecipientSpendRecord},
     types::Chain,
     violations::ViolationCode,
 };
+
+pub const REG_FLAG_CTR_THRESHOLD: u8 = 0b0000_0001;
+pub const REG_FLAG_CROSS_BORDER: u8 = 0b0000_0010;
+pub const REG_FLAG_HIGH_RISK_COUNTERPARTY: u8 = 0b0000_0100;
+pub const REG_FLAG_REQUIRES_KYC: u8 = 0b0000_1000;
 
 /// Evaluates all policy rules against `context` and returns a `PolicyDecision`.
 ///
@@ -36,6 +42,8 @@ pub fn evaluate_transaction(
     let tx = &context.transaction;
     let mut state = normalize_state(previous_state, tx.current_timestamp);
     let effective_daily_limit_usd = config.effective_daily_limit_usd(context.reputation_score);
+    let (risk_score, risk_factors) = compute_risk_score(tx, config, &state);
+    let regulatory_flags = compute_regulatory_flags(tx);
     let mut trace = Vec::new();
 
     if tx.amount_usd > config.per_tx_limit_usd {
@@ -48,6 +56,9 @@ pub fn evaluate_transaction(
             ViolationCode::PerTransactionLimit,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -66,12 +77,71 @@ pub fn evaluate_transaction(
             ViolationCode::DailyLimit,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
         "daily_limit",
         format!("projected {projected_daily_spend} <= {effective_daily_limit_usd}"),
     ));
+
+    if let Some(weekly_limit_usd) = config.weekly_limit_usd {
+        let projected_weekly = state.seven_day_total().saturating_add(tx.amount_usd);
+        if projected_weekly > weekly_limit_usd {
+            trace.push(RuleOutcome::failed(
+                "weekly_limit",
+                format!("{projected_weekly} > {weekly_limit_usd}"),
+            ));
+            return deny(
+                state,
+                ViolationCode::WeeklyLimit,
+                effective_daily_limit_usd,
+                trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
+            );
+        }
+        trace.push(RuleOutcome::passed(
+            "weekly_limit",
+            format!("{projected_weekly} <= {weekly_limit_usd}"),
+        ));
+    } else {
+        trace.push(RuleOutcome::passed(
+            "weekly_limit",
+            "weekly limit not enabled",
+        ));
+    }
+
+    if let Some(monthly_limit_usd) = config.monthly_limit_usd {
+        let projected_monthly = state.thirty_day_spent_usd.saturating_add(tx.amount_usd);
+        if projected_monthly > monthly_limit_usd {
+            trace.push(RuleOutcome::failed(
+                "monthly_limit",
+                format!("{projected_monthly} > {monthly_limit_usd}"),
+            ));
+            return deny(
+                state,
+                ViolationCode::MonthlyLimit,
+                effective_daily_limit_usd,
+                trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
+            );
+        }
+        trace.push(RuleOutcome::passed(
+            "monthly_limit",
+            format!("{projected_monthly} <= {monthly_limit_usd}"),
+        ));
+    } else {
+        trace.push(RuleOutcome::passed(
+            "monthly_limit",
+            "monthly limit not enabled",
+        ));
+    }
 
     if tx.target_chain == Chain::Bitcoin
         && tx.amount_usd > config.bitcoin_manual_review_threshold_usd
@@ -88,6 +158,9 @@ pub fn evaluate_transaction(
             ViolationCode::BitcoinManualReview,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -107,6 +180,9 @@ pub fn evaluate_transaction(
             ViolationCode::TimeWindowLimit,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -125,6 +201,9 @@ pub fn evaluate_transaction(
                 ViolationCode::ProtocolNotAllowed,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -151,6 +230,9 @@ pub fn evaluate_transaction(
                 ViolationCode::SlippageExceeded,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -178,6 +260,9 @@ pub fn evaluate_transaction(
                 ViolationCode::QuoteStale,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -206,6 +291,9 @@ pub fn evaluate_transaction(
                 ViolationCode::CounterpartyRisk,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -234,6 +322,9 @@ pub fn evaluate_transaction(
                 ViolationCode::SharedPoolLimit,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -245,6 +336,71 @@ pub fn evaluate_transaction(
         trace.push(RuleOutcome::passed(
             "shared_pool_limit",
             "shared pool policy not enabled",
+        ));
+    }
+
+    if let Some(recipient) = tx.recipient_or_contract.as_ref() {
+        if let Some(limit) = config
+            .recipient_limits
+            .iter()
+            .find(|limit| limit.chain == tx.target_chain && limit.address == *recipient)
+        {
+            if let Some(per_tx_limit_usd) = limit.per_tx_limit_usd {
+                if tx.amount_usd > per_tx_limit_usd {
+                    trace.push(RuleOutcome::failed(
+                        "recipient_per_tx_limit",
+                        format!("{} > {}", tx.amount_usd, per_tx_limit_usd),
+                    ));
+                    return deny(
+                        state,
+                        ViolationCode::RecipientPerTransactionLimit,
+                        effective_daily_limit_usd,
+                        trace,
+                        risk_score,
+                        risk_factors,
+                        regulatory_flags,
+                    );
+                }
+            }
+
+            let hash = address_hash(recipient);
+            let spent = state
+                .recipient_spend
+                .iter()
+                .find(|record| {
+                    record.chain_code == chain_code(tx.target_chain) && record.address_hash == hash
+                })
+                .map_or(0, |record| record.spent_today_usd);
+            let projected = spent.saturating_add(tx.amount_usd);
+            if projected > limit.daily_limit_usd {
+                trace.push(RuleOutcome::failed(
+                    "recipient_daily_limit",
+                    format!("{projected} > {}", limit.daily_limit_usd),
+                ));
+                return deny(
+                    state,
+                    ViolationCode::RecipientDailyLimit,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+            trace.push(RuleOutcome::passed(
+                "recipient_limit",
+                format!("{projected} <= {}", limit.daily_limit_usd),
+            ));
+        } else {
+            trace.push(RuleOutcome::passed(
+                "recipient_limit",
+                "recipient-specific policy not configured",
+            ));
+        }
+    } else {
+        trace.push(RuleOutcome::passed(
+            "recipient_limit",
+            "recipient address not supplied",
         ));
     }
 
@@ -260,6 +416,9 @@ pub fn evaluate_transaction(
             ViolationCode::VelocityLimit,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -267,8 +426,71 @@ pub fn evaluate_transaction(
         format!("{projected_velocity} <= {}", config.velocity_limit_usd),
     ));
 
+    let mut risk_score = risk_score;
+    let mut risk_factors = risk_factors;
+    if let Some(anomaly_cfg) = config.anomaly_config {
+        if anomaly_cfg.enabled && state.recent_amounts.len() >= anomaly_cfg.min_sample_size {
+            let (mean, std_dev) = compute_stats_integer(&state.recent_amounts);
+            let z_score = z_score_bps(tx.amount_usd, mean, std_dev);
+            if z_score > anomaly_cfg.z_score_threshold_bps {
+                risk_score = risk_score.max(85);
+                risk_factors.push(RiskFactor {
+                    name: "anomaly_detection".to_string(),
+                    contribution: 25,
+                    detail: format!(
+                        "z-score {}bps > {}bps (mean={}, std_dev={})",
+                        z_score, anomaly_cfg.z_score_threshold_bps, mean, std_dev
+                    ),
+                });
+                trace.push(RuleOutcome::failed(
+                    "anomaly_detection",
+                    format!(
+                        "z-score {}bps > {}bps",
+                        z_score, anomaly_cfg.z_score_threshold_bps
+                    ),
+                ));
+                if anomaly_cfg.action == AnomalyAction::Deny {
+                    return deny(
+                        state,
+                        ViolationCode::AnomalyDetected,
+                        effective_daily_limit_usd,
+                        trace,
+                        risk_score,
+                        risk_factors,
+                        regulatory_flags,
+                    );
+                }
+            } else {
+                trace.push(RuleOutcome::passed(
+                    "anomaly_detection",
+                    format!("z-score {z_score}bps within threshold"),
+                ));
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "anomaly_detection",
+                "anomaly detection not enabled or insufficient history",
+            ));
+        }
+    } else {
+        trace.push(RuleOutcome::passed(
+            "anomaly_detection",
+            "anomaly detection not enabled",
+        ));
+    }
+
     state.spent_today_usd = projected_daily_spend;
     state.hourly_spent_usd = projected_hourly_spend;
+    state.record_spend(tx.amount_usd);
+    if let Some(recipient) = tx.recipient_or_contract.as_ref() {
+        record_recipient_spend(
+            &mut state,
+            tx.target_chain,
+            recipient,
+            tx.amount_usd,
+            tx.current_timestamp,
+        );
+    }
     push_recent_amount(&mut state, tx.amount_usd);
     trace.push(RuleOutcome::passed(
         "state_commit",
@@ -280,6 +502,9 @@ pub fn evaluate_transaction(
         violation: ViolationCode::None,
         next_state: state,
         effective_daily_limit_usd,
+        risk_score,
+        risk_factors,
+        regulatory_flags,
         trace,
     }
 }
@@ -303,6 +528,8 @@ pub fn evaluate_public_precheck(
     let tx = &context.transaction;
     let mut state = normalize_state(previous_state, tx.current_timestamp);
     let effective_daily_limit_usd = config.effective_daily_limit_usd(context.reputation_score);
+    let (risk_score, risk_factors) = compute_risk_score(tx, config, &state);
+    let regulatory_flags = compute_regulatory_flags(tx);
     let mut trace = Vec::new();
 
     if tx.target_chain == Chain::Bitcoin
@@ -320,6 +547,9 @@ pub fn evaluate_public_precheck(
             ViolationCode::BitcoinManualReview,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -339,6 +569,9 @@ pub fn evaluate_public_precheck(
             ViolationCode::TimeWindowLimit,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -357,6 +590,9 @@ pub fn evaluate_public_precheck(
                 ViolationCode::ProtocolNotAllowed,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -383,6 +619,9 @@ pub fn evaluate_public_precheck(
                 ViolationCode::SlippageExceeded,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -410,6 +649,9 @@ pub fn evaluate_public_precheck(
                 ViolationCode::QuoteStale,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -438,6 +680,9 @@ pub fn evaluate_public_precheck(
                 ViolationCode::CounterpartyRisk,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -466,6 +711,9 @@ pub fn evaluate_public_precheck(
                 ViolationCode::SharedPoolLimit,
                 effective_daily_limit_usd,
                 trace,
+                risk_score,
+                risk_factors,
+                regulatory_flags,
             );
         }
 
@@ -492,6 +740,9 @@ pub fn evaluate_public_precheck(
             ViolationCode::VelocityLimit,
             effective_daily_limit_usd,
             trace,
+            risk_score,
+            risk_factors,
+            regulatory_flags,
         );
     }
     trace.push(RuleOutcome::passed(
@@ -505,6 +756,7 @@ pub fn evaluate_public_precheck(
     ));
 
     state.hourly_spent_usd = projected_hourly_spend;
+    state.record_spend(tx.amount_usd);
     push_recent_amount(&mut state, tx.amount_usd);
     trace.push(RuleOutcome::passed(
         "state_commit",
@@ -516,6 +768,9 @@ pub fn evaluate_public_precheck(
         violation: ViolationCode::None,
         next_state: state,
         effective_daily_limit_usd,
+        risk_score,
+        risk_factors,
+        regulatory_flags,
         trace,
     }
 }
@@ -539,12 +794,148 @@ fn deny(
     violation: ViolationCode,
     effective_daily_limit_usd: u64,
     trace: Vec<RuleOutcome>,
+    risk_score: u8,
+    risk_factors: Vec<RiskFactor>,
+    regulatory_flags: u8,
 ) -> PolicyDecision {
     PolicyDecision {
         approved: false,
         violation,
         next_state: state,
         effective_daily_limit_usd,
+        risk_score,
+        risk_factors,
+        regulatory_flags,
         trace,
+    }
+}
+
+fn record_recipient_spend(
+    state: &mut PolicyState,
+    chain: Chain,
+    recipient: &str,
+    amount_usd: u64,
+    now: i64,
+) {
+    let chain_code = chain_code(chain);
+    let hash = address_hash(recipient);
+    if let Some(record) = state
+        .recipient_spend
+        .iter_mut()
+        .find(|record| record.chain_code == chain_code && record.address_hash == hash)
+    {
+        record.spent_today_usd = record.spent_today_usd.saturating_add(amount_usd);
+        record.last_reset_at = now;
+        return;
+    }
+
+    state.recipient_spend.push(RecipientSpendRecord {
+        chain_code,
+        address_hash: hash,
+        spent_today_usd: amount_usd,
+        last_reset_at: now,
+    });
+
+    if state.recipient_spend.len() > 32 {
+        let overflow = state.recipient_spend.len() - 32;
+        state.recipient_spend.drain(0..overflow);
+    }
+}
+
+fn compute_risk_score(
+    tx: &TransactionContext,
+    config: &PolicyConfig,
+    state: &PolicyState,
+) -> (u8, Vec<RiskFactor>) {
+    let mut score = 0u16;
+    let mut factors = Vec::new();
+
+    let amount_pct = tx.amount_usd.saturating_mul(100) / config.per_tx_limit_usd.max(1);
+    let amount_score = (amount_pct.saturating_mul(30) / 100).min(30) as u8;
+    if amount_score > 0 {
+        factors.push(RiskFactor {
+            name: "amount_relative_to_limit".to_string(),
+            contribution: amount_score,
+            detail: format!("{amount_pct}% of per-transaction limit"),
+        });
+        score = score.saturating_add(u16::from(amount_score));
+    }
+
+    if let Some(counterparty_risk_score) = tx.counterparty_risk_score {
+        let contribution = (u16::from(counterparty_risk_score) * 25 / 100) as u8;
+        if contribution > 0 {
+            factors.push(RiskFactor {
+                name: "counterparty_risk".to_string(),
+                contribution,
+                detail: format!("score {counterparty_risk_score}"),
+            });
+            score = score.saturating_add(u16::from(contribution));
+        }
+    }
+
+    if config.daily_limit_usd > 0 {
+        let utilization_pct = state.spent_today_usd.saturating_mul(100) / config.daily_limit_usd;
+        let contribution = (utilization_pct.saturating_mul(20) / 100).min(20) as u8;
+        if contribution > 0 {
+            factors.push(RiskFactor {
+                name: "daily_utilization".to_string(),
+                contribution,
+                detail: format!("{utilization_pct}% of daily limit used"),
+            });
+            score = score.saturating_add(u16::from(contribution));
+        }
+    }
+
+    if let (Some(max_age), Some(age)) = (config.max_quote_age_secs, tx.quote_age_secs) {
+        let contribution = (age.saturating_mul(15) / max_age.max(1)).min(15) as u8;
+        if contribution > 0 {
+            factors.push(RiskFactor {
+                name: "quote_staleness".to_string(),
+                contribution,
+                detail: format!("{age}s old"),
+            });
+            score = score.saturating_add(u16::from(contribution));
+        }
+    }
+
+    if let (Some(expected), Some(actual)) = (tx.expected_output_usd, tx.actual_output_usd) {
+        let slippage = slippage_bps(expected, actual);
+        let contribution =
+            (slippage.saturating_mul(10) / config.max_slippage_bps.max(1)).min(10) as u8;
+        if contribution > 0 {
+            factors.push(RiskFactor {
+                name: "slippage".to_string(),
+                contribution,
+                detail: format!("{slippage}bps"),
+            });
+            score = score.saturating_add(u16::from(contribution));
+        }
+    }
+
+    (score.min(100) as u8, factors)
+}
+
+pub fn compute_regulatory_flags(tx: &TransactionContext) -> u8 {
+    let mut flags = 0u8;
+    if tx.amount_usd >= 10_000 {
+        flags |= REG_FLAG_CTR_THRESHOLD;
+    }
+    if tx.target_chain != Chain::Solana {
+        flags |= REG_FLAG_CROSS_BORDER;
+    }
+    if tx.counterparty_risk_score.unwrap_or(0) >= 70 {
+        flags |= REG_FLAG_HIGH_RISK_COUNTERPARTY | REG_FLAG_REQUIRES_KYC;
+    }
+    flags
+}
+
+fn chain_code(chain: Chain) -> u8 {
+    match chain {
+        Chain::Bitcoin => 0,
+        Chain::Ethereum => 1,
+        Chain::Solana => 2,
+        Chain::Polygon => 3,
+        Chain::Arbitrum => 4,
+        Chain::Optimism => 5,
     }
 }

@@ -1,7 +1,10 @@
 use crate::{
-    config::PolicyConfig,
+    config::{AnomalyAction, AnomalyConfig, PolicyConfig, RecipientLimit},
     context::{PolicyEvaluationContext, TransactionContext},
-    engine::{evaluate_batch, evaluate_transaction},
+    engine::{
+        evaluate_batch, evaluate_transaction, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
+        REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
+    },
     graphs::{advanced_policy_graph, batch_policy_graph, transaction_policy_graph},
     state::PolicyState,
     types::{Chain, TransactionType},
@@ -22,6 +25,7 @@ fn reputation_policy_scales_the_daily_limit() {
         hourly_spent_usd: 0,
         hourly_bucket_started_at: 43_200,
         recent_amounts: Vec::new(),
+        ..PolicyState::default()
     };
     // Score 90 → high tier → 150% of base 10_000 = 15_000 effective limit.
     // spent_today is 10_200, so 10_200 + 2_000 = 12_200 ≤ 15_000 → approved.
@@ -40,6 +44,148 @@ fn reputation_policy_scales_the_daily_limit() {
 
     assert!(decision.approved);
     assert_eq!(decision.effective_daily_limit_usd, 15_000);
+}
+
+#[test]
+fn rolling_weekly_and_monthly_limits_block_projected_spend() {
+    let mut state = PolicyState::default();
+    state.daily_buckets = [100, 100, 100, 100, 100, 100, 100];
+    state.thirty_day_spent_usd = 900;
+    let config = PolicyConfig {
+        weekly_limit_usd: Some(750),
+        monthly_limit_usd: Some(1_200),
+        ..PolicyConfig::default()
+    };
+    let mut tx = base_tx();
+    tx.amount_usd = 100;
+
+    let decision = evaluate_transaction(&config, &state, &PolicyEvaluationContext::from(tx));
+
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::WeeklyLimit);
+
+    let config = PolicyConfig {
+        weekly_limit_usd: Some(1_000),
+        monthly_limit_usd: Some(950),
+        ..PolicyConfig::default()
+    };
+    let mut tx = base_tx();
+    tx.amount_usd = 100;
+    let decision = evaluate_transaction(&config, &state, &PolicyEvaluationContext::from(tx));
+
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::MonthlyLimit);
+}
+
+#[test]
+fn recipient_limits_and_risk_metadata_are_enforced() {
+    let recipient = "0xBRIDGE".to_string();
+    let config = PolicyConfig {
+        recipient_limits: vec![RecipientLimit {
+            chain: Chain::Ethereum,
+            address: recipient.clone(),
+            daily_limit_usd: 600,
+            per_tx_limit_usd: Some(400),
+        }],
+        ..PolicyConfig::default()
+    };
+    let mut tx = base_tx();
+    tx.recipient_or_contract = Some(recipient.clone());
+    tx.amount_usd = 450;
+
+    let decision = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(tx),
+    );
+
+    assert!(!decision.approved);
+    assert_eq!(
+        decision.violation,
+        ViolationCode::RecipientPerTransactionLimit
+    );
+    assert!(decision.risk_score > 0);
+
+    let mut tx = base_tx();
+    tx.recipient_or_contract = Some(recipient);
+    tx.amount_usd = 300;
+    let decision = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(tx),
+    );
+
+    assert!(decision.approved);
+    assert_eq!(decision.next_state.recipient_spend.len(), 1);
+}
+
+#[test]
+fn anomaly_detection_can_deny_outliers() {
+    let config = PolicyConfig {
+        anomaly_config: Some(AnomalyConfig {
+            enabled: true,
+            z_score_threshold_bps: 30_000,
+            min_sample_size: 4,
+            action: AnomalyAction::Deny,
+        }),
+        per_tx_limit_usd: 10_000,
+        ..PolicyConfig::default()
+    };
+    let state = PolicyState {
+        recent_amounts: vec![100, 105, 95, 100, 102],
+        ..PolicyState::default()
+    };
+    let mut tx = base_tx();
+    tx.amount_usd = 2_000;
+
+    let decision = evaluate_transaction(&config, &state, &PolicyEvaluationContext::from(tx));
+
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::AnomalyDetected);
+    assert!(decision
+        .risk_factors
+        .iter()
+        .any(|factor| factor.name == "anomaly_detection"));
+}
+
+#[test]
+fn composite_risk_score_and_regulatory_flags_are_reported() {
+    let mut tx = base_tx();
+    tx.amount_usd = 10_000;
+    tx.target_chain = Chain::Ethereum;
+    tx.counterparty_risk_score = Some(80);
+
+    let decision = evaluate_transaction(
+        &PolicyConfig {
+            daily_limit_usd: 25_000,
+            per_tx_limit_usd: 20_000,
+            daytime_hourly_limit_usd: 20_000,
+            nighttime_hourly_limit_usd: 20_000,
+            velocity_limit_usd: 20_000,
+            max_counterparty_risk_score: Some(90),
+            ..PolicyConfig::default()
+        },
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(tx),
+    );
+
+    assert!(decision.approved);
+    assert!(decision.risk_score > 0);
+    assert!(decision
+        .risk_factors
+        .iter()
+        .any(|factor| factor.name == "counterparty_risk"));
+    assert_eq!(
+        decision.regulatory_flags
+            & (REG_FLAG_CTR_THRESHOLD
+                | REG_FLAG_CROSS_BORDER
+                | REG_FLAG_HIGH_RISK_COUNTERPARTY
+                | REG_FLAG_REQUIRES_KYC),
+        REG_FLAG_CTR_THRESHOLD
+            | REG_FLAG_CROSS_BORDER
+            | REG_FLAG_HIGH_RISK_COUNTERPARTY
+            | REG_FLAG_REQUIRES_KYC
+    );
 }
 
 #[test]
@@ -80,6 +226,7 @@ fn batch_evaluation_carries_policy_state_forward() {
             actual_output_usd: None,
             quote_age_secs: None,
             counterparty_risk_score: None,
+            recipient_or_contract: Some("0xrecipient".to_string()),
         }),
     ];
 
