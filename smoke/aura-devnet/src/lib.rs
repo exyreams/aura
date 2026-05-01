@@ -747,6 +747,7 @@ pub fn execute_denied(
                 caller_program: ID,
                 cpi_authority: None,
                 dwallet_program: None,
+                external_liveness: None,
                 system_program: SYSTEM_PROGRAM_ID,
             }
             .to_account_metas(None),
@@ -826,6 +827,7 @@ pub async fn finalize_via_dwallet(
                 caller_program: ID,
                 cpi_authority: Some(cpi_authority),
                 dwallet_program: Some(*dwallet_program),
+                external_liveness: None,
                 system_program: SYSTEM_PROGRAM_ID,
             }
             .to_account_metas(None),
@@ -923,6 +925,9 @@ pub async fn finalize_via_dwallet(
                 treasury,
                 message_approval: approval_req.message_approval_account,
                 swarm_pool: None,
+                budget_envelope: None,
+                exposure_group: None,
+                external_liveness: None,
             }
             .to_account_metas(None),
             data: instruction::FinalizeExecution { now: now + 1 }.data(),

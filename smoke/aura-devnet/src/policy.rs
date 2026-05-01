@@ -172,6 +172,7 @@ async fn run_confidential_cycle(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        external_liveness: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -551,6 +552,7 @@ async fn scenario_cancel_pending(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        external_liveness: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -698,6 +700,7 @@ async fn scenario_pause_resume(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        external_liveness: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -774,6 +777,7 @@ async fn scenario_pause_resume(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        external_liveness: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);

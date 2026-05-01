@@ -91,6 +91,8 @@ async fn main() -> anyhow::Result<()> {
                 address_list: None,
                 compliance_oracle: None,
                 parent_treasury: None,
+                budget_envelope: None,
+                exposure_group: None,
             }
             .to_account_metas(None),
             data: instruction::ProposeTransaction {
