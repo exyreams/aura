@@ -79,6 +79,216 @@ impl AnomalyConfigRecord {
     }
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct BudgetEnvelopeRecord {
+    pub scope_kind: u8,
+    pub chain: Option<u8>,
+    pub tx_type: Option<u8>,
+    pub protocol_id: Option<u8>,
+    pub daily_limit_usd: u64,
+    pub weekly_limit_usd: u64,
+    pub spent_today_usd: u64,
+    pub spent_week_usd: u64,
+    pub last_reset_day: i64,
+}
+
+impl BudgetEnvelopeRecord {
+    pub fn from_domain(domain: &BudgetEnvelope) -> Self {
+        let (scope_kind, chain, tx_type, protocol_id) = match domain.scope {
+            BudgetEnvelopeScope::Chain { chain } => (0, Some(chain_code(chain)), None, None),
+            BudgetEnvelopeScope::Category { tx_type_code } => (1, None, Some(tx_type_code), None),
+            BudgetEnvelopeScope::Protocol { protocol_id } => (2, None, None, Some(protocol_id)),
+        };
+        Self {
+            scope_kind,
+            chain,
+            tx_type,
+            protocol_id,
+            daily_limit_usd: domain.daily_limit_usd,
+            weekly_limit_usd: domain.weekly_limit_usd,
+            spent_today_usd: domain.spent_today_usd,
+            spent_week_usd: domain.spent_week_usd,
+            last_reset_day: domain.last_reset_day,
+        }
+    }
+
+    pub fn to_domain(&self) -> Result<BudgetEnvelope> {
+        let scope = match self.scope_kind {
+            0 => BudgetEnvelopeScope::Chain {
+                chain: chain_from_code(
+                    self.chain
+                        .ok_or_else(|| error!(AuraCoreError::InvalidChain))?,
+                )?,
+            },
+            1 => BudgetEnvelopeScope::Category {
+                tx_type_code: self
+                    .tx_type
+                    .ok_or_else(|| error!(AuraCoreError::InvalidTransactionType))?,
+            },
+            2 => BudgetEnvelopeScope::Protocol {
+                protocol_id: self
+                    .protocol_id
+                    .ok_or_else(|| error!(AuraCoreError::InvalidExternalAccountData))?,
+            },
+            _ => return err!(AuraCoreError::InvalidExternalAccountData),
+        };
+        Ok(BudgetEnvelope {
+            scope,
+            daily_limit_usd: self.daily_limit_usd,
+            weekly_limit_usd: self.weekly_limit_usd,
+            spent_today_usd: self.spent_today_usd,
+            spent_week_usd: self.spent_week_usd,
+            last_reset_day: self.last_reset_day,
+        })
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct ApprovalLadderRecord {
+    pub guardian_above_usd: u64,
+    pub multisig_above_usd: u64,
+    pub timelock_above_usd: u64,
+    pub deny_above_usd: u64,
+    pub risk_guardian_bps: u16,
+    pub risk_multisig_bps: u16,
+    pub risk_timelock_bps: u16,
+    pub timelock_secs: i64,
+}
+
+impl ApprovalLadderRecord {
+    pub fn from_domain(domain: &ApprovalLadder) -> Self {
+        Self {
+            guardian_above_usd: domain.guardian_above_usd,
+            multisig_above_usd: domain.multisig_above_usd,
+            timelock_above_usd: domain.timelock_above_usd,
+            deny_above_usd: domain.deny_above_usd,
+            risk_guardian_bps: domain.risk_guardian_bps,
+            risk_multisig_bps: domain.risk_multisig_bps,
+            risk_timelock_bps: domain.risk_timelock_bps,
+            timelock_secs: domain.timelock_secs,
+        }
+    }
+
+    pub fn to_domain(&self) -> ApprovalLadder {
+        ApprovalLadder {
+            guardian_above_usd: self.guardian_above_usd,
+            multisig_above_usd: self.multisig_above_usd,
+            timelock_above_usd: self.timelock_above_usd,
+            deny_above_usd: self.deny_above_usd,
+            risk_guardian_bps: self.risk_guardian_bps,
+            risk_multisig_bps: self.risk_multisig_bps,
+            risk_timelock_bps: self.risk_timelock_bps,
+            timelock_secs: self.timelock_secs,
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct ScopedPauseEntryRecord {
+    pub scope_kind: u8,
+    pub chain: Option<u8>,
+    pub tx_type: Option<u8>,
+    #[max_len(128)]
+    pub recipient: Option<String>,
+    pub protocol_id: Option<u8>,
+    #[max_len(64)]
+    pub paused_by: String,
+    pub paused_at: i64,
+    pub expires_at: Option<i64>,
+}
+
+impl ScopedPauseEntryRecord {
+    pub fn from_domain(domain: &ScopedPauseEntry) -> Self {
+        let (scope_kind, chain, tx_type, recipient, protocol_id) = match &domain.scope {
+            PauseScope::All => (0, None, None, None, None),
+            PauseScope::Chain { chain } => (1, Some(chain_code(*chain)), None, None, None),
+            PauseScope::Category { tx_type_code } => (2, None, Some(*tx_type_code), None, None),
+            PauseScope::Recipient { recipient } => (3, None, None, Some(recipient.clone()), None),
+            PauseScope::Protocol { protocol_id } => (4, None, None, None, Some(*protocol_id)),
+            PauseScope::ConfidentialExecution => (5, None, None, None, None),
+            PauseScope::DWalletFinalization => (6, None, None, None, None),
+        };
+        Self {
+            scope_kind,
+            chain,
+            tx_type,
+            recipient,
+            protocol_id,
+            paused_by: domain.paused_by.clone(),
+            paused_at: domain.paused_at,
+            expires_at: domain.expires_at,
+        }
+    }
+
+    pub fn to_domain(&self) -> Result<ScopedPauseEntry> {
+        let scope = match self.scope_kind {
+            0 => PauseScope::All,
+            1 => PauseScope::Chain {
+                chain: chain_from_code(
+                    self.chain
+                        .ok_or_else(|| error!(AuraCoreError::InvalidChain))?,
+                )?,
+            },
+            2 => PauseScope::Category {
+                tx_type_code: self
+                    .tx_type
+                    .ok_or_else(|| error!(AuraCoreError::InvalidTransactionType))?,
+            },
+            3 => PauseScope::Recipient {
+                recipient: self
+                    .recipient
+                    .clone()
+                    .ok_or_else(|| error!(AuraCoreError::InvalidExternalAccountData))?,
+            },
+            4 => PauseScope::Protocol {
+                protocol_id: self
+                    .protocol_id
+                    .ok_or_else(|| error!(AuraCoreError::InvalidExternalAccountData))?,
+            },
+            5 => PauseScope::ConfidentialExecution,
+            6 => PauseScope::DWalletFinalization,
+            _ => return err!(AuraCoreError::InvalidExternalAccountData),
+        };
+        Ok(ScopedPauseEntry {
+            scope,
+            paused_by: self.paused_by.clone(),
+            paused_at: self.paused_at,
+            expires_at: self.expires_at,
+        })
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct LivenessConfigRecord {
+    pub require_encrypt_freshness: bool,
+    pub require_dwallet_freshness: bool,
+    pub require_balance_oracle_freshness: bool,
+    pub require_compliance_oracle_freshness: bool,
+    pub max_staleness_secs: i64,
+}
+
+impl LivenessConfigRecord {
+    pub fn from_domain(domain: &LivenessConfig) -> Self {
+        Self {
+            require_encrypt_freshness: domain.require_encrypt_freshness,
+            require_dwallet_freshness: domain.require_dwallet_freshness,
+            require_balance_oracle_freshness: domain.require_balance_oracle_freshness,
+            require_compliance_oracle_freshness: domain.require_compliance_oracle_freshness,
+            max_staleness_secs: domain.max_staleness_secs,
+        }
+    }
+
+    pub fn to_domain(&self) -> LivenessConfig {
+        LivenessConfig {
+            require_encrypt_freshness: self.require_encrypt_freshness,
+            require_dwallet_freshness: self.require_dwallet_freshness,
+            require_balance_oracle_freshness: self.require_balance_oracle_freshness,
+            require_compliance_oracle_freshness: self.require_compliance_oracle_freshness,
+            max_staleness_secs: self.max_staleness_secs,
+        }
+    }
+}
+
 /// Serialized form of `PolicyConfig`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct PolicyConfigRecord {
@@ -100,6 +310,12 @@ pub struct PolicyConfigRecord {
     pub cooldown_config: Option<CooldownConfigRecord>,
     pub anomaly_config: Option<AnomalyConfigRecord>,
     pub reputation_policy: ReputationPolicyRecord,
+    #[max_len(8)]
+    pub budget_envelopes: Vec<BudgetEnvelopeRecord>,
+    pub approval_ladder: Option<ApprovalLadderRecord>,
+    #[max_len(8)]
+    pub scoped_pause_entries: Vec<ScopedPauseEntryRecord>,
+    pub liveness_config: LivenessConfigRecord,
 }
 
 impl PolicyConfigRecord {
@@ -132,6 +348,23 @@ impl PolicyConfigRecord {
                 .as_ref()
                 .map(AnomalyConfigRecord::from_domain),
             reputation_policy: ReputationPolicyRecord::from_domain(&domain.reputation_policy),
+            budget_envelopes: domain
+                .budget_envelopes
+                .envelopes
+                .iter()
+                .map(BudgetEnvelopeRecord::from_domain)
+                .collect(),
+            approval_ladder: domain
+                .approval_ladder
+                .as_ref()
+                .map(ApprovalLadderRecord::from_domain),
+            scoped_pause_entries: domain
+                .scoped_pause
+                .entries
+                .iter()
+                .map(ScopedPauseEntryRecord::from_domain)
+                .collect(),
+            liveness_config: LivenessConfigRecord::from_domain(&domain.liveness_config),
         }
     }
 
@@ -167,6 +400,27 @@ impl PolicyConfigRecord {
                 .transpose()
                 .expect("anomaly config record must decode"),
             reputation_policy: self.reputation_policy.to_domain(),
+            budget_envelopes: BudgetEnvelopeSet {
+                envelopes: self
+                    .budget_envelopes
+                    .iter()
+                    .map(BudgetEnvelopeRecord::to_domain)
+                    .collect::<Result<Vec<_>>>()
+                    .expect("budget envelope records must decode"),
+            },
+            approval_ladder: self
+                .approval_ladder
+                .as_ref()
+                .map(ApprovalLadderRecord::to_domain),
+            scoped_pause: ScopedPauseControls {
+                entries: self
+                    .scoped_pause_entries
+                    .iter()
+                    .map(ScopedPauseEntryRecord::to_domain)
+                    .collect::<Result<Vec<_>>>()
+                    .expect("scoped pause records must decode"),
+            },
+            liveness_config: self.liveness_config.to_domain(),
         }
     }
 }

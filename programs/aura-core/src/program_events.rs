@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     audit::AuditEvent,
-    program_accounts::{proposal_status_code, violation_code},
+    program_accounts::{proposal_status_code, violation_code, PolicyReceiptAccount},
     ExecutionReceipt, PendingTransaction,
 };
 
@@ -69,6 +69,18 @@ pub struct ExecutionLifecycleEvent {
     pub decryption_request_account: Option<String>,
 }
 
+/// Emitted when a compact policy decision receipt PDA is written.
+#[event]
+pub struct PolicyReceiptWrittenEvent {
+    pub treasury: Pubkey,
+    pub proposal_id: u64,
+    pub policy_version: u32,
+    pub decision: u8,
+    pub primary_violation: u8,
+    pub required_approval_level: u8,
+    pub policy_attested: bool,
+}
+
 /// Emits one `TreasuryAuditEvent` for each event in `events`.
 pub fn emit_audit_events(treasury: Pubkey, events: &[AuditEvent]) {
     for event in events {
@@ -106,5 +118,17 @@ pub fn emit_execution_event(treasury: Pubkey, receipt: &ExecutionReceipt) {
         message_approval_account: receipt.message_approval_account.clone(),
         decryption_request_id: receipt.decryption_request_id.clone(),
         decryption_request_account: receipt.decryption_request_account.clone(),
+    });
+}
+
+pub fn emit_policy_receipt_event(treasury: Pubkey, receipt: &PolicyReceiptAccount) {
+    emit!(PolicyReceiptWrittenEvent {
+        treasury,
+        proposal_id: receipt.proposal_id,
+        policy_version: receipt.policy_version,
+        decision: receipt.decision,
+        primary_violation: receipt.primary_violation,
+        required_approval_level: receipt.required_approval_level,
+        policy_attested: receipt.policy_attested,
     });
 }

@@ -62,6 +62,32 @@ pub const HEALTH_SCORE_SEED: &[u8] = b"health_score";
 pub const SNAPSHOT_SEED: &[u8] = b"treasury_snapshot";
 /// Policy check result PDA seed.
 pub const POLICY_CHECK_SEED: &[u8] = b"policy_check";
+/// Policy receipt PDA seed.
+pub const POLICY_RECEIPT_SEED: &[u8] = b"policy_receipt";
+/// Policy simulation result PDA seed.
+pub const POLICY_SIMULATION_SEED: &[u8] = b"policy_simulation";
+/// Budget envelope PDA seed.
+pub const BUDGET_ENVELOPE_SEED: &[u8] = b"budget_envelope";
+/// Cross-treasury exposure group PDA seed.
+pub const EXPOSURE_GROUP_SEED: &[u8] = b"exposure_group";
+/// Operator role PDA seed.
+pub const OPERATOR_ROLE_SEED: &[u8] = b"operator_role";
+/// External dependency liveness PDA seed.
+pub const EXTERNAL_LIVENESS_SEED: &[u8] = b"external_liveness";
+/// Policy attestation PDA seed.
+pub const POLICY_ATTESTATION_SEED: &[u8] = b"policy_attestation";
+/// Batch policy proposal PDA seed.
+pub const BATCH_PROPOSAL_SEED: &[u8] = b"batch_proposal";
+/// Invariant report PDA seed.
+pub const INVARIANT_REPORT_SEED: &[u8] = b"invariant_report";
+/// Maximum scoped budget envelopes per treasury.
+pub const MAX_BUDGET_ENVELOPES: usize = 8;
+/// Maximum scoped pause entries persisted in policy config.
+pub const MAX_SCOPED_PAUSE_ENTRIES: usize = 8;
+/// Maximum batch items evaluated by one on-chain batch policy instruction.
+pub const MAX_BATCH_ITEMS: usize = 8;
+/// Maximum operator roles expected per operational surface.
+pub const MAX_OPERATOR_ROLE_PERMISSIONS: usize = 6;
 /// AI authority rotation delay.
 pub const AI_ROTATION_TIMELOCK_SECS: i64 = 86_400;
 /// Timelock applied to dangerous config changes.

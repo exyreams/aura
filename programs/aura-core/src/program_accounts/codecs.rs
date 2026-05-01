@@ -65,6 +65,16 @@ pub fn violation_code(violation: ViolationCode) -> u8 {
         ViolationCode::RecipientPerTransactionLimit => 14,
         ViolationCode::AnomalyDetected => 15,
         ViolationCode::CooldownNotElapsed => 16,
+        ViolationCode::BudgetEnvelopeDailyLimit => 17,
+        ViolationCode::BudgetEnvelopeWeeklyLimit => 18,
+        ViolationCode::ApprovalLadderDenied => 19,
+        ViolationCode::ExecutionScopePaused => 20,
+        ViolationCode::ExternalDependencyStale => 21,
+        ViolationCode::PolicyAttestationMissing => 22,
+        ViolationCode::EmptyBatch => 23,
+        ViolationCode::BatchTooLarge => 24,
+        ViolationCode::ExposureGroupLimitExceeded => 25,
+        ViolationCode::PendingExecutionTimelockActive => 26,
     }
 }
 
@@ -151,6 +161,16 @@ pub(crate) fn violation_from_code(code: u8) -> Result<ViolationCode> {
         14 => Ok(ViolationCode::RecipientPerTransactionLimit),
         15 => Ok(ViolationCode::AnomalyDetected),
         16 => Ok(ViolationCode::CooldownNotElapsed),
+        17 => Ok(ViolationCode::BudgetEnvelopeDailyLimit),
+        18 => Ok(ViolationCode::BudgetEnvelopeWeeklyLimit),
+        19 => Ok(ViolationCode::ApprovalLadderDenied),
+        20 => Ok(ViolationCode::ExecutionScopePaused),
+        21 => Ok(ViolationCode::ExternalDependencyStale),
+        22 => Ok(ViolationCode::PolicyAttestationMissing),
+        23 => Ok(ViolationCode::EmptyBatch),
+        24 => Ok(ViolationCode::BatchTooLarge),
+        25 => Ok(ViolationCode::ExposureGroupLimitExceeded),
+        26 => Ok(ViolationCode::PendingExecutionTimelockActive),
         _ => err!(AuraCoreError::InvalidViolationCode),
     }
 }

@@ -103,6 +103,12 @@ pub struct PendingTransaction {
     pub decision: PolicyDecision,
     /// Composite risk score copied from `decision` for quick access.
     pub risk_score: u8,
+    /// Approval ladder level required before the proposal can execute.
+    pub required_approval_level: u8,
+    /// Highest approval ladder level that has been satisfied.
+    pub satisfied_approval_level: u8,
+    /// Earliest Unix timestamp at which execution may proceed. Zero means immediate.
+    pub earliest_execution_at: i64,
     /// Whether execution requires a guardian co-signature.
     pub requires_guardian_cosign: bool,
     /// Policy version used when this proposal was evaluated.

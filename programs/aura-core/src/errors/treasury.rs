@@ -60,6 +60,14 @@ pub enum TreasuryError {
     CooldownNotElapsed { remaining_secs: i64 },
     /// High-risk proposal requires a guardian co-signature.
     HighRiskTransactionRequiresGuardian,
+    /// Approval ladder level has not been satisfied.
+    ApprovalLevelNotSatisfied,
+    /// Pending execution timelock is still active.
+    PendingExecutionTimelockActive,
+    /// Execution is blocked by a scoped pause entry.
+    ExecutionScopePaused,
+    /// External dependency freshness check failed.
+    ExternalDependencyStale,
     /// Agent lifecycle transition is not allowed.
     InvalidStateTransition,
     /// Child proposal exceeds parent treasury remaining limit.
@@ -110,6 +118,16 @@ impl Display for TreasuryError {
             }
             Self::HighRiskTransactionRequiresGuardian => {
                 write!(f, "high risk transaction requires guardian co-signature")
+            }
+            Self::ApprovalLevelNotSatisfied => {
+                write!(f, "approval ladder level has not been satisfied")
+            }
+            Self::PendingExecutionTimelockActive => {
+                write!(f, "pending execution timelock is still active")
+            }
+            Self::ExecutionScopePaused => write!(f, "execution scope is paused"),
+            Self::ExternalDependencyStale => {
+                write!(f, "external dependency freshness check failed")
             }
             Self::InvalidStateTransition => write!(f, "invalid agent state transition"),
             Self::ParentLimitExceeded => write!(f, "parent treasury limit exceeded"),

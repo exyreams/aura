@@ -1,4 +1,4 @@
-/// On-chain account serialization layer for ura-core.
+/// On-chain account serialization layer for `aura-core`.
 ///
 /// This module is intentionally split by persistence boundary: the treasury
 /// root account, flat record codecs, auxiliary PDA accounts, and conversion
@@ -8,9 +8,10 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use anchor_lang::prelude::*;
 use aura_policy::{
-    AnomalyAction, AnomalyConfig, Chain, CooldownConfig, PolicyConfig, PolicyDecision, PolicyState,
-    RecipientLimit, RecipientSpendRecord, ReputationPolicy, RiskFactor, RuleOutcome,
-    TransactionType, ViolationCode,
+    AnomalyAction, AnomalyConfig, ApprovalLadder, BudgetEnvelope, BudgetEnvelopeScope,
+    BudgetEnvelopeSet, Chain, CooldownConfig, LivenessConfig, PauseScope, PolicyConfig,
+    PolicyDecision, PolicyState, RecipientLimit, RecipientSpendRecord, ReputationPolicy,
+    RiskFactor, RuleOutcome, ScopedPauseControls, ScopedPauseEntry, TransactionType, ViolationCode,
 };
 
 use crate::{
@@ -27,20 +28,32 @@ use crate::{
     },
 };
 
+mod attestation_records;
 mod auxiliary_accounts;
+mod batch_records;
 mod codecs;
+mod envelope_records;
 mod governance_records;
+mod liveness_records;
 mod pending_records;
 mod policy_records;
+mod receipt_records;
+mod role_records;
 mod treasury;
 mod treasury_records;
 mod wallet_records;
 
+pub use attestation_records::*;
 pub use auxiliary_accounts::*;
+pub use batch_records::*;
 pub use codecs::*;
+pub use envelope_records::*;
 pub use governance_records::*;
+pub use liveness_records::*;
 pub use pending_records::*;
 pub use policy_records::*;
+pub use receipt_records::*;
+pub use role_records::*;
 pub use treasury::*;
 pub use treasury_records::*;
 pub use wallet_records::*;

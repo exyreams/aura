@@ -91,6 +91,32 @@ pub enum AuraCoreError {
     SessionKeyScopeViolation,
     #[msg("account cannot be closed while still active")]
     AccountStillActive,
+    #[msg("budget envelope limit exceeded")]
+    BudgetEnvelopeLimitExceeded,
+    #[msg("approval ladder level has not been satisfied")]
+    ApprovalLevelNotSatisfied,
+    #[msg("pending execution timelock is still active")]
+    PendingExecutionTimelockActive,
+    #[msg("execution scope is paused")]
+    ExecutionScopePaused,
+    #[msg("operator role is missing required permission")]
+    OperatorRoleMissing,
+    #[msg("operator role has expired or was revoked")]
+    OperatorRoleExpired,
+    #[msg("external dependency freshness check failed")]
+    ExternalDependencyStale,
+    #[msg("policy preset kind is invalid")]
+    InvalidPolicyPreset,
+    #[msg("policy attestation hash or version mismatch")]
+    PolicyAttestationMismatch,
+    #[msg("batch proposal cannot be empty")]
+    EmptyBatch,
+    #[msg("batch proposal exceeds maximum item count")]
+    BatchTooLarge,
+    #[msg("cross-treasury exposure group limit exceeded")]
+    ExposureGroupLimitExceeded,
+    #[msg("treasury is not a member of the exposure group")]
+    ExposureGroupUnauthorized,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.
@@ -136,6 +162,14 @@ pub fn map_treasury_error(error: TreasuryError) -> anchor_lang::error::Error {
         TreasuryError::HighRiskTransactionRequiresGuardian => {
             error!(AuraCoreError::HighRiskTransactionRequiresGuardian)
         }
+        TreasuryError::ApprovalLevelNotSatisfied => {
+            error!(AuraCoreError::ApprovalLevelNotSatisfied)
+        }
+        TreasuryError::PendingExecutionTimelockActive => {
+            error!(AuraCoreError::PendingExecutionTimelockActive)
+        }
+        TreasuryError::ExecutionScopePaused => error!(AuraCoreError::ExecutionScopePaused),
+        TreasuryError::ExternalDependencyStale => error!(AuraCoreError::ExternalDependencyStale),
         TreasuryError::InvalidStateTransition => error!(AuraCoreError::InvalidStateTransition),
         TreasuryError::ParentLimitExceeded => error!(AuraCoreError::ParentLimitExceeded),
         TreasuryError::RecipientRejected => error!(AuraCoreError::RecipientBlacklisted),
