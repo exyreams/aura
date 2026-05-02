@@ -1,8 +1,16 @@
 [package]
 name = "aura-core"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+authors = ["exyreams@gmail.com"]
+description = "AURA autonomous treasury program for Solana - encrypted guardrails and dWallet execution"
+documentation = "https://docs.rs/aura-core"
+homepage = "https://github.com/exyreams/aura"
+repository = "https://github.com/exyreams/aura"
 license = "MIT"
+keywords = ["solana", "anchor", "treasury", "fhe", "dwallet"]
+categories = ["cryptography"]
+publish = false
 
 [lib]
 name = "aura_core"

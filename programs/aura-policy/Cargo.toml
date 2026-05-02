@@ -1,8 +1,16 @@
 [package]
 name = "aura-policy"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+authors = ["exyreams@gmail.com"]
+description = "Policy engine for AURA autonomous treasury - FHE graphs and rule evaluation"
+documentation = "https://docs.rs/aura-policy"
+homepage = "https://github.com/exyreams/aura"
+repository = "https://github.com/exyreams/aura"
 license = "MIT"
+keywords = ["solana", "policy", "fhe", "treasury", "encryption"]
+categories = ["cryptography", "no-std"]
+publish = false
 
 [lib]
 name = "aura_policy"

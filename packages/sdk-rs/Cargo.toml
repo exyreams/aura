@@ -1,13 +1,18 @@
 [package]
 name = "aura-sdk"
-version = "0.1.0"
+version = "0.2.1"
 edition = "2021"
+authors = ["exyreams@gmail.com"]
 description = "Rust SDK for the AURA autonomous treasury program on Solana"
-license = "MIT"
+documentation = "https://docs.rs/aura-sdk"
+homepage = "https://github.com/exyreams/aura"
 repository = "https://github.com/exyreams/aura"
+license = "MIT"
 readme = "README.md"
+keywords = ["solana", "anchor", "treasury", "fhe", "dwallet"]
+categories = ["cryptography", "api-bindings"]
+exclude = [".gitignore"]
 publish = false
-keywords = ["solana", "anchor", "sdk", "aura"]
 
 [dependencies]
 anchor-lang = "1.0.0"

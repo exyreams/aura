@@ -1,3 +1,7 @@
+//! # AURA Policy Engine
+//!
+//! ![AURA banner](https://raw.githubusercontent.com/exyreams/aura/refs/heads/main/packages/web/public/banner.png)
+//!
 //! `aura-policy` — the pure Rust policy engine for AURA.
 //!
 //! This crate is a plain library (no Anchor dependency, no `cdylib`) used by

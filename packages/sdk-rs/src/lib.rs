@@ -1,3 +1,7 @@
+//! # AURA Rust SDK
+//!
+//! ![AURA banner](https://raw.githubusercontent.com/exyreams/aura/refs/heads/main/packages/web/public/banner.png)
+//!
 //! Rust SDK for the deployed `aura-core` program.
 //!
 //! This crate stays deliberately thin and trustworthy. Instead of redefining

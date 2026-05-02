@@ -1,3 +1,7 @@
+//! # AURA Core Program
+//!
+//! ![AURA banner](https://raw.githubusercontent.com/exyreams/aura/refs/heads/main/packages/web/public/banner.png)
+//!
 //! `aura-core` — the deployed Anchor program for AURA treasury coordination.
 //!
 //! This crate is the on-chain half of the AURA protocol. It owns the
