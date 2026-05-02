@@ -1019,6 +1019,831 @@ impl AuraClient {
         let instruction = self.check_invariants_instruction(accounts, args);
         self.send_instructions(payer, vec![instruction], &[])
     }
+
+    /// Builds `propose_ai_rotation`.
+    pub fn propose_ai_rotation_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        new_ai_authority: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::governance::propose_ai_rotation(
+            accounts,
+            new_ai_authority,
+            now,
+        ))
+    }
+
+    /// Submits `propose_ai_rotation`.
+    pub fn propose_ai_rotation(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        new_ai_authority: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction =
+            self.propose_ai_rotation_instruction(owner.pubkey(), treasury, new_ai_authority, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `execute_ai_rotation`.
+    pub fn execute_ai_rotation_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::governance::execute_ai_rotation(accounts, now))
+    }
+
+    /// Submits `execute_ai_rotation`.
+    pub fn execute_ai_rotation(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction = self.execute_ai_rotation_instruction(owner.pubkey(), treasury, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `cancel_ai_rotation`.
+    pub fn cancel_ai_rotation_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::governance::cancel_ai_rotation(accounts, now))
+    }
+
+    /// Submits `cancel_ai_rotation`.
+    pub fn cancel_ai_rotation(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction = self.cancel_ai_rotation_instruction(owner.pubkey(), treasury, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `propose_guardian_rotation`.
+    pub fn propose_guardian_rotation_instruction(
+        &self,
+        guardian: Pubkey,
+        treasury: Pubkey,
+        action: u8,
+        target_guardian: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::VetoConfigChange { guardian, treasury };
+        self.with_program_id(instructions::governance::propose_guardian_rotation(
+            accounts,
+            action,
+            target_guardian,
+            now,
+        ))
+    }
+
+    /// Submits `propose_guardian_rotation`.
+    pub fn propose_guardian_rotation(
+        &self,
+        guardian: &Keypair,
+        treasury: Pubkey,
+        action: u8,
+        target_guardian: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction = self.propose_guardian_rotation_instruction(
+            guardian.pubkey(),
+            treasury,
+            action,
+            target_guardian,
+            now,
+        );
+        self.send_instructions(guardian, vec![instruction], &[])
+    }
+
+    /// Builds `execute_guardian_rotation`.
+    pub fn execute_guardian_rotation_instruction(
+        &self,
+        guardian: Pubkey,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::VetoConfigChange { guardian, treasury };
+        self.with_program_id(instructions::governance::execute_guardian_rotation(
+            accounts, now,
+        ))
+    }
+
+    /// Submits `execute_guardian_rotation`.
+    pub fn execute_guardian_rotation(
+        &self,
+        guardian: &Keypair,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction =
+            self.execute_guardian_rotation_instruction(guardian.pubkey(), treasury, now);
+        self.send_instructions(guardian, vec![instruction], &[])
+    }
+
+    /// Builds `propose_config_change`.
+    pub fn propose_config_change_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        change_id: u64,
+        new_policy_config: aura_core::PolicyConfigRecord,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::governance::propose_config_change(
+            accounts,
+            change_id,
+            new_policy_config,
+            now,
+        ))
+    }
+
+    /// Submits `propose_config_change`.
+    pub fn propose_config_change(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        change_id: u64,
+        new_policy_config: aura_core::PolicyConfigRecord,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction = self.propose_config_change_instruction(
+            owner.pubkey(),
+            treasury,
+            change_id,
+            new_policy_config,
+            now,
+        );
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `execute_config_change`.
+    pub fn execute_config_change_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        change_id: u64,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::governance::execute_config_change(
+            accounts, change_id, now,
+        ))
+    }
+
+    /// Submits `execute_config_change`.
+    pub fn execute_config_change(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        change_id: u64,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction =
+            self.execute_config_change_instruction(owner.pubkey(), treasury, change_id, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `veto_config_change`.
+    pub fn veto_config_change_instruction(
+        &self,
+        guardian: Pubkey,
+        treasury: Pubkey,
+        change_id: u64,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::VetoConfigChange { guardian, treasury };
+        self.with_program_id(instructions::governance::veto_config_change(
+            accounts, change_id, now,
+        ))
+    }
+
+    /// Submits `veto_config_change`.
+    pub fn veto_config_change(
+        &self,
+        guardian: &Keypair,
+        treasury: Pubkey,
+        change_id: u64,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction =
+            self.veto_config_change_instruction(guardian.pubkey(), treasury, change_id, now);
+        self.send_instructions(guardian, vec![instruction], &[])
+    }
+
+    /// Builds `emergency_shutdown`.
+    pub fn emergency_shutdown_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        recovery_pubkey: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::governance::emergency_shutdown(
+            accounts,
+            recovery_pubkey,
+            now,
+        ))
+    }
+
+    /// Submits `emergency_shutdown`.
+    pub fn emergency_shutdown(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        recovery_pubkey: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction =
+            self.emergency_shutdown_instruction(owner.pubkey(), treasury, recovery_pubkey, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `transition_agent_state`.
+    pub fn transition_agent_state_instruction(
+        &self,
+        owner: Pubkey,
+        treasury: Pubkey,
+        target_state: u8,
+        now: i64,
+    ) -> Instruction {
+        let accounts = aura_core::accounts::OwnerTreasury { owner, treasury };
+        self.with_program_id(instructions::lifecycle::transition_agent_state(
+            accounts,
+            target_state,
+            now,
+        ))
+    }
+
+    /// Submits `transition_agent_state`.
+    pub fn transition_agent_state(
+        &self,
+        owner: &Keypair,
+        treasury: Pubkey,
+        target_state: u8,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction =
+            self.transition_agent_state_instruction(owner.pubkey(), treasury, target_state, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `migrate_treasury`.
+    pub fn migrate_treasury_instruction(
+        &self,
+        accounts: aura_core::accounts::MigrateTreasury,
+    ) -> Instruction {
+        self.with_program_id(instructions::lifecycle::migrate_treasury(accounts))
+    }
+
+    /// Submits `migrate_treasury`.
+    pub fn migrate_treasury(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::MigrateTreasury,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        let instruction = self.migrate_treasury_instruction(accounts);
+        self.send_instructions(payer, vec![instruction], &[])
+    }
+
+    /// Builds `issue_session_key`.
+    pub fn issue_session_key_instruction(
+        &self,
+        accounts: aura_core::accounts::IssueSessionKey,
+        args: aura_core::IssueSessionKeyArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::lifecycle::issue_session_key(accounts, args))
+    }
+
+    /// Submits `issue_session_key`.
+    pub fn issue_session_key(
+        &self,
+        authority: &Keypair,
+        accounts: aura_core::accounts::IssueSessionKey,
+        args: aura_core::IssueSessionKeyArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(authority, accounts.authority, "authority")?;
+        let instruction = self.issue_session_key_instruction(accounts, args);
+        self.send_instructions(authority, vec![instruction], &[])
+    }
+
+    /// Builds `revoke_session_key`.
+    pub fn revoke_session_key_instruction(
+        &self,
+        accounts: aura_core::accounts::RevokeSessionKey,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::lifecycle::revoke_session_key(accounts, now))
+    }
+
+    /// Submits `revoke_session_key`.
+    pub fn revoke_session_key(
+        &self,
+        authority: &Keypair,
+        accounts: aura_core::accounts::RevokeSessionKey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(authority, accounts.authority, "authority")?;
+        let instruction = self.revoke_session_key_instruction(accounts, now);
+        self.send_instructions(authority, vec![instruction], &[])
+    }
+
+    /// Builds `close_session_key`.
+    pub fn close_session_key_instruction(
+        &self,
+        accounts: aura_core::accounts::CloseSessionKey,
+    ) -> Instruction {
+        self.with_program_id(instructions::lifecycle::close_session_key(accounts))
+    }
+
+    /// Submits `close_session_key`.
+    pub fn close_session_key(
+        &self,
+        authority: &Keypair,
+        accounts: aura_core::accounts::CloseSessionKey,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(authority, accounts.authority, "authority")?;
+        let instruction = self.close_session_key_instruction(accounts);
+        self.send_instructions(authority, vec![instruction], &[])
+    }
+
+    /// Builds `trigger_dead_mans_switch`.
+    pub fn trigger_dead_mans_switch_instruction(&self, treasury: Pubkey, now: i64) -> Instruction {
+        let accounts = aura_core::accounts::TriggerDeadMansSwitch { treasury };
+        self.with_program_id(instructions::lifecycle::trigger_dead_mans_switch(
+            accounts, now,
+        ))
+    }
+
+    /// Submits `trigger_dead_mans_switch`.
+    pub fn trigger_dead_mans_switch(
+        &self,
+        payer: &Keypair,
+        treasury: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction = self.trigger_dead_mans_switch_instruction(treasury, now);
+        self.send_instructions(payer, vec![instruction], &[])
+    }
+
+    /// Builds `check_policy_cpi`.
+    pub fn check_policy_cpi_instruction(
+        &self,
+        accounts: aura_core::accounts::CheckPolicyCpi,
+        args: aura_core::CheckPolicyCpiArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::policy::check_policy_cpi(accounts, args))
+    }
+
+    /// Submits `check_policy_cpi`.
+    pub fn check_policy_cpi(
+        &self,
+        fee_payer: &Keypair,
+        accounts: aura_core::accounts::CheckPolicyCpi,
+        args: aura_core::CheckPolicyCpiArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(fee_payer, accounts.fee_payer, "fee_payer")?;
+        let instruction = self.check_policy_cpi_instruction(accounts, args);
+        self.send_instructions(fee_payer, vec![instruction], &[])
+    }
+
+    /// Builds `init_health_score`.
+    pub fn init_health_score_instruction(
+        &self,
+        accounts: aura_core::accounts::InitHealthScore,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::init_health_score(accounts, now))
+    }
+
+    /// Submits `init_health_score`.
+    pub fn init_health_score(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitHealthScore,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.init_health_score_instruction(accounts, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `refresh_health_score`.
+    pub fn refresh_health_score_instruction(
+        &self,
+        accounts: aura_core::accounts::UpdateHealthScore,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::refresh_health_score(
+            accounts, now,
+        ))
+    }
+
+    /// Submits `refresh_health_score`.
+    pub fn refresh_health_score(
+        &self,
+        operator: &Keypair,
+        accounts: aura_core::accounts::UpdateHealthScore,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(operator, accounts.operator, "operator")?;
+        let instruction = self.refresh_health_score_instruction(accounts, now);
+        self.send_instructions(operator, vec![instruction], &[])
+    }
+
+    /// Builds `close_health_score`.
+    pub fn close_health_score_instruction(
+        &self,
+        accounts: aura_core::accounts::CloseHealthScore,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::close_health_score(accounts))
+    }
+
+    /// Submits `close_health_score`.
+    pub fn close_health_score(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::CloseHealthScore,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.close_health_score_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `take_snapshot`.
+    pub fn take_snapshot_instruction(
+        &self,
+        accounts: aura_core::accounts::TakeSnapshot,
+        snapshot_index: u32,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::take_snapshot(
+            accounts,
+            snapshot_index,
+            now,
+        ))
+    }
+
+    /// Submits `take_snapshot`.
+    pub fn take_snapshot(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::TakeSnapshot,
+        snapshot_index: u32,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(payer, accounts.payer, "payer")?;
+        let instruction = self.take_snapshot_instruction(accounts, snapshot_index, now);
+        self.send_instructions(payer, vec![instruction], &[])
+    }
+
+    /// Builds `record_policy_snapshot`.
+    pub fn record_policy_snapshot_instruction(
+        &self,
+        accounts: aura_core::accounts::InitPolicyHistory,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::record_policy_snapshot(
+            accounts, now,
+        ))
+    }
+
+    /// Submits `record_policy_snapshot`.
+    pub fn record_policy_snapshot(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitPolicyHistory,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.record_policy_snapshot_instruction(accounts, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `close_snapshot`.
+    pub fn close_snapshot_instruction(
+        &self,
+        accounts: aura_core::accounts::CloseSnapshot,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::close_snapshot(accounts))
+    }
+
+    /// Submits `close_snapshot`.
+    pub fn close_snapshot(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::CloseSnapshot,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.close_snapshot_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_activity_log`.
+    pub fn init_activity_log_instruction(
+        &self,
+        accounts: aura_core::accounts::InitActivityLog,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::init_activity_log(accounts))
+    }
+
+    /// Submits `init_activity_log`.
+    pub fn init_activity_log(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitActivityLog,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.init_activity_log_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `close_activity_log`.
+    pub fn close_activity_log_instruction(
+        &self,
+        accounts: aura_core::accounts::CloseActivityLog,
+    ) -> Instruction {
+        self.with_program_id(instructions::operational::close_activity_log(accounts))
+    }
+
+    /// Submits `close_activity_log`.
+    pub fn close_activity_log(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::CloseActivityLog,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.close_activity_log_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_swarm_pool`.
+    pub fn init_swarm_pool_instruction(
+        &self,
+        accounts: aura_core::accounts::InitSwarmPool,
+        args: aura_core::InitSwarmPoolArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::swarm::init_swarm_pool(accounts, args))
+    }
+
+    /// Submits `init_swarm_pool`.
+    pub fn init_swarm_pool(
+        &self,
+        creator: &Keypair,
+        accounts: aura_core::accounts::InitSwarmPool,
+        args: aura_core::InitSwarmPoolArgs,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(creator, accounts.creator, "creator")?;
+        let instruction = self.init_swarm_pool_instruction(accounts, args);
+        self.send_instructions(creator, vec![instruction], &[])
+    }
+
+    /// Builds `join_swarm`.
+    pub fn join_swarm_instruction(
+        &self,
+        accounts: aura_core::accounts::JoinSwarm,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::swarm::join_swarm(accounts, now))
+    }
+
+    /// Submits `join_swarm`.
+    pub fn join_swarm(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::JoinSwarm,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.join_swarm_instruction(accounts, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_fee_vault`.
+    pub fn init_fee_vault_instruction(
+        &self,
+        accounts: aura_core::accounts::InitFeeVault,
+        protocol_fee_recipient: Pubkey,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::fees::init_fee_vault(
+            accounts,
+            protocol_fee_recipient,
+            now,
+        ))
+    }
+
+    /// Submits `init_fee_vault`.
+    pub fn init_fee_vault(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitFeeVault,
+        protocol_fee_recipient: Pubkey,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.init_fee_vault_instruction(accounts, protocol_fee_recipient, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `collect_fees`.
+    pub fn collect_fees_instruction(
+        &self,
+        accounts: aura_core::accounts::CollectFees,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::fees::collect_fees(accounts, now))
+    }
+
+    /// Submits `collect_fees`.
+    pub fn collect_fees(
+        &self,
+        protocol_authority: &Keypair,
+        accounts: aura_core::accounts::CollectFees,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(
+            protocol_authority,
+            accounts.protocol_authority,
+            "protocol_authority",
+        )?;
+        let instruction = self.collect_fees_instruction(accounts, now);
+        self.send_instructions(protocol_authority, vec![instruction], &[])
+    }
+
+    /// Builds `close_fee_vault`.
+    pub fn close_fee_vault_instruction(
+        &self,
+        accounts: aura_core::accounts::CloseFeeVault,
+    ) -> Instruction {
+        self.with_program_id(instructions::fees::close_fee_vault(accounts))
+    }
+
+    /// Submits `close_fee_vault`.
+    pub fn close_fee_vault(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::CloseFeeVault,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.close_fee_vault_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_address_list`.
+    pub fn init_address_list_instruction(
+        &self,
+        accounts: aura_core::accounts::InitAddressList,
+        mode: u8,
+        chain: u8,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::address_lists::init_address_list(
+            accounts, mode, chain, now,
+        ))
+    }
+
+    /// Submits `init_address_list`.
+    pub fn init_address_list(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitAddressList,
+        mode: u8,
+        chain: u8,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.init_address_list_instruction(accounts, mode, chain, now);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `manage_address_list`.
+    pub fn manage_address_list_instruction(
+        &self,
+        accounts: aura_core::accounts::ManageAddressList,
+        mode: u8,
+        chain: u8,
+        addresses: Vec<String>,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::address_lists::manage_address_list(
+            accounts, mode, chain, addresses, now,
+        ))
+    }
+
+    /// Submits `manage_address_list`.
+    pub fn manage_address_list(
+        &self,
+        operator: &Keypair,
+        accounts: aura_core::accounts::ManageAddressList,
+        mode: u8,
+        chain: u8,
+        addresses: Vec<String>,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(operator, accounts.operator, "operator")?;
+        let instruction =
+            self.manage_address_list_instruction(accounts, mode, chain, addresses, now);
+        self.send_instructions(operator, vec![instruction], &[])
+    }
+
+    /// Builds `close_address_list`.
+    pub fn close_address_list_instruction(
+        &self,
+        accounts: aura_core::accounts::CloseAddressList,
+    ) -> Instruction {
+        self.with_program_id(instructions::address_lists::close_address_list(accounts))
+    }
+
+    /// Submits `close_address_list`.
+    pub fn close_address_list(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::CloseAddressList,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.close_address_list_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `init_policy_history`.
+    pub fn init_policy_history_instruction(
+        &self,
+        accounts: aura_core::accounts::InitPolicyHistory,
+    ) -> Instruction {
+        self.with_program_id(instructions::policy::init_policy_history(accounts))
+    }
+
+    /// Submits `init_policy_history`.
+    pub fn init_policy_history(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::InitPolicyHistory,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.init_policy_history_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `close_policy_history`.
+    pub fn close_policy_history_instruction(
+        &self,
+        accounts: aura_core::accounts::ClosePolicyHistory,
+    ) -> Instruction {
+        self.with_program_id(instructions::policy::close_policy_history(accounts))
+    }
+
+    /// Submits `close_policy_history`.
+    pub fn close_policy_history(
+        &self,
+        owner: &Keypair,
+        accounts: aura_core::accounts::ClosePolicyHistory,
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(owner, accounts.owner, "owner")?;
+        let instruction = self.close_policy_history_instruction(accounts);
+        self.send_instructions(owner, vec![instruction], &[])
+    }
+
+    /// Builds `refresh_dwallet_balance`.
+    pub fn refresh_dwallet_balance_instruction(
+        &self,
+        accounts: aura_core::accounts::RefreshDwalletBalance,
+        chain_code: u8,
+        now: i64,
+    ) -> Instruction {
+        self.with_program_id(instructions::dwallet::refresh_dwallet_balance(
+            accounts, chain_code, now,
+        ))
+    }
+
+    /// Submits `refresh_dwallet_balance`.
+    pub fn refresh_dwallet_balance(
+        &self,
+        payer: &Keypair,
+        accounts: aura_core::accounts::RefreshDwalletBalance,
+        chain_code: u8,
+        now: i64,
+    ) -> Result<Signature, SdkError> {
+        let instruction = self.refresh_dwallet_balance_instruction(accounts, chain_code, now);
+        self.send_instructions(payer, vec![instruction], &[])
+    }
 }
 
 fn ensure_signer_matches(
@@ -1118,5 +1943,23 @@ mod tests {
             .approve_pending_execution(&signer, accounts, args)
             .unwrap_err();
         assert!(matches!(error, SdkError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn guardian_rotation_instruction_uses_guardian_account_set() {
+        let program_id = Pubkey::new_unique();
+        let client = AuraClient::with_options(
+            "http://127.0.0.1:8899",
+            program_id,
+            CommitmentConfig::confirmed(),
+        );
+        let guardian = Pubkey::new_unique();
+        let treasury = Pubkey::new_unique();
+
+        let instruction = client.execute_guardian_rotation_instruction(guardian, treasury, 1);
+
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts[0].pubkey, guardian);
+        assert_eq!(instruction.accounts[1].pubkey, treasury);
     }
 }

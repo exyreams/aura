@@ -240,7 +240,6 @@ impl OnchainDecryptionRequest<'_> {
     /// if decryption is not yet complete.
     pub fn plaintext_sha256(&self) -> Option<String> {
         self.plaintext
-            .as_deref()
             .map(|bytes| hex::encode(sha2::Sha256::digest(bytes)))
     }
 }
@@ -475,7 +474,7 @@ pub fn decrypt_u64(request: &OnchainDecryptionRequest<'_>) -> TreasuryResult<u64
 /// Supports the scalar policy-output types produced by Encrypt graphs:
 /// `EBool`, `EUint8`, `EUint16`, `EUint32`, and `EUint64`.
 pub fn decrypt_scalar_u64(request: &OnchainDecryptionRequest<'_>) -> TreasuryResult<u64> {
-    let plaintext = request.plaintext.as_deref().ok_or_else(|| {
+    let plaintext = request.plaintext.ok_or_else(|| {
         TreasuryError::InvalidAccountData(
             "decryption request does not contain completed plaintext bytes".to_string(),
         )
@@ -541,7 +540,7 @@ pub fn decrypt_u64_lane(
     request: &OnchainDecryptionRequest<'_>,
     lane_index: usize,
 ) -> TreasuryResult<u64> {
-    let plaintext = request.plaintext.as_deref().ok_or_else(|| {
+    let plaintext = request.plaintext.ok_or_else(|| {
         TreasuryError::InvalidAccountData(
             "decryption request does not contain completed plaintext bytes".to_string(),
         )

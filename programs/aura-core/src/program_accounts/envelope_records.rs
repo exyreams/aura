@@ -157,7 +157,7 @@ impl ExposureGroupAccount {
     /// Ensures `treasury` is an authorized member of this group.
     pub fn assert_member(&self, treasury: Pubkey) -> Result<()> {
         require!(
-            self.members.iter().any(|member| *member == treasury),
+            self.members.contains(&treasury),
             AuraCoreError::ExposureGroupUnauthorized
         );
         Ok(())

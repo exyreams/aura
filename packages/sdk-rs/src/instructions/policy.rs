@@ -63,3 +63,33 @@ pub fn check_invariants(
         data: aura_core::instruction::CheckInvariants { args }.data(),
     }
 }
+
+/// Builds `check_policy_cpi`.
+pub fn check_policy_cpi(
+    accounts: accounts::CheckPolicyCpi,
+    args: aura_core::CheckPolicyCpiArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::CheckPolicyCpi { args }.data(),
+    }
+}
+
+/// Builds `init_policy_history`.
+pub fn init_policy_history(accounts: accounts::InitPolicyHistory) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::InitPolicyHistory {}.data(),
+    }
+}
+
+/// Builds `close_policy_history`.
+pub fn close_policy_history(accounts: accounts::ClosePolicyHistory) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ClosePolicyHistory {}.data(),
+    }
+}

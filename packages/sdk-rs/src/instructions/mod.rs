@@ -19,7 +19,7 @@ pub mod treasury;
 #[cfg(test)]
 mod tests {
     use anchor_lang::system_program::ID as SYSTEM_PROGRAM_ID;
-    use solana_sdk::pubkey::Pubkey;
+    use solana_sdk::{instruction::Instruction, pubkey::Pubkey};
 
     use super::*;
 
@@ -82,5 +82,67 @@ mod tests {
         assert_eq!(ix.program_id, aura_core::ID);
         assert_eq!(ix.accounts.len(), 9);
         assert!(!ix.data.is_empty());
+    }
+
+    #[test]
+    fn advanced_builder_surface_is_publicly_reachable() {
+        let _: fn(accounts::OwnerTreasury, Pubkey, i64) -> Instruction =
+            governance::propose_ai_rotation;
+        let _: fn(accounts::OwnerTreasury, i64) -> Instruction = governance::execute_ai_rotation;
+        let _: fn(accounts::OwnerTreasury, i64) -> Instruction = governance::cancel_ai_rotation;
+        let _: fn(accounts::VetoConfigChange, u8, Pubkey, i64) -> Instruction =
+            governance::propose_guardian_rotation;
+        let _: fn(accounts::VetoConfigChange, i64) -> Instruction =
+            governance::execute_guardian_rotation;
+        let _: fn(accounts::OwnerTreasury, u64, aura_core::PolicyConfigRecord, i64) -> Instruction =
+            governance::propose_config_change;
+        let _: fn(accounts::OwnerTreasury, u64, i64) -> Instruction =
+            governance::execute_config_change;
+        let _: fn(accounts::VetoConfigChange, u64, i64) -> Instruction =
+            governance::veto_config_change;
+        let _: fn(accounts::OwnerTreasury, Pubkey, i64) -> Instruction =
+            governance::emergency_shutdown;
+
+        let _: fn(accounts::OwnerTreasury, u8, i64) -> Instruction =
+            lifecycle::transition_agent_state;
+        let _: fn(accounts::MigrateTreasury) -> Instruction = lifecycle::migrate_treasury;
+        let _: fn(accounts::IssueSessionKey, aura_core::IssueSessionKeyArgs) -> Instruction =
+            lifecycle::issue_session_key;
+        let _: fn(accounts::RevokeSessionKey, i64) -> Instruction = lifecycle::revoke_session_key;
+        let _: fn(accounts::CloseSessionKey) -> Instruction = lifecycle::close_session_key;
+        let _: fn(accounts::TriggerDeadMansSwitch, i64) -> Instruction =
+            lifecycle::trigger_dead_mans_switch;
+        let _: fn(accounts::CheckPolicyCpi, aura_core::CheckPolicyCpiArgs) -> Instruction =
+            policy::check_policy_cpi;
+
+        let _: fn(accounts::InitHealthScore, i64) -> Instruction = operational::init_health_score;
+        let _: fn(accounts::UpdateHealthScore, i64) -> Instruction =
+            operational::refresh_health_score;
+        let _: fn(accounts::CloseHealthScore) -> Instruction = operational::close_health_score;
+        let _: fn(accounts::TakeSnapshot, u32, i64) -> Instruction = operational::take_snapshot;
+        let _: fn(accounts::InitPolicyHistory, i64) -> Instruction =
+            operational::record_policy_snapshot;
+        let _: fn(accounts::CloseSnapshot) -> Instruction = operational::close_snapshot;
+        let _: fn(accounts::InitActivityLog) -> Instruction = operational::init_activity_log;
+        let _: fn(accounts::CloseActivityLog) -> Instruction = operational::close_activity_log;
+
+        let _: fn(accounts::InitSwarmPool, aura_core::InitSwarmPoolArgs) -> Instruction =
+            swarm::init_swarm_pool;
+        let _: fn(accounts::JoinSwarm, i64) -> Instruction = swarm::join_swarm;
+
+        let _: fn(accounts::InitFeeVault, Pubkey, i64) -> Instruction = fees::init_fee_vault;
+        let _: fn(accounts::CollectFees, i64) -> Instruction = fees::collect_fees;
+        let _: fn(accounts::CloseFeeVault) -> Instruction = fees::close_fee_vault;
+
+        let _: fn(accounts::InitAddressList, u8, u8, i64) -> Instruction =
+            address_lists::init_address_list;
+        let _: fn(accounts::ManageAddressList, u8, u8, Vec<String>, i64) -> Instruction =
+            address_lists::manage_address_list;
+        let _: fn(accounts::CloseAddressList) -> Instruction = address_lists::close_address_list;
+
+        let _: fn(accounts::InitPolicyHistory) -> Instruction = policy::init_policy_history;
+        let _: fn(accounts::ClosePolicyHistory) -> Instruction = policy::close_policy_history;
+        let _: fn(accounts::RefreshDwalletBalance, u8, i64) -> Instruction =
+            dwallet::refresh_dwallet_balance;
     }
 }

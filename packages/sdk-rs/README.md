@@ -126,6 +126,22 @@ Every instruction has two forms:
 - `*_instruction(...)` — returns a `solana_sdk::instruction::Instruction` for composing into your own transaction
 - the method without the suffix — builds, signs, and sends in one call
 
+The low-level instruction builders are also organized by protocol domain under
+`aura_sdk::instructions`:
+
+```rust,no_run
+use aura_sdk::instructions::{address_lists, governance, lifecycle, policy};
+
+let ix = governance::propose_ai_rotation(accounts, new_ai_authority, now);
+let check = policy::check_policy_cpi(check_accounts, check_args);
+```
+
+The SDK now covers the full 69-instruction `aura-core` surface: treasury
+lifecycle, confidential execution, dWallet execution, policy controls, budget
+controls, governance timelocks, AI and guardian rotation, session keys,
+migration, health scores, snapshots, activity logs, swarm pools, fee vaults,
+address lists, policy history, policy CPI checks, and dWallet balance refreshes.
+
 ### Treasury lifecycle
 
 ```rust,no_run
@@ -301,6 +317,28 @@ client.set_scoped_pause(
 Covered methods include simulations, policy receipts, presets, budget
 envelopes, exposure groups, approval ladders, scoped pauses, operator roles,
 external liveness, policy attestations, batch proposals, and invariant reports.
+
+### Advanced controls
+
+```rust,no_run
+// Owner-controlled AI authority rotation.
+client.propose_ai_rotation(&owner, treasury, new_ai_authority, now)?;
+client.execute_ai_rotation(&owner, treasury, now)?;
+
+// Guardian-managed rotation and config vetoes.
+client.propose_guardian_rotation(&guardian, treasury, 0, new_guardian, now)?;
+client.veto_config_change(&guardian, treasury, change_id, now)?;
+
+// Session keys and operational accounts use the Anchor account structs directly.
+let ix = client.issue_session_key_instruction(accounts, args);
+let health = client.refresh_health_score_instruction(health_accounts, now);
+let fees = client.collect_fees_instruction(fee_accounts, now);
+```
+
+For specialized flows, pass the generated Anchor account structs from
+`aura_sdk::anchor_accounts` directly to the `*_instruction` methods. Send
+helpers validate the signer role locally before sending RPC wherever the
+program instruction has an explicit signer account.
 
 ---
 
