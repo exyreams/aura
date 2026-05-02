@@ -166,3 +166,15 @@ export type SimulatePolicyArgs = AuraTypeDefs["simulatePolicyArgs"];
 
 /** Arguments for the `write_policy_receipt` instruction. */
 export type WritePolicyReceiptArgs = AuraTypeDefs["writePolicyReceiptArgs"];
+
+/** Serialized policy configuration record accepted by governance updates. */
+export type PolicyConfigRecord = AuraTypeDefs["policyConfigRecord"];
+
+/** Arguments for the `issue_session_key` instruction. */
+export type IssueSessionKeyArgs = AuraTypeDefs["issueSessionKeyArgs"];
+
+/** Arguments for the `check_policy_cpi` instruction. */
+export type CheckPolicyCpiArgs = AuraTypeDefs["checkPolicyCpiArgs"];
+
+/** Arguments for the `init_swarm_pool` instruction. */
+export type InitSwarmPoolArgs = AuraTypeDefs["initSwarmPoolArgs"];

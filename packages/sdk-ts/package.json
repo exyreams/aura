@@ -22,6 +22,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./instructions": {
+      "types": "./dist/instructions/index.d.ts",
+      "import": "./dist/instructions/index.js",
+      "default": "./dist/instructions/index.js"
+    },
     "./idl": {
       "default": "./dist/generated/aura_core.json"
     },
@@ -40,7 +45,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsx --test tests/bn.test.ts tests/pda.test.ts tests/client.test.ts tests/errors.test.ts tests/events.test.ts tests/validation.test.ts",
+    "test": "tsx --test tests/bn.test.ts tests/pda.test.ts tests/client.test.ts tests/instructions.test.ts tests/errors.test.ts tests/events.test.ts tests/validation.test.ts",
     "test:devnet": "tsx --test tests/devnet.test.ts",
     "prepack": "npm run build",
     "generate-idl": "bash scripts/generate-idl.sh",

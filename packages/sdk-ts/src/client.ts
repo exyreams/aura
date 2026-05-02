@@ -37,7 +37,16 @@ import type {
   AiAuthorityTreasuryAccounts,
   ApprovePendingExecutionAccounts,
   AttestPolicyAccounts,
+  CheckPolicyCpiAccounts,
   CheckInvariantsAccounts,
+  CloseActivityLogAccounts,
+  CloseAddressListAccounts,
+  CloseFeeVaultAccounts,
+  CloseHealthScoreAccounts,
+  ClosePolicyHistoryAccounts,
+  CloseSessionKeyAccounts,
+  CloseSnapshotAccounts,
+  CollectFeesAccounts,
   ConfigureBudgetEnvelopeAccounts,
   ConfigureConfidentialGuardrailsAccounts,
   ConfigureConfidentialVectorGuardrailsAccounts,
@@ -46,19 +55,34 @@ import type {
   FinalizeExecutionAccounts,
   GrantOperatorRoleAccounts,
   GuardianTreasuryAccounts,
+  InitActivityLogAccounts,
+  InitAddressListAccounts,
   InitExposureGroupAccounts,
   InitExternalLivenessAccounts,
+  InitFeeVaultAccounts,
+  InitHealthScoreAccounts,
+  InitPolicyHistoryAccounts,
+  InitSwarmPoolAccounts,
+  IssueSessionKeyAccounts,
   JoinExposureGroupAccounts,
+  JoinSwarmAccounts,
+  ManageAddressListAccounts,
+  MigrateTreasuryAccounts,
   OwnerTreasuryAccounts,
   ProposeBatchAccounts,
   ProposeTransactionAccounts,
   ProposeConfidentialTransactionAccounts,
   ProposeConfidentialVectorTransactionAccounts,
+  RefreshDwalletBalanceAccounts,
   RefreshExternalLivenessAccounts,
+  RefreshHealthScoreAccounts,
   RequestPolicyDecryptionAccounts,
   RevokeOperatorRoleAccounts,
+  RevokeSessionKeyAccounts,
   SetScopedPauseAccounts,
   SimulatePolicyAccounts,
+  TakeSnapshotAccounts,
+  TriggerDeadMansSwitchAccounts,
   WritePolicyReceiptAccounts,
 } from "./accounts.js";
 import type { BNish } from "./bn.js";
@@ -70,6 +94,7 @@ import {
   type ApprovePendingExecutionArgs,
   type AttestPolicyArgs,
   type AuraTypeDefs,
+  type CheckPolicyCpiArgs,
   type CheckInvariantsArgs,
   type ConfigureApprovalLadderArgs,
   type ConfigureBudgetEnvelopeArgs,
@@ -80,6 +105,9 @@ import {
   type GrantOperatorRoleArgs,
   type InitExposureGroupArgs,
   type InitExternalLivenessArgs,
+  type InitSwarmPoolArgs,
+  type IssueSessionKeyArgs,
+  type PolicyConfigRecord,
   type ProposeConfidentialTransactionArgs,
   type ProposeBatchArgs,
   type ProposeTransactionArgs,
@@ -1199,6 +1227,768 @@ export class AuraClient {
   ): Promise<string> {
     assertSignerMatches(payer, accounts.payer, "payer");
     const instruction = await this.checkInvariantsInstruction(accounts, args);
+    return await this.sendInstructions(payer, [instruction]);
+  }
+
+  /** Builds a `propose_ai_rotation` instruction. */
+  async proposeAiRotationInstruction(
+    accounts: OwnerTreasuryAccounts,
+    newAiAuthority: PublicKey,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .proposeAiRotation(newAiAuthority, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `propose_ai_rotation` transaction. */
+  async proposeAiRotation(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    newAiAuthority: PublicKey,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.proposeAiRotationInstruction(accounts, newAiAuthority, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `execute_ai_rotation` instruction. */
+  async executeAiRotationInstruction(
+    accounts: OwnerTreasuryAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .executeAiRotation(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `execute_ai_rotation` transaction. */
+  async executeAiRotation(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.executeAiRotationInstruction(accounts, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `cancel_ai_rotation` instruction. */
+  async cancelAiRotationInstruction(
+    accounts: OwnerTreasuryAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .cancelAiRotation(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `cancel_ai_rotation` transaction. */
+  async cancelAiRotation(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.cancelAiRotationInstruction(accounts, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `propose_guardian_rotation` instruction. */
+  async proposeGuardianRotationInstruction(
+    accounts: GuardianTreasuryAccounts,
+    action: number,
+    targetGuardian: PublicKey,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .proposeGuardianRotation(action, targetGuardian, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `propose_guardian_rotation` transaction. */
+  async proposeGuardianRotation(
+    guardian: Signer,
+    accounts: GuardianTreasuryAccounts,
+    action: number,
+    targetGuardian: PublicKey,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(guardian, accounts.guardian, "guardian");
+    const instruction = await this.proposeGuardianRotationInstruction(
+      accounts,
+      action,
+      targetGuardian,
+      now,
+    );
+    return await this.sendInstructions(guardian, [instruction]);
+  }
+
+  /** Builds an `execute_guardian_rotation` instruction. */
+  async executeGuardianRotationInstruction(
+    accounts: GuardianTreasuryAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .executeGuardianRotation(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `execute_guardian_rotation` transaction. */
+  async executeGuardianRotation(
+    guardian: Signer,
+    accounts: GuardianTreasuryAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(guardian, accounts.guardian, "guardian");
+    const instruction = await this.executeGuardianRotationInstruction(accounts, now);
+    return await this.sendInstructions(guardian, [instruction]);
+  }
+
+  /** Builds a `propose_config_change` instruction. */
+  async proposeConfigChangeInstruction(
+    accounts: OwnerTreasuryAccounts,
+    changeId: BNish,
+    newPolicyConfig: PolicyConfigRecord,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .proposeConfigChange(toBN(changeId), newPolicyConfig, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `propose_config_change` transaction. */
+  async proposeConfigChange(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    changeId: BNish,
+    newPolicyConfig: PolicyConfigRecord,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.proposeConfigChangeInstruction(
+      accounts,
+      changeId,
+      newPolicyConfig,
+      now,
+    );
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `execute_config_change` instruction. */
+  async executeConfigChangeInstruction(
+    accounts: OwnerTreasuryAccounts,
+    changeId: BNish,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .executeConfigChange(toBN(changeId), toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `execute_config_change` transaction. */
+  async executeConfigChange(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    changeId: BNish,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.executeConfigChangeInstruction(accounts, changeId, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `veto_config_change` instruction. */
+  async vetoConfigChangeInstruction(
+    accounts: GuardianTreasuryAccounts,
+    changeId: BNish,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .vetoConfigChange(toBN(changeId), toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `veto_config_change` transaction. */
+  async vetoConfigChange(
+    guardian: Signer,
+    accounts: GuardianTreasuryAccounts,
+    changeId: BNish,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(guardian, accounts.guardian, "guardian");
+    const instruction = await this.vetoConfigChangeInstruction(accounts, changeId, now);
+    return await this.sendInstructions(guardian, [instruction]);
+  }
+
+  /** Builds an `emergency_shutdown` instruction. */
+  async emergencyShutdownInstruction(
+    accounts: OwnerTreasuryAccounts,
+    recoveryPubkey: PublicKey,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .emergencyShutdown(recoveryPubkey, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `emergency_shutdown` transaction. */
+  async emergencyShutdown(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    recoveryPubkey: PublicKey,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.emergencyShutdownInstruction(accounts, recoveryPubkey, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `transition_agent_state` instruction. */
+  async transitionAgentStateInstruction(
+    accounts: OwnerTreasuryAccounts,
+    targetState: number,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .transitionAgentState(targetState, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `transition_agent_state` transaction. */
+  async transitionAgentState(
+    owner: Signer,
+    accounts: OwnerTreasuryAccounts,
+    targetState: number,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.transitionAgentStateInstruction(accounts, targetState, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `migrate_treasury` instruction. */
+  async migrateTreasuryInstruction(
+    accounts: MigrateTreasuryAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.migrateTreasury().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `migrate_treasury` transaction. */
+  async migrateTreasury(
+    payer: Signer,
+    accounts: MigrateTreasuryAccounts,
+  ): Promise<string> {
+    assertSignerMatches(payer, accounts.payer, "payer");
+    const instruction = await this.migrateTreasuryInstruction(accounts);
+    return await this.sendInstructions(payer, [instruction]);
+  }
+
+  /** Builds an `issue_session_key` instruction. */
+  async issueSessionKeyInstruction(
+    accounts: IssueSessionKeyAccounts,
+    args: IssueSessionKeyArgs,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.issueSessionKey(args).accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends an `issue_session_key` transaction. */
+  async issueSessionKey(
+    authority: Signer,
+    accounts: IssueSessionKeyAccounts,
+    args: IssueSessionKeyArgs,
+  ): Promise<string> {
+    assertSignerMatches(authority, accounts.authority, "authority");
+    const instruction = await this.issueSessionKeyInstruction(accounts, args);
+    return await this.sendInstructions(authority, [instruction]);
+  }
+
+  /** Builds a `revoke_session_key` instruction. */
+  async revokeSessionKeyInstruction(
+    accounts: RevokeSessionKeyAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .revokeSessionKey(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `revoke_session_key` transaction. */
+  async revokeSessionKey(
+    authority: Signer,
+    accounts: RevokeSessionKeyAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(authority, accounts.authority, "authority");
+    const instruction = await this.revokeSessionKeyInstruction(accounts, now);
+    return await this.sendInstructions(authority, [instruction]);
+  }
+
+  /** Builds a `close_session_key` instruction. */
+  async closeSessionKeyInstruction(
+    accounts: CloseSessionKeyAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closeSessionKey().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_session_key` transaction. */
+  async closeSessionKey(
+    authority: Signer,
+    accounts: CloseSessionKeyAccounts,
+  ): Promise<string> {
+    assertSignerMatches(authority, accounts.authority, "authority");
+    const instruction = await this.closeSessionKeyInstruction(accounts);
+    return await this.sendInstructions(authority, [instruction]);
+  }
+
+  /** Builds a `trigger_dead_mans_switch` instruction. */
+  async triggerDeadMansSwitchInstruction(
+    accounts: TriggerDeadMansSwitchAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .triggerDeadMansSwitch(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `trigger_dead_mans_switch` transaction. */
+  async triggerDeadMansSwitch(
+    payer: Signer,
+    accounts: TriggerDeadMansSwitchAccounts,
+    now: BNish,
+  ): Promise<string> {
+    const instruction = await this.triggerDeadMansSwitchInstruction(accounts, now);
+    return await this.sendInstructions(payer, [instruction]);
+  }
+
+  /** Builds a `check_policy_cpi` instruction. */
+  async checkPolicyCpiInstruction(
+    accounts: CheckPolicyCpiAccounts,
+    args: CheckPolicyCpiArgs,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.checkPolicyCpi(args).accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `check_policy_cpi` transaction. */
+  async checkPolicyCpi(
+    feePayer: Signer,
+    accounts: CheckPolicyCpiAccounts,
+    args: CheckPolicyCpiArgs,
+  ): Promise<string> {
+    assertSignerMatches(feePayer, accounts.feePayer, "feePayer");
+    const instruction = await this.checkPolicyCpiInstruction(accounts, args);
+    return await this.sendInstructions(feePayer, [instruction]);
+  }
+
+  /** Builds an `init_health_score` instruction. */
+  async initHealthScoreInstruction(
+    accounts: InitHealthScoreAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .initHealthScore(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `init_health_score` transaction. */
+  async initHealthScore(
+    owner: Signer,
+    accounts: InitHealthScoreAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.initHealthScoreInstruction(accounts, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `refresh_health_score` instruction. */
+  async refreshHealthScoreInstruction(
+    accounts: RefreshHealthScoreAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .refreshHealthScore(toBN(now))
+      .accountsStrict({
+        ...accounts,
+        operatorRole: accounts.operatorRole ?? null,
+      })
+      .instruction();
+  }
+
+  /** Builds and sends a `refresh_health_score` transaction. */
+  async refreshHealthScore(
+    operator: Signer,
+    accounts: RefreshHealthScoreAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(operator, accounts.operator, "operator");
+    const instruction = await this.refreshHealthScoreInstruction(accounts, now);
+    return await this.sendInstructions(operator, [instruction]);
+  }
+
+  /** Builds a `close_health_score` instruction. */
+  async closeHealthScoreInstruction(
+    accounts: CloseHealthScoreAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closeHealthScore().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_health_score` transaction. */
+  async closeHealthScore(
+    owner: Signer,
+    accounts: CloseHealthScoreAccounts,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.closeHealthScoreInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `take_snapshot` instruction. */
+  async takeSnapshotInstruction(
+    accounts: TakeSnapshotAccounts,
+    snapshotIndex: number,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .takeSnapshot(snapshotIndex, toBN(now))
+      .accountsStrict({
+        ...accounts,
+        operatorRole: accounts.operatorRole ?? null,
+      })
+      .instruction();
+  }
+
+  /** Builds and sends a `take_snapshot` transaction. */
+  async takeSnapshot(
+    payer: Signer,
+    accounts: TakeSnapshotAccounts,
+    snapshotIndex: number,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(payer, accounts.payer, "payer");
+    const instruction = await this.takeSnapshotInstruction(accounts, snapshotIndex, now);
+    return await this.sendInstructions(payer, [instruction]);
+  }
+
+  /** Builds a `record_policy_snapshot` instruction. */
+  async recordPolicySnapshotInstruction(
+    accounts: InitPolicyHistoryAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .recordPolicySnapshot(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `record_policy_snapshot` transaction. */
+  async recordPolicySnapshot(
+    owner: Signer,
+    accounts: InitPolicyHistoryAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.recordPolicySnapshotInstruction(accounts, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `close_snapshot` instruction. */
+  async closeSnapshotInstruction(
+    accounts: CloseSnapshotAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closeSnapshot().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_snapshot` transaction. */
+  async closeSnapshot(owner: Signer, accounts: CloseSnapshotAccounts): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.closeSnapshotInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `init_activity_log` instruction. */
+  async initActivityLogInstruction(
+    accounts: InitActivityLogAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.initActivityLog().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends an `init_activity_log` transaction. */
+  async initActivityLog(
+    owner: Signer,
+    accounts: InitActivityLogAccounts,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.initActivityLogInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `close_activity_log` instruction. */
+  async closeActivityLogInstruction(
+    accounts: CloseActivityLogAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closeActivityLog().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_activity_log` transaction. */
+  async closeActivityLog(
+    owner: Signer,
+    accounts: CloseActivityLogAccounts,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.closeActivityLogInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `init_swarm_pool` instruction. */
+  async initSwarmPoolInstruction(
+    accounts: InitSwarmPoolAccounts,
+    args: InitSwarmPoolArgs,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.initSwarmPool(args).accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends an `init_swarm_pool` transaction. */
+  async initSwarmPool(
+    creator: Signer,
+    accounts: InitSwarmPoolAccounts,
+    args: InitSwarmPoolArgs,
+  ): Promise<string> {
+    assertSignerMatches(creator, accounts.creator, "creator");
+    const instruction = await this.initSwarmPoolInstruction(accounts, args);
+    return await this.sendInstructions(creator, [instruction]);
+  }
+
+  /** Builds a `join_swarm` instruction. */
+  async joinSwarmInstruction(
+    accounts: JoinSwarmAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .joinSwarm(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `join_swarm` transaction. */
+  async joinSwarm(
+    owner: Signer,
+    accounts: JoinSwarmAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.joinSwarmInstruction(accounts, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `init_fee_vault` instruction. */
+  async initFeeVaultInstruction(
+    accounts: InitFeeVaultAccounts,
+    protocolFeeRecipient: PublicKey,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .initFeeVault(protocolFeeRecipient, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `init_fee_vault` transaction. */
+  async initFeeVault(
+    owner: Signer,
+    accounts: InitFeeVaultAccounts,
+    protocolFeeRecipient: PublicKey,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.initFeeVaultInstruction(accounts, protocolFeeRecipient, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `collect_fees` instruction. */
+  async collectFeesInstruction(
+    accounts: CollectFeesAccounts,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .collectFees(toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `collect_fees` transaction. */
+  async collectFees(
+    protocolAuthority: Signer,
+    accounts: CollectFeesAccounts,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(protocolAuthority, accounts.protocolAuthority, "protocolAuthority");
+    const instruction = await this.collectFeesInstruction(accounts, now);
+    return await this.sendInstructions(protocolAuthority, [instruction]);
+  }
+
+  /** Builds a `close_fee_vault` instruction. */
+  async closeFeeVaultInstruction(
+    accounts: CloseFeeVaultAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closeFeeVault().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_fee_vault` transaction. */
+  async closeFeeVault(owner: Signer, accounts: CloseFeeVaultAccounts): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.closeFeeVaultInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `init_address_list` instruction. */
+  async initAddressListInstruction(
+    accounts: InitAddressListAccounts,
+    mode: number,
+    chain: number,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .initAddressList(mode, chain, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends an `init_address_list` transaction. */
+  async initAddressList(
+    owner: Signer,
+    accounts: InitAddressListAccounts,
+    mode: number,
+    chain: number,
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.initAddressListInstruction(accounts, mode, chain, now);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `manage_address_list` instruction. */
+  async manageAddressListInstruction(
+    accounts: ManageAddressListAccounts,
+    mode: number,
+    chain: number,
+    addresses: string[],
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .manageAddressList(mode, chain, addresses, toBN(now))
+      .accountsStrict({
+        ...accounts,
+        operatorRole: accounts.operatorRole ?? null,
+      })
+      .instruction();
+  }
+
+  /** Builds and sends a `manage_address_list` transaction. */
+  async manageAddressList(
+    operator: Signer,
+    accounts: ManageAddressListAccounts,
+    mode: number,
+    chain: number,
+    addresses: string[],
+    now: BNish,
+  ): Promise<string> {
+    assertSignerMatches(operator, accounts.operator, "operator");
+    const instruction = await this.manageAddressListInstruction(
+      accounts,
+      mode,
+      chain,
+      addresses,
+      now,
+    );
+    return await this.sendInstructions(operator, [instruction]);
+  }
+
+  /** Builds a `close_address_list` instruction. */
+  async closeAddressListInstruction(
+    accounts: CloseAddressListAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closeAddressList().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_address_list` transaction. */
+  async closeAddressList(
+    owner: Signer,
+    accounts: CloseAddressListAccounts,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.closeAddressListInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds an `init_policy_history` instruction. */
+  async initPolicyHistoryInstruction(
+    accounts: InitPolicyHistoryAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.initPolicyHistory().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends an `init_policy_history` transaction. */
+  async initPolicyHistory(
+    owner: Signer,
+    accounts: InitPolicyHistoryAccounts,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.initPolicyHistoryInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `close_policy_history` instruction. */
+  async closePolicyHistoryInstruction(
+    accounts: ClosePolicyHistoryAccounts,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods.closePolicyHistory().accountsStrict(accounts).instruction();
+  }
+
+  /** Builds and sends a `close_policy_history` transaction. */
+  async closePolicyHistory(
+    owner: Signer,
+    accounts: ClosePolicyHistoryAccounts,
+  ): Promise<string> {
+    assertSignerMatches(owner, accounts.owner, "owner");
+    const instruction = await this.closePolicyHistoryInstruction(accounts);
+    return await this.sendInstructions(owner, [instruction]);
+  }
+
+  /** Builds a `refresh_dwallet_balance` instruction. */
+  async refreshDwalletBalanceInstruction(
+    accounts: RefreshDwalletBalanceAccounts,
+    chainCode: number,
+    now: BNish,
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .refreshDwalletBalance(chainCode, toBN(now))
+      .accountsStrict(accounts)
+      .instruction();
+  }
+
+  /** Builds and sends a `refresh_dwallet_balance` transaction. */
+  async refreshDwalletBalance(
+    payer: Signer,
+    accounts: RefreshDwalletBalanceAccounts,
+    chainCode: number,
+    now: BNish,
+  ): Promise<string> {
+    const instruction = await this.refreshDwalletBalanceInstruction(accounts, chainCode, now);
     return await this.sendInstructions(payer, [instruction]);
   }
 }

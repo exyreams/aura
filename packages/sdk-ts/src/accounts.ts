@@ -392,3 +392,200 @@ export interface CheckInvariantsAccounts {
   /** System program. */
   systemProgram: PublicKey;
 }
+
+/** Accounts for `migrate_treasury`. */
+export interface MigrateTreasuryAccounts {
+  /** Treasury account being reallocated to the latest schema. */
+  treasury: PublicKey;
+  /** Payer funding the realloc if rent increases. */
+  payer: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `issue_session_key`. */
+export interface IssueSessionKeyAccounts {
+  /** Treasury owner or AI authority issuing the session key. */
+  authority: PublicKey;
+  /** Treasury that owns the session key. */
+  treasury: PublicKey;
+  /** PDA storing the session key limits. */
+  sessionKeyAccount: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `revoke_session_key`. */
+export interface RevokeSessionKeyAccounts {
+  /** Treasury owner or AI authority revoking the key. */
+  authority: PublicKey;
+  /** Treasury that owns the session key. */
+  treasury: PublicKey;
+  /** PDA storing the session key limits. */
+  sessionKeyAccount: PublicKey;
+}
+
+/** Accounts for `close_session_key`. */
+export interface CloseSessionKeyAccounts extends RevokeSessionKeyAccounts {}
+
+/** Accounts for `trigger_dead_mans_switch`. */
+export interface TriggerDeadMansSwitchAccounts {
+  /** Treasury whose dead-man switch should be evaluated. */
+  treasury: PublicKey;
+}
+
+/** Accounts for `check_policy_cpi`. */
+export interface CheckPolicyCpiAccounts {
+  /** Calling integration account. */
+  caller: PublicKey;
+  /** Treasury being checked. */
+  treasury: PublicKey;
+  /** Payer funding the policy check result account. */
+  feePayer: PublicKey;
+  /** PDA storing the result for the caller. */
+  result: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `init_health_score`. */
+export interface InitHealthScoreAccounts extends OwnerTreasuryAccounts {
+  /** PDA storing computed treasury health. */
+  healthScore: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `refresh_health_score`. */
+export interface RefreshHealthScoreAccounts extends OperatorTreasuryAccounts {
+  /** Optional role account when a delegated operator refreshes health. */
+  operatorRole?: OptionalAccount;
+  /** PDA storing computed treasury health. */
+  healthScore: PublicKey;
+}
+
+/** Accounts for `close_health_score`. */
+export interface CloseHealthScoreAccounts extends OwnerTreasuryAccounts {
+  /** Health score PDA being closed. */
+  healthScore: PublicKey;
+}
+
+/** Accounts for `take_snapshot`. */
+export interface TakeSnapshotAccounts {
+  /** Owner or delegated operator funding the snapshot. */
+  payer: PublicKey;
+  /** Treasury being snapshotted. */
+  treasury: PublicKey;
+  /** Optional role account when a delegated operator takes snapshots. */
+  operatorRole?: OptionalAccount;
+  /** Current health score account. */
+  healthScore: PublicKey;
+  /** PDA storing the snapshot record. */
+  snapshot: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `init_policy_history` and `record_policy_snapshot`. */
+export interface InitPolicyHistoryAccounts extends OwnerTreasuryAccounts {
+  /** PDA storing the policy history ring buffer. */
+  policyHistory: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `close_snapshot`. */
+export interface CloseSnapshotAccounts extends OwnerTreasuryAccounts {
+  /** Snapshot PDA being closed. */
+  snapshot: PublicKey;
+}
+
+/** Accounts for `init_activity_log`. */
+export interface InitActivityLogAccounts extends OwnerTreasuryAccounts {
+  /** PDA storing the activity log ring buffer. */
+  activityLog: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `close_activity_log`. */
+export interface CloseActivityLogAccounts extends OwnerTreasuryAccounts {
+  /** Activity log PDA being closed. */
+  activityLog: PublicKey;
+}
+
+/** Accounts for `init_swarm_pool`. */
+export interface InitSwarmPoolAccounts {
+  /** Creator funding the shared swarm pool. */
+  creator: PublicKey;
+  /** PDA storing the shared swarm pool. */
+  swarmPool: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `join_swarm`. */
+export interface JoinSwarmAccounts extends OwnerTreasuryAccounts {
+  /** Shared swarm pool account the treasury joins. */
+  swarmPool: PublicKey;
+}
+
+/** Accounts for `init_fee_vault`. */
+export interface InitFeeVaultAccounts extends OwnerTreasuryAccounts {
+  /** PDA storing protocol fee accounting. */
+  feeVault: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `collect_fees`. */
+export interface CollectFeesAccounts {
+  /** Protocol fee recipient authorized to collect. */
+  protocolAuthority: PublicKey;
+  /** Fee vault account being drained. */
+  feeVault: PublicKey;
+  /** Recipient lamport account. */
+  recipient: PublicKey;
+}
+
+/** Accounts for `close_fee_vault`. */
+export interface CloseFeeVaultAccounts extends OwnerTreasuryAccounts {
+  /** Fee vault PDA being closed. */
+  feeVault: PublicKey;
+}
+
+/** Accounts for `init_address_list`. */
+export interface InitAddressListAccounts extends OwnerTreasuryAccounts {
+  /** PDA storing allow or deny list entries. */
+  addressList: PublicKey;
+  /** System program. */
+  systemProgram: PublicKey;
+}
+
+/** Accounts for `manage_address_list`. */
+export interface ManageAddressListAccounts extends OperatorTreasuryAccounts {
+  /** Optional role account when a delegated operator manages lists. */
+  operatorRole?: OptionalAccount;
+  /** Address list PDA being updated. */
+  addressList: PublicKey;
+}
+
+/** Accounts for `close_address_list`. */
+export interface CloseAddressListAccounts extends OwnerTreasuryAccounts {
+  /** Address list PDA being closed. */
+  addressList: PublicKey;
+}
+
+/** Accounts for `close_policy_history`. */
+export interface ClosePolicyHistoryAccounts extends OwnerTreasuryAccounts {
+  /** Policy history PDA being closed. */
+  policyHistory: PublicKey;
+}
+
+/** Accounts for `refresh_dwallet_balance`. */
+export interface RefreshDwalletBalanceAccounts {
+  /** Treasury whose dWallet balance cache is refreshed. */
+  treasury: PublicKey;
+  /** Oracle account whose first 8 bytes hold the USD balance. */
+  balanceOracle: PublicKey;
+}

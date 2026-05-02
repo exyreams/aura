@@ -135,6 +135,36 @@ Every instruction has two forms:
 - `*Instruction(...)` — returns a `TransactionInstruction` for composing into your own transaction
 - the method without the suffix — builds, signs, and sends in one call
 
+For larger applications, the same instruction builders are also available as
+domain namespaces:
+
+```ts
+import { AuraClient, instructionBuilders } from "@aura-protocol/sdk-ts";
+
+const client = new AuraClient({ connection });
+
+const ix = await instructionBuilders.governance.proposeAiRotationInstruction(
+  client,
+  { owner, treasury },
+  newAiAuthority,
+  now,
+);
+
+const check = await instructionBuilders.policy.checkPolicyCpiInstruction(
+  client,
+  { caller, treasury, feePayer, result, systemProgram },
+  checkArgs,
+);
+```
+
+The package also exposes `@aura-protocol/sdk-ts/instructions` as a subpath for
+domain-only imports. The client and domain builders cover the full current
+`aura-core` surface: treasury lifecycle, confidential execution, dWallet
+execution, policy controls, budget controls, governance timelocks, AI and
+guardian rotation, session keys, migration, health scores, snapshots, activity
+logs, swarm pools, fee vaults, address lists, policy history, policy CPI checks,
+and dWallet balance refreshes.
+
 ### Treasury lifecycle
 
 ```ts
@@ -292,6 +322,41 @@ Covered policy-control methods:
 - `grantOperatorRole`, `revokeOperatorRole`
 - `initExternalLiveness`, `configureLivenessGuardrails`, `refreshExternalLiveness`
 - `attestPolicy`, `proposeBatch`, `checkInvariants`
+
+### Advanced controls
+
+```ts
+await client.proposeAiRotation(owner, { owner: owner.publicKey, treasury }, newAiAuthority, now);
+await client.executeAiRotation(owner, { owner: owner.publicKey, treasury }, now);
+
+await client.proposeGuardianRotation(
+  guardian,
+  { guardian: guardian.publicKey, treasury },
+  0,
+  newGuardian,
+  now,
+);
+
+await client.issueSessionKey(authority, {
+  authority: authority.publicKey,
+  treasury,
+  sessionKeyAccount,
+  systemProgram: SystemProgram.programId,
+}, issueArgs);
+
+await client.manageAddressList(operator, {
+  operator: operator.publicKey,
+  treasury,
+  operatorRole: null,
+  addressList,
+}, 1, 2, ["0xabc..."], now);
+```
+
+Newer operational and admin methods include AI rotation, guardian rotation,
+config changes and vetoes, emergency shutdown, agent-state transitions,
+migration, session keys, dead-man switch evaluation, policy CPI checks, health
+scores, snapshots, policy history, activity logs, swarm pools, fee vaults,
+address lists, and dWallet balance refreshes.
 
 ---
 
@@ -503,7 +568,7 @@ validateMultisigThreshold(2, guardians.length); // throws if threshold > count
 # Build ESM output to dist/
 npm run build
 
-# Unit tests — no network required (71 tests)
+# Unit tests — no network required (129 tests)
 npm test
 
 # Devnet integration tests — requires a funded wallet at ~/.config/solana/id.json
@@ -558,6 +623,7 @@ get a fully typed experience via the `.d.ts` files.
 packages/sdk-ts/
 ├─ src/
 │   ├─ client.ts       # AuraClient — core instruction flows + account fetching
+│   ├─ instructions/   # Domain-organized instruction-builder namespaces
 │   ├─ accounts.ts     # Typed account structs for each instruction group
 │   ├─ constants.ts    # Program IDs, seeds, IDL, and type aliases
 │   ├─ pda.ts          # PDA derivation helpers
@@ -569,6 +635,7 @@ packages/sdk-ts/
 │   ├─ bn.test.ts      # toBN unit tests
 │   ├─ pda.test.ts     # PDA derivation unit tests
 │   ├─ client.test.ts  # Instruction building and signer guard unit tests
+│   ├─ instructions.test.ts # Domain builder coverage for advanced controls
 │   └─ devnet.test.ts  # Live devnet integration tests
 ├─ scripts/
 │   ├─ generate-idl.sh   # IDL sync script (bash)
