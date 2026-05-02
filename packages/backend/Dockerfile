@@ -1,23 +1,27 @@
-FROM node:22-bookworm-slim AS build
+FROM oven/bun:1-alpine AS build
 
 WORKDIR /app
 
-COPY package.json package-lock.json .npmrc ./
-RUN npm ci
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile
 
 COPY . .
-RUN npm run build && npm prune --omit=dev
+RUN bun run build && \
+    bun x esbuild dist/index.js \
+      --bundle \
+      --platform=node \
+      --target=node24 \
+      --outfile=bundle.js \
+      --external:bufferutil \
+      --external:utf-8-validate
 
-FROM node:22-bookworm-slim AS runtime
+FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/package-lock.json ./package-lock.json
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/bundle.js ./bundle.js
 
 EXPOSE 8787
 
-CMD ["npm", "run", "start"]
+CMD ["--no-deprecation", "bundle.js"]

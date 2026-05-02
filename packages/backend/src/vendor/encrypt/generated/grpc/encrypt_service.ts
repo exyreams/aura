@@ -52,7 +52,7 @@ export function chainToJSON(object: Chain): string {
 /** A single encrypted input value. */
 export interface EncryptedInput {
   /** FHE ciphertext bytes (encrypted under the request's network_encryption_public_key). */
-  ciphertextBytes: Buffer;
+  ciphertextBytes: Uint8Array;
   /** FHE type discriminator (0-44). Validated server-side. */
   fheType: number;
 }
@@ -63,34 +63,34 @@ export interface CreateInputRequest {
   /** One or more encrypted input values to create on-chain. */
   inputs: EncryptedInput[];
   /** ZK proof of valid encryption covering all inputs (skipped in dev mode). */
-  proof: Buffer;
+  proof: Uint8Array;
   /**
    * Who can use these ciphertexts (program/contract address or user address).
    * Shared across all inputs in this batch.
    */
-  authorized: Buffer;
+  authorized: Uint8Array;
   /**
    * Network encryption public key all inputs were encrypted under.
    * 32 bytes. Must match an active key registered on-chain.
    */
-  networkEncryptionPublicKey: Buffer;
+  networkEncryptionPublicKey: Uint8Array;
 }
 
 export interface CreateInputResponse {
   /** On-chain ciphertext identifiers, one per input (same order as request). */
-  ciphertextIdentifiers: Buffer[];
+  ciphertextIdentifiers: Uint8Array[];
 }
 
 export interface ReadCiphertextRequest {
   /** BCS-serialized ReadCiphertextMessage (the signed payload). */
-  message: Buffer;
+  message: Uint8Array;
   /** Ed25519 signature over `message` by the authorized party. */
-  signature: Buffer;
+  signature: Uint8Array;
   /**
    * Public key of the signer (32 bytes).
    * Must match the ciphertext's `authorized` field, or the ciphertext must be public.
    */
-  signer: Buffer;
+  signer: Uint8Array;
 }
 
 export interface ReadCiphertextResponse {
@@ -99,15 +99,15 @@ export interface ReadCiphertextResponse {
    *             The user decrypts locally with their private key.
    * Mock: raw plaintext bytes (fhe_type determines interpretation).
    */
-  value: Buffer;
+  value: Uint8Array;
   /** FHE type of the ciphertext. */
   fheType: number;
   /** On-chain digest (for client-side verification). */
-  digest: Buffer;
+  digest: Uint8Array;
 }
 
 function createBaseEncryptedInput(): EncryptedInput {
-  return { ciphertextBytes: Buffer.alloc(0), fheType: 0 };
+  return { ciphertextBytes: new Uint8Array(0), fheType: 0 };
 }
 
 export const EncryptedInput: MessageFns<EncryptedInput> = {
@@ -133,7 +133,7 @@ export const EncryptedInput: MessageFns<EncryptedInput> = {
             break;
           }
 
-          message.ciphertextBytes = Buffer.from(reader.bytes());
+          message.ciphertextBytes = reader.bytes();
           continue;
         }
         case 2: {
@@ -156,10 +156,10 @@ export const EncryptedInput: MessageFns<EncryptedInput> = {
   fromJSON(object: any): EncryptedInput {
     return {
       ciphertextBytes: isSet(object.ciphertextBytes)
-        ? Buffer.from(bytesFromBase64(object.ciphertextBytes))
+        ? bytesFromBase64(object.ciphertextBytes)
         : isSet(object.ciphertext_bytes)
-        ? Buffer.from(bytesFromBase64(object.ciphertext_bytes))
-        : Buffer.alloc(0),
+        ? bytesFromBase64(object.ciphertext_bytes)
+        : new Uint8Array(0),
       fheType: isSet(object.fheType)
         ? globalThis.Number(object.fheType)
         : isSet(object.fhe_type)
@@ -184,7 +184,7 @@ export const EncryptedInput: MessageFns<EncryptedInput> = {
   },
   fromPartial<I extends Exact<DeepPartial<EncryptedInput>, I>>(object: I): EncryptedInput {
     const message = createBaseEncryptedInput();
-    message.ciphertextBytes = object.ciphertextBytes ?? Buffer.alloc(0);
+    message.ciphertextBytes = object.ciphertextBytes ?? new Uint8Array(0);
     message.fheType = object.fheType ?? 0;
     return message;
   },
@@ -194,9 +194,9 @@ function createBaseCreateInputRequest(): CreateInputRequest {
   return {
     chain: 0,
     inputs: [],
-    proof: Buffer.alloc(0),
-    authorized: Buffer.alloc(0),
-    networkEncryptionPublicKey: Buffer.alloc(0),
+    proof: new Uint8Array(0),
+    authorized: new Uint8Array(0),
+    networkEncryptionPublicKey: new Uint8Array(0),
   };
 }
 
@@ -248,7 +248,7 @@ export const CreateInputRequest: MessageFns<CreateInputRequest> = {
             break;
           }
 
-          message.proof = Buffer.from(reader.bytes());
+          message.proof = reader.bytes();
           continue;
         }
         case 4: {
@@ -256,7 +256,7 @@ export const CreateInputRequest: MessageFns<CreateInputRequest> = {
             break;
           }
 
-          message.authorized = Buffer.from(reader.bytes());
+          message.authorized = reader.bytes();
           continue;
         }
         case 5: {
@@ -264,7 +264,7 @@ export const CreateInputRequest: MessageFns<CreateInputRequest> = {
             break;
           }
 
-          message.networkEncryptionPublicKey = Buffer.from(reader.bytes());
+          message.networkEncryptionPublicKey = reader.bytes();
           continue;
         }
       }
@@ -280,13 +280,13 @@ export const CreateInputRequest: MessageFns<CreateInputRequest> = {
     return {
       chain: isSet(object.chain) ? chainFromJSON(object.chain) : 0,
       inputs: globalThis.Array.isArray(object?.inputs) ? object.inputs.map((e: any) => EncryptedInput.fromJSON(e)) : [],
-      proof: isSet(object.proof) ? Buffer.from(bytesFromBase64(object.proof)) : Buffer.alloc(0),
-      authorized: isSet(object.authorized) ? Buffer.from(bytesFromBase64(object.authorized)) : Buffer.alloc(0),
+      proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
+      authorized: isSet(object.authorized) ? bytesFromBase64(object.authorized) : new Uint8Array(0),
       networkEncryptionPublicKey: isSet(object.networkEncryptionPublicKey)
-        ? Buffer.from(bytesFromBase64(object.networkEncryptionPublicKey))
+        ? bytesFromBase64(object.networkEncryptionPublicKey)
         : isSet(object.network_encryption_public_key)
-        ? Buffer.from(bytesFromBase64(object.network_encryption_public_key))
-        : Buffer.alloc(0),
+        ? bytesFromBase64(object.network_encryption_public_key)
+        : new Uint8Array(0),
     };
   },
 
@@ -317,9 +317,9 @@ export const CreateInputRequest: MessageFns<CreateInputRequest> = {
     const message = createBaseCreateInputRequest();
     message.chain = object.chain ?? 0;
     message.inputs = object.inputs?.map((e) => EncryptedInput.fromPartial(e)) || [];
-    message.proof = object.proof ?? Buffer.alloc(0);
-    message.authorized = object.authorized ?? Buffer.alloc(0);
-    message.networkEncryptionPublicKey = object.networkEncryptionPublicKey ?? Buffer.alloc(0);
+    message.proof = object.proof ?? new Uint8Array(0);
+    message.authorized = object.authorized ?? new Uint8Array(0);
+    message.networkEncryptionPublicKey = object.networkEncryptionPublicKey ?? new Uint8Array(0);
     return message;
   },
 };
@@ -348,7 +348,7 @@ export const CreateInputResponse: MessageFns<CreateInputResponse> = {
             break;
           }
 
-          message.ciphertextIdentifiers.push(Buffer.from(reader.bytes()));
+          message.ciphertextIdentifiers.push(reader.bytes());
           continue;
         }
       }
@@ -363,9 +363,9 @@ export const CreateInputResponse: MessageFns<CreateInputResponse> = {
   fromJSON(object: any): CreateInputResponse {
     return {
       ciphertextIdentifiers: globalThis.Array.isArray(object?.ciphertextIdentifiers)
-        ? object.ciphertextIdentifiers.map((e: any) => Buffer.from(bytesFromBase64(e)))
+        ? object.ciphertextIdentifiers.map((e: any) => bytesFromBase64(e))
         : globalThis.Array.isArray(object?.ciphertext_identifiers)
-        ? object.ciphertext_identifiers.map((e: any) => Buffer.from(bytesFromBase64(e)))
+        ? object.ciphertext_identifiers.map((e: any) => bytesFromBase64(e))
         : [],
     };
   },
@@ -389,7 +389,7 @@ export const CreateInputResponse: MessageFns<CreateInputResponse> = {
 };
 
 function createBaseReadCiphertextRequest(): ReadCiphertextRequest {
-  return { message: Buffer.alloc(0), signature: Buffer.alloc(0), signer: Buffer.alloc(0) };
+  return { message: new Uint8Array(0), signature: new Uint8Array(0), signer: new Uint8Array(0) };
 }
 
 export const ReadCiphertextRequest: MessageFns<ReadCiphertextRequest> = {
@@ -418,7 +418,7 @@ export const ReadCiphertextRequest: MessageFns<ReadCiphertextRequest> = {
             break;
           }
 
-          message.message = Buffer.from(reader.bytes());
+          message.message = reader.bytes();
           continue;
         }
         case 2: {
@@ -426,7 +426,7 @@ export const ReadCiphertextRequest: MessageFns<ReadCiphertextRequest> = {
             break;
           }
 
-          message.signature = Buffer.from(reader.bytes());
+          message.signature = reader.bytes();
           continue;
         }
         case 3: {
@@ -434,7 +434,7 @@ export const ReadCiphertextRequest: MessageFns<ReadCiphertextRequest> = {
             break;
           }
 
-          message.signer = Buffer.from(reader.bytes());
+          message.signer = reader.bytes();
           continue;
         }
       }
@@ -448,9 +448,9 @@ export const ReadCiphertextRequest: MessageFns<ReadCiphertextRequest> = {
 
   fromJSON(object: any): ReadCiphertextRequest {
     return {
-      message: isSet(object.message) ? Buffer.from(bytesFromBase64(object.message)) : Buffer.alloc(0),
-      signature: isSet(object.signature) ? Buffer.from(bytesFromBase64(object.signature)) : Buffer.alloc(0),
-      signer: isSet(object.signer) ? Buffer.from(bytesFromBase64(object.signer)) : Buffer.alloc(0),
+      message: isSet(object.message) ? bytesFromBase64(object.message) : new Uint8Array(0),
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
+      signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(0),
     };
   },
 
@@ -473,15 +473,15 @@ export const ReadCiphertextRequest: MessageFns<ReadCiphertextRequest> = {
   },
   fromPartial<I extends Exact<DeepPartial<ReadCiphertextRequest>, I>>(object: I): ReadCiphertextRequest {
     const message = createBaseReadCiphertextRequest();
-    message.message = object.message ?? Buffer.alloc(0);
-    message.signature = object.signature ?? Buffer.alloc(0);
-    message.signer = object.signer ?? Buffer.alloc(0);
+    message.message = object.message ?? new Uint8Array(0);
+    message.signature = object.signature ?? new Uint8Array(0);
+    message.signer = object.signer ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseReadCiphertextResponse(): ReadCiphertextResponse {
-  return { value: Buffer.alloc(0), fheType: 0, digest: Buffer.alloc(0) };
+  return { value: new Uint8Array(0), fheType: 0, digest: new Uint8Array(0) };
 }
 
 export const ReadCiphertextResponse: MessageFns<ReadCiphertextResponse> = {
@@ -510,7 +510,7 @@ export const ReadCiphertextResponse: MessageFns<ReadCiphertextResponse> = {
             break;
           }
 
-          message.value = Buffer.from(reader.bytes());
+          message.value = reader.bytes();
           continue;
         }
         case 2: {
@@ -526,7 +526,7 @@ export const ReadCiphertextResponse: MessageFns<ReadCiphertextResponse> = {
             break;
           }
 
-          message.digest = Buffer.from(reader.bytes());
+          message.digest = reader.bytes();
           continue;
         }
       }
@@ -540,13 +540,13 @@ export const ReadCiphertextResponse: MessageFns<ReadCiphertextResponse> = {
 
   fromJSON(object: any): ReadCiphertextResponse {
     return {
-      value: isSet(object.value) ? Buffer.from(bytesFromBase64(object.value)) : Buffer.alloc(0),
+      value: isSet(object.value) ? bytesFromBase64(object.value) : new Uint8Array(0),
       fheType: isSet(object.fheType)
         ? globalThis.Number(object.fheType)
         : isSet(object.fhe_type)
         ? globalThis.Number(object.fhe_type)
         : 0,
-      digest: isSet(object.digest) ? Buffer.from(bytesFromBase64(object.digest)) : Buffer.alloc(0),
+      digest: isSet(object.digest) ? bytesFromBase64(object.digest) : new Uint8Array(0),
     };
   },
 
@@ -569,9 +569,9 @@ export const ReadCiphertextResponse: MessageFns<ReadCiphertextResponse> = {
   },
   fromPartial<I extends Exact<DeepPartial<ReadCiphertextResponse>, I>>(object: I): ReadCiphertextResponse {
     const message = createBaseReadCiphertextResponse();
-    message.value = object.value ?? Buffer.alloc(0);
+    message.value = object.value ?? new Uint8Array(0);
     message.fheType = object.fheType ?? 0;
-    message.digest = object.digest ?? Buffer.alloc(0);
+    message.digest = object.digest ?? new Uint8Array(0);
     return message;
   },
 };
@@ -719,11 +719,28 @@ export const EncryptServiceClient = makeGenericClientConstructor(
 };
 
 function bytesFromBase64(b64: string): Uint8Array {
-  return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+  if ((globalThis as any).Buffer) {
+    return Uint8Array.from((globalThis as any).Buffer.from(b64, "base64"));
+  } else {
+    const bin = globalThis.atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; ++i) {
+      arr[i] = bin.charCodeAt(i);
+    }
+    return arr;
+  }
 }
 
 function base64FromBytes(arr: Uint8Array): string {
-  return globalThis.Buffer.from(arr).toString("base64");
+  if ((globalThis as any).Buffer) {
+    return (globalThis as any).Buffer.from(arr).toString("base64");
+  } else {
+    const bin: string[] = [];
+    arr.forEach((byte) => {
+      bin.push(globalThis.String.fromCharCode(byte));
+    });
+    return globalThis.btoa(bin.join(""));
+  }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

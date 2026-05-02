@@ -141,7 +141,9 @@ export function createEncryptClient(
             if (err) reject(err);
             else
               resolve({
-                ciphertextIdentifiers: response!.ciphertextIdentifiers,
+                ciphertextIdentifiers: response!.ciphertextIdentifiers.map((identifier) =>
+                  Buffer.from(identifier)
+                ),
               });
           }
         );

@@ -14,14 +14,16 @@ Backend service for the server-side parts of AURA:
 Required:
 
 ```bash
-AURA_BACKEND_KEYPAIR=../../wallet/wallet.json
-AURA_BACKEND_PORT=8787
+AURA_BACKEND_KEYPAIR=../../wallet/wallet.json   # path to keypair (local/docker)
+# OR
+AURA_KEYPAIR_B64=<base64-encoded wallet.json>   # for Railway / cloud deployments
 ```
 
 Optional:
 
 ```bash
 AURA_BACKEND_HOST=127.0.0.1
+AURA_BACKEND_PORT=8787
 AURA_DEFAULT_RPC_URL=https://api.devnet.solana.com
 AURA_DEFAULT_PROGRAM_ID=2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya
 AURA_AGENT_INTERVAL_MS=30000
@@ -35,32 +37,77 @@ AURA_LOG_LEVEL=info
 
 Notes:
 
+- `AURA_KEYPAIR_B64` takes precedence over `AURA_BACKEND_KEYPAIR` when both are set.
 - `AURA_ALLOWED_ORIGINS` should list the web frontend origins allowed to call the backend.
-- When `AURA_API_TOKEN` is set, every route except `GET /health` and
-  `GET /v1/service/info` requires `Authorization: Bearer <token>`.
+- When `AURA_API_TOKEN` is set, every route except `GET /health` and `GET /v1/service/info` requires `Authorization: Bearer <token>`.
 - If `AURA_API_TOKEN` is left empty, the server starts in local-dev mode and logs a warning.
 
-## Run
+## Local Development
 
 ```bash
 cp .env.example .env
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
-The repo now includes a local `packages/backend/.env` pointing at the repo-local
-wallet file:
+Typecheck and build:
 
 ```bash
-../../wallet/wallet.json
+bun run typecheck
+bun run build
 ```
 
-Build and typecheck:
+## Docker
+
+The image uses a multi-stage build: `oven/bun:1-alpine` to build and bundle, `gcr.io/distroless/nodejs24-debian12:nonroot` as the runtime. No `node_modules` are shipped — esbuild bundles everything into a single file. Final image size is ~207MB.
+
+Build and run with Compose (uses `../../wallet/wallet.json` mounted as a read-only secret):
 
 ```bash
-npm run typecheck
-npm run build
+# Build
+docker compose build
+
+# Start (detached)
+docker compose up -d
+
+# Start with fresh build
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+
+# Stop (keep container)
+docker compose stop
+
+# Stop and remove container
+docker compose down
 ```
+
+Build and run manually:
+
+```bash
+docker build -t aura-backend .
+
+docker run --rm \
+  -p 8787:8787 \
+  --env-file .env \
+  -v /absolute/path/to/wallet.json:/run/secrets/aura-backend-keypair.json:ro \
+  -e AURA_BACKEND_KEYPAIR=/run/secrets/aura-backend-keypair.json \
+  aura-backend
+```
+
+## Railway Deployment
+
+Railway does not support file mounts. Pass the keypair as a base64 env var instead:
+
+```bash
+# Encode your keypair locally
+base64 -w 0 wallet/wallet.json
+```
+
+Set the output as `AURA_KEYPAIR_B64` in Railway's environment variables (mark it as a secret). The `AURA_BACKEND_KEYPAIR` variable is not needed when `AURA_KEYPAIR_B64` is set.
+
+Also set `AURA_BACKEND_HOST=0.0.0.0` so Railway's proxy can reach the service.
 
 ## Generated Vendor Files
 
@@ -69,11 +116,10 @@ The backend keeps only the thin local adapter wrappers in git:
 - `src/vendor/encrypt/grpc.ts`
 - `src/vendor/ika/grpc.ts`
 
-The generated gRPC TypeScript artifacts are synced from installed dependencies
-via:
+The generated gRPC TypeScript artifacts are synced from installed dependencies via:
 
 ```bash
-npm run vendor:sync
+bun run vendor:sync
 ```
 
 That script restores:
@@ -82,7 +128,7 @@ That script restores:
 - `src/vendor/ika/generated/grpc/ika_dwallet.ts`
 - `src/vendor/ika/bcs-types.ts`
 
-## Core endpoints
+## Core Endpoints
 
 - `GET /health`
 - `GET /v1/service/info`
@@ -98,32 +144,23 @@ That script restores:
 - `POST /v1/agent/stop`
 - `GET /v1/agent/status`
 
-All success responses use:
+All success responses:
 
 ```json
 {
   "ok": true,
   "data": {},
-  "meta": {
-    "requestId": "uuid",
-    "timestamp": "2026-04-29T00:00:00.000Z"
-  }
+  "meta": { "requestId": "uuid", "timestamp": "2026-04-29T00:00:00.000Z" }
 }
 ```
 
-All error responses use:
+All error responses:
 
 ```json
 {
   "ok": false,
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Missing or invalid bearer token."
-  },
-  "meta": {
-    "requestId": "uuid",
-    "timestamp": "2026-04-29T00:00:00.000Z"
-  }
+  "error": { "code": "UNAUTHORIZED", "message": "Missing or invalid bearer token." },
+  "meta": { "requestId": "uuid", "timestamp": "2026-04-29T00:00:00.000Z" }
 }
 ```
 
@@ -134,48 +171,10 @@ Operational behavior:
 - `POST` bodies must be JSON and are size-limited by `AURA_BODY_LIMIT_BYTES`.
 - `Retry-After` and `x-request-id` headers are set on relevant responses.
 
-## Docker
-
-This package now includes a production-ready `Dockerfile`, `.dockerignore`, and
-`docker-compose.yml`. Docker is not available in this environment, so the files
-were prepared but not executed here.
-
-Build the image:
-
-```bash
-docker build -t aura-backend .
-```
-
-Run it directly:
-
-```bash
-docker run --rm \
-  -p 8787:8787 \
-  --env-file .env \
-  -v /absolute/path/to/wallet.json:/run/secrets/aura-backend-keypair.json:ro \
-  -e AURA_BACKEND_KEYPAIR=/run/secrets/aura-backend-keypair.json \
-  aura-backend
-```
-
-Or with Compose:
-
-```bash
-docker compose up --build
-```
-
 ## Frontend Integration
 
 Set the web app backend URL to:
 
-```bash
+```
 http://127.0.0.1:8787
 ```
-
-The web app uses the backend for:
-
-- confidential scalar encryption
-- Encrypt deposit setup
-- confidential proposal submission
-- policy decryption request / confirmation
-- execute / finalize lifecycle
-- autonomous agent start, stop, and status polling

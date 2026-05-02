@@ -38,7 +38,7 @@ import {
   parseStopAgentRequest,
 } from "./validation.js";
 
-loadEnvFile();
+try { loadEnvFile(); } catch { /* no .env file in production */ }
 
 const config = loadConfig();
 const logger = createLogger(config).child({ service: "aura-backend" });

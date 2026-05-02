@@ -21,6 +21,7 @@ import {
   createEphemeralKeypair,
   deriveApprovedExecutionAccounts,
   ensureEncryptDeposit,
+  getActivePendingProposal,
   markInstructionSigner,
   resolvePendingPolicyOutput,
   resolvePendingProposal,
@@ -87,6 +88,7 @@ function buildProposeArgs(input: {
       input.quoteAgeSecs !== undefined ? new BN(input.quoteAgeSecs) : null,
     counterpartyRiskScore: input.counterpartyRiskScore ?? null,
     recipientOrContract: input.recipient,
+    sanctionsProof: [],
   };
 }
 
@@ -321,6 +323,7 @@ export async function confirmPolicyDecryptionService(input: {
     Math.floor(Date.now() / 1000),
   );
   const refreshed = await client.getTreasuryAccount(treasury);
+  const refreshedPending = getActivePendingProposal(refreshed);
   let violationCode: string | null = null;
   try {
     violationCode = (
@@ -332,10 +335,10 @@ export async function confirmPolicyDecryptionService(input: {
   return {
     signature,
     requestAccount: requestAccount.toBase58(),
-    approved: refreshed.pending?.decision.approved ?? null,
-    violation: refreshed.pending?.decision.violation ?? null,
+    approved: refreshedPending?.decision.approved ?? null,
+    violation: refreshedPending?.decision.violation ?? null,
     violationCode,
-    pending: refreshed.pending,
+    pending: refreshedPending,
   };
 }
 
@@ -397,7 +400,7 @@ export async function executePendingService(input: {
     signature,
     approved: pending.decision.approved,
     messageApproval: approvedAccounts?.messageApproval.toBase58(),
-    pending: refreshed.pending,
+    pending: getActivePendingProposal(refreshed),
   };
 }
 
@@ -432,7 +435,7 @@ export async function finalizeExecutionService(input: {
   return {
     signature,
     totalTransactions: refreshed.totalTransactions.toString(),
-    pending: refreshed.pending,
+    pending: getActivePendingProposal(refreshed),
   };
 }
 
@@ -486,7 +489,7 @@ async function callModel(config: AgentJobConfig, treasury: TreasuryAccountRecord
             treasury: config.treasury,
             spentTodayUsd: treasury.policyState.spentTodayUsd.toString(),
             dailyLimitUsd: treasury.policyConfig.dailyLimitUsd.toString(),
-            pending: Boolean(treasury.pending),
+            pending: Boolean(getActivePendingProposal(treasury)),
             executionPaused: treasury.executionPaused,
             maxTradeSizeUsd: config.maxTradeSizeUsd,
           }),

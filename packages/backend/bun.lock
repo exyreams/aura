@@ -5,17 +5,18 @@
     "": {
       "name": "@aura/backend",
       "dependencies": {
-        "@aura-protocol/sdk-ts": "latest",
-        "@encrypt.xyz/pre-alpha-solana-client": "latest",
-        "@ika.xyz/pre-alpha-solana-client": "latest",
-        "@solana/web3.js": "latest",
-        "bn.js": "latest",
-        "js-sha3": "latest",
+        "@aura-protocol/sdk-ts": "^0.2.0",
+        "@encrypt.xyz/pre-alpha-solana-client": "^0.1.1",
+        "@ika.xyz/pre-alpha-solana-client": "^0.1.1",
+        "@solana/web3.js": "1.98.4",
+        "bn.js": "5.2.3",
+        "js-sha3": "0.9.3",
       },
       "devDependencies": {
-        "@types/node": "latest",
-        "tsx": "latest",
-        "typescript": "latest",
+        "@types/bn.js": "^5.2.0",
+        "@types/node": "25.6.0",
+        "tsx": "4.21.0",
+        "typescript": "6.0.3",
       },
     },
   },
@@ -217,6 +218,8 @@
     "@solana/web3.js": ["@solana/web3.js@1.98.4", "", { "dependencies": { "@babel/runtime": "^7.25.0", "@noble/curves": "^1.4.2", "@noble/hashes": "^1.4.0", "@solana/buffer-layout": "^4.0.1", "@solana/codecs-numbers": "^2.1.0", "agentkeepalive": "^4.5.0", "bn.js": "^5.2.1", "borsh": "^0.7.0", "bs58": "^4.0.1", "buffer": "6.0.3", "fast-stable-stringify": "^1.0.0", "jayson": "^4.1.1", "node-fetch": "^2.7.0", "rpc-websockets": "^9.0.2", "superstruct": "^2.0.2" } }, "sha512-vv9lfnvjUsRiq//+j5pBdXig0IQdtzA0BRZ3bXEP4KaIyF1CcaydWqgyzQgfZMNIsWNWmG+AUHwPy4AHOD6gpw=="],
 
     "@swc/helpers": ["@swc/helpers@0.5.21", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-jI/VAmtdjB/RnI8GTnokyX7Ug8c+g+ffD6QRLa6XQewtnGyukKkKSk3wLTM3b5cjt1jNh9x0jfVlagdN2gDKQg=="],
+
+    "@types/bn.js": ["@types/bn.js@5.2.0", "", { "dependencies": { "@types/node": "*" } }, "sha512-DLbJ1BPqxvQhIGbeu8VbUC1DiAiahHtAYvA0ZEAa4P31F7IaArc8z3C3BRQdWX4mtLQuABG4yzp76ZrS02Ui1Q=="],
 
     "@types/connect": ["@types/connect@3.4.38", "", { "dependencies": { "@types/node": "*" } }, "sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug=="],
 

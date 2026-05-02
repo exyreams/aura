@@ -42,7 +42,7 @@ const DEFAULT_COMPUTE_UNIT_LIMIT = 1_400_000;
 const DEFAULT_HEAP_FRAME_BYTES = 256 * 1024;
 export const ENCRYPT_NETWORK_KEY = Uint8Array.from({ length: 32 }, () => 0x55);
 
-type PendingProposal = NonNullable<TreasuryAccountRecord["pending"]>;
+type PendingProposal = TreasuryAccountRecord["pendingQueue"][number];
 type DwalletRecord = TreasuryAccountRecord["dwallets"][number];
 type BufferAccountInfo = AccountInfo<Buffer<ArrayBufferLike>>;
 
@@ -196,10 +196,15 @@ export function resolveScalarGuardrails(account: TreasuryAccountRecord) {
 }
 
 export function resolvePendingProposal(account: TreasuryAccountRecord) {
-  if (!account.pending) {
+  const pending = getActivePendingProposal(account);
+  if (!pending) {
     throw new Error("This treasury has no pending proposal.");
   }
-  return account.pending;
+  return pending;
+}
+
+export function getActivePendingProposal(account: TreasuryAccountRecord): PendingProposal | null {
+  return account.pendingQueue[0] ?? null;
 }
 
 export function resolvePendingPolicyOutput(account: TreasuryAccountRecord) {

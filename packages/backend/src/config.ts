@@ -18,7 +18,7 @@ export interface BackendConfig {
 }
 
 const DEFAULT_KEYPAIR_PATH = path.resolve(
-  import.meta.dirname,
+  import.meta.dirname ?? process.cwd(),
   "../../../wallet/wallet.json",
 );
 
