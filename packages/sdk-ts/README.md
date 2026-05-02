@@ -1,6 +1,10 @@
+![AURA banner](https://raw.githubusercontent.com/exyreams/aura/refs/heads/main/packages/web/public/banner.png)
+
 # @aura-protocol/sdk-ts
 
 TypeScript SDK for the AURA autonomous treasury program on Solana.
+
+> **AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change quickly. Do not use this code to secure production funds or serious treasury operations until a stable release and audit are published.**
 
 Wraps the core `aura-core` treasury, confidential execution, dWallet, and
 governance flows with a typed client, automatic PDA derivation, and account
