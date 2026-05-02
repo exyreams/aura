@@ -199,7 +199,7 @@ impl AuraClient {
         };
         (
             treasury,
-            self.with_program_id(instructions::create_treasury(accounts, args)),
+            self.with_program_id(instructions::treasury::create_treasury(accounts, args)),
         )
     }
 
@@ -222,7 +222,7 @@ impl AuraClient {
         args: RegisterDwalletArgs,
     ) -> Instruction {
         let accounts = aura_core::accounts::RegisterDwallet { owner, treasury };
-        self.with_program_id(instructions::register_dwallet(accounts, args))
+        self.with_program_id(instructions::dwallet::register_dwallet(accounts, args))
     }
 
     /// Submits `register_dwallet`.
@@ -253,9 +253,9 @@ impl AuraClient {
             per_tx_limit_ciphertext,
             spent_today_ciphertext,
         };
-        self.with_program_id(instructions::configure_confidential_guardrails(
-            accounts, now,
-        ))
+        self.with_program_id(
+            instructions::confidential::configure_confidential_guardrails(accounts, now),
+        )
     }
 
     /// Submits `configure_confidential_guardrails`.
@@ -292,9 +292,9 @@ impl AuraClient {
             treasury,
             guardrail_vector_ciphertext,
         };
-        self.with_program_id(instructions::configure_confidential_vector_guardrails(
-            accounts, now,
-        ))
+        self.with_program_id(
+            instructions::confidential::configure_confidential_vector_guardrails(accounts, now),
+        )
     }
 
     /// Submits `configure_confidential_vector_guardrails`.
@@ -332,7 +332,7 @@ impl AuraClient {
             budget_envelope: None,
             exposure_group: None,
         };
-        self.with_program_id(instructions::propose_transaction(accounts, args))
+        self.with_program_id(instructions::execution::propose_transaction(accounts, args))
     }
 
     /// Submits `propose_transaction`.
@@ -353,9 +353,9 @@ impl AuraClient {
         accounts: aura_core::accounts::ProposeConfidentialTransaction,
         args: ProposeConfidentialTransactionArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::propose_confidential_transaction(
-            accounts, args,
-        ))
+        self.with_program_id(
+            instructions::confidential::propose_confidential_transaction(accounts, args),
+        )
     }
 
     /// Submits `propose_confidential_transaction`.
@@ -377,9 +377,9 @@ impl AuraClient {
         accounts: aura_core::accounts::ProposeConfidentialVectorTransaction,
         args: ProposeConfidentialTransactionArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::propose_confidential_vector_transaction(
-            accounts, args,
-        ))
+        self.with_program_id(
+            instructions::confidential::propose_confidential_vector_transaction(accounts, args),
+        )
     }
 
     /// Submits `propose_confidential_vector_transaction`.
@@ -401,7 +401,7 @@ impl AuraClient {
         accounts: aura_core::accounts::ExecutePending,
         now: i64,
     ) -> Instruction {
-        self.with_program_id(instructions::execute_pending(accounts, now))
+        self.with_program_id(instructions::execution::execute_pending(accounts, now))
     }
 
     /// Submits `execute_pending`.
@@ -422,7 +422,9 @@ impl AuraClient {
         accounts: aura_core::accounts::RequestPolicyDecryption,
         now: i64,
     ) -> Instruction {
-        self.with_program_id(instructions::request_policy_decryption(accounts, now))
+        self.with_program_id(instructions::confidential::request_policy_decryption(
+            accounts, now,
+        ))
     }
 
     /// Submits `request_policy_decryption`.
@@ -451,7 +453,9 @@ impl AuraClient {
             treasury,
             request_account,
         };
-        self.with_program_id(instructions::confirm_policy_decryption(accounts, now))
+        self.with_program_id(instructions::confidential::confirm_policy_decryption(
+            accounts, now,
+        ))
     }
 
     /// Submits `confirm_policy_decryption`.
@@ -477,7 +481,7 @@ impl AuraClient {
         accounts: aura_core::accounts::FinalizeExecution,
         now: i64,
     ) -> Instruction {
-        self.with_program_id(instructions::finalize_execution(accounts, now))
+        self.with_program_id(instructions::execution::finalize_execution(accounts, now))
     }
 
     /// Submits `finalize_execution`.
@@ -501,7 +505,9 @@ impl AuraClient {
         now: i64,
     ) -> Instruction {
         let accounts = aura_core::accounts::PauseExecution { owner, treasury };
-        self.with_program_id(instructions::pause_execution(accounts, paused, now))
+        self.with_program_id(instructions::treasury::pause_execution(
+            accounts, paused, now,
+        ))
     }
 
     /// Submits `pause_execution`.
@@ -524,7 +530,7 @@ impl AuraClient {
         now: i64,
     ) -> Instruction {
         let accounts = aura_core::accounts::CancelPending { owner, treasury };
-        self.with_program_id(instructions::cancel_pending(accounts, now))
+        self.with_program_id(instructions::treasury::cancel_pending(accounts, now))
     }
 
     /// Submits `cancel_pending`.
@@ -546,7 +552,7 @@ impl AuraClient {
         args: ConfigureMultisigArgs,
     ) -> Instruction {
         let accounts = aura_core::accounts::ConfigureMultisig { owner, treasury };
-        self.with_program_id(instructions::configure_multisig(accounts, args))
+        self.with_program_id(instructions::governance::configure_multisig(accounts, args))
     }
 
     /// Submits `configure_multisig`.
@@ -569,7 +575,7 @@ impl AuraClient {
         now: i64,
     ) -> Instruction {
         let accounts = aura_core::accounts::ProposeOverride { guardian, treasury };
-        self.with_program_id(instructions::propose_override(
+        self.with_program_id(instructions::governance::propose_override(
             accounts,
             new_daily_limit_usd,
             now,
@@ -601,7 +607,9 @@ impl AuraClient {
         now: i64,
     ) -> Instruction {
         let accounts = aura_core::accounts::CollectOverrideSignature { guardian, treasury };
-        self.with_program_id(instructions::collect_override_signature(accounts, now))
+        self.with_program_id(instructions::governance::collect_override_signature(
+            accounts, now,
+        ))
     }
 
     /// Submits `collect_override_signature`.
@@ -624,7 +632,7 @@ impl AuraClient {
         args: ConfigureSwarmArgs,
     ) -> Instruction {
         let accounts = aura_core::accounts::ConfigureSwarm { owner, treasury };
-        self.with_program_id(instructions::configure_swarm(accounts, args))
+        self.with_program_id(instructions::treasury::configure_swarm(accounts, args))
     }
 
     /// Submits `configure_swarm`.
@@ -644,7 +652,7 @@ impl AuraClient {
         accounts: aura_core::accounts::SimulatePolicy,
         args: aura_core::SimulatePolicyArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::simulate_policy(accounts, args))
+        self.with_program_id(instructions::policy::simulate_policy(accounts, args))
     }
 
     /// Submits `simulate_policy`.
@@ -665,7 +673,7 @@ impl AuraClient {
         accounts: aura_core::accounts::WritePolicyReceipt,
         args: aura_core::WritePolicyReceiptArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::write_policy_receipt(accounts, args))
+        self.with_program_id(instructions::policy::write_policy_receipt(accounts, args))
     }
 
     /// Submits `write_policy_receipt`.
@@ -686,7 +694,7 @@ impl AuraClient {
         accounts: aura_core::accounts::ApplyPolicyPreset,
         args: aura_core::ApplyPolicyPresetArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::apply_policy_preset(accounts, args))
+        self.with_program_id(instructions::policy::apply_policy_preset(accounts, args))
     }
 
     /// Submits `apply_policy_preset`.
@@ -707,7 +715,9 @@ impl AuraClient {
         accounts: aura_core::accounts::ConfigureBudgetEnvelope,
         args: aura_core::ConfigureBudgetEnvelopeArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::configure_budget_envelope(accounts, args))
+        self.with_program_id(instructions::budget::configure_budget_envelope(
+            accounts, args,
+        ))
     }
 
     /// Submits `configure_budget_envelope`.
@@ -728,7 +738,7 @@ impl AuraClient {
         accounts: aura_core::accounts::InitExposureGroup,
         args: aura_core::InitExposureGroupArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::init_exposure_group(accounts, args))
+        self.with_program_id(instructions::budget::init_exposure_group(accounts, args))
     }
 
     /// Submits `init_exposure_group`.
@@ -748,7 +758,7 @@ impl AuraClient {
         &self,
         accounts: aura_core::accounts::JoinExposureGroup,
     ) -> Instruction {
-        self.with_program_id(instructions::join_exposure_group(accounts))
+        self.with_program_id(instructions::budget::join_exposure_group(accounts))
     }
 
     /// Submits `join_exposure_group`.
@@ -768,7 +778,9 @@ impl AuraClient {
         accounts: aura_core::accounts::ConfigureApprovalLadder,
         args: aura_core::ConfigureApprovalLadderArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::configure_approval_ladder(accounts, args))
+        self.with_program_id(instructions::budget::configure_approval_ladder(
+            accounts, args,
+        ))
     }
 
     /// Submits `configure_approval_ladder`.
@@ -789,7 +801,9 @@ impl AuraClient {
         accounts: aura_core::accounts::ApprovePendingExecution,
         args: aura_core::ApprovePendingExecutionArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::approve_pending_execution(accounts, args))
+        self.with_program_id(instructions::execution::approve_pending_execution(
+            accounts, args,
+        ))
     }
 
     /// Submits `approve_pending_execution`.
@@ -810,7 +824,7 @@ impl AuraClient {
         accounts: aura_core::accounts::SetScopedPause,
         args: aura_core::SetScopedPauseArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::set_scoped_pause(accounts, args))
+        self.with_program_id(instructions::operational::set_scoped_pause(accounts, args))
     }
 
     /// Submits `set_scoped_pause`.
@@ -831,7 +845,7 @@ impl AuraClient {
         accounts: aura_core::accounts::GrantOperatorRole,
         args: aura_core::GrantOperatorRoleArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::grant_operator_role(accounts, args))
+        self.with_program_id(instructions::lifecycle::grant_operator_role(accounts, args))
     }
 
     /// Submits `grant_operator_role`.
@@ -852,7 +866,7 @@ impl AuraClient {
         accounts: aura_core::accounts::RevokeOperatorRole,
         now: i64,
     ) -> Instruction {
-        self.with_program_id(instructions::revoke_operator_role(accounts, now))
+        self.with_program_id(instructions::lifecycle::revoke_operator_role(accounts, now))
     }
 
     /// Submits `revoke_operator_role`.
@@ -873,7 +887,9 @@ impl AuraClient {
         accounts: aura_core::accounts::InitExternalLiveness,
         args: aura_core::InitExternalLivenessArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::init_external_liveness(accounts, args))
+        self.with_program_id(instructions::operational::init_external_liveness(
+            accounts, args,
+        ))
     }
 
     /// Submits `init_external_liveness`.
@@ -894,7 +910,9 @@ impl AuraClient {
         accounts: aura_core::accounts::ConfigureLivenessGuardrails,
         args: aura_core::ConfigureLivenessGuardrailsArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::configure_liveness_guardrails(accounts, args))
+        self.with_program_id(instructions::budget::configure_liveness_guardrails(
+            accounts, args,
+        ))
     }
 
     /// Submits `configure_liveness_guardrails`.
@@ -915,7 +933,9 @@ impl AuraClient {
         accounts: aura_core::accounts::RefreshExternalLiveness,
         args: aura_core::RefreshExternalLivenessArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::refresh_external_liveness(accounts, args))
+        self.with_program_id(instructions::operational::refresh_external_liveness(
+            accounts, args,
+        ))
     }
 
     /// Submits `refresh_external_liveness`.
@@ -936,7 +956,7 @@ impl AuraClient {
         accounts: aura_core::accounts::AttestPolicy,
         args: aura_core::AttestPolicyArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::attest_policy(accounts, args))
+        self.with_program_id(instructions::policy::attest_policy(accounts, args))
     }
 
     /// Submits `attest_policy`.
@@ -964,7 +984,7 @@ impl AuraClient {
         accounts: aura_core::accounts::ProposeBatch,
         args: aura_core::ProposeBatchArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::propose_batch(accounts, args))
+        self.with_program_id(instructions::batch::propose_batch(accounts, args))
     }
 
     /// Submits `propose_batch`.
@@ -985,7 +1005,7 @@ impl AuraClient {
         accounts: aura_core::accounts::CheckInvariants,
         args: aura_core::CheckInvariantsArgs,
     ) -> Instruction {
-        self.with_program_id(instructions::check_invariants(accounts, args))
+        self.with_program_id(instructions::policy::check_invariants(accounts, args))
     }
 
     /// Submits `check_invariants`.
