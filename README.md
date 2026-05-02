@@ -144,11 +144,11 @@ Located at [`packages/sdk-rs/`](packages/sdk-rs/), this crate reuses the real `a
 
 - treasury account decoding into both raw and rich domain forms
 - PDA derivation helpers for treasury and CPI authorities
-- typed builders for treasury, confidential execution, governance, and advanced policy-control instructions
+- domain-organized instruction builders for all 69 program instructions across 14 modules (treasury, confidential, execution, governance, dwallet, policy, budget, operational, lifecycle, batch, swarm, fees, address lists)
 - a synchronous RPC client with early signer/account validation
 - input validation utilities (`validate_agent_id`, `validate_amount_usd`, etc.)
 
-Verified with `cargo test -p aura-sdk` — 26 unit tests + 1 doc test passing.
+Verified with `cargo test -p aura-sdk` — 32 unit tests + 1 doc test passing.
 
 ### `sdk-ts` (TypeScript)
 
