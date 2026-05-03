@@ -16,6 +16,8 @@ interface BackendEnvelope<T> {
   };
 }
 
+const DEFAULT_TIMEOUT_MS = 15_000;
+
 function getBackendAuthHeader() {
   if (typeof window === "undefined") {
     return {};
@@ -47,10 +49,35 @@ export async function backendRequest<T>(
     headers.set(key, value);
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(
+    () => controller.abort(),
+    DEFAULT_TIMEOUT_MS,
+  );
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      headers,
+      signal: init?.signal ?? controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(
+        `Backend request timed out after ${DEFAULT_TIMEOUT_MS}ms`,
+      );
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new Error(`Backend returned non-JSON response (${response.status})`);
+  }
+
   const json = (await response.json()) as
     | T
     | BackendEnvelope<T>

@@ -9,7 +9,7 @@ export function FAQ() {
       id: "1",
       title: "What is AURA and how does it work?",
       content:
-        "AURA (Autonomous Universal Resource Agent) is a treasury management system for AI agents on Solana. It provides encrypted guardrails using FHE (Fully Homomorphic Encryption) to enforce spending limits while maintaining privacy. Agents can propose transactions, but every action is validated against an 11-rule policy engine before execution.",
+        "AURA (Autonomous Universal Resource Agent) is a treasury management system for AI agents on Solana. It provides encrypted guardrails using FHE (Fully Homomorphic Encryption) to enforce spending limits while maintaining privacy. Agents can propose transactions, but every action is validated against a multi-layer policy engine before execution.",
     },
     {
       id: "2",
@@ -25,9 +25,9 @@ export function FAQ() {
     },
     {
       id: "4",
-      title: "What are the 11 policy rules?",
+      title: "What does the policy engine enforce?",
       content:
-        "The policy engine evaluates: daily spending limits, per-transaction limits, velocity windows, time-based restrictions, protocol whitelists, slippage protection, reputation scaling, chain-specific rules, emergency pause states, multisig requirements, and confidential threshold checks. All rules run in sequence before transaction approval.",
+        "The policy engine evaluates spend limits, budget envelopes, approval ladders, scoped pauses, protocol allowlists, slippage protection, reputation scaling, chain-specific rules, liveness signals, exposure groups, multisig requirements, and confidential threshold checks before transaction approval.",
     },
     {
       id: "5",
@@ -45,7 +45,7 @@ export function FAQ() {
       id: "7",
       title: "Is AURA ready for production use?",
       content:
-        "AURA is currently deployed on Solana devnet with 75 passing tests across the program layer. The SDK, CLI, and dashboard are under active development. The system is suitable for testing and development but should not be used with mainnet funds until a full security audit is completed.",
+        "AURA is actively developed on Solana devnet with program, SDK, CLI, backend, and dashboard test coverage. The system is suitable for testing and integration work, but it should not be used with mainnet funds until deployment hardening and a full security audit are complete.",
     },
     {
       id: "8",

@@ -5,7 +5,7 @@
     "": {
       "name": "web",
       "dependencies": {
-        "@aura-protocol/sdk-ts": "latest",
+        "@aura-protocol/sdk-ts": "file:../sdk-ts",
         "@radix-ui/react-dialog": "latest",
         "@radix-ui/react-dropdown-menu": "latest",
         "@radix-ui/react-label": "latest",
@@ -53,7 +53,7 @@
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
-    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.2.0", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-ezjsXXB8+2eIIFVdwYQ5YFc26H5mwYTohMsfWwQ7bLffodRZP426qeX43W1TRMA0tRBM9YgWE53UnTvR8A4MJQ=="],
+    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@file:../sdk-ts", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 

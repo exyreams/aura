@@ -7,7 +7,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 import { Button, Card, Dropdown, Input, Textarea } from "@/components/global";
 import type { TreasuryEntry } from "@/lib/aura-app";
-import { CHAINS, TX_TYPES } from "@/lib/aura-app";
+import { CHAINS, getActivePendingProposal, TX_TYPES } from "@/lib/aura-app";
 import { postBackend } from "@/lib/backend-client";
 import { useAppSettings, useBackendInfo } from "@/lib/hooks";
 
@@ -56,6 +56,7 @@ export function AgentConfig({
   const selectedTreasuryLimit = treasury
     ? Number(treasury.account.policyConfig.dailyLimitUsd.toString()) / 100
     : 0;
+  const activePending = getActivePendingProposal(treasury?.account);
 
   const startMutation = useMutation({
     mutationFn: async () =>
@@ -297,9 +298,9 @@ export function AgentConfig({
               Pending Proposal
             </span>
             <div
-              className={`text-sm font-bold ${treasury.account.pending ? "text-warning" : "text-success"}`}
+              className={`text-sm font-bold ${activePending ? "text-warning" : "text-success"}`}
             >
-              {treasury.account.pending ? "Yes" : "None"}
+              {activePending ? "Yes" : "None"}
             </div>
           </div>
         </div>

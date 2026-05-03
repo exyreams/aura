@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  AURA_FEATURE_DOMAINS,
+  type AuraFeatureDomain,
+} from "@aura-protocol/sdk-ts";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useQuery } from "@tanstack/react-query";
@@ -124,8 +128,120 @@ export function useBackendInfo() {
         publicKey: string;
         defaultRpcUrl: string;
         defaultProgramId: string;
+        sdkSurface?: {
+          domains: number;
+          instructions: number;
+        };
       }>(settings.backendUrl, "/v1/service/info"),
     retry: 1,
+  });
+}
+
+export interface FeatureCatalogResponse {
+  domains: AuraFeatureDomain[];
+  totals: {
+    domains: number;
+    instructions: number;
+  };
+}
+
+export interface InstructionAccountSchema {
+  name: string;
+  camelName: string;
+  signer: boolean;
+  writable: boolean;
+  optional: boolean;
+  address?: string;
+}
+
+export interface InstructionArgSchema {
+  name: string;
+  camelName: string;
+  type: unknown;
+  typeLabel: string;
+  sample: unknown;
+}
+
+export interface ProgramInstructionSchema {
+  name: string;
+  camelName: string;
+  accounts: InstructionAccountSchema[];
+  args: InstructionArgSchema[];
+}
+
+export interface InstructionCatalogResponse {
+  domains: Array<
+    Omit<AuraFeatureDomain, "instructions"> & {
+      instructions: Array<
+        AuraFeatureDomain["instructions"][number] & {
+          schema: ProgramInstructionSchema | null;
+        }
+      >;
+    }
+  >;
+  totals: {
+    domains: number;
+    instructions: number;
+  };
+}
+
+export interface SerializedInstruction {
+  programId: string;
+  accounts: Array<{
+    pubkey: string;
+    isSigner: boolean;
+    isWritable: boolean;
+  }>;
+  dataBase64: string;
+}
+
+export interface InstructionBuildResponse {
+  schema: ProgramInstructionSchema;
+  normalizedAccounts: Record<string, unknown>;
+  normalizedArgs: unknown[];
+  instruction: SerializedInstruction;
+  requiredSigners: string[];
+}
+
+const localFeatureCatalog: FeatureCatalogResponse = {
+  domains: AURA_FEATURE_DOMAINS,
+  totals: {
+    domains: AURA_FEATURE_DOMAINS.length,
+    instructions: AURA_FEATURE_DOMAINS.reduce(
+      (total, domain) => total + domain.instructions.length,
+      0,
+    ),
+  },
+};
+
+export function useFeatureCatalog() {
+  const settings = useAppSettings();
+
+  return useQuery({
+    queryKey: ["feature-catalog", settings.backendUrl],
+    queryFn: () =>
+      backendRequest<FeatureCatalogResponse>(
+        settings.backendUrl,
+        "/v1/features/catalog",
+      ),
+    placeholderData: localFeatureCatalog,
+    retry: 1,
+    staleTime: 60_000,
+  });
+}
+
+export function useInstructionCatalog() {
+  const settings = useAppSettings();
+
+  return useQuery({
+    queryKey: ["instruction-catalog", settings.backendUrl],
+    queryFn: () =>
+      backendRequest<InstructionCatalogResponse>(
+        settings.backendUrl,
+        "/v1/instructions/catalog",
+      ),
+    retry: 1,
+    staleTime: 60_000,
   });
 }
 

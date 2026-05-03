@@ -16,7 +16,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
-import { sendWalletInstructions } from "@/lib/aura-app";
+import {
+  getActivePendingProposal,
+  sendWalletInstructions,
+} from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAppSettings, useAuraClient } from "@/lib/hooks";
 import { cn, shortenAddress } from "@/lib/utils";
@@ -41,6 +44,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
   const client = useAuraClient();
   const settings = useAppSettings();
   const queryClient = useQueryClient();
+  const activePending = getActivePendingProposal(treasury.account);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -122,10 +126,10 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
         label: "Cancel Pending",
         icon: <XCircle size={16} />,
         onClick: () => cancelMutation.mutate(),
-        disabled: !treasury.account.pending || cancelMutation.isPending,
+        disabled: !activePending || cancelMutation.isPending,
       },
     ],
-    [cancelMutation, pda, router, treasury.account.pending],
+    [activePending, cancelMutation, pda, router],
   );
 
   const handleActionClick = (action: ActionOption) => {

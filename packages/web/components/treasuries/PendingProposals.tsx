@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { StatusPill } from "@/components/global/Badge";
-import { CHAINS, PROPOSAL_STATUSES, TX_TYPES } from "@/lib/aura-app";
+import {
+  CHAINS,
+  getActivePendingProposal,
+  PROPOSAL_STATUSES,
+  TX_TYPES,
+} from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { formatCurrency, shortenAddress } from "@/lib/utils";
 
@@ -10,7 +15,7 @@ interface PendingProposalsProps {
 }
 
 export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
-  const pending = treasury.account.pending;
+  const pending = getActivePendingProposal(treasury.account);
   const hasPending = pending && Number(pending.proposalId.toString()) > 0;
 
   if (!hasPending) {

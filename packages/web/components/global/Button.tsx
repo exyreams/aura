@@ -33,7 +33,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseClasses =
-      "inline-flex items-center justify-center font-mono font-bold uppercase tracking-wider transition-colors rounded-sm gap-2";
+      "inline-flex min-h-10 items-center justify-center font-mono font-bold uppercase tracking-wider transition-colors rounded-sm gap-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
     const variantClasses = {
       primary: "bg-(--primary) text-(--bg) hover:opacity-90",

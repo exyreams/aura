@@ -52,7 +52,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             className={cn(
               "bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main)",
-              "focus:border-primary",
+              "focus:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               error && "border-danger focus:border-danger",
               prefix && "pl-8",
               suffix && "pr-12",
@@ -71,14 +71,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               <button
                 type="button"
                 onClick={onDecrement}
-                className="w-6 h-6 flex items-center justify-center border border-border rounded-sm bg-(--card-bg) hover:bg-(--hover-bg) transition-colors text-(--text-muted) hover:text-(--text-main)"
+                className="flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-(--card-bg) text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Minus size={12} />
               </button>
               <button
                 type="button"
                 onClick={onIncrement}
-                className="w-6 h-6 flex items-center justify-center border border-border rounded-sm bg-(--card-bg) hover:bg-(--hover-bg) transition-colors text-(--text-muted) hover:text-(--text-main)"
+                className="flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-(--card-bg) text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Plus size={12} />
               </button>

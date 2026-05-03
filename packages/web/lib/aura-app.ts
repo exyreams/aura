@@ -19,12 +19,15 @@ import {
 import { EventParser } from "@coral-xyz/anchor";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import {
+  ComputeBudgetProgram,
   type Connection,
   PublicKey,
   Transaction,
-  type TransactionInstruction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import BN from "bn.js";
+// biome-ignore lint/style/useNodejsImportProtocol: this is the browser Buffer polyfill package used by Solana transaction data.
+import { Buffer } from "buffer";
 
 export const TREASURY_OWNER_OFFSET = 9;
 
@@ -73,6 +76,9 @@ export interface TreasuryEntry {
   publicKey: PublicKey;
   account: TreasuryAccountRecord;
 }
+
+export type PendingProposalRecord =
+  TreasuryAccountRecord["pendingQueue"][number];
 
 export interface ParsedActivity {
   signature: string;
@@ -206,11 +212,18 @@ export async function sendWalletInstructions(
   connection: Connection,
   wallet: WalletContextState,
   instructions: TransactionInstruction[],
+  options: { computeUnitLimit?: number } = {},
 ) {
   if (!wallet.publicKey) {
     throw new Error("Connect a wallet first.");
   }
-  const tx = new Transaction().add(...instructions);
+  const tx = new Transaction().add(
+    ComputeBudgetProgram.requestHeapFrame({ bytes: 256 * 1024 }),
+    ComputeBudgetProgram.setComputeUnitLimit({
+      units: options.computeUnitLimit ?? 600_000,
+    }),
+    ...instructions,
+  );
   tx.feePayer = wallet.publicKey;
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash("confirmed");
@@ -223,6 +236,26 @@ export async function sendWalletInstructions(
     "confirmed",
   );
   return signature;
+}
+
+export function deserializeInstruction(input: {
+  programId: string;
+  accounts: Array<{
+    pubkey: string;
+    isSigner: boolean;
+    isWritable: boolean;
+  }>;
+  dataBase64: string;
+}) {
+  return new TransactionInstruction({
+    programId: new PublicKey(input.programId),
+    keys: input.accounts.map((account) => ({
+      pubkey: new PublicKey(account.pubkey),
+      isSigner: account.isSigner,
+      isWritable: account.isWritable,
+    })),
+    data: Buffer.from(input.dataBase64, "base64"),
+  });
 }
 
 export function formatChain(code: number) {
@@ -243,6 +276,12 @@ export function formatProposalStatus(code: number) {
 
 export function formatViolation(code: number) {
   return VIOLATIONS[code] ?? `Unknown (${code})`;
+}
+
+export function getActivePendingProposal(
+  account: TreasuryAccountRecord | undefined,
+): PendingProposalRecord | null {
+  return account?.pendingQueue[0] ?? null;
 }
 
 export function buildCreateTreasuryArgs(input: {
@@ -288,11 +327,26 @@ export function buildCreateTreasuryArgs(input: {
         input.bitcoinManualReviewThresholdUsd ?? 5_000,
       ),
       sharedPoolLimitUsd: null,
+      weeklyLimitUsd: null,
+      monthlyLimitUsd: null,
+      recipientLimits: [],
+      cooldownConfig: null,
+      anomalyConfig: null,
       reputationPolicy: {
         highScoreThreshold: new BN(80),
         mediumScoreThreshold: new BN(50),
         highMultiplierBps: new BN(15_000),
         lowMultiplierBps: new BN(7_000),
+      },
+      budgetEnvelopes: [],
+      approvalLadder: null,
+      scopedPauseEntries: [],
+      livenessConfig: {
+        requireEncryptFreshness: false,
+        requireDwalletFreshness: false,
+        requireBalanceOracleFreshness: false,
+        requireComplianceOracleFreshness: false,
+        maxStalenessSecs: new BN(300),
       },
     },
     protocolFees: {
@@ -335,6 +389,7 @@ export function buildProposeTransactionArgs(input: {
       input.quoteAgeSecs !== undefined ? new BN(input.quoteAgeSecs) : null,
     counterpartyRiskScore: input.counterpartyRiskScore ?? null,
     recipientOrContract: input.recipient,
+    sanctionsProof: [],
   };
 }
 

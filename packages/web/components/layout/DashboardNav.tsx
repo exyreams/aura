@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 const navLinks = [
   { href: "/dashboard", label: "Overview", exact: true },
   { href: "/dashboard/treasuries", label: "Treasuries" },
+  { href: "/dashboard/controls", label: "Controls" },
   { href: "/dashboard/agent", label: "Agents" },
   { href: "/dashboard/activity", label: "Activity" },
 ];

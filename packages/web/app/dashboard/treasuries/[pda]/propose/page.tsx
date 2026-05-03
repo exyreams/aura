@@ -16,6 +16,7 @@ import {
   buildProposeTransactionArgs,
   formatProposalStatus,
   formatViolation,
+  getActivePendingProposal,
   sendWalletInstructions,
 } from "@/lib/aura-app";
 import { postBackend } from "@/lib/backend-client";
@@ -45,6 +46,7 @@ export default function ProposeTransactionPage() {
   const queryClient = useQueryClient();
   const treasuryQuery = useTreasury(pda);
   const entry = treasuryQuery.data;
+  const pending = getActivePendingProposal(entry?.account);
 
   const [mode, setMode] = usePersistentState<"public" | "confidential">(
     `aura:proposal-mode:${pda}`,
@@ -58,13 +60,11 @@ export default function ProposeTransactionPage() {
   const [signature, setSignature] = useState<string | null>(null);
   const [lifecycleState, setLifecycleState] = useState({
     policyOutputCiphertext:
-      entry?.account.pending?.policyOutputCiphertextAccount?.toString() ?? "",
+      pending?.policyOutputCiphertextAccount?.toString() ?? "",
     requestAccount:
-      entry?.account.pending?.decryptionRequest?.requestAccount?.toString() ??
-      "",
+      pending?.decryptionRequest?.requestAccount?.toString() ?? "",
     messageApproval:
-      entry?.account.pending?.signatureRequest?.messageApprovalAccount?.toString() ??
-      "",
+      pending?.signatureRequest?.messageApprovalAccount?.toString() ?? "",
   });
 
   const preview = useMemo(
@@ -92,15 +92,13 @@ export default function ProposeTransactionPage() {
 
     setLifecycleState({
       policyOutputCiphertext:
-        entry.account.pending?.policyOutputCiphertextAccount?.toString() ?? "",
+        pending?.policyOutputCiphertextAccount?.toString() ?? "",
       requestAccount:
-        entry.account.pending?.decryptionRequest?.requestAccount?.toString() ??
-        "",
+        pending?.decryptionRequest?.requestAccount?.toString() ?? "",
       messageApproval:
-        entry.account.pending?.signatureRequest?.messageApprovalAccount?.toString() ??
-        "",
+        pending?.signatureRequest?.messageApprovalAccount?.toString() ?? "",
     });
-  }, [entry]);
+  }, [entry, pending]);
 
   const proposeMutation = useMutation({
     mutationFn: async () => {
@@ -269,7 +267,6 @@ export default function ProposeTransactionPage() {
     proposeMutation.mutate();
   };
 
-  const pending = entry?.account.pending;
   const canRequestDecryption = Boolean(
     lifecycleState.policyOutputCiphertext ||
       pending?.policyOutputCiphertextAccount,
