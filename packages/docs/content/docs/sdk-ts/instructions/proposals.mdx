@@ -1,0 +1,199 @@
+---
+title: Proposals
+description: Propose public and FHE-encrypted transactions for policy evaluation.
+icon: FilePlus
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+## proposeTransaction
+
+Propose a public (non-encrypted) transaction. The on-chain policy engine
+evaluates all rules immediately and either approves or rejects.
+
+```typescript
+// Build only
+const instruction = await client.proposeTransactionInstruction(
+  accounts: ProposeTransactionAccounts,
+  args: ProposeTransactionArgs,
+);
+
+// Build + send
+await client.proposeTransaction(
+  aiAuthority: Signer,
+  accounts: ProposeTransactionAccounts,
+  args: ProposeTransactionArgs,
+);
+```
+
+### Accounts
+
+```typescript
+interface ProposeTransactionAccounts {
+  // Required:
+  aiAuthority: PublicKey; // AI agent signer — must match the signer
+  treasury: PublicKey;    // treasury PDA
+  // Optional policy-control accounts (pass null or omit to use defaults):
+  sessionKeyAccount?: PublicKey | null;
+  swarmPool?: PublicKey | null;
+  addressList?: PublicKey | null;
+  complianceOracle?: PublicKey | null;
+  parentTreasury?: PublicKey | null;
+  budgetEnvelope?: PublicKey | null;
+  exposureGroup?: PublicKey | null;
+}
+```
+
+### Arguments
+
+```typescript
+interface ProposeTransactionArgs {
+  amountUsd: BN;                      // transaction amount in USD cents
+  targetChain: number;                // 0–5, see dWallet chain table
+  txType: number;                     // 0=Transfer, 1=Swap, 2=Stake, …
+  protocolId: number | null;          // protocol bitmap bit position
+  currentTimestamp: BN;               // current Unix timestamp (seconds)
+  expectedOutputUsd: BN | null;       // expected output for slippage check
+  actualOutputUsd: BN | null;         // actual output for slippage check
+  quoteAgeSecs: number | null;        // age of price quote in seconds
+  counterpartyRiskScore: number | null; // 0–100
+  recipientOrContract: string;        // recipient address or contract on the chain
+  sanctionsProof: [];                 // reserved — always pass []
+}
+```
+
+### Example
+
+```typescript
+import BN from 'bn.js';
+
+const now = new BN(Math.floor(Date.now() / 1000));
+
+await client.proposeTransaction(
+  aiAuthority,
+  { aiAuthority: aiAuthority.publicKey, treasury },
+  {
+    amountUsd: new BN(250),
+    targetChain: 2,               // Ethereum
+    txType: 0,                    // Transfer
+    protocolId: null,
+    currentTimestamp: now,
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: 15,
+    recipientOrContract: '0xdeadbeef...',
+    sanctionsProof: [],
+  },
+);
+```
+
+---
+
+## proposeConfidentialTransaction
+
+Propose a confidential transaction using scalar FHE ciphertexts. The policy
+engine evaluates spending limits over encrypted values — amounts are never
+revealed on-chain.
+
+```typescript
+// Build only
+const instruction = await client.proposeConfidentialTransactionInstruction(
+  accounts: ProposeConfidentialTransactionAccounts,
+  args: ProposeConfidentialTransactionArgs,
+);
+
+// Build + send
+await client.proposeConfidentialTransaction(
+  aiAuthority: Signer,
+  accounts: ProposeConfidentialTransactionAccounts,
+  args: ProposeConfidentialTransactionArgs,
+  extraSigners?: Signer[],
+);
+```
+
+### Accounts
+
+```typescript
+interface ProposeConfidentialTransactionAccounts {
+  // Required:
+  aiAuthority: PublicKey;
+  treasury: PublicKey;
+  dailyLimitCiphertext: PublicKey;
+  perTxLimitCiphertext: PublicKey;
+  spentTodayCiphertext: PublicKey;
+  amountCiphertext: PublicKey;        // freshly created — must sign its own creation
+  policyOutputCiphertext: PublicKey;  // output ciphertext account
+  encryptProgram: PublicKey;
+  config: PublicKey;
+  deposit: PublicKey;
+  callerProgram: PublicKey;           // AURA program ID
+  cpiAuthority: PublicKey;            // deriveEncryptCpiAuthorityAddress()
+  networkEncryptionKey: PublicKey;
+  eventAuthority: PublicKey;          // deriveEncryptEventAuthorityAddress()
+  systemProgram: PublicKey;
+  // Optional:
+  externalLiveness?: PublicKey | null;
+}
+```
+
+---
+
+## proposeConfidentialVectorTransaction
+
+Propose a confidential transaction using a single vector ciphertext — more
+efficient when all limits are packed into one FHE vector.
+
+```typescript
+// Build only
+const instruction = await client.proposeConfidentialVectorTransactionInstruction(
+  accounts: ProposeConfidentialVectorTransactionAccounts,
+  args: ProposeConfidentialTransactionArgs,
+);
+
+// Build + send
+await client.proposeConfidentialVectorTransaction(
+  aiAuthority: Signer,
+  accounts: ProposeConfidentialVectorTransactionAccounts,
+  args: ProposeConfidentialTransactionArgs,
+  extraSigners?: Signer[],
+);
+```
+
+### Accounts
+
+```typescript
+interface ProposeConfidentialVectorTransactionAccounts {
+  aiAuthority: PublicKey;
+  treasury: PublicKey;
+  guardrailVectorCiphertext: PublicKey;   // current guardrail vector
+  amountVectorCiphertext: PublicKey;      // freshly created amount vector
+  policyResultVectorCiphertext: PublicKey;
+  encryptProgram: PublicKey;
+  config: PublicKey;
+  deposit: PublicKey;
+  callerProgram: PublicKey;
+  cpiAuthority: PublicKey;
+  networkEncryptionKey: PublicKey;
+  eventAuthority: PublicKey;
+  externalLiveness?: PublicKey | null;
+  systemProgram: PublicKey;
+}
+```
+
+---
+
+## Public vs Confidential
+
+| | Public | Confidential |
+|---|---|---|
+| Amount visible on-chain | Yes | No (FHE encrypted) |
+| Policy evaluation | Synchronous, on-chain | Via Ika Encrypt network |
+| Extra accounts needed | No | Yes (ciphertext PDAs) |
+| MEV risk | Higher | Eliminated |
+| Setup required | None | `configureConfidentialGuardrails` first |
+
+<Cards>
+  <Card title="Confidential Setup" description="Configure FHE guardrails before confidential proposals." href="/docs/sdk-ts/instructions/confidential" />
+  <Card title="Execution" description="Drive the proposal through to finalization." href="/docs/sdk-ts/instructions/execution" />
+</Cards>

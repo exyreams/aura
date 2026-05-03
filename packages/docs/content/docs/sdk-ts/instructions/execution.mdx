@@ -1,0 +1,221 @@
+---
+title: Execution
+description: Drive a proposal through policy decryption, dWallet co-signing, and finalization.
+icon: Play
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+After a proposal is created, execution follows a fixed sequence. For public
+proposals it's two steps; for confidential proposals it's four.
+
+## Flow
+
+```
+Public:
+  proposeTransaction → executePending → finalizeExecution
+
+Confidential:
+  proposeConfidentialTransaction
+    → requestPolicyDecryption
+    → confirmPolicyDecryption
+    → executePending
+    → finalizeExecution
+```
+
+---
+
+## requestPolicyDecryption
+
+Request the Ika Encrypt network to decrypt the FHE policy output. Only needed
+for confidential proposals.
+
+```typescript
+await client.requestPolicyDecryption(
+  operator: Signer,
+  accounts: RequestPolicyDecryptionAccounts,
+  now: BN,
+  extraSigners?: Signer[],
+);
+```
+
+```typescript
+interface RequestPolicyDecryptionAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  requestAccount: PublicKey;    // freshly created keypair — must sign
+  ciphertext: PublicKey;        // the policy output ciphertext to decrypt
+  encryptProgram: PublicKey;
+  config: PublicKey;
+  deposit: PublicKey;
+  callerProgram: PublicKey;     // AURA program ID
+  cpiAuthority: PublicKey;      // deriveEncryptCpiAuthorityAddress()
+  networkEncryptionKey: PublicKey;
+  eventAuthority: PublicKey;    // deriveEncryptEventAuthorityAddress()
+  systemProgram: PublicKey;
+}
+```
+
+---
+
+## confirmPolicyDecryption
+
+Apply the decrypted policy result once the Encrypt network has responded.
+
+```typescript
+await client.confirmPolicyDecryption(
+  operator: Signer,
+  accounts: ConfirmPolicyDecryptionAccounts,
+  now: BN,
+);
+```
+
+```typescript
+interface ConfirmPolicyDecryptionAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  requestAccount: PublicKey;    // the request account from requestPolicyDecryption
+}
+```
+
+---
+
+## executePending
+
+Submit the approved proposal to the dWallet program for co-signing.
+
+```typescript
+await client.executePending(
+  operator: Signer,
+  accounts: ExecutePendingAccounts,
+  now: BN,
+);
+```
+
+```typescript
+interface ExecutePendingAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  callerProgram: PublicKey;     // AURA program ID — required
+  systemProgram: PublicKey;     // required
+  // Optional — only needed when proposal is approved and dWallet is registered:
+  messageApproval?: PublicKey;
+  dwallet?: PublicKey;
+  cpiAuthority?: PublicKey;     // deriveDwalletCpiAuthorityAddress()
+  dwalletProgram?: PublicKey;
+  dwalletCoordinator?: PublicKey;
+  externalLiveness?: PublicKey;
+}
+```
+
+---
+
+## finalizeExecution
+
+Verify the dWallet co-signature and close the proposal, incrementing the
+treasury's total transaction counter.
+
+```typescript
+await client.finalizeExecution(
+  operator: Signer,
+  accounts: FinalizeExecutionAccounts,
+  now: BN,
+);
+```
+
+```typescript
+interface FinalizeExecutionAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  messageApproval: PublicKey;   // the MessageApproval PDA holding the signature
+  // Optional:
+  swarmPool?: PublicKey;
+  budgetEnvelope?: PublicKey;
+  exposureGroup?: PublicKey;
+  externalLiveness?: PublicKey;
+}
+```
+
+---
+
+## Complete Example
+
+```typescript
+import {
+  ENCRYPT_DEVNET_PROGRAM_ID,
+  DWALLET_DEVNET_PROGRAM_ID,
+} from '@aura-protocol/sdk-ts';
+import { Keypair, SystemProgram } from '@solana/web3.js';
+
+const now = new BN(Math.floor(Date.now() / 1000));
+const [encryptCpiAuthority] = client.deriveEncryptCpiAuthority();
+const [encryptEventAuthority] = client.deriveEncryptEventAuthority(ENCRYPT_DEVNET_PROGRAM_ID);
+const [dwalletCpiAuthority] = client.deriveDwalletCpiAuthority();
+
+// requestAccount must be a fresh keypair that signs its own creation
+const requestKeypair = Keypair.generate();
+
+// 1. Request decryption (confidential only)
+await client.requestPolicyDecryption(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury: treasuryPDA,
+    requestAccount: requestKeypair.publicKey,
+    ciphertext: policyOutputCiphertextPDA,
+    encryptProgram: ENCRYPT_DEVNET_PROGRAM_ID,
+    config: encryptConfigPDA,
+    deposit: depositPDA,
+    callerProgram: client.programId,
+    cpiAuthority: encryptCpiAuthority,
+    networkEncryptionKey: networkEncryptionKeyPDA,
+    eventAuthority: encryptEventAuthority,
+    systemProgram: SystemProgram.programId,
+  },
+  now,
+  [requestKeypair],
+);
+
+// 2. Confirm decryption (confidential only)
+await client.confirmPolicyDecryption(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury: treasuryPDA,
+    requestAccount: requestKeypair.publicKey,
+  },
+  now,
+);
+
+// 3. Execute
+await client.executePending(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury: treasuryPDA,
+    callerProgram: client.programId,
+    systemProgram: SystemProgram.programId,
+    dwallet: dwalletAccountPDA,
+    cpiAuthority: dwalletCpiAuthority,
+    dwalletProgram: DWALLET_DEVNET_PROGRAM_ID,
+    messageApproval: messageApprovalPDA,
+  },
+  now,
+);
+
+// 4. Finalize
+await client.finalizeExecution(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury: treasuryPDA,
+    messageApproval: messageApprovalPDA,
+  },
+  now,
+);
+```
+
+<Cards>
+  <Card title="Proposals" description="Create the proposal that feeds into this flow." href="/docs/sdk-ts/instructions/proposals" />
+  <Card title="dWallet" description="Register the dWallet required for co-signing." href="/docs/sdk-ts/instructions/dwallet" />
+</Cards>

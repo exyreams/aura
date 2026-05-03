@@ -1,0 +1,16 @@
+{
+  "title": "TypeScript SDK",
+  "root": true,
+  "icon": "Code2",
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "aura",
+    "---Low-Level Client---",
+    "client",
+    "---Program API---",
+    "instructions",
+    "---Guides---",
+    "examples"
+  ]
+}

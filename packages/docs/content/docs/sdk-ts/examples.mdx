@@ -1,0 +1,362 @@
+---
+title: Examples
+description: End-to-end TypeScript SDK usage patterns for common AURA workflows.
+icon: BookOpen
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+Complete, runnable examples using `@aura-protocol/sdk-ts`. Each example shows
+both the high-level `Aura` API and the low-level `AuraClient` equivalent where
+relevant.
+
+## Setup
+
+```typescript
+import BN from 'bn.js';
+import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import {
+  Aura,
+  AuraClient,
+  AURA_PROGRAM_ID,
+  ENCRYPT_DEVNET_PROGRAM_ID,
+  DWALLET_DEVNET_PROGRAM_ID,
+} from '@aura-protocol/sdk-ts';
+
+const rpcUrl = 'https://devnet.helius-rpc.com/?api-key=YOUR_KEY';
+const owner = Keypair.generate();
+
+// High-level
+const aura = new Aura({ rpcUrl, keypair: owner });
+
+// Low-level
+const client = new AuraClient({
+  connection: new Connection(rpcUrl, 'confirmed'),
+  programId: AURA_PROGRAM_ID,
+});
+```
+
+---
+
+## Create a Treasury
+
+```typescript
+// High-level — plain numbers, timestamps auto-injected, limits default sensibly
+const { treasury, signature } = await aura.treasury.create({
+  agentId: 'agent-prod-1',
+  dailyLimitUsd: 10_000,
+  perTxLimitUsd: 1_000,
+});
+
+console.log('Treasury PDA:', treasury.toBase58());
+```
+
+```typescript
+// Low-level — full control over every field
+const { treasury, signature } = await client.createTreasury(owner, {
+  agentId: 'agent-prod-1',
+  aiAuthority: owner.publicKey,
+  createdAt: new BN(Math.floor(Date.now() / 1000)),
+  pendingTransactionTtlSecs: new BN(900),
+  policyConfig: {
+    dailyLimitUsd: new BN(10_000),
+    perTxLimitUsd: new BN(1_000),
+    daytimeHourlyLimitUsd: new BN(2_500),
+    nighttimeHourlyLimitUsd: new BN(500),
+    velocityLimitUsd: new BN(5_000),
+    allowedProtocolBitmap: new BN(31),
+    maxSlippageBps: new BN(100),
+    maxQuoteAgeSecs: new BN(300),
+    maxCounterpartyRiskScore: 70,
+    bitcoinManualReviewThresholdUsd: new BN(5_000),
+    sharedPoolLimitUsd: null,
+    weeklyLimitUsd: null,
+    monthlyLimitUsd: null,
+    recipientLimits: [],
+    cooldownConfig: null,
+    anomalyConfig: null,
+    reputationPolicy: {
+      highScoreThreshold: new BN(80),
+      mediumScoreThreshold: new BN(50),
+      highMultiplierBps: new BN(15_000),
+      lowMultiplierBps: new BN(7_000),
+    },
+    budgetEnvelopes: [],
+    approvalLadder: null,
+    scopedPauseEntries: [],
+    livenessConfig: {
+      requireEncryptFreshness: false,
+      requireDwalletFreshness: false,
+      requireBalanceOracleFreshness: false,
+      requireComplianceOracleFreshness: false,
+      maxStalenessSecs: new BN(300),
+    },
+  },
+  protocolFees: {
+    treasuryCreationFeeUsd: new BN(100),
+    transactionFeeBps: new BN(10),
+    fheSubsidyBps: new BN(5_000),
+  },
+});
+```
+
+---
+
+## Fetch and Inspect a Treasury
+
+```typescript
+const account = await client.getTreasuryAccount(treasury);
+
+console.log('Agent ID:       ', account.agentId);
+console.log('Owner:          ', account.owner.toBase58());
+console.log('Daily limit USD:', account.policyConfig.dailyLimitUsd.toString());
+console.log('Is paused:      ', account.executionPaused);
+console.log('Total executed: ', account.totalTransactions.toString());
+console.log('Daily spent:    ', account.policyState.spentTodayUsd.toString());
+
+const pending = account.pendingQueue[account.pendingQueue.length - 1];
+if (pending) {
+  console.log('Pending proposal:', pending.proposalId.toString());
+  console.log('Amount USD:      ', pending.amountUsd.toString());
+  console.log('Expires:         ', new Date(pending.expiresAt.toNumber() * 1000));
+}
+```
+
+---
+
+## Propose a Public Transaction
+
+```typescript
+// High-level
+const signature = await aura.treasury.propose({
+  treasury,
+  amountUsd: 250,
+  chain: 2,                    // Ethereum
+  recipient: '0xdeadbeef...',
+  counterpartyRiskScore: 15,
+});
+```
+
+```typescript
+// Low-level
+const now = new BN(Math.floor(Date.now() / 1000));
+
+await client.proposeTransaction(
+  aiAuthority,
+  { aiAuthority: aiAuthority.publicKey, treasury },
+  {
+    amountUsd: new BN(250),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: now,
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: 15,
+    recipientOrContract: '0xdeadbeef...',
+    sanctionsProof: [],
+  },
+);
+```
+
+---
+
+## Execute a Pending Transaction (Public)
+
+```typescript
+const now = new BN(Math.floor(Date.now() / 1000));
+const [dwalletCpiAuthority] = client.deriveDwalletCpiAuthority();
+
+await client.executePending(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury,
+    callerProgram: client.programId,
+    systemProgram: SystemProgram.programId,
+    dwallet: dwalletAccountPDA,
+    cpiAuthority: dwalletCpiAuthority,
+    dwalletProgram: DWALLET_DEVNET_PROGRAM_ID,
+    messageApproval: messageApprovalPDA,
+  },
+  now,
+);
+
+await client.finalizeExecution(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury,
+    messageApproval: messageApprovalPDA,
+  },
+  now,
+);
+```
+
+---
+
+## Pause and Resume Execution
+
+```typescript
+// High-level
+await aura.treasury.pause({ treasury, paused: true });
+await aura.treasury.pause({ treasury, paused: false });
+
+// Low-level
+const now = new BN(Math.floor(Date.now() / 1000));
+const accounts = { owner: owner.publicKey, treasury };
+
+await client.pauseExecution(owner, accounts, true, now);
+await client.pauseExecution(owner, accounts, false, now);
+```
+
+---
+
+## Register a dWallet
+
+```typescript
+// High-level
+await aura.dwallet.register({
+  treasury,
+  chain: 2,                    // Ethereum
+  dwalletId: 'dwallet-abc123',
+  address: '0xdeadbeef...',
+  balanceUsd: 5_000,
+});
+
+// Low-level
+await client.registerDwallet(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    chain: 2,
+    dwalletId: 'dwallet-abc123',
+    address: '0xdeadbeef...',
+    balanceUsd: new BN(5_000),
+    dwalletAccount: dwalletAccountPDA,
+    authorizedUserPubkey: null,
+    messageMetadataDigest: null,
+    publicKeyHex: null,
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+---
+
+## Configure Guardian Multisig
+
+```typescript
+// High-level
+await aura.governance.configureMultisig({
+  treasury,
+  requiredSignatures: 2,
+  guardians: [guardian1.publicKey, guardian2.publicKey],
+});
+
+// Low-level
+await client.configureMultisig(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    requiredSignatures: 2,
+    guardians: [guardian1.publicKey, guardian2.publicKey],
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+---
+
+## Issue a Session Key
+
+```typescript
+import { SystemProgram } from '@solana/web3.js';
+
+const sessionKeypair = Keypair.generate();
+const now = new BN(Math.floor(Date.now() / 1000));
+
+// Derive the session key PDA: seeds = [b"session_key", treasury, sessionKey]
+const [sessionKeyAccount] = PublicKey.findProgramAddressSync(
+  [
+    Buffer.from('session_key'),
+    treasury.toBuffer(),
+    sessionKeypair.publicKey.toBuffer(),
+  ],
+  client.programId,
+);
+
+await client.issueSessionKey(
+  owner,
+  {
+    authority: owner.publicKey,
+    treasury,
+    sessionKeyAccount,
+    systemProgram: SystemProgram.programId,
+  },
+  {
+    sessionKey: sessionKeypair.publicKey,
+    durationSecs: new BN(3600),          // 1-hour session
+    maxAmountUsdPerTx: new BN(500),      // max per transaction
+    maxDailySpendUsd: null,              // no daily cap on session
+    allowedChains: Buffer.from([0]),     // Solana only
+    allowedTxTypes: Buffer.from([0]),    // Transfer only
+    maxProposalCount: null,              // unlimited proposals
+    now,
+  },
+);
+```
+
+---
+
+## Emergency Shutdown
+
+```typescript
+const recoveryAuthority = Keypair.generate().publicKey;
+
+await client.emergencyShutdown(
+  owner,
+  { owner: owner.publicKey, treasury },
+  recoveryAuthority,
+  Math.floor(Date.now() / 1000),
+);
+console.log('Shutdown triggered, recovery authority:', recoveryAuthority.toBase58());
+```
+
+---
+
+## Enumerate the Program Surface
+
+```typescript
+import { AURA_FEATURE_DOMAINS } from '@aura-protocol/sdk-ts';
+
+for (const domain of AURA_FEATURE_DOMAINS) {
+  console.log(`\n${domain.label}`);
+  for (const ix of domain.instructions) {
+    console.log(`  ${ix.name.padEnd(40)} ${ix.maturity}`);
+  }
+}
+```
+
+---
+
+## Batch Multiple Instructions
+
+```typescript
+const now = new BN(Math.floor(Date.now() / 1000));
+const accounts = { owner: owner.publicKey, treasury };
+
+const pauseIx = await client.pauseExecutionInstruction(accounts, true, now);
+const cancelIx = await client.cancelPendingInstruction(accounts, now);
+
+const signature = await client.sendInstructions(owner, [pauseIx, cancelIx]);
+console.log('Batched tx:', signature);
+```
+
+<Cards>
+  <Card title="Aura (High-Level)" description="Simplified API with auto timestamps and plain numbers." href="/docs/sdk-ts/aura" />
+  <Card title="Client Reference" description="Full AuraClient API — constructor, accounts, PDAs." href="/docs/sdk-ts/client/overview" />
+  <Card title="Program API" description="All 50+ instructions by domain." href="/docs/sdk-ts/instructions" />
+  <Card title="Validation" description="Check policy rules before sending." href="/docs/sdk-ts/client/validation" />
+</Cards>

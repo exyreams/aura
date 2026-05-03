@@ -1,0 +1,132 @@
+---
+title: Confidential
+description: Configure FHE-encrypted spending guardrails via the Ika Encrypt network.
+icon: Lock
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+Confidential guardrails store spending limits as FHE ciphertexts on-chain.
+Policy evaluation happens over encrypted values — limits are never revealed,
+preventing MEV exploitation.
+
+## configureConfidentialGuardrails
+
+Configure scalar FHE guardrails — three separate `EUint64` ciphertext accounts
+for the daily limit, per-tx limit, and spent-today counter.
+
+```typescript
+// Build only
+const instruction = await client.configureConfidentialGuardrailsInstruction(
+  accounts: ConfigureConfidentialGuardrailsAccounts,
+  now: BNish,
+);
+
+// Build + send
+await client.configureConfidentialGuardrails(
+  owner: Signer,
+  accounts: ConfigureConfidentialGuardrailsAccounts,
+  now: BNish,
+);
+```
+
+### Accounts
+
+```typescript
+interface ConfigureConfidentialGuardrailsAccounts {
+  // From OwnerTreasuryAccounts:
+  owner: PublicKey;
+  treasury: PublicKey;
+  // Own fields:
+  dailyLimitCiphertext: PublicKey;
+  perTxLimitCiphertext: PublicKey;
+  spentTodayCiphertext: PublicKey;
+}
+```
+
+### Example
+
+```typescript
+import BN from 'bn.js';
+
+const now = new BN(Math.floor(Date.now() / 1000));
+
+await client.configureConfidentialGuardrails(
+  owner,
+  {
+    owner: owner.publicKey,
+    treasury: treasuryPDA,
+    dailyLimitCiphertext: dailyLimitCiphertextPDA,
+    perTxLimitCiphertext: perTxLimitCiphertextPDA,
+    spentTodayCiphertext: spentTodayCiphertextPDA,
+  },
+  now,
+);
+```
+
+---
+
+## configureConfidentialVectorGuardrails
+
+Configure vector FHE guardrails — all three limits packed into a single
+`EUint64Vector` ciphertext for more efficient evaluation.
+
+```typescript
+// Build only
+const instruction = await client.configureConfidentialVectorGuardrailsInstruction(
+  accounts: ConfigureConfidentialVectorGuardrailsAccounts,
+  now: BNish,
+);
+
+// Build + send
+await client.configureConfidentialVectorGuardrails(
+  owner: Signer,
+  accounts: ConfigureConfidentialVectorGuardrailsAccounts,
+  now: BNish,
+);
+```
+
+### Accounts
+
+```typescript
+interface ConfigureConfidentialVectorGuardrailsAccounts {
+  // From OwnerTreasuryAccounts:
+  owner: PublicKey;
+  treasury: PublicKey;
+  // Own field:
+  guardrailVectorCiphertext: PublicKey;
+}
+```
+
+### Example
+
+```typescript
+await client.configureConfidentialVectorGuardrails(
+  owner,
+  {
+    owner: owner.publicKey,
+    treasury: treasuryPDA,
+    guardrailVectorCiphertext: guardrailVectorCiphertextPDA,
+  },
+  new BN(Math.floor(Date.now() / 1000)),
+);
+```
+
+---
+
+## Scalar vs Vector
+
+| | Scalar | Vector |
+|---|---|---|
+| Ciphertext accounts | 3 (daily, per-tx, spent-today) | 1 (packed vector) |
+| Update individual limits | Yes | No — replace all |
+| FHE evaluation cost | Higher | Lower |
+| Best for | Frequent limit updates | Stable configurations |
+
+After guardrails are configured, use `proposeConfidentialTransaction` or
+`proposeConfidentialVectorTransaction` to submit proposals over encrypted values.
+
+<Cards>
+  <Card title="Proposals" description="Submit confidential transactions after guardrails are set." href="/docs/sdk-ts/instructions/proposals" />
+  <Card title="Execution" description="Request decryption and finalize the proposal." href="/docs/sdk-ts/instructions/execution" />
+</Cards>

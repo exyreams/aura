@@ -1,0 +1,70 @@
+---
+title: Overview
+description: All AURA program instructions grouped by domain.
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+The TypeScript SDK mirrors the current AURA Anchor IDL and groups all 50+
+instruction builders by domain. Every instruction is available in two forms —
+build-only (`*Instruction()`) and build-and-send.
+
+## Domains
+
+| Domain | Key methods |
+| --- | --- |
+| Treasury | `createTreasury`, `pauseExecution`, `cancelPending` |
+| Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `requestPolicyDecryption` |
+| Execution | `proposeTransaction`, `approvePendingExecution`, `executePending`, `finalizeExecution` |
+| Governance | `configureMultisig`, `proposeAiRotation`, `executeConfigChange`, `vetoConfigChange`, `emergencyShutdown` |
+| Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` |
+| dWallet | `registerDwallet`, `refreshDwalletBalance` |
+| Policy | `simulatePolicy`, `writePolicyReceipt`, `attestPolicy`, `checkInvariants` |
+| Budget | `configureBudgetEnvelope`, `initExposureGroup`, `configureApprovalLadder` |
+| Operations | `setScopedPause`, `refreshExternalLiveness`, `takeSnapshot`, `initActivityLog` |
+| Lifecycle | `grantOperatorRole`, `issueSessionKey`, `triggerDeadMansSwitch` |
+| Fees | `initFeeVault`, `collectFees`, `closeFeeVault` |
+| Address Lists | `initAddressList`, `manageAddressList` |
+| Batch | `proposeBatch` |
+
+## Dual-Form Pattern
+
+Every instruction has two forms:
+
+```typescript
+// Build only — compose into custom transactions
+const { instruction } = await client.emergencyShutdownInstruction(
+  { owner: owner.publicKey, treasury },
+  recoveryAuthority,
+  Math.floor(Date.now() / 1000),
+);
+
+// Build + send in one call
+const signature = await client.emergencyShutdown(
+  owner,
+  { owner: owner.publicKey, treasury },
+  recoveryAuthority,
+  Math.floor(Date.now() / 1000),
+);
+```
+
+## Discovery
+
+Use the built-in catalog to enumerate all instructions at runtime:
+
+```typescript
+import { AURA_FEATURE_DOMAINS } from "@aura-protocol/sdk-ts";
+
+for (const domain of AURA_FEATURE_DOMAINS) {
+  for (const ix of domain.instructions) {
+    console.log(`${domain.label} / ${ix.name} (${ix.maturity})`);
+  }
+}
+```
+
+<Cards>
+  <Card title="Treasury" description="Create, pause, cancel, and configure swarms." href="/docs/sdk-ts/instructions/treasury" />
+  <Card title="Proposals" description="Public and confidential transaction proposals." href="/docs/sdk-ts/instructions/proposals" />
+  <Card title="Execution" description="Drive the full proposal → sign → finalize flow." href="/docs/sdk-ts/instructions/execution" />
+  <Card title="Governance" description="Multisig overrides, rotations, and emergency shutdown." href="/docs/sdk-ts/instructions/governance" />
+</Cards>

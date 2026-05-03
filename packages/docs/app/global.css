@@ -1,0 +1,151 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+:root {
+  /* AURA Design System Colors - Dark Theme (Default) */
+  --bg: #0c0c0e;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --card-bg: #141416;
+  --card-content: #0f0f11;
+  --input-bg: #0a0a0c;
+  --hover-bg: #202022;
+  --background: #0c0c0e;
+  --foreground: #f3f4f6;
+  --muted: #9ca3af;
+  --muted-foreground: #9ca3af;
+  --card: rgba(255, 255, 255, 0.02);
+  --card-foreground: #f3f4f6;
+  --border: rgba(255, 255, 255, 0.1);
+  --primary: #9ca3b0;
+  --primary-foreground: #0c0c0e;
+  --secondary: #d1d5db;
+  --secondary-foreground: #0c0c0e;
+  --accent: #6b7280;
+  --accent-foreground: #f3f4f6;
+
+  /* Status Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --destructive: #ef4444;
+  --destructive-foreground: #fef2f2;
+
+  /* Fonts */
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* Light Theme */
+.light {
+  --bg: #f9fafb;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --card-bg: #e5e7eb;
+  --card-content: #d1d5db;
+  --input-bg: #ffffff;
+  --hover-bg: #d1d5db;
+  --background: #f9fafb;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --muted-foreground: #6b7280;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --border: rgba(0, 0, 0, 0.15);
+  --primary: #6b7280;
+  --primary-foreground: #ffffff;
+  --secondary: #1f2937;
+  --secondary-foreground: #f9fafb;
+  --accent: #4b5563;
+  --accent-foreground: #111827;
+
+  /* Status Colors - Light Theme */
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+}
+
+html {
+  scrollbar-gutter: stable;
+  font-family: var(--font-sans);
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: var(--font-mono);
+}
+
+/* Custom scrollbar matching AURA design */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+@keyframes aura-stream {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.streaming-line {
+  display: inline-block;
+  min-width: 200%;
+  animation: aura-stream 22s linear infinite;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+/* FAQ accordion */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary .faq-icon {
+  transform: rotate(45deg);
+}
+
+/* Wavy TOC connector line */
+.fd-toc-item-link::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: none;
+  border-left: 2px wavy hsl(var(--fd-muted-foreground) / 0.3);
+}
+
+[data-active="true"].fd-toc-item-link::before {
+  border-left-color: hsl(var(--fd-primary));
+}
