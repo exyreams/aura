@@ -1,0 +1,164 @@
+---
+title: Validation
+description: Client-side input validation helpers for the Rust SDK.
+icon: ShieldCheck
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+The Rust SDK exposes input validation helpers under `aura_sdk::utils`. These
+run entirely client-side — no RPC required — and return `SdkError::InvalidParameter`
+on failure. Call them before building instructions to catch bad inputs early.
+
+## Constants
+
+All limits mirror the values enforced on-chain in the AURA program:
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MAX_AGENT_ID_LEN` | 64 | Maximum agent ID byte length |
+| `MAX_DWALLET_ID_LEN` | 64 | Maximum dWallet ID byte length |
+| `MAX_ADDRESS_LEN` | 128 | Maximum chain address byte length |
+| `MAX_GUARDIANS` | 10 | Maximum guardians in a multisig |
+| `MAX_SWARM_MEMBERS` | 16 | Maximum agents in a swarm |
+
+```rust
+use aura_sdk::constants::{MAX_AGENT_ID_LEN, MAX_GUARDIANS, MAX_SWARM_MEMBERS};
+```
+
+## validate_agent_id
+
+```rust
+pub fn validate_agent_id(agent_id: &str) -> Result<(), SdkError>
+```
+
+Validates that `agent_id` is non-empty and within `MAX_AGENT_ID_LEN` bytes.
+
+```rust
+use aura_sdk::utils::validate_agent_id;
+
+validate_agent_id("my-agent")?;
+validate_agent_id("")?;             // Err: empty
+validate_agent_id(&"a".repeat(65))?; // Err: too long
+```
+
+## validate_dwallet_id
+
+```rust
+pub fn validate_dwallet_id(dwallet_id: &str) -> Result<(), SdkError>
+```
+
+Validates that `dwallet_id` is non-empty and within `MAX_DWALLET_ID_LEN` bytes.
+
+```rust
+use aura_sdk::utils::validate_dwallet_id;
+
+validate_dwallet_id("dwallet-abc123")?;
+```
+
+## validate_address
+
+```rust
+pub fn validate_address(address: &str) -> Result<(), SdkError>
+```
+
+Validates that a chain address string is non-empty and within `MAX_ADDRESS_LEN` bytes.
+
+```rust
+use aura_sdk::utils::validate_address;
+
+validate_address("0xdeadbeefcafe...")?;
+```
+
+## validate_amount_usd
+
+```rust
+pub fn validate_amount_usd(amount_usd: u64) -> Result<(), SdkError>
+```
+
+Validates that `amount_usd` is greater than zero.
+
+```rust
+use aura_sdk::utils::validate_amount_usd;
+
+validate_amount_usd(500)?;
+validate_amount_usd(0)?;  // Err: must be > 0
+```
+
+## validate_multisig_threshold
+
+```rust
+pub fn validate_multisig_threshold(threshold: u8, guardian_count: usize) -> Result<(), SdkError>
+```
+
+Validates that `threshold` is non-zero and does not exceed `guardian_count`.
+
+```rust
+use aura_sdk::utils::validate_multisig_threshold;
+
+validate_multisig_threshold(2, 3)?;  // ok
+validate_multisig_threshold(0, 3)?;  // Err: zero threshold
+validate_multisig_threshold(4, 3)?;  // Err: exceeds guardian count
+```
+
+## validate_guardians
+
+```rust
+pub fn validate_guardians<T>(guardians: &[T]) -> Result<(), SdkError>
+```
+
+Validates that the guardian list is non-empty and does not exceed `MAX_GUARDIANS`.
+
+```rust
+use aura_sdk::utils::validate_guardians;
+
+validate_guardians(&[guardian1, guardian2])?;
+```
+
+## validate_swarm_members
+
+```rust
+pub fn validate_swarm_members<T>(members: &[T]) -> Result<(), SdkError>
+```
+
+Validates that the swarm member list is non-empty and does not exceed `MAX_SWARM_MEMBERS`.
+
+```rust
+use aura_sdk::utils::validate_swarm_members;
+
+validate_swarm_members(&["agent-1".to_string(), "agent-2".to_string()])?;
+```
+
+## Pre-flight Example
+
+```rust
+use aura_sdk::{
+    AuraClient,
+    utils::{validate_agent_id, validate_amount_usd, validate_address},
+    types::{CreateTreasuryArgs, PolicyConfigRecord, ProtocolFeesRecord},
+};
+
+let agent_id = "my-agent";
+let recipient = "0xdeadbeef...";
+let amount_usd: u64 = 500;
+
+validate_agent_id(agent_id)?;
+validate_address(recipient)?;
+validate_amount_usd(amount_usd)?;
+
+let client = AuraClient::devnet();
+let (treasury, sig) = client.create_treasury(&owner, CreateTreasuryArgs {
+    agent_id: agent_id.to_string(),
+    ai_authority: owner.pubkey(),
+    created_at: chrono::Utc::now().timestamp(),
+    pending_transaction_ttl_secs: 900,
+    policy_config: PolicyConfigRecord::default(),
+    protocol_fees: ProtocolFeesRecord::default(),
+})?;
+```
+
+<Cards>
+  <Card title="Errors" description="SdkError variants and program error codes." href="/docs/sdk-rs/client/errors" />
+  <Card title="Examples" description="End-to-end Rust patterns." href="/docs/sdk-rs/examples" />
+  <Card title="Instructions" description="Instruction builders by domain." href="/docs/sdk-rs/instructions" />
+</Cards>

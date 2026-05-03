@@ -1,0 +1,15 @@
+{
+  "title": "Rust SDK",
+  "root": true,
+  "icon": "Box",
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "---Low-Level Client---",
+    "client",
+    "---Program API---",
+    "instructions",
+    "---Guides---",
+    "examples"
+  ]
+}

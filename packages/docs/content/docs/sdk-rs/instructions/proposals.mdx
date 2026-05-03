@@ -1,0 +1,95 @@
+---
+title: Proposals
+description: Propose public and FHE-encrypted transactions for policy evaluation.
+icon: FilePlus
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+## propose_transaction
+
+Propose a public (non-encrypted) transaction. The on-chain policy engine
+evaluates all rules immediately and either approves or rejects.
+
+```rust
+use aura_sdk::types::ProposeTransactionArgs;
+
+client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
+    amount_usd: 250,
+    target_chain: 2,       // Ethereum
+    tx_type: 0,            // Transfer
+    protocol_id: None,
+    current_timestamp: now,
+    expected_output_usd: None,
+    actual_output_usd: None,
+    quote_age_secs: None,
+    counterparty_risk_score: Some(15),
+    recipient_or_contract: "0xdeadbeef...".to_string(),
+    sanctions_proof: vec![],
+})?;
+```
+
+### Arguments
+
+```rust
+pub struct ProposeTransactionArgs {
+    pub amount_usd: u64,
+    pub target_chain: u8,
+    pub tx_type: u8,
+    pub protocol_id: Option<u8>,
+    pub current_timestamp: i64,
+    pub expected_output_usd: Option<u64>,
+    pub actual_output_usd: Option<u64>,
+    pub quote_age_secs: Option<u64>,
+    pub counterparty_risk_score: Option<u8>,
+    pub recipient_or_contract: String,
+    pub sanctions_proof: Vec<[u8; 32]>,
+}
+```
+
+---
+
+## propose_confidential_transaction
+
+Propose a confidential transaction using scalar FHE ciphertexts. The policy
+engine evaluates spending limits over encrypted values.
+
+```rust
+client.propose_confidential_transaction(
+    &ai_authority,
+    accounts,
+    args,
+    &[&policy_output_signer],
+)?;
+```
+
+---
+
+## propose_confidential_vector_transaction
+
+Propose a confidential transaction using a single vector ciphertext.
+
+```rust
+client.propose_confidential_vector_transaction(
+    &ai_authority,
+    accounts,
+    args,
+    &[&policy_output_signer],
+)?;
+```
+
+---
+
+## Public vs Confidential
+
+| | Public | Confidential |
+|---|---|---|
+| Amount visible on-chain | Yes | No (FHE encrypted) |
+| Policy evaluation | On-chain, immediate | Via Ika Encrypt network |
+| Extra accounts needed | No | Yes (ciphertext PDAs) |
+| MEV risk | Higher | Eliminated |
+
+<Cards>
+  <Card title="Confidential Setup" description="Configure FHE guardrails before confidential proposals." href="/docs/sdk-rs/instructions/confidential" />
+  <Card title="Execution" description="Drive the proposal through to finalization." href="/docs/sdk-rs/instructions/execution" />
+</Cards>

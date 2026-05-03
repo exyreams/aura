@@ -1,0 +1,5 @@
+{
+  "title": "Client Reference",
+  "icon": "Cpu",
+  "pages": ["overview", "types", "pda", "errors", "validation"]
+}

@@ -1,0 +1,152 @@
+---
+title: Errors
+description: SdkError variants and AURA program error codes for the Rust SDK.
+icon: CircleAlert
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+The Rust SDK uses a single `SdkError` enum for all errors.
+
+## SdkError Enum
+
+```rust
+use aura_sdk::SdkError;
+
+pub enum SdkError {
+    /// Solana RPC returned an error.
+    Rpc(solana_client::client_error::ClientError),
+
+    /// The requested account does not exist on-chain.
+    AccountNotFound(Pubkey),
+
+    /// Anchor account decoding failed.
+    AccountDecode {
+        account_name: &'static str,
+        message: String,
+    },
+
+    /// Converting a treasury record back into the domain model failed.
+    DomainDecode(String),
+
+    /// The client was asked to submit a transaction without a configured payer.
+    MissingDefaultPayer,
+
+    /// A caller-supplied parameter was invalid before any RPC call was made.
+    InvalidParameter(String),
+}
+```
+
+## Handling Errors
+
+```rust
+use aura_sdk::{AuraClient, SdkError};
+
+let client = AuraClient::devnet();
+
+match client.get_treasury(&treasury_pda) {
+    Ok(treasury) => println!("Agent: {}", treasury.agent_id),
+    Err(SdkError::AccountNotFound(addr)) => {
+        println!("No treasury at {}", addr);
+    }
+    Err(SdkError::AccountDecode { account_name, message }) => {
+        eprintln!("Decode failed for {}: {}", account_name, message);
+        eprintln!("Check that your SDK version matches the deployed program");
+    }
+    Err(SdkError::DomainDecode(msg)) => {
+        eprintln!("Domain conversion failed: {}", msg);
+    }
+    Err(SdkError::MissingDefaultPayer) => {
+        eprintln!("Create the client with with_payer() to use send_with_default_payer");
+    }
+    Err(SdkError::InvalidParameter(msg)) => {
+        eprintln!("Bad parameter: {}", msg);
+    }
+    Err(SdkError::Rpc(e)) => {
+        eprintln!("RPC error: {}", e);
+    }
+}
+```
+
+## Program Error Codes
+
+The AURA program emits Anchor error codes. These arrive inside
+`SdkError::Rpc(_)` — inspect the inner `ClientError` to extract the code.
+
+| Code | Name | Description |
+|------|------|-------------|
+| 6000 | `UnauthorizedAi` | Caller is not the registered AI authority |
+| 6001 | `UnauthorizedOwner` | Caller is not the treasury owner |
+| 6002 | `DailyLimitExceeded` | Proposed amount would exceed daily USD limit |
+| 6003 | `PerTxLimitExceeded` | Proposed amount exceeds per-transaction limit |
+| 6004 | `HourlyLimitExceeded` | Hourly velocity limit would be breached |
+| 6005 | `VelocityLimitExceeded` | Short-window velocity limit would be breached |
+| 6006 | `SlippageTooHigh` | Quote slippage exceeds `max_slippage_bps` |
+| 6007 | `QuoteTooOld` | Price quote has expired beyond `max_quote_age_secs` |
+| 6008 | `ProtocolNotAllowed` | Target protocol not in `allowed_protocol_bitmap` |
+| 6009 | `CounterpartyRiskTooHigh` | Counterparty risk score exceeds policy threshold |
+| 6010 | `ExecutionPaused` | Treasury execution is currently paused |
+| 6011 | `PendingTransactionExists` | A transaction is already pending |
+| 6012 | `NoPendingTransaction` | No pending transaction to approve or cancel |
+| 6013 | `TransactionExpired` | Pending transaction TTL has elapsed |
+| 6014 | `MultisigNotConfigured` | No multisig attached to this treasury |
+| 6015 | `NotAGuardian` | Caller is not a registered guardian |
+| 6016 | `GuardianThresholdNotMet` | Insufficient guardian signatures |
+| 6017 | `OverrideProposalAlreadyExists` | A guardian override is already pending |
+| 6018 | `NoActiveOverride` | No active override proposal to execute |
+| 6019 | `OverrideExpired` | The override proposal TTL elapsed |
+| 6020 | `TimelockNotElapsed` | Timelock period has not yet passed |
+| 6021 | `InvalidPolicyConfig` | Policy configuration failed on-chain validation |
+| 6022 | `NoActiveRotation` | No pending AI rotation to execute or cancel |
+| 6023 | `AiRotationAlreadyPending` | An AI rotation is already in progress |
+| 6024 | `NoActiveConfigChange` | No pending config change to execute or veto |
+| 6025 | `ConfigChangeAlreadyPending` | A config change is already pending |
+| 6026 | `SessionKeyExpired` | Session key has passed its expiry |
+| 6027 | `SessionKeyLimitExceeded` | Session key USD allowance is exhausted |
+| 6028 | `SessionKeyDomainNotAllowed` | Protocol not permitted for this session key |
+| 6029 | `InvalidSessionKey` | Caller does not match the registered session key |
+| 6030 | `DWalletAlreadyRegistered` | A dWallet for that chain is already registered |
+| 6031 | `DWalletNotConfigured` | No dWallet registered for the target chain |
+| 6032 | `WeeklyLimitExceeded` | Weekly limit would be breached |
+| 6033 | `MonthlyLimitExceeded` | Monthly limit would be breached |
+| 6034 | `LivenessCheckFailed` | A required oracle freshness check failed |
+| 6035 | `BudgetEnvelopeExceeded` | Scoped budget envelope would be exceeded |
+| 6036 | `BudgetEnvelopeNotFound` | Referenced budget envelope does not exist |
+| 6037 | `ApprovalRequired` | Transaction requires guardian approval ladder sign-off |
+| 6038 | `AlreadyApproved` | This approver has already signed for this proposal |
+| 6039 | `InsufficientApprovals` | Approval ladder threshold not yet reached |
+| 6040 | `SwarmNotConfigured` | Treasury is not part of a swarm |
+| 6041 | `SharedPoolLimitExceeded` | Swarm shared-pool limit would be exceeded |
+| 6042 | `ScopedPauseActive` | Instruction blocked by an active scoped pause |
+| 6043 | `InvalidSanctionsProof` | Merkle proof for sanctions check failed |
+| 6044 | `ComplianceCheckFailed` | Compliance oracle rejected the proposal |
+| 6045 | `ChildBudgetExceeded` | Child agent spend budget would be exceeded |
+| 6046 | `FheViolation` | Encrypted policy evaluation rejected the transaction |
+| 6047 | `InvariantViolation` | An internal program invariant was broken |
+| 6048 | `InvalidLifecycleTransition` | Agent state machine transition is not allowed |
+| 6049 | `OperatorRoleNotGranted` | Caller does not hold the required operator role |
+| 6050 | `OperatorRoleAlreadyGranted` | Operator role already exists for this key |
+| 6051 | `ExposureGroupUnauthorized` | Caller is not authorized for this exposure group |
+
+## Converting to anyhow / thiserror
+
+`SdkError` implements `std::error::Error`, so it works with `anyhow` and
+`thiserror` directly:
+
+```rust
+use anyhow::{Context, Result};
+use aura_sdk::AuraClient;
+
+fn fetch_treasury(client: &AuraClient, pda: &Pubkey) -> Result<AgentTreasury> {
+    client
+        .get_treasury(pda)
+        .with_context(|| format!("failed to fetch treasury {}", pda))
+}
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="AuraClient" description="Client API and transaction sending." href="/docs/sdk-rs/client/overview" />
+  <Card title="Examples" description="Full error handling patterns in context." href="/docs/sdk-rs/examples" />
+</Cards>

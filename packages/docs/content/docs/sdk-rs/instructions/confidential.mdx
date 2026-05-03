@@ -1,0 +1,59 @@
+---
+title: Confidential
+description: Configure FHE-encrypted spending guardrails via the Ika Encrypt network.
+icon: Lock
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+Confidential guardrails store spending limits as FHE ciphertexts on-chain.
+Policy evaluation happens over encrypted values — limits are never revealed,
+preventing MEV exploitation.
+
+## configure_confidential_guardrails
+
+Configure scalar FHE guardrails — three separate ciphertexts for daily limit,
+per-tx limit, and spent-today counter.
+
+```rust
+client.configure_confidential_guardrails(
+    &owner,
+    treasury,
+    daily_limit_ciphertext,
+    per_tx_limit_ciphertext,
+    spent_today_ciphertext,
+    now,
+)?;
+```
+
+---
+
+## configure_confidential_vector_guardrails
+
+Configure vector FHE guardrails — all limits packed into a single vector
+ciphertext for more efficient evaluation.
+
+```rust
+client.configure_confidential_vector_guardrails(
+    &owner,
+    treasury,
+    guardrail_vector_ciphertext,
+    now,
+)?;
+```
+
+---
+
+## Scalar vs Vector
+
+| | Scalar | Vector |
+|---|---|---|
+| Ciphertext accounts | 3 (daily, per-tx, spent) | 1 (packed vector) |
+| Update individual limits | Yes | No — replace all |
+| FHE evaluation cost | Higher | Lower |
+| Best for | Frequent limit updates | Stable configurations |
+
+<Cards>
+  <Card title="Proposals" description="Submit confidential transactions after guardrails are set." href="/docs/sdk-rs/instructions/proposals" />
+  <Card title="Execution" description="Request decryption and finalize the proposal." href="/docs/sdk-rs/instructions/execution" />
+</Cards>
