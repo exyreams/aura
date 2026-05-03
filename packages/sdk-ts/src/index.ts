@@ -15,6 +15,7 @@ export * from "./client.js";
 export * from "./constants.js";
 export * from "./errors.js";
 export * from "./events.js";
+export * from "./program-surface.js";
 export * from "./generated/aura_core.js";
 export * as instructionBuilders from "./instructions/index.js";
 export * from "./pda.js";

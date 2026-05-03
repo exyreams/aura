@@ -29,6 +29,7 @@ import test from "node:test";
 
 import BN from "bn.js";
 import {
+  ComputeBudgetProgram,
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
@@ -109,11 +110,26 @@ function createTreasuryArgs(): CreateTreasuryArgs {
       maxCounterpartyRiskScore: 70,
       bitcoinManualReviewThresholdUsd: new BN(5_000),
       sharedPoolLimitUsd: null,
+      weeklyLimitUsd: null,
+      monthlyLimitUsd: null,
+      recipientLimits: [],
+      cooldownConfig: null,
+      anomalyConfig: null,
       reputationPolicy: {
         highScoreThreshold: new BN(80),
         mediumScoreThreshold: new BN(50),
         highMultiplierBps: new BN(15_000),
         lowMultiplierBps: new BN(7_000),
+      },
+      budgetEnvelopes: [],
+      approvalLadder: null,
+      scopedPauseEntries: [],
+      livenessConfig: {
+        requireEncryptFreshness: false,
+        requireDwalletFreshness: false,
+        requireBalanceOracleFreshness: false,
+        requireComplianceOracleFreshness: false,
+        maxStalenessSecs: new BN(300),
       },
     },
     protocolFees: {
@@ -139,7 +155,10 @@ async function sendAndConfirm(
   const tx = new Transaction();
   tx.recentBlockhash = blockhash;
   tx.feePayer = payer.publicKey;
-  tx.add(...instructions);
+  tx.add(
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }),
+    ...instructions,
+  );
   tx.sign(payer, ...extraSigners);
 
   const sig = await connection.sendRawTransaction(tx.serialize(), {
@@ -235,6 +254,22 @@ test("devnet: getTreasuryAccountNullable returns null for non-existent PDA", asy
   assert.equal(result, null, "should return null for an account that does not exist");
 });
 
+// activate treasury
+
+test("devnet: transitionAgentState activates the treasury", async () => {
+  const instruction = await client.transitionAgentStateInstruction(
+    { owner: payer.publicKey, treasury: treasuryPDA },
+    1,
+    nowBN(),
+  );
+  const sig = await sendAndConfirm([instruction]);
+  console.log(`  transitionAgentState(Active) tx: ${sig}`);
+
+  const account = await client.getTreasuryAccount(treasuryPDA);
+  assert.equal(account.agentState, 1, "treasury should be active");
+  assert.ok(!account.executionPaused, "active treasury should not be paused");
+});
+
 // propose transaction
 
 test("devnet: proposeTransaction submits and lands on-chain", async () => {
@@ -249,6 +284,7 @@ test("devnet: proposeTransaction submits and lands on-chain", async () => {
     quoteAgeSecs: null,
     counterpartyRiskScore: null,
     recipientOrContract: "0x000000000000000000000000000000000000dead",
+    sanctionsProof: [],
   };
 
   const instruction = await client.proposeTransactionInstruction(
@@ -260,8 +296,9 @@ test("devnet: proposeTransaction submits and lands on-chain", async () => {
 
   // After a proposal the treasury should have a pending transaction
   const account = await client.getTreasuryAccount(treasuryPDA);
+  const pending = account.pendingQueue[0] ?? null;
   assert.ok(
-    account.pending !== null,
+    pending !== null,
     "treasury should have a pending transaction after proposal",
   );
 });
@@ -278,8 +315,8 @@ test("devnet: cancelPending clears the pending transaction", async () => {
 
   const account = await client.getTreasuryAccount(treasuryPDA);
   assert.equal(
-    account.pending,
-    null,
+    account.pendingQueue.length,
+    0,
     "pending transaction should be cleared after cancel",
   );
 });
@@ -424,6 +461,7 @@ test("devnet: proposeTransaction succeeds after dWallet is registered", async ()
     quoteAgeSecs: null,
     counterpartyRiskScore: null,
     recipientOrContract: "0x000000000000000000000000000000000000dead",
+    sanctionsProof: [],
   };
 
   const instruction = await client.proposeTransactionInstruction(
@@ -434,9 +472,10 @@ test("devnet: proposeTransaction succeeds after dWallet is registered", async ()
   console.log(`  proposeTransaction (post-dWallet) tx: ${sig}`);
 
   const account = await client.getTreasuryAccount(treasuryPDA);
-  assert.ok(account.pending !== null, "should have a pending transaction");
+  const pending = account.pendingQueue[0] ?? null;
+  assert.ok(pending !== null, "should have a pending transaction");
   assert.equal(
-    account.pending!.amountUsd.toString(),
+    pending!.amountUsd.toString(),
     args.amountUsd.toString(),
     "amountUsd should match",
   );
