@@ -13,7 +13,7 @@ import {
 } from "../output.js";
 import { type TreasuryAccountRecord, validateAgentId } from "../sdk.js";
 import { renderTreasurySections } from "../treasury-view.js";
-import { getActivePendingProposal } from "../protocol.js";
+import { getActivePendingProposal, sendInstructionsWithBudget } from "../protocol.js";
 import {
   buildCreateTreasuryArgs,
   buildProposeTransactionArgs,
@@ -140,7 +140,16 @@ export function registerTreasuryCommands(program: Command): void {
       }
 
       const spinner = startSpinner(ctx.output, "Creating treasury on devnet...");
-      const result = await ctx.client.createTreasury(ctx.wallet, args);
+      const built = await ctx.client.createTreasuryInstruction({
+        owner: ctx.wallet.publicKey,
+        args,
+      });
+      const signature = await sendInstructionsWithBudget({
+        connection: ctx.connection,
+        payer: ctx.wallet,
+        instructions: [built.instruction],
+      });
+      const result = { treasury: built.treasury, signature };
       spinner.succeed("Treasury created");
 
       if (ctx.output.json) {
@@ -308,11 +317,15 @@ export function registerTreasuryCommands(program: Command): void {
       }
 
       const spinner = startSpinner(ctx.output, "Submitting proposal...");
-      const signature = await ctx.client.proposeTransaction(
-        ctx.wallet,
+      const instruction = await ctx.client.proposeTransactionInstruction(
         { aiAuthority: ctx.wallet.publicKey, treasury: treasuryState.treasury },
         args,
       );
+      const signature = await sendInstructionsWithBudget({
+        connection: ctx.connection,
+        payer: ctx.wallet,
+        instructions: [instruction],
+      });
       spinner.succeed("Proposal submitted");
 
       if (ctx.output.json) {
@@ -367,11 +380,15 @@ export function registerTreasuryCommands(program: Command): void {
       }
 
       const spinner = startSpinner(ctx.output, "Cancelling pending transaction...");
-      const signature = await ctx.client.cancelPending(
-        ctx.wallet,
+      const instruction = await ctx.client.cancelPendingInstruction(
         { owner: ctx.wallet.publicKey, treasury: treasuryState.treasury },
         now,
       );
+      const signature = await sendInstructionsWithBudget({
+        connection: ctx.connection,
+        payer: ctx.wallet,
+        instructions: [instruction],
+      });
       spinner.succeed("Pending transaction cancelled");
 
       if (ctx.output.json) {
@@ -428,12 +445,16 @@ export function registerTreasuryCommands(program: Command): void {
         ctx.output,
         paused ? "Pausing treasury..." : "Unpausing treasury...",
       );
-      const signature = await ctx.client.pauseExecution(
-        ctx.wallet,
+      const instruction = await ctx.client.pauseExecutionInstruction(
         { owner: ctx.wallet.publicKey, treasury: treasuryState.treasury },
         paused,
         now,
       );
+      const signature = await sendInstructionsWithBudget({
+        connection: ctx.connection,
+        payer: ctx.wallet,
+        instructions: [instruction],
+      });
       spinner.succeed(paused ? "Treasury paused" : "Treasury unpaused");
 
       if (ctx.output.json) {

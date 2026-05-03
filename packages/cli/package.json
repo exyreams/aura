@@ -1,8 +1,8 @@
 {
   "name": "@aura-protocol/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
-  "description": "Production-grade CLI for the AURA autonomous treasury program on Solana",
+  "description": "Aura Protocol CLI for the AURA autonomous treasury program on Solana",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -21,21 +21,21 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "node -e \"const path=require('node:path');const pkg=path.dirname(process.env.npm_package_json);process.argv=['node','tsc','-p',path.join(pkg,'tsconfig.json')];require(path.join(pkg,'node_modules/typescript/bin/tsc'));\"",
-    "test": "node -e \"const path=require('node:path');const {spawnSync}=require('node:child_process');const pkg=path.dirname(process.env.npm_package_json);const cli=path.join(pkg,'node_modules/tsx/dist/cli.mjs');const tests=['tests/config.test.ts','tests/domain.test.ts','tests/protocol.test.ts','tests/pda.test.ts'];const result=spawnSync(process.execPath,[cli,'--test',...tests],{cwd:pkg,stdio:'inherit'});process.exit(result.status ?? 1);\"",
+    "test": "node -e \"const path=require('node:path');const {spawnSync}=require('node:child_process');const pkg=path.dirname(process.env.npm_package_json);const cli=path.join(pkg,'node_modules/tsx/dist/cli.mjs');const tests=['tests/config.test.ts','tests/domain.test.ts','tests/protocol.test.ts','tests/pda.test.ts','tests/program-instructions.test.ts'];const result=spawnSync(process.execPath,[cli,'--test',...tests],{cwd:pkg,stdio:'inherit'});process.exit(result.status ?? 1);\"",
+    "test:devnet": "npm run build && node -e \"const path=require('node:path');const {spawnSync}=require('node:child_process');const pkg=path.dirname(process.env.npm_package_json);const cli=path.join(pkg,'node_modules/tsx/dist/cli.mjs');const result=spawnSync(process.execPath,[cli,'--test','tests/devnet.test.ts'],{cwd:pkg,stdio:'inherit'});process.exit(result.status ?? 1);\"",
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@aura-protocol/sdk-ts": "0.2.0",
+    "@aura-protocol/sdk-ts": "file:../sdk-ts",
     "@encrypt.xyz/pre-alpha-solana-client": "^0.1.1",
     "@ika.xyz/pre-alpha-solana-client": "^0.1.1",
     "@inquirer/prompts": "8.4.2",
     "@solana/web3.js": "1.98.4",
     "bn.js": "5.2.3",
-    "boxen": "8.0.1",
     "chalk": "5.6.2",
     "cli-table3": "0.6.5",
     "commander": "14.0.3",

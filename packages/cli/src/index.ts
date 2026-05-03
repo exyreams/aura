@@ -1,14 +1,17 @@
 import { Command } from "commander";
+import chalk from "chalk";
 
 import { registerConfidentialCommands } from "./commands/confidential.js";
 import { registerConfigCommands } from "./commands/config.js";
 import { registerDashboardCommand } from "./commands/dashboard.js";
 import { registerDwalletCommands } from "./commands/dwallet.js";
 import { registerExecutionCommands } from "./commands/execution.js";
+import { registerFeatureCommands } from "./commands/features.js";
 import { registerGovernanceCommands } from "./commands/governance.js";
+import { registerInstructionCommands } from "./commands/instructions.js";
 import { registerPdaCommands } from "./commands/pda.js";
 import { registerTreasuryCommands } from "./commands/treasury.js";
-import { printError } from "./output.js";
+import { ACTIVE_DEVELOPMENT_WARNING, printError } from "./output.js";
 
 export function createProgram(): Command {
   const program = new Command();
@@ -25,13 +28,19 @@ export function createProgram(): Command {
     .option("--cluster <name>", "cluster label for display")
     .option("--json", "output machine-readable JSON")
     .option("--quiet", "suppress non-error terminal output")
-    .option("--dry-run", "build and display the instruction without sending");
+    .option("--dry-run", "build and display the instruction without sending")
+    .addHelpText(
+      "afterAll",
+      `\n${chalk.yellow.bold("warning")}: ${ACTIVE_DEVELOPMENT_WARNING}`,
+    );
 
   registerConfigCommands(program);
   registerTreasuryCommands(program);
   registerDwalletCommands(program);
   registerConfidentialCommands(program);
   registerExecutionCommands(program);
+  registerFeatureCommands(program);
+  registerInstructionCommands(program);
   registerGovernanceCommands(program);
   registerPdaCommands(program);
   registerDashboardCommand(program);

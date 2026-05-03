@@ -1,10 +1,13 @@
 export { Aura } from "@aura-protocol/sdk-ts";
 export { AuraClient } from "@aura-protocol/sdk-ts";
 export {
+  AURA_FEATURE_DOMAINS,
+  AURA_INSTRUCTION_FEATURES,
   AURA_PROGRAM_ID,
   DEVNET_RPC_URL,
   DWALLET_DEVNET_PROGRAM_ID,
   ENCRYPT_DEVNET_PROGRAM_ID,
+  getAuraFeatureDomain,
 } from "@aura-protocol/sdk-ts";
 export {
   deriveDwalletCpiAuthorityAddress,
@@ -71,4 +74,8 @@ export type {
   SetScopedPauseAccounts,
   SimulatePolicyAccounts,
   WritePolicyReceiptAccounts,
+  AuraFeatureDomain,
+  AuraFeatureDomainId,
+  AuraFeatureMaturity,
+  AuraInstructionFeature,
 } from "@aura-protocol/sdk-ts";

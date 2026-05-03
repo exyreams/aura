@@ -1,4 +1,8 @@
+![AURA banner](https://raw.githubusercontent.com/exyreams/aura/refs/heads/main/packages/web/public/banner.png)
+
 # @aura-protocol/cli
+
+> **AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change quickly. Do not use this code to secure production funds or serious treasury operations until a stable release and audit are published.**
 
 Terminal interface for the AURA autonomous treasury program on Solana.
 
@@ -24,7 +28,7 @@ including automatic FHE ciphertext creation, policy decryption, and dWallet co-s
 
 ## Prerequisites
 
-- Node.js >= 20
+- Node.js >= 22
 - A funded Solana devnet wallet
   - Linux/macOS: `~/.config/solana/id.json`
   - Windows: `%USERPROFILE%\.config\solana\id.json`
@@ -72,6 +76,42 @@ Config resolution order (highest wins):
 ---
 
 ## Commands
+
+### Feature and Instruction Surface
+
+The CLI exposes the full current AURA program surface through SDK/IDL-backed
+commands. Use these when a new policy, account, or control instruction does not
+need a bespoke workflow.
+
+```bash
+# Show all domains and instruction coverage
+aura features
+aura features --domain policy-control
+aura features --maturity wallet
+
+# List every current aura-core instruction grouped by domain
+aura instruction list
+
+# Inspect one instruction's account and argument schema
+aura instruction schema configure_budget_envelope
+
+# Build a serialized instruction without sending it
+aura instruction build configure_budget_envelope \
+  --accounts @accounts.json \
+  --args @args.json
+
+# Send any wallet-compatible instruction using the configured keypair
+aura instruction send transition_agent_state \
+  --account treasury=<treasury-pda> \
+  --account authority=<wallet-pubkey> \
+  --arg newState=active \
+  --compute-units 600000
+```
+
+`aura instruction send` enforces signer requirements before broadcast. If an
+instruction needs extra signers, pass one or more `--extra-signer <keypair>`
+paths. Instructions that require external Encrypt or dWallet CPI state still
+need those accounts to exist on devnet before the transaction can succeed.
 
 ### Treasury
 
@@ -337,7 +377,11 @@ Run tests:
 
 ```bash
 npm test
+npm run test:devnet
 ```
+
+The devnet test uses `AURA_DEVNET_RPC_URL` or `AURA_RPC_URL` when present and
+falls back to the default Solana keypair at `~/.config/solana/id.json`.
 
 Link locally for development:
 

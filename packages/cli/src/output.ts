@@ -1,4 +1,3 @@
-import boxen from "boxen";
 import BN from "bn.js";
 import chalk from "chalk";
 import Table from "cli-table3";
@@ -16,6 +15,9 @@ export interface SpinnerHandle {
   fail(message?: string): void;
   stop(): void;
 }
+
+export const ACTIVE_DEVELOPMENT_WARNING =
+  "AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may change before a stable audited release.";
 
 export function serializeForJson(value: unknown): unknown {
   if (value instanceof PublicKey) {
@@ -60,12 +62,7 @@ export function printBanner(output: OutputOptions, title: string): void {
     return;
   }
   console.log(
-    boxen(chalk.bold(title), {
-      padding: { top: 0, bottom: 0, left: 1, right: 1 },
-      borderColor: "cyan",
-      borderStyle: "round",
-      margin: { bottom: 1 },
-    }),
+    `${chalk.bold.cyan("AURA")} ${chalk.dim("::")} ${chalk.bold(title)}`,
   );
 }
 
