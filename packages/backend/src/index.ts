@@ -16,14 +16,19 @@ import {
   ensureBackendEncryptDeposit,
   executePendingService,
   finalizeExecutionService,
+  buildGenericProgramInstruction,
   getBackendInfo,
+  getFeatureCatalog,
+  getInstructionCatalog,
   listAgentJobs,
   requestPolicyDecryptionService,
   runAgentOnce,
+  sendGenericProgramInstruction,
   startAgentJob,
   stopAgentJob,
   stopAllAgentJobs,
   submitConfidentialProposal,
+  submitPublicProposal,
 } from "./service.js";
 import type { ApiErrorResponse, ApiSuccessResponse } from "./types.js";
 import {
@@ -34,6 +39,8 @@ import {
   parseEnsureDepositRequest,
   parseExecutePendingRequest,
   parseFinalizeExecutionRequest,
+  parseProgramInstructionRequest,
+  parsePublicProposalRequest,
   parseRequestDecryptionRequest,
   parseStopAgentRequest,
 } from "./validation.js";
@@ -254,7 +261,10 @@ const server = createServer(async (request, response) => {
     }
 
     const requiresAuth = !(
-      routeKey === "GET /health" || routeKey === "GET /v1/service/info"
+      routeKey === "GET /health" ||
+      routeKey === "GET /v1/service/info" ||
+      routeKey === "GET /v1/features/catalog" ||
+      routeKey === "GET /v1/instructions/catalog"
     );
     ensureAuthorized(request, requiresAuth);
 
@@ -272,6 +282,16 @@ const server = createServer(async (request, response) => {
         allowedOrigins: config.allowedOrigins,
         authEnabled: Boolean(config.apiToken),
       });
+      return;
+    }
+
+    if (routeKey === "GET /v1/features/catalog") {
+      sendSuccess(response, 200, requestId, getFeatureCatalog());
+      return;
+    }
+
+    if (routeKey === "GET /v1/instructions/catalog") {
+      sendSuccess(response, 200, requestId, getInstructionCatalog());
       return;
     }
 
@@ -309,6 +329,36 @@ const server = createServer(async (request, response) => {
         200,
         requestId,
         await submitConfidentialProposal(parseConfidentialProposalRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/proposals/public") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await submitPublicProposal(parsePublicProposalRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/instructions/build") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await buildGenericProgramInstruction(parseProgramInstructionRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/instructions/send") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await sendGenericProgramInstruction(parseProgramInstructionRequest(body)),
       );
       return;
     }
@@ -383,7 +433,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-      throw new ApiError(404, "NOT_FOUND", `Route ${routeKey} was not found.`);
+    throw new ApiError(404, "NOT_FOUND", `Route ${routeKey} was not found.`);
   } catch (error) {
     routeLogger.error("request.failed", { error });
     sendError(response, requestId, error);

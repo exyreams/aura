@@ -1,5 +1,6 @@
 import BN from "bn.js";
 import {
+  AURA_FEATURE_DOMAINS,
   AuraClient,
   type ProposeConfidentialTransactionArgs,
   type ProposeTransactionArgs,
@@ -7,7 +8,12 @@ import {
   validateAddress,
   validateAmountUsd,
 } from "@aura-protocol/sdk-ts";
-import { Connection, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  SystemProgram,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import { loadConfig } from "./config.js";
 import {
   encryptU64,
@@ -32,6 +38,10 @@ import {
   waitForDecryptionReady,
   waitForMessageApproval,
 } from "./protocol.js";
+import {
+  buildProgramInstruction,
+  getProgramInstructionCatalog,
+} from "./program-instructions.js";
 import { createLogger } from "./logger.js";
 import type { AgentJobConfig } from "./types.js";
 import { loadKeypair } from "./wallet.js";
@@ -127,7 +137,100 @@ export function getBackendInfo() {
     publicKey: backendKeypair.publicKey.toBase58(),
     defaultRpcUrl: config.defaultRpcUrl,
     defaultProgramId: config.defaultProgramId.toBase58(),
+    sdkSurface: {
+      domains: AURA_FEATURE_DOMAINS.length,
+      instructions: AURA_FEATURE_DOMAINS.reduce(
+        (total, domain) => total + domain.instructions.length,
+        0,
+      ),
+    },
   };
+}
+
+export function getFeatureCatalog() {
+  return {
+    domains: AURA_FEATURE_DOMAINS,
+    totals: {
+      domains: AURA_FEATURE_DOMAINS.length,
+      instructions: AURA_FEATURE_DOMAINS.reduce(
+        (total, domain) => total + domain.instructions.length,
+        0,
+      ),
+    },
+  };
+}
+
+export function getInstructionCatalog() {
+  return getProgramInstructionCatalog();
+}
+
+export async function buildGenericProgramInstruction(input: {
+  rpcUrl?: string;
+  programId?: string;
+  instruction: string;
+  accounts: Record<string, unknown>;
+  args: Record<string, unknown> | unknown[];
+}) {
+  const { client, programId } = buildClient(input.rpcUrl, input.programId);
+  return await buildProgramInstruction(
+    client,
+    {
+      instruction: input.instruction,
+      accounts: input.accounts,
+      args: input.args,
+      rpcUrl: input.rpcUrl,
+      programId: input.programId,
+    },
+    { programId, defaultSigner: backendKeypair.publicKey },
+  );
+}
+
+export async function sendGenericProgramInstruction(input: {
+  rpcUrl?: string;
+  programId?: string;
+  instruction: string;
+  accounts: Record<string, unknown>;
+  args: Record<string, unknown> | unknown[];
+  computeUnitLimit?: number;
+}) {
+  const { connection, client, programId } = buildClient(input.rpcUrl, input.programId);
+  const built = await buildProgramInstruction(
+    client,
+    {
+      instruction: input.instruction,
+      accounts: input.accounts,
+      args: input.args,
+      rpcUrl: input.rpcUrl,
+      programId: input.programId,
+    },
+    { programId, defaultSigner: backendKeypair.publicKey },
+  );
+  const backendSigner = backendKeypair.publicKey.toBase58();
+  const unsupportedSigners = built.requiredSigners.filter(
+    (signer) => signer !== backendSigner,
+  );
+  if (unsupportedSigners.length > 0) {
+    throw new Error(
+      `Backend can only send instructions signed by ${backendSigner}; missing signer(s): ${unsupportedSigners.join(", ")}`,
+    );
+  }
+  const signature = await sendInstructionsWithBudget({
+    connection,
+    payer: backendKeypair,
+    instructions: [
+      new TransactionInstruction({
+        programId: new PublicKey(built.instruction.programId),
+        keys: built.instruction.accounts.map((account) => ({
+          pubkey: new PublicKey(account.pubkey),
+          isSigner: account.isSigner,
+          isWritable: account.isWritable,
+        })),
+        data: Buffer.from(built.instruction.dataBase64, "base64"),
+      }),
+    ],
+    computeUnitLimit: input.computeUnitLimit,
+  });
+  return { ...built, signature };
 }
 
 export async function encryptScalarValues(input: {
@@ -453,15 +556,19 @@ export async function submitPublicProposal(input: {
   quoteAgeSecs?: number;
   counterpartyRiskScore?: number;
 }) {
-  const { client } = buildClient(input.rpcUrl, input.programId);
-  const signature = await client.proposeTransaction(
-    backendKeypair,
+  const { connection, client } = buildClient(input.rpcUrl, input.programId);
+  const instruction = await client.proposeTransactionInstruction(
     {
       aiAuthority: backendKeypair.publicKey,
       treasury: new PublicKey(input.treasury),
     },
     buildProposeArgs(input),
   );
+  const signature = await sendInstructionsWithBudget({
+    connection,
+    payer: backendKeypair,
+    instructions: [instruction],
+  });
   return { signature };
 }
 

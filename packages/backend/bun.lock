@@ -21,7 +21,7 @@
     },
   },
   "packages": {
-    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.2.0", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-ezjsXXB8+2eIIFVdwYQ5YFc26H5mwYTohMsfWwQ7bLffodRZP426qeX43W1TRMA0tRBM9YgWE53UnTvR8A4MJQ=="],
+    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.2.1", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-r5Xu9F/5XJb4Ixoy+jAvhA7Tn09TorrjUkU5CtiNJCoIiqAAMgcju9sk2SeDRt3v/pVKKoALEpt3opIFI6VP8A=="],
 
     "@babel/runtime": ["@babel/runtime@7.29.2", "", {}, "sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g=="],
 

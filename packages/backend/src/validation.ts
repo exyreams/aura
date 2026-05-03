@@ -140,6 +140,23 @@ export function parseConfidentialProposalRequest(input: unknown) {
   };
 }
 
+export function parsePublicProposalRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    ...parseRpcBase(body),
+    treasury: requiredString(body, "treasury"),
+    amountUsd: requiredNumber(body, "amountUsd"),
+    chain: requiredNumber(body, "chain"),
+    txType: requiredNumber(body, "txType"),
+    recipient: requiredString(body, "recipient"),
+    protocolId: optionalNumber(body, "protocolId"),
+    expectedOutputUsd: optionalNumber(body, "expectedOutputUsd"),
+    actualOutputUsd: optionalNumber(body, "actualOutputUsd"),
+    quoteAgeSecs: optionalNumber(body, "quoteAgeSecs"),
+    counterpartyRiskScore: optionalNumber(body, "counterpartyRiskScore"),
+  };
+}
+
 export function parseRequestDecryptionRequest(input: unknown) {
   const body = ensureObject(input);
   return {
@@ -200,5 +217,39 @@ export function parseStopAgentRequest(input: unknown) {
   const body = ensureObject(input);
   return {
     treasury: requiredString(body, "treasury"),
+  };
+}
+
+function optionalRecord(body: JsonRecord, key: string) {
+  const value = body[key];
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ApiError(400, "INVALID_FIELD", `${key} must be a JSON object.`);
+  }
+  return value as JsonRecord;
+}
+
+export function parseProgramInstructionRequest(input: unknown) {
+  const body = ensureObject(input);
+  const args = body["args"];
+  if (
+    args !== undefined &&
+    args !== null &&
+    typeof args !== "object" &&
+    !Array.isArray(args)
+  ) {
+    throw new ApiError(400, "INVALID_FIELD", "args must be a JSON object or array.");
+  }
+  return {
+    ...parseRpcBase(body),
+    instruction: requiredString(body, "instruction"),
+    accounts: optionalRecord(body, "accounts"),
+    args:
+      args === undefined || args === null
+        ? {}
+        : (args as JsonRecord | unknown[]),
+    computeUnitLimit: optionalNumber(body, "computeUnitLimit"),
   };
 }
