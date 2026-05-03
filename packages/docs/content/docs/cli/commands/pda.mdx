@@ -1,0 +1,86 @@
+---
+title: pda
+description: Derive any AURA, dWallet, or Encrypt program-derived address.
+icon: KeyRound
+---
+
+## aura pda \<kind\>
+
+Derive a PDA and print the address, bump, program ID, and seeds used.
+
+```bash
+aura pda treasury --owner <pubkey> --agent-id agent-1
+aura pda dwallet-cpi-authority
+aura pda encrypt-cpi-authority
+aura pda encrypt-event-authority
+aura pda treasury --owner <pubkey> --agent-id agent-1 --json
+```
+
+## Supported Kinds
+
+| Kind | Required flags |
+|------|---------------|
+| `treasury` | `--owner`, `--agent-id` |
+| `dwallet-cpi-authority` | — |
+| `encrypt-cpi-authority` | — |
+| `encrypt-event-authority` | `--encrypt-program-id` (optional, defaults to devnet) |
+| `message-approval` | `--curve`, `--signature-scheme`, `--public-key-hex`, `--message-digest` |
+| `policy-simulation` | `--treasury`, `--simulation-id` (or `--id`) |
+| `policy-receipt` | `--treasury`, `--proposal-id` (or `--id`) |
+| `budget-envelope` | `--treasury`, `--envelope-id` (or `--id`) |
+| `exposure-group` | `--authority`, `--group-id` (16-byte hex) |
+| `operator-role` | `--treasury`, `--operator` |
+| `external-liveness` | `--treasury` |
+| `policy-attestation` | `--treasury`, `--attester`, `--policy-version` |
+| `batch-proposal` | `--treasury`, `--batch-id` (or `--id`) |
+| `invariant-report` | `--treasury`, `--report-id` (or `--id`) |
+
+## All Flags
+
+| Flag | Description |
+|------|-------------|
+| `--owner <pubkey>` | Treasury owner public key |
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--authority <pubkey>` | Exposure group authority |
+| `--operator <pubkey>` | Operator public key |
+| `--attester <pubkey>` | Policy attester public key |
+| `--id <u64>` | Generic numeric PDA identifier |
+| `--simulation-id <u64>` | Policy simulation ID |
+| `--proposal-id <u64>` | Proposal ID |
+| `--envelope-id <u64>` | Budget envelope ID |
+| `--batch-id <u64>` | Batch proposal ID |
+| `--report-id <u64>` | Invariant report ID |
+| `--policy-version <u64>` | Policy version for attestation PDA |
+| `--group-id <hex>` | 16-byte exposure group ID as hex |
+| `--dwallet-program-id <pubkey>` | Override Ika dWallet program ID |
+| `--encrypt-program-id <pubkey>` | Override Ika Encrypt program ID |
+| `--curve <u16>` | dWallet curve code |
+| `--signature-scheme <u16>` | dWallet signature scheme code |
+| `--public-key-hex <hex>` | Raw dWallet public key bytes in hex |
+| `--message-digest <hex>` | 32-byte message digest in hex |
+| `--message-metadata-digest <hex>` | Optional 32-byte metadata digest in hex |
+
+## Examples
+
+```bash
+# Treasury PDA
+aura pda treasury --owner 11111111111111111111111111111111 --agent-id agent-1
+
+# dWallet CPI authority
+aura pda dwallet-cpi-authority
+
+# Encrypt event authority (devnet)
+aura pda encrypt-event-authority
+
+# Operator role PDA
+aura pda operator-role \
+  --treasury <treasury-pda> \
+  --operator <operator-pubkey>
+
+# Budget envelope PDA
+aura pda budget-envelope --treasury <pda> --envelope-id 1
+
+# All output as JSON
+aura pda treasury --owner <pubkey> --agent-id agent-1 --json
+```

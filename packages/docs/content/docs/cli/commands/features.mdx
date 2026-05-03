@@ -1,0 +1,56 @@
+---
+title: features
+description: Inspect the SDK-backed AURA instruction and policy surface.
+icon: Layers
+---
+
+## aura features
+
+List all instruction domains and their maturity breakdown. No wallet required.
+
+```bash
+aura features
+aura features --json
+
+# Filter by domain
+aura features --domain governance
+aura features --domain treasury --json
+
+# Filter by maturity
+aura features --maturity wallet
+aura features --maturity backend
+```
+
+| Flag | Description |
+|------|-------------|
+| `--domain <id>` | Filter by domain ID (e.g. `governance`, `treasury`, `confidential`) |
+| `--maturity <kind>` | Filter by maturity: `wallet`, `backend`, `read-only`, `external-cpi` |
+
+### Maturity Types
+
+| Maturity | Description |
+|----------|-------------|
+| `wallet` | Signed by the treasury owner or AI authority — suitable for wallet UIs |
+| `backend` | Signed by an operator backend service |
+| `read-only` | No signing required — account reads and simulations |
+| `external-cpi` | Invoked via CPI from external programs |
+
+### Example Output
+
+```
+AURA Feature Surface
+
+Domain          Instructions  Wallet  Backend  External CPI
+Treasury        8             5       2        1
+Confidential    6             2       4        0
+Execution       4             0       4        0
+Governance      12            8       2        2
+...
+
+Treasury
+Instruction                    Maturity   Purpose
+createTreasury                 wallet     Initialize a new agent treasury
+pauseExecution                 wallet     Pause or resume execution
+proposeTransaction             wallet     Submit a public policy proposal
+...
+```

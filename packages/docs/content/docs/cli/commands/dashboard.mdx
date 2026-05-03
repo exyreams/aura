@@ -1,0 +1,25 @@
+---
+title: dashboard
+description: Launch a full-screen live terminal dashboard for a treasury.
+icon: Monitor
+---
+
+## aura dashboard
+
+Launch a full-screen terminal dashboard that refreshes treasury state on an
+interval. Shows policy config, execution state, pending proposals, dWallets,
+and governance.
+
+```bash
+aura dashboard --agent-id agent-1
+aura dashboard --treasury <pda>
+aura dashboard --agent-id agent-1 --interval 10   # refresh every 10s
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--interval <secs>` | Refresh interval in seconds (default: 5) |
+
+Press `Ctrl+C` to exit.

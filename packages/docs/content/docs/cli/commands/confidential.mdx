@@ -1,0 +1,176 @@
+---
+title: confidential
+description: Configure FHE guardrails and run confidential proposal and decryption flows.
+icon: Lock
+---
+
+## aura confidential deposit ensure
+
+Ensure the configured wallet has an Encrypt deposit account (required before
+any confidential operation).
+
+```bash
+aura confidential deposit ensure
+aura confidential deposit ensure --dry-run
+```
+
+---
+
+## aura confidential guardrails scalar
+
+Attach scalar FHE guardrail ciphertexts to a treasury. Automatically encrypts
+the plaintext values via the Ika Encrypt gRPC and waits for on-chain
+verification.
+
+```bash
+# Auto-encrypt values (prompts if not provided)
+aura confidential guardrails scalar \
+  --agent-id agent-1 \
+  --daily-limit 10000 \
+  --per-tx-limit 1000
+
+# Use pre-created ciphertext accounts
+aura confidential guardrails scalar \
+  --agent-id agent-1 \
+  --daily-limit-ciphertext <pubkey> \
+  --per-tx-ciphertext <pubkey> \
+  --spent-today-ciphertext <pubkey>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--daily-limit <usd>` | Daily limit in USD — auto-encrypted |
+| `--per-tx-limit <usd>` | Per-tx limit in USD — auto-encrypted |
+| `--spent-today <usd>` | Current spent-today counter (default: 0) |
+| `--daily-limit-ciphertext <pubkey>` | Use a pre-created daily limit ciphertext |
+| `--per-tx-ciphertext <pubkey>` | Use a pre-created per-tx limit ciphertext |
+| `--spent-today-ciphertext <pubkey>` | Use a pre-created spent-today ciphertext |
+
+---
+
+## aura confidential guardrails vector
+
+Attach a vector FHE guardrail ciphertext (single account encoding all limits).
+
+```bash
+aura confidential guardrails vector \
+  --agent-id agent-1 \
+  --guardrail-ciphertext <pubkey>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--guardrail-ciphertext <pubkey>` | Vector ciphertext account |
+
+---
+
+## aura confidential status
+
+Show confidential guardrail state and any pending confidential proposal.
+
+```bash
+aura confidential status --agent-id agent-1
+aura confidential status --agent-id agent-1 --json
+```
+
+---
+
+## aura confidential propose
+
+Propose a confidential scalar transaction. Auto-encrypts the amount via Ika
+Encrypt and submits the FHE policy evaluation CPI.
+
+```bash
+aura confidential propose \
+  --agent-id agent-1 \
+  --amount 250 \
+  --chain ethereum \
+  --recipient 0xdeadbeef... \
+  --wait
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--amount <usd>` | Amount in USD — auto-encrypted |
+| `--chain <name\|number>` | Target chain |
+| `--recipient <address>` | Recipient address or contract |
+| `--tx-type <type>` | Transaction type |
+| `--protocol-id <id>` | Protocol ID |
+| `--expected-output <usd>` | Expected output for slippage check |
+| `--actual-output <usd>` | Actual output for slippage check |
+| `--quote-age <secs>` | Quote age in seconds |
+| `--counterparty-risk <score>` | Counterparty risk score 0–100 |
+| `--amount-ciphertext <pubkey>` | Use a pre-created verified ciphertext |
+| `--policy-output-keypair <path>` | Keypair path for the output ciphertext |
+| `--wait` | Wait until policy output ciphertext is verified |
+
+---
+
+## aura confidential request-decryption
+
+Request the Ika Encrypt network to decrypt the pending policy output.
+
+```bash
+aura confidential request-decryption --agent-id agent-1 --wait
+aura confidential request-decryption --agent-id agent-1 --ciphertext <pubkey>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--ciphertext <pubkey>` | Override the pending policy output ciphertext |
+| `--request-keypair <path>` | Keypair path for the decryption request account |
+| `--wait` | Wait until the plaintext is ready on-chain |
+
+---
+
+## aura confidential confirm-decryption
+
+Apply the decrypted policy result on-chain and print the approval/denial
+decision.
+
+```bash
+aura confidential confirm-decryption --agent-id agent-1
+aura confidential confirm-decryption --agent-id agent-1 --request-account <pubkey>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--request-account <pubkey>` | Override the pending decryption request account |
+
+---
+
+## Full Confidential Flow
+
+```bash
+# 1. Ensure deposit account
+aura confidential deposit ensure
+
+# 2. Configure scalar guardrails
+aura confidential guardrails scalar --agent-id agent-1 --daily-limit 10000 --per-tx-limit 1000
+
+# 3. Propose confidential transaction
+aura confidential propose --agent-id agent-1 --amount 250 --chain ethereum \
+  --recipient 0xdeadbeef... --wait
+
+# 4. Request decryption
+aura confidential request-decryption --agent-id agent-1 --wait
+
+# 5. Confirm decryption (prints approved/denied)
+aura confidential confirm-decryption --agent-id agent-1
+
+# 6. Execute (if approved)
+aura execution execute --agent-id agent-1 --wait-signed
+
+# 7. Finalize
+aura execution finalize --agent-id agent-1
+```

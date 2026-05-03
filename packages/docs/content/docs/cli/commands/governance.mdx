@@ -1,0 +1,90 @@
+---
+title: governance
+description: Configure multisig, swarms, and emergency override proposals.
+icon: Shield
+---
+
+## aura governance multisig
+
+Configure an emergency guardian multisig on a treasury.
+
+```bash
+aura governance multisig \
+  --agent-id agent-1 \
+  --required 2 \
+  --guardians pk1,pk2,pk3
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--required <n>` | Number of required guardian signatures |
+| `--guardians <pk,pk,...>` | Comma-separated guardian pubkeys |
+
+---
+
+## aura governance swarm
+
+Configure an agent swarm with a shared spending pool.
+
+```bash
+aura governance swarm \
+  --agent-id agent-1 \
+  --swarm-id swarm-alpha \
+  --members agent-1,agent-2,agent-3 \
+  --pool-limit 50000
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--swarm-id <id>` | Unique swarm identifier |
+| `--members <id,id,...>` | Comma-separated member agent IDs |
+| `--pool-limit <usd>` | Shared pool limit in USD |
+
+---
+
+## aura governance override propose
+
+Guardian proposes a higher daily limit override.
+
+```bash
+aura governance override propose \
+  --agent-id agent-1 \
+  --new-daily-limit 25000
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--new-daily-limit <usd>` | New daily limit in USD |
+
+---
+
+## aura governance override collect
+
+Guardian co-signs an active override proposal.
+
+```bash
+aura governance override collect --agent-id agent-1
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+
+---
+
+## Override Flow
+
+```bash
+# Guardian 1 proposes
+aura governance override propose --agent-id agent-1 --new-daily-limit 25000
+
+# Guardian 2 co-signs (repeat until threshold reached)
+aura governance override collect --agent-id agent-1
+```

@@ -1,0 +1,16 @@
+{
+  "title": "Reference",
+  "pages": [
+    "index",
+    "config",
+    "treasury",
+    "dwallet",
+    "confidential",
+    "execution",
+    "governance",
+    "instruction",
+    "pda",
+    "features",
+    "dashboard"
+  ]
+}

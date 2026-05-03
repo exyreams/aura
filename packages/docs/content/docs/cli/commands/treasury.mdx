@@ -1,0 +1,112 @@
+---
+title: treasury
+description: Create, inspect, propose, pause, and cancel AURA treasuries.
+icon: Vault
+---
+
+## aura treasury create
+
+Create a new agent treasury. Prompts for any missing required values.
+
+```bash
+aura treasury create \
+  --agent-id agent-1 \
+  --daily-limit 10000 \
+  --per-tx-limit 1000
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Unique agent identifier |
+| `--daily-limit <usd>` | Daily spending limit in USD |
+| `--per-tx-limit <usd>` | Per-transaction limit in USD |
+| `--daytime-hourly-limit <usd>` | Daytime hourly limit in USD |
+| `--nighttime-hourly-limit <usd>` | Nighttime hourly limit in USD |
+| `--velocity-limit <usd>` | Velocity limit in USD |
+| `--max-slippage-bps <bps>` | Max slippage in basis points |
+| `--max-quote-age <secs>` | Max quote age in seconds |
+| `--ttl <secs>` | Pending transaction TTL in seconds |
+| `--ai-authority <pubkey>` | AI authority pubkey (defaults to wallet) |
+
+---
+
+## aura treasury show
+
+Show full treasury state including policy, pending proposal, and dWallets.
+
+```bash
+aura treasury show --agent-id agent-1
+aura treasury show --treasury <pda>
+aura treasury show --agent-id agent-1 --watch          # refresh every 5s
+aura treasury show --agent-id agent-1 --interval 10    # refresh every 10s
+aura treasury show --agent-id agent-1 --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Look up by agent ID |
+| `--treasury <pda>` | Look up by treasury PDA |
+| `--watch` | Refresh every 5 seconds |
+| `--interval <secs>` | Custom refresh interval |
+
+---
+
+## aura treasury list
+
+List all treasuries owned by the configured wallet.
+
+```bash
+aura treasury list
+aura treasury list --json
+```
+
+---
+
+## aura treasury propose
+
+Propose a public transaction. Prompts for any missing required values.
+
+```bash
+aura treasury propose \
+  --agent-id agent-1 \
+  --amount 250 \
+  --chain ethereum \
+  --recipient 0xdeadbeef...
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--amount <usd>` | Amount in USD |
+| `--chain <name\|number>` | Target chain (e.g. `ethereum`, `solana`, `2`) |
+| `--recipient <address>` | Recipient address or contract |
+| `--tx-type <type>` | Transaction type |
+| `--protocol-id <id>` | Protocol ID for DeFi whitelisting |
+| `--expected-output <usd>` | Expected output for slippage check |
+| `--actual-output <usd>` | Actual output for slippage check |
+| `--quote-age <secs>` | Quote age in seconds |
+| `--counterparty-risk <score>` | Counterparty risk score 0–100 |
+
+---
+
+## aura treasury cancel
+
+Cancel the current pending transaction.
+
+```bash
+aura treasury cancel --agent-id agent-1
+aura treasury cancel --agent-id agent-1 --yes    # skip confirmation
+```
+
+---
+
+## aura treasury pause
+
+Pause or unpause treasury execution.
+
+```bash
+aura treasury pause --agent-id agent-1            # pause
+aura treasury pause --agent-id agent-1 --unpause  # unpause
+aura treasury pause --agent-id agent-1 --yes      # skip confirmation
+```

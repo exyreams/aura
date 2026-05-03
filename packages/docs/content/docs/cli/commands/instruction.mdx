@@ -1,0 +1,96 @@
+---
+title: instruction
+description: Build and send any aura-core instruction directly from the IDL.
+icon: Terminal
+---
+
+The `instruction` command (alias: `instructions`) gives raw access to every
+instruction in the AURA IDL. Useful for advanced operations not covered by the
+domain commands, or for scripting arbitrary instruction sequences.
+
+## aura instruction list
+
+List every instruction grouped by domain.
+
+```bash
+aura instruction list
+aura instruction list --json
+```
+
+---
+
+## aura instruction schema
+
+Show the account and argument schema for a specific instruction.
+
+```bash
+aura instruction schema configure_budget_envelope
+aura instruction schema propose_transaction --json
+```
+
+Output includes each account (name, signer, writable, optional, default) and
+each argument (name, type, sample value).
+
+---
+
+## aura instruction build
+
+Build an instruction and print the serialized data without sending.
+
+```bash
+aura instruction build cancel_pending \
+  --account owner=<pubkey> \
+  --account treasury=<pubkey> \
+  --arg now=1234567890
+
+# Or pass accounts/args as JSON
+aura instruction build cancel_pending \
+  --accounts '{"owner":"<pubkey>","treasury":"<pubkey>"}' \
+  --args '{"now":1234567890}'
+
+# Or load from a file
+aura instruction build cancel_pending \
+  --accounts @accounts.json \
+  --args @args.json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file |
+| `--args <json\|@file>` | Args as a JSON object/array or `@path` to file |
+| `--account <key=value>` | Single account override, repeatable |
+| `--arg <key=value>` | Single argument override, repeatable |
+
+---
+
+## aura instruction send
+
+Build and send any instruction using the configured wallet.
+
+```bash
+aura instruction send cancel_pending \
+  --account owner=<pubkey> \
+  --account treasury=<pubkey> \
+  --arg now=1234567890
+
+# With extra signers (e.g. for instructions requiring multiple keypairs)
+aura instruction send propose_confidential_transaction \
+  --accounts @accounts.json \
+  --args @args.json \
+  --extra-signer ~/.config/solana/policy-output.json
+
+# Override compute units
+aura instruction send configure_confidential_guardrails \
+  --accounts @accounts.json \
+  --args @args.json \
+  --compute-units 800000
+```
+
+| Flag | Description |
+|------|-------------|
+| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file |
+| `--args <json\|@file>` | Args as a JSON object/array or `@path` to file |
+| `--account <key=value>` | Single account override, repeatable |
+| `--arg <key=value>` | Single argument override, repeatable |
+| `--extra-signer <path>` | Additional keypair path, repeatable |
+| `--compute-units <units>` | Compute unit limit (default: 600,000) |

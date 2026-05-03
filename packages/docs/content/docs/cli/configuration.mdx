@@ -1,0 +1,52 @@
+---
+title: Configuration
+description: Config file, environment variables, and resolution order for the AURA CLI.
+icon: Settings
+---
+
+The CLI resolves configuration from four sources in priority order (highest wins):
+
+1. **CLI flags** — `--rpc-url`, `--wallet`, `--program-id`
+2. **Environment variables** — `AURA_RPC_URL`, `AURA_WALLET_PATH`, etc.
+3. **Config file** — `~/.aura/config.json`
+4. **Built-in defaults** — devnet RPC, `~/.config/solana/id.json`
+
+## Config File
+
+Located at `~/.aura/config.json`:
+
+```json
+{
+  "rpcUrl": "https://devnet.helius-rpc.com/?api-key=YOUR_KEY",
+  "walletPath": "~/.config/solana/id.json",
+  "programId": "2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya",
+  "defaultAgentId": "my-agent"
+}
+```
+
+## Environment Variables
+
+```bash
+AURA_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
+AURA_DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
+SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
+AURA_WALLET_PATH="/path/to/keypair.json"
+PAYER_KEYPAIR="/path/to/keypair.json"
+AURA_CLUSTER="devnet"
+AURA_PROGRAM_ID="2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya"
+AURA_DEFAULT_AGENT_ID="my-agent"
+```
+
+## Setup Commands
+
+```bash
+# Interactive setup wizard
+aura config init
+
+# Set individual values
+aura config set rpc-url https://devnet.helius-rpc.com/?api-key=YOUR_KEY
+aura config set wallet-path ~/.config/solana/id.json
+
+# View current resolved config
+aura config show
+```

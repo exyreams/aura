@@ -1,0 +1,78 @@
+---
+title: execution
+description: Execute, finalize, and watch pending proposal lifecycle.
+icon: Play
+---
+
+## aura execution execute
+
+Run `execute_pending` for the current proposal. If the proposal was approved,
+submits the dWallet co-signing CPI. If denied, clears the pending state.
+
+```bash
+aura execution execute --agent-id agent-1
+aura execution execute --agent-id agent-1 --wait         # wait for message approval
+aura execution execute --agent-id agent-1 --wait-signed  # wait for dWallet signature
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--wait` | Wait until message approval account exists, then drives the Ika dWallet gRPC presign and sign flow automatically |
+| `--wait-signed` | Wait until message approval reaches signed status (does not drive dWallet gRPC) |
+
+---
+
+## aura execution finalize
+
+Finalize an approved proposal after the dWallet signature is ready.
+
+```bash
+aura execution finalize --agent-id agent-1
+aura execution finalize --agent-id agent-1 --message-approval <pubkey>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--message-approval <pubkey>` | Override the message approval account |
+
+---
+
+## aura execution watch
+
+Continuously watch a treasury's execution state — shows pending proposal,
+policy output verification, decryption readiness, and message approval status.
+
+```bash
+aura execution watch --agent-id agent-1
+aura execution watch --agent-id agent-1 --interval 10   # refresh every 10s
+aura execution watch --agent-id agent-1 --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--interval <secs>` | Refresh interval (default: 5s) |
+
+---
+
+## Full Execution Flow
+
+```bash
+# 1. Propose (public)
+aura treasury propose --agent-id agent-1 --amount 250 --chain ethereum --recipient 0x...
+
+# 2. Execute and wait for dWallet signature
+aura execution execute --agent-id agent-1 --wait-signed
+
+# 3. Finalize
+aura execution finalize --agent-id agent-1
+```
+
+For confidential proposals, run `aura confidential propose`,
+`aura confidential request-decryption`, and `aura confidential confirm-decryption`
+before `execution execute`.

@@ -1,0 +1,53 @@
+---
+title: Overview
+description: All AURA CLI command groups and common patterns.
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+Every command supports the global `--rpc-url`, `--wallet`, `--program-id`,
+`--json`, `--quiet`, and `--dry-run` flags. Commands that submit transactions
+require a wallet; `config`, `features`, and `dashboard` can run without one.
+
+## Command Groups
+
+| Group | Purpose |
+|-------|---------|
+| `config` | Initialize and manage local CLI configuration |
+| `treasury` | Create, show, list, propose, pause, and cancel |
+| `dwallet` | Register and list dWallet references |
+| `confidential` | Encrypt deposits, guardrails, and confidential proposals |
+| `execution` | Execute, finalize, and watch pending proposals |
+| `governance` | Multisig, swarms, and override proposals |
+| `instruction` | Build and send any IDL instruction directly |
+| `pda` | Derive any AURA, dWallet, or Encrypt PDA |
+| `features` | Inspect the SDK-backed program surface |
+| `dashboard` | Live terminal treasury dashboard |
+
+## Automation Pattern
+
+Use `--json` for scripts and CI. Use `--dry-run` before high-value or
+governance actions to inspect the built instruction without sending.
+
+```bash
+# Inspect program surface as JSON
+aura features --json
+aura features --domain governance --json
+
+# Show treasury state as JSON
+aura treasury show --agent-id agent-1 --json
+
+# Dry-run a proposal
+aura treasury propose --agent-id agent-1 --amount 250 --chain ethereum \
+  --recipient 0xdeadbeef... --dry-run
+
+# Watch execution state
+aura execution watch --agent-id agent-1
+```
+
+<Cards>
+  <Card title="treasury" description="Create, propose, pause, and cancel." href="/docs/cli/commands/treasury" />
+  <Card title="execution" description="Execute, finalize, and watch proposals." href="/docs/cli/commands/execution" />
+  <Card title="governance" description="Multisig, swarms, and overrides." href="/docs/cli/commands/governance" />
+  <Card title="confidential" description="FHE guardrails and confidential proposals." href="/docs/cli/commands/confidential" />
+</Cards>

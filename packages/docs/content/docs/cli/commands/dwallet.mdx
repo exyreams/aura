@@ -1,0 +1,53 @@
+---
+title: dwallet
+description: Register and list Ika dWallet references on a treasury.
+icon: Wallet
+---
+
+## aura dwallet register
+
+Register a dWallet reference on a treasury. Prompts for any missing values.
+
+```bash
+aura dwallet register \
+  --agent-id agent-1 \
+  --chain ethereum \
+  --dwallet-id dwallet-abc123 \
+  --address 0xdeadbeef... \
+  --balance 5000
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--chain <name\|number>` | Target chain (e.g. `ethereum`, `2`) |
+| `--dwallet-id <id>` | Ika dWallet identifier |
+| `--address <addr>` | Native chain address |
+| `--balance <usd>` | Current balance in USD |
+| `--dwallet-account <pubkey>` | Live dWallet PDA for execute/finalize flows |
+| `--authorized-user <pubkey>` | Authorized user pubkey for live signing |
+| `--message-metadata-digest <hex>` | 32-byte metadata digest (hex) |
+| `--public-key-hex <hex>` | Raw dWallet public key bytes in hex |
+
+### Supported Chains
+
+| Name | Number |
+|------|--------|
+| `solana` | 0 |
+| `bitcoin` | 1 |
+| `ethereum` | 2 |
+| `polygon` | 3 |
+| `arbitrum` | 4 |
+| `optimism` | 5 |
+
+---
+
+## aura dwallet list
+
+List all dWallets registered on a treasury.
+
+```bash
+aura dwallet list --agent-id agent-1
+aura dwallet list --agent-id agent-1 --json
+```

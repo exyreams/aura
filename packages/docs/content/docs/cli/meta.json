@@ -1,0 +1,12 @@
+{
+  "title": "CLI Tool",
+  "root": true,
+  "icon": "Terminal",
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "configuration",
+    "---Commands---",
+    "commands"
+  ]
+}

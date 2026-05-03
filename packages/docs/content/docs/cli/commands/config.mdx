@@ -1,0 +1,53 @@
+---
+title: config
+description: Initialize and manage local CLI configuration.
+icon: Settings
+---
+
+## aura config init
+
+Interactive setup wizard. Prompts for RPC URL, wallet path, program ID, and
+default agent ID, then writes `~/.aura/config.json`.
+
+```bash
+aura config init
+```
+
+---
+
+## aura config show
+
+Print the current resolved configuration with source for each value.
+
+```bash
+aura config show
+aura config show --json
+```
+
+Output shows each field, its resolved value, and where it came from (file,
+env var, flag, or default).
+
+---
+
+## aura config set
+
+Set a single configuration value. Takes a key name and value as positional
+arguments.
+
+```bash
+aura config set rpc-url https://devnet.helius-rpc.com/?api-key=YOUR_KEY
+aura config set wallet-path ~/.config/solana/id.json
+aura config set program-id G4XjdmHtwwuTdw7VxWqTuTaL8WkZTKnCEnyaV5V6zgVW
+aura config set default-agent-id my-agent
+aura config set cluster devnet
+```
+
+Valid keys:
+
+| Key | Description |
+|-----|-------------|
+| `rpc-url` | Solana RPC endpoint |
+| `wallet-path` | Path to keypair JSON file |
+| `program-id` | AURA program ID |
+| `default-agent-id` | Default agent ID used when `--agent-id` is omitted |
+| `cluster` | Cluster label for display purposes |
