@@ -2,7 +2,8 @@
 
 import type { WalletName } from "@solana/wallet-adapter-base";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { AlertCircle, ExternalLink, Wallet, X } from "lucide-react";
+import { AlertCircle, ExternalLink, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -14,194 +15,276 @@ interface WalletModalProps {
 }
 
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
-  const { wallets, select, connect, connecting, connected } = useWallet();
+  const { wallets, select, connect, connecting, connected, wallet } =
+    useWallet();
   const [mounted, setMounted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [connectingName, setConnectingName] = useState<string | null>(null);
+  const [pendingConnect, setPendingConnect] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Close when connected
   useEffect(() => {
     if (connected) {
+      setConnectingName(null);
+      setPendingConnect(false);
       onClose();
     }
   }, [connected, onClose]);
 
+  // Once wallet is selected and we have a pending connect, fire connect()
+  useEffect(() => {
+    if (!pendingConnect || !wallet) return;
+    setPendingConnect(false);
+    connect().catch((error) => {
+      setConnectingName(null);
+      const msg = error instanceof Error ? error.message : "";
+      if (
+        !msg.toLowerCase().includes("user rejected") &&
+        !msg.toLowerCase().includes("cancelled") &&
+        !msg.toLowerCase().includes("wallet not selected")
+      ) {
+        setErrorMessage(msg || "Failed to connect wallet.");
+      }
+    });
+  }, [pendingConnect, wallet, connect]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      setErrorMessage(null);
+      setConnectingName(null);
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  // Escape key to close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
   if (!mounted) return null;
 
-  const handleWalletClick = async (walletName: WalletName) => {
-    try {
-      setErrorMessage(null);
-      select(walletName);
-      await Promise.resolve();
-      await connect();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to connect wallet.",
-      );
-    }
+  const handleWalletClick = (walletName: WalletName) => {
+    setErrorMessage(null);
+    setConnectingName(walletName as string);
+    select(walletName);
+    // useEffect above will fire connect() once wallet state updates
+    setPendingConnect(true);
   };
 
-  const installedWallets = wallets.filter(
-    (wallet) => wallet.readyState === "Installed",
-  );
-  const notInstalledWallets = wallets.filter(
-    (wallet) => wallet.readyState !== "Installed",
-  );
+  const installedWallets = wallets.filter((w) => w.readyState === "Installed");
+  const otherWallets = wallets.filter((w) => w.readyState !== "Installed");
 
   const modalContent = (
-    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
-        style={{
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-        onClick={onClose}
-        aria-label="Close modal"
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-md bg-(--card-bg) border border-border rounded-lg shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div>
-            <h2 className="text-xl font-bold text-(--text-main)">
-              Connect Wallet
-            </h2>
-            <p className="text-sm text-(--text-muted) mt-1">
-              Choose your Solana wallet
-            </p>
-          </div>
-          <button
-            type="button"
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="text-(--text-muted) hover:text-(--text-main) transition-colors"
-            aria-label="Close"
+          />
+
+          {/* Modal — pops from center on all screen sizes */}
+          <motion.div
+            key="modal"
+            className="relative w-full sm:max-w-sm bg-(--input-bg) border border-border rounded-xl shadow-2xl overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+            {/* No drag handle — centered modal */}
 
-        {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto slim-scrollbar">
-          {errorMessage ? (
-            <div className="mb-4 rounded-lg border border-(--danger-border) bg-(--danger-bg) px-4 py-3 text-sm text-(--danger-text)">
-              {errorMessage}
-            </div>
-          ) : null}
-
-          {/* Installed Wallets */}
-          {installedWallets.length > 0 && (
-            <div className="space-y-3 mb-6">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-(--text-muted)">
-                Installed
-              </h3>
-              {installedWallets.map((wallet) => (
-                <button
-                  type="button"
-                  key={wallet.adapter.name}
-                  onClick={() => handleWalletClick(wallet.adapter.name)}
-                  disabled={connecting}
-                  className="w-full flex items-center gap-4 p-4 bg-(--card-content) hover:bg-(--hover-bg) border border-border rounded-lg transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Image
-                    src={wallet.adapter.icon}
-                    alt={wallet.adapter.name}
-                    width={40}
-                    height={40}
-                    unoptimized
-                    className="w-10 h-10 rounded-lg"
-                  />
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-(--text-main) group-hover:text-primary transition-colors">
-                      {wallet.adapter.name}
-                    </p>
-                    <p className="text-xs text-(--text-muted)">
-                      {connecting ? "Connecting..." : "Ready to connect"}
-                    </p>
-                  </div>
-                  <Wallet className="w-5 h-5 text-(--text-muted) group-hover:text-primary transition-colors" />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Not Installed Wallets */}
-          {notInstalledWallets.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-(--text-muted)">
-                Available Wallets
-              </h3>
-              {notInstalledWallets.map((wallet) => (
-                <a
-                  key={wallet.adapter.name}
-                  href={wallet.adapter.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center gap-4 p-4 bg-(--card-content) hover:bg-(--hover-bg) border border-border rounded-lg transition-all group"
-                >
-                  <Image
-                    src={wallet.adapter.icon}
-                    alt={wallet.adapter.name}
-                    width={40}
-                    height={40}
-                    unoptimized
-                    className="w-10 h-10 rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
-                  />
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-(--text-main) group-hover:text-primary transition-colors">
-                      {wallet.adapter.name}
-                    </p>
-                    <p className="text-xs text-(--text-muted)">Not installed</p>
-                  </div>
-                  <ExternalLink className="w-5 h-5 text-(--text-muted) group-hover:text-primary transition-colors" />
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* No Wallets */}
-          {wallets.length === 0 && (
-            <div className="text-center py-8">
-              <AlertCircle className="w-12 h-12 text-(--text-muted) mx-auto mb-4" />
-              <p className="text-(--text-main) font-medium mb-2">
-                No wallets detected
-              </p>
-              <p className="text-sm text-(--text-muted) mb-4">
-                Install a Solana wallet to continue
-              </p>
-              <a
-                href="https://phantom.app/"
-                target="_blank"
-                rel="noopener noreferrer"
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4">
+              <div>
+                <h2 className="font-bold text-(--text-main) text-base">
+                  Connect Wallet
+                </h2>
+                <p className="text-xs text-(--text-muted) mt-0.5">
+                  Choose your Solana wallet
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-(--hover-bg) text-(--text-muted) hover:text-(--text-main) transition-colors"
+                aria-label="Close"
               >
-                <Button variant="primary" size="small">
-                  Get Phantom Wallet
-                </Button>
-              </a>
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          )}
-        </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-border bg-(--card-content)">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-(--text-muted) mt-0.5 shrink-0" />
-            <p className="text-xs text-(--text-muted) leading-relaxed">
-              By connecting your wallet, you agree to our Terms of Service and
-              acknowledge that you have read our Privacy Policy.
-            </p>
-          </div>
+            {/* Divider */}
+            <div className="h-px bg-border mx-5" />
+
+            {/* Wallet list */}
+            <div className="px-4 py-3 max-h-[55vh] overflow-y-auto">
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errorMessage}
+                </motion.div>
+              )}
+
+              {/* Installed */}
+              {installedWallets.length > 0 && (
+                <div className="mb-3">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) px-1 mb-2">
+                    Installed
+                  </p>
+                  <div className="space-y-1.5">
+                    {installedWallets.map((wallet) => {
+                      const isConnecting =
+                        connectingName === wallet.adapter.name;
+                      return (
+                        <motion.button
+                          type="button"
+                          key={wallet.adapter.name}
+                          onClick={() => handleWalletClick(wallet.adapter.name)}
+                          disabled={connecting}
+                          whileTap={{ scale: 0.99 }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-(--card-bg) hover:bg-(--hover-bg) border border-border hover:border-primary group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Image
+                            src={wallet.adapter.icon}
+                            alt={wallet.adapter.name}
+                            width={32}
+                            height={32}
+                            unoptimized
+                            className="w-8 h-8 rounded-lg shrink-0"
+                          />
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-medium text-(--text-main) group-hover:text-primary">
+                              {wallet.adapter.name}
+                            </p>
+                            <p className="text-[10px] text-(--text-muted)">
+                              {isConnecting
+                                ? "Opening wallet…"
+                                : "Ready to connect"}
+                            </p>
+                          </div>
+                          {isConnecting ? (
+                            <motion.div
+                              className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent"
+                              animate={{ rotate: 360 }}
+                              transition={{
+                                duration: 0.7,
+                                repeat: Infinity,
+                                ease: "linear",
+                              }}
+                            />
+                          ) : (
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary opacity-0 group-hover:opacity-100" />
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Other wallets */}
+              {otherWallets.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) px-1 mb-2">
+                    Get a wallet
+                  </p>
+                  <div className="space-y-1.5">
+                    {otherWallets.map((wallet) => (
+                      <motion.a
+                        key={wallet.adapter.name}
+                        href={wallet.adapter.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-(--card-bg) hover:bg-(--hover-bg) border border-border hover:border-primary group"
+                      >
+                        <Image
+                          src={wallet.adapter.icon}
+                          alt={wallet.adapter.name}
+                          width={32}
+                          height={32}
+                          unoptimized
+                          className="w-8 h-8 rounded-lg shrink-0 opacity-50 group-hover:opacity-100"
+                        />
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium text-(--text-main) group-hover:text-primary">
+                            {wallet.adapter.name}
+                          </p>
+                          <p className="text-[10px] text-(--text-muted)">
+                            Not installed
+                          </p>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-(--text-muted) group-hover:text-primary" />
+                      </motion.a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No wallets at all */}
+              {wallets.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-(--text-main) font-medium mb-1">
+                    No wallets detected
+                  </p>
+                  <p className="text-xs text-(--text-muted) mb-4">
+                    Install a Solana wallet to continue
+                  </p>
+                  <a
+                    href="https://phantom.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="primary" size="small">
+                      Get Phantom
+                    </Button>
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-border">
+              <p className="text-[10px] text-(--text-muted) leading-relaxed text-center">
+                By connecting you agree to our{" "}
+                <span className="underline underline-offset-2 cursor-pointer hover:text-(--text-main) transition-colors">
+                  Terms of Service
+                </span>{" "}
+                and{" "}
+                <span className="underline underline-offset-2 cursor-pointer hover:text-(--text-main) transition-colors">
+                  Privacy Policy
+                </span>
+              </p>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
-
-  if (!isOpen) return null;
 
   return createPortal(modalContent, document.body);
 }

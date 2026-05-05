@@ -8,18 +8,27 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
+import { Dropdown } from "@/components/global/Dropdown";
 import { Input } from "@/components/global/Input";
+import { UsdInput } from "@/components/global/UsdInput";
 import {
   buildCreateTreasuryArgs,
   sendWalletInstructions,
 } from "@/lib/aura-app";
-import { useAppSettings, useAuraClient } from "@/lib/hooks";
+import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 
 export default function CreateTreasuryPage() {
   const wallet = useWallet();
   const { connection } = useConnection();
   const client = useAuraClient();
   const settings = useAppSettings();
+  const {
+    agents,
+    selectedAgent,
+    selectedAgentId,
+    setSelectedAgentId,
+    isLoading: agentsLoading,
+  } = useAgents();
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -31,8 +40,6 @@ export default function CreateTreasuryPage() {
   const [copiedTx, setCopiedTx] = useState(false);
 
   // Form state
-  const [agentId, setAgentId] = useState("");
-  const [aiAuthority, setAiAuthority] = useState("");
   const [dailyLimit, setDailyLimit] = useState("95000");
   const [perTxLimit, setPerTxLimit] = useState("22000");
   const [daytimeHourly, setDaytimeHourly] = useState("9500");
@@ -49,11 +56,14 @@ export default function CreateTreasuryPage() {
       if (!wallet.publicKey) {
         throw new Error("Connect a wallet first.");
       }
+      if (!selectedAgent) {
+        throw new Error(
+          "Create and select an agent before creating a treasury.",
+        );
+      }
       const args = buildCreateTreasuryArgs({
-        agentId: agentId,
-        aiAuthority: aiAuthority.trim()
-          ? new PublicKey(aiAuthority.trim())
-          : wallet.publicKey,
+        agentId: selectedAgent.agentId,
+        aiAuthority: new PublicKey(selectedAgent.publicKey),
         dailyLimitUsd: Number(dailyLimit),
         perTxLimitUsd: Number(perTxLimit),
         daytimeHourlyLimitUsd: Number(daytimeHourly),
@@ -88,13 +98,13 @@ export default function CreateTreasuryPage() {
     }
 
     const errors: Record<string, string> = {};
-    if (!agentId.trim()) errors.agentId = "Agent ID is required";
-
-    if (aiAuthority && aiAuthority.trim().length > 0) {
+    if (!selectedAgent) {
+      errors.agent = "Create and select an agent before creating a treasury.";
+    } else {
       try {
-        new PublicKey(aiAuthority);
+        new PublicKey(selectedAgent.publicKey);
       } catch (_err) {
-        errors.aiAuthority = "Invalid Solana Public Key";
+        errors.agent = "Selected agent public key is invalid.";
       }
     }
 
@@ -158,8 +168,6 @@ export default function CreateTreasuryPage() {
   };
 
   const resetForm = () => {
-    setAgentId("");
-    setAiAuthority("");
     setDailyLimit("95000");
     setPerTxLimit("22000");
     setDaytimeHourly("9500");
@@ -247,144 +255,121 @@ export default function CreateTreasuryPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
               {/* Left Column */}
               <div className="space-y-8">
-                <Input
-                  label="Agent ID"
-                  type="text"
-                  value={agentId}
-                  onChange={(e) => {
-                    setAgentId(e.target.value);
-                    if (validationErrors.agentId)
-                      setValidationErrors((p) => ({ ...p, agentId: "" }));
+                <div className="space-y-2">
+                  <p className="mono text-[10px] uppercase text-(--text-muted) font-bold">
+                    Agent
+                  </p>
+                  <Dropdown
+                    options={agents.map((agent) => ({
+                      value: agent.agentId,
+                      label: agent.label || agent.agentId,
+                    }))}
+                    value={selectedAgentId}
+                    onChange={(value) => {
+                      setSelectedAgentId(value);
+                      if (validationErrors.agent) {
+                        setValidationErrors((p) => ({ ...p, agent: "" }));
+                      }
+                    }}
+                    placeholder={
+                      agentsLoading ? "Loading agents" : "Select agent"
+                    }
+                  />
+                  {validationErrors.agent ? (
+                    <p className="text-xs text-danger">
+                      {validationErrors.agent}
+                    </p>
+                  ) : null}
+                  {agents.length === 0 && !agentsLoading ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/agents")}
+                      className="text-xs text-primary underline-offset-4 hover:underline"
+                    >
+                      Create an agent first
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="rounded-sm border border-border bg-(--card-bg) p-4">
+                  <p className="mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                    AI Authority Pubkey
+                  </p>
+                  <p className="mt-2 break-all font-mono text-sm text-(--text-main)">
+                    {selectedAgent?.publicKey ?? "No agent selected"}
+                  </p>
+                </div>
+
+                <UsdInput
+                  label="Daily Limit"
+                  valueCents={dailyLimit}
+                  onChangeCents={(v) => {
+                    setDailyLimit(v);
+                    if (validationErrors.dailyLimit)
+                      setValidationErrors((p) => ({ ...p, dailyLimit: "" }));
                   }}
-                  placeholder="e.g., SENTINEL-ALPHA-01"
                   required
                   disabled={createMutation.isPending}
-                  error={validationErrors.agentId}
+                  error={validationErrors.dailyLimit}
                 />
 
-                <Input
-                  label="AI Authority Pubkey"
-                  type="text"
-                  value={aiAuthority}
-                  onChange={(e) => {
-                    setAiAuthority(e.target.value);
-                    if (validationErrors.aiAuthority)
-                      setValidationErrors((p) => ({ ...p, aiAuthority: "" }));
+                <UsdInput
+                  label="Per-Tx Limit"
+                  valueCents={perTxLimit}
+                  onChangeCents={(v) => {
+                    setPerTxLimit(v);
+                    if (validationErrors.perTxLimit)
+                      setValidationErrors((p) => ({ ...p, perTxLimit: "" }));
                   }}
-                  placeholder={
-                    `${wallet.publicKey?.toBase58().slice(0, 8)}...` ||
-                    "0x7B2...E92"
-                  }
+                  required
                   disabled={createMutation.isPending}
-                  error={validationErrors.aiAuthority}
+                  error={validationErrors.perTxLimit}
                 />
 
-                <div>
-                  <Input
-                    label="Daily Limit (USD cents)"
-                    type="number"
-                    value={dailyLimit}
-                    onChange={(e) => {
-                      setDailyLimit(e.target.value);
-                      if (validationErrors.dailyLimit)
-                        setValidationErrors((p) => ({ ...p, dailyLimit: "" }));
-                    }}
-                    required
-                    disabled={createMutation.isPending}
-                    error={validationErrors.dailyLimit}
-                  />
-                  <p className="text-[11px] text-(--text-muted) mt-1">
-                    ${(Number(dailyLimit) / 100).toFixed(2)}
-                  </p>
-                </div>
+                <UsdInput
+                  label="Daytime Hourly Limit"
+                  valueCents={daytimeHourly}
+                  onChangeCents={(v) => {
+                    setDaytimeHourly(v);
+                    if (validationErrors.daytimeHourly)
+                      setValidationErrors((p) => ({ ...p, daytimeHourly: "" }));
+                  }}
+                  required
+                  disabled={createMutation.isPending}
+                  error={validationErrors.daytimeHourly}
+                />
 
-                <div>
-                  <Input
-                    label="Per-Tx Limit (USD cents)"
-                    type="number"
-                    value={perTxLimit}
-                    onChange={(e) => {
-                      setPerTxLimit(e.target.value);
-                      if (validationErrors.perTxLimit)
-                        setValidationErrors((p) => ({ ...p, perTxLimit: "" }));
-                    }}
-                    required
-                    disabled={createMutation.isPending}
-                    error={validationErrors.perTxLimit}
-                  />
-                  <p className="text-[11px] text-(--text-muted) mt-1">
-                    ${(Number(perTxLimit) / 100).toFixed(2)}
-                  </p>
-                </div>
-
-                <div>
-                  <Input
-                    label="Daytime Hourly Limit"
-                    type="number"
-                    value={daytimeHourly}
-                    onChange={(e) => {
-                      setDaytimeHourly(e.target.value);
-                      if (validationErrors.daytimeHourly)
-                        setValidationErrors((p) => ({
-                          ...p,
-                          daytimeHourly: "",
-                        }));
-                    }}
-                    required
-                    disabled={createMutation.isPending}
-                    error={validationErrors.daytimeHourly}
-                  />
-                  <p className="text-[11px] text-(--text-muted) mt-1">
-                    ${(Number(daytimeHourly) / 100).toFixed(2)}
-                  </p>
-                </div>
-
-                <div>
-                  <Input
-                    label="Nighttime Hourly Limit"
-                    type="number"
-                    value={nighttimeHourly}
-                    onChange={(e) => {
-                      setNighttimeHourly(e.target.value);
-                      if (validationErrors.nighttimeHourly)
-                        setValidationErrors((p) => ({
-                          ...p,
-                          nighttimeHourly: "",
-                        }));
-                    }}
-                    required
-                    disabled={createMutation.isPending}
-                    error={validationErrors.nighttimeHourly}
-                  />
-                  <p className="text-[11px] text-(--text-muted) mt-1">
-                    ${(Number(nighttimeHourly) / 100).toFixed(2)}
-                  </p>
-                </div>
+                <UsdInput
+                  label="Nighttime Hourly Limit"
+                  valueCents={nighttimeHourly}
+                  onChangeCents={(v) => {
+                    setNighttimeHourly(v);
+                    if (validationErrors.nighttimeHourly)
+                      setValidationErrors((p) => ({
+                        ...p,
+                        nighttimeHourly: "",
+                      }));
+                  }}
+                  required
+                  disabled={createMutation.isPending}
+                  error={validationErrors.nighttimeHourly}
+                />
               </div>
 
               {/* Right Column */}
               <div className="space-y-8">
-                <div>
-                  <Input
-                    label="Velocity Limit"
-                    type="number"
-                    value={velocityLimit}
-                    onChange={(e) => {
-                      setVelocityLimit(e.target.value);
-                      if (validationErrors.velocityLimit)
-                        setValidationErrors((p) => ({
-                          ...p,
-                          velocityLimit: "",
-                        }));
-                    }}
-                    required
-                    disabled={createMutation.isPending}
-                    error={validationErrors.velocityLimit}
-                  />
-                  <p className="text-[11px] text-(--text-muted) mt-1">
-                    ${(Number(velocityLimit) / 100).toFixed(2)}
-                  </p>
-                </div>
+                <UsdInput
+                  label="Velocity Limit"
+                  valueCents={velocityLimit}
+                  onChangeCents={(v) => {
+                    setVelocityLimit(v);
+                    if (validationErrors.velocityLimit)
+                      setValidationErrors((p) => ({ ...p, velocityLimit: "" }));
+                  }}
+                  required
+                  disabled={createMutation.isPending}
+                  error={validationErrors.velocityLimit}
+                />
 
                 <div>
                   <Input
@@ -467,27 +452,18 @@ export default function CreateTreasuryPage() {
                   </p>
                 </div>
 
-                <div>
-                  <Input
-                    label="BTC Manual Review Threshold"
-                    type="number"
-                    value={btcThreshold}
-                    onChange={(e) => {
-                      setBtcThreshold(e.target.value);
-                      if (validationErrors.btcThreshold)
-                        setValidationErrors((p) => ({
-                          ...p,
-                          btcThreshold: "",
-                        }));
-                    }}
-                    required
-                    disabled={createMutation.isPending}
-                    error={validationErrors.btcThreshold}
-                  />
-                  <p className="text-[11px] text-(--text-muted) mt-1">
-                    ${(Number(btcThreshold) / 100).toFixed(2)}
-                  </p>
-                </div>
+                <UsdInput
+                  label="BTC Manual Review Threshold"
+                  valueCents={btcThreshold}
+                  onChangeCents={(v) => {
+                    setBtcThreshold(v);
+                    if (validationErrors.btcThreshold)
+                      setValidationErrors((p) => ({ ...p, btcThreshold: "" }));
+                  }}
+                  required
+                  disabled={createMutation.isPending}
+                  error={validationErrors.btcThreshold}
+                />
               </div>
             </div>
 
@@ -497,7 +473,7 @@ export default function CreateTreasuryPage() {
                 variant="primary"
                 size="medium"
                 loading={createMutation.isPending}
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || !selectedAgent}
                 className="px-12"
               >
                 Create Treasury

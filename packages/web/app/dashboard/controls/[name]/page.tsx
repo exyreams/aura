@@ -28,6 +28,7 @@ import {
   type InstructionBuildResponse,
   type InstructionCatalogResponse,
   type ProgramInstructionSchema,
+  useAgents,
   useAppSettings,
   useBackendInfo,
   useInstructionCatalog,
@@ -175,6 +176,7 @@ export default function ProgramInstructionPage() {
   const params = useParams<{ name?: string | string[] }>();
   const instructionName = getRouteName(params.name);
   const settings = useAppSettings();
+  const { selectedAgent } = useAgents();
   const wallet = useWallet();
   const { connection } = useConnection();
   const instructionCatalogQuery = useInstructionCatalog();
@@ -231,12 +233,14 @@ export default function ProgramInstructionPage() {
         | unknown[],
       rpcUrl: settings.endpoint,
       programId: programId ?? settings.programId,
+      agentId: selectedAgent?.agentId,
     };
   }, [
     accountValues,
     argsText,
     programId,
     schema,
+    selectedAgent?.agentId,
     settings.endpoint,
     settings.programId,
     walletAddress,
@@ -297,15 +301,19 @@ export default function ProgramInstructionPage() {
   });
 
   const backendSendMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<InstructionBuildResponse & { signature: string }>(
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error("Create and select an agent before backend sending.");
+      }
+      return postBackend<InstructionBuildResponse & { signature: string }>(
         settings.backendUrl,
         "/v1/instructions/send",
         {
           ...buildPayload(),
           computeUnitLimit: 600_000,
         },
-      ),
+      );
+    },
     onMutate: () => {
       setFormError(null);
       setSignature(null);
@@ -536,7 +544,7 @@ export default function ProgramInstructionPage() {
                   )
                 }
                 loading={backendSendMutation.isPending}
-                disabled={isBusy}
+                disabled={isBusy || !selectedAgent}
                 onClick={() => backendSendMutation.mutate()}
               >
                 Backend Send
@@ -557,7 +565,9 @@ export default function ProgramInstructionPage() {
               <div className="flex justify-between gap-4">
                 <dt className="text-(--text-muted)">Backend</dt>
                 <dd className="break-all text-right font-mono text-(--text-main)">
-                  {backendInfoQuery.data?.publicKey ?? "unavailable"}
+                  {selectedAgent?.publicKey ??
+                    backendInfoQuery.data?.auth?.mode ??
+                    "unavailable"}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">

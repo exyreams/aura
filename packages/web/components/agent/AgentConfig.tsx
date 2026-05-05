@@ -6,10 +6,11 @@ import { Play, Square, Zap } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 import { Button, Card, Dropdown, Input, Textarea } from "@/components/global";
+import { UsdInput } from "@/components/global/UsdInput";
 import type { TreasuryEntry } from "@/lib/aura-app";
 import { CHAINS, getActivePendingProposal, TX_TYPES } from "@/lib/aura-app";
 import { postBackend } from "@/lib/backend-client";
-import { useAppSettings, useBackendInfo } from "@/lib/hooks";
+import { useAgents, useAppSettings, useBackendInfo } from "@/lib/hooks";
 
 interface FormState {
   treasury: string;
@@ -43,6 +44,7 @@ export function AgentConfig({
   queryClient,
 }: AgentConfigProps) {
   const settings = useAppSettings();
+  const { selectedAgent } = useAgents();
   const backendInfoQuery = useBackendInfo();
 
   const treasury = useMemo(
@@ -59,8 +61,14 @@ export function AgentConfig({
   const activePending = getActivePendingProposal(treasury?.account);
 
   const startMutation = useMutation({
-    mutationFn: async () =>
-      postBackend(settings.backendUrl, "/v1/agent/start", {
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before starting automation.",
+        );
+      }
+      return postBackend(settings.backendUrl, "/v1/agent/start", {
+        agentId: selectedAgent.agentId,
         treasury: form.treasury,
         strategy: form.strategy,
         mode: form.mode,
@@ -74,15 +82,22 @@ export function AgentConfig({
         chain: Number(form.chain),
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["agent-status"] });
     },
   });
 
   const runOnceMutation = useMutation({
-    mutationFn: async () =>
-      postBackend(settings.backendUrl, "/v1/agent/run-once", {
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before running automation.",
+        );
+      }
+      return postBackend(settings.backendUrl, "/v1/agent/run-once", {
+        agentId: selectedAgent.agentId,
         treasury: form.treasury,
         strategy: form.strategy,
         mode: form.mode,
@@ -96,7 +111,8 @@ export function AgentConfig({
         chain: Number(form.chain),
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["agent-status"] });
       await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
@@ -107,10 +123,17 @@ export function AgentConfig({
   });
 
   const stopMutation = useMutation({
-    mutationFn: async () =>
-      postBackend(settings.backendUrl, "/v1/agent/stop", {
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before stopping automation.",
+        );
+      }
+      return postBackend(settings.backendUrl, "/v1/agent/stop", {
+        agentId: selectedAgent.agentId,
         treasury: form.treasury,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["agent-status"] });
     },
@@ -236,15 +259,11 @@ export function AgentConfig({
             }
           />
         </div>
-        <Input
-          label="Max Trade Size (USD cents)"
-          type="number"
-          value={form.maxTradeSizeUsd}
-          onChange={(e) =>
-            setForm((current) => ({
-              ...current,
-              maxTradeSizeUsd: e.target.value,
-            }))
+        <UsdInput
+          label="Max Trade Size"
+          valueCents={form.maxTradeSizeUsd}
+          onChangeCents={(v) =>
+            setForm((current) => ({ ...current, maxTradeSizeUsd: v }))
           }
         />
         <Input
@@ -312,7 +331,11 @@ export function AgentConfig({
             Backend Signer
           </span>
           <code className="text-xs text-(--text-muted)">
-            {backendInfoQuery.data?.publicKey?.slice(0, 8) ?? "Loading"}...
+            {selectedAgent?.publicKey
+              ? `${selectedAgent.publicKey.slice(0, 8)}...`
+              : backendInfoQuery.isLoading
+                ? "Loading..."
+                : "No agent selected"}
           </code>
         </div>
         <div className="flex gap-3">
@@ -324,7 +347,8 @@ export function AgentConfig({
               startMutation.isPending ||
               !form.treasury ||
               !form.recipient ||
-              !settings.nimApiKey
+              !settings.nimApiKey ||
+              !selectedAgent
             }
             onClick={() => startMutation.mutate()}
             className="font-mono! text-[10px]! uppercase! tracking-widest!"
@@ -339,7 +363,8 @@ export function AgentConfig({
               runOnceMutation.isPending ||
               !form.treasury ||
               !form.recipient ||
-              !settings.nimApiKey
+              !settings.nimApiKey ||
+              !selectedAgent
             }
             onClick={() => runOnceMutation.mutate()}
             className="font-mono! text-[10px]! uppercase! tracking-widest!"
@@ -350,7 +375,9 @@ export function AgentConfig({
             variant="danger"
             size="small"
             icon={<Square className="w-3 h-3" />}
-            disabled={stopMutation.isPending || !form.treasury}
+            disabled={
+              stopMutation.isPending || !form.treasury || !selectedAgent
+            }
             onClick={() => stopMutation.mutate()}
             className="font-mono! text-[10px]! uppercase! tracking-widest!"
           >

@@ -18,26 +18,6 @@ interface BackendEnvelope<T> {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-function getBackendAuthHeader() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-  const token = window.localStorage.getItem("aura:backend-auth-token");
-  if (!token) {
-    return {};
-  }
-  try {
-    const parsed = JSON.parse(token) as string;
-    const normalized = parsed.trim();
-    if (!normalized) {
-      return {};
-    }
-    return { authorization: `Bearer ${normalized}` };
-  } catch {
-    return {};
-  }
-}
-
 export async function backendRequest<T>(
   baseUrl: string,
   path: string,
@@ -45,9 +25,6 @@ export async function backendRequest<T>(
 ) {
   const headers = new Headers(init?.headers);
   headers.set("content-type", "application/json");
-  for (const [key, value] of Object.entries(getBackendAuthHeader())) {
-    headers.set(key, value);
-  }
 
   const controller = new AbortController();
   const timeout = window.setTimeout(
@@ -60,6 +37,7 @@ export async function backendRequest<T>(
     response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers,
+      credentials: init?.credentials ?? "include",
       signal: init?.signal ?? controller.signal,
     });
   } catch (error) {

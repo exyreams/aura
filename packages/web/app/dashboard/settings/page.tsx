@@ -37,7 +37,7 @@ export default function SettingsPage() {
     settings.setCustomRpcUrl("");
     settings.setProgramId(AURA_PROGRAM_ID.toBase58());
     settings.setBackendUrl(DEFAULT_BACKEND_URL);
-    settings.setBackendAuthToken("");
+    settings.setSelectedAgentId("");
     settings.setNimApiKey("");
     settings.setCurrency("USD");
     settings.setDateFormat("MMM DD, YYYY HH:mm");
@@ -96,7 +96,7 @@ export default function SettingsPage() {
       content: (
         <Card className="space-y-6" hover={false}>
           <h2 className="text-lg font-bold text-(--text-main) mb-6">
-            Agent Credentials
+            Backend & Agent Settings
           </h2>
           <div className="space-y-6">
             <Input
@@ -104,13 +104,6 @@ export default function SettingsPage() {
               value={settings.backendUrl}
               onChange={(e) => settings.setBackendUrl(e.target.value)}
               placeholder={DEFAULT_BACKEND_URL}
-            />
-            <Input
-              label="Backend API Token"
-              type="password"
-              value={settings.backendAuthToken}
-              onChange={(e) => settings.setBackendAuthToken(e.target.value)}
-              placeholder="Optional bearer token for protected backend routes"
             />
             <div className="space-y-2">
               <Input
@@ -235,16 +228,21 @@ export default function SettingsPage() {
                 },
                 {
                   label: "Backend auth",
-                  value: settings.backendAuthToken ? "Configured" : "Disabled",
-                  muted: !settings.backendAuthToken,
+                  value: backendInfo?.auth?.mode ?? "SIWS cookie",
+                  muted: false,
                 },
                 {
-                  label: "Backend signer",
+                  label: "Session cookie",
                   value:
-                    backendInfo?.publicKey ??
+                    backendInfo?.auth?.cookieName ??
                     (backendInfoQuery.isError ? "Unavailable" : "Loading..."),
                   warning: backendInfoQuery.isError,
-                  mono: !!backendInfo?.publicKey,
+                  mono: !!backendInfo?.auth?.cookieName,
+                },
+                {
+                  label: "Selected agent",
+                  value: settings.selectedAgentId || "Not selected",
+                  muted: !settings.selectedAgentId,
                 },
                 { label: "Currency", value: settings.currency },
                 { label: "Date format", value: settings.dateFormat },

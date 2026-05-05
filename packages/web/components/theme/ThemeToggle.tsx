@@ -4,7 +4,7 @@ import { Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/global/Button";
 
 export const ThemeToggle = () => {
   const { setTheme, resolvedTheme } = useTheme();
@@ -16,49 +16,44 @@ export const ThemeToggle = () => {
 
   if (!mounted) {
     return (
-      <div className="w-10 h-10 rounded-sm border border-border bg-(--card-bg)" />
+      <Button variant="ghost" size="small" className="w-[34px]! px-0!">
+        <span className="w-4 h-4" />
+      </Button>
     );
   }
 
   const isDark = resolvedTheme === "dark";
 
-  const handleToggle = () => {
-    setTheme(isDark ? "light" : "dark");
-  };
-
   return (
-    <motion.button
-      type="button"
-      onClick={handleToggle}
-      className={cn(
-        "relative w-10 h-10 rounded-sm border border-border bg-(--card-bg) hover:bg-(--hover-bg) transition-colors flex items-center justify-center",
-      )}
-      whileTap={{ scale: 0.95 }}
+    <Button
+      variant="ghost"
+      size="small"
+      className="w-[34px]! px-0! relative overflow-hidden"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label="Toggle theme"
     >
-      <motion.div
-        initial={false}
+      <motion.span
+        className="absolute"
         animate={{
           scale: isDark ? 1 : 0,
           opacity: isDark ? 1 : 0,
           rotate: isDark ? 0 : 180,
         }}
         transition={{ duration: 0.2 }}
-        className="absolute"
       >
-        <Moon className="w-4 h-4 text-(--text-main)" />
-      </motion.div>
-      <motion.div
-        initial={false}
+        <Moon className="w-4 h-4" />
+      </motion.span>
+      <motion.span
+        className="absolute"
         animate={{
           scale: isDark ? 0 : 1,
           opacity: isDark ? 0 : 1,
           rotate: isDark ? -180 : 0,
         }}
         transition={{ duration: 0.2 }}
-        className="absolute"
       >
-        <Sun className="w-4 h-4 text-(--text-main)" />
-      </motion.div>
-    </motion.button>
+        <Sun className="w-4 h-4" />
+      </motion.span>
+    </Button>
   );
 };

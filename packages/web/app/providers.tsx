@@ -13,9 +13,10 @@ import {
 } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ThemeProvider } from "@/components/theme";
 import { FaviconSwitcher } from "@/components/theme/FaviconSwitcher";
+import { AuthProvider } from "@/lib/auth";
 import {
   AppSettingsContext,
   type AppSettingsContextValue,
@@ -40,8 +41,8 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
     "aura:backend-url",
     DEFAULT_BACKEND_URL,
   );
-  const [backendAuthToken, setBackendAuthToken] = usePersistentState<string>(
-    "aura:backend-auth-token",
+  const [selectedAgentId, setSelectedAgentId] = usePersistentState<string>(
+    "aura:selected-agent-id",
     "",
   );
   const [nimApiKey, setNimApiKey] = usePersistentState<string>(
@@ -56,6 +57,21 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
     "aura:date-format",
     "MMM DD, YYYY HH:mm",
   );
+
+  useEffect(() => {
+    window.localStorage.removeItem("aura:backend-auth-token");
+    // Migrate old direct backend URLs to the proxy path
+    const stored = window.localStorage.getItem("aura:backend-url");
+    if (
+      stored?.includes("127.0.0.1:8787") ||
+      stored?.includes("localhost:8787")
+    ) {
+      window.localStorage.setItem(
+        "aura:backend-url",
+        JSON.stringify("/api/backend"),
+      );
+    }
+  }, []);
 
   const endpoint = customRpcUrl || clusterApiUrl(network);
   let resolvedProgramId: PublicKey | undefined;
@@ -75,7 +91,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       programId,
       resolvedProgramId,
       backendUrl,
-      backendAuthToken,
+      selectedAgentId,
       nimApiKey,
       currency,
       dateFormat,
@@ -83,7 +99,7 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       setCustomRpcUrl,
       setProgramId,
       setBackendUrl,
-      setBackendAuthToken,
+      setSelectedAgentId,
       setNimApiKey,
       setCurrency,
       setDateFormat,
@@ -94,19 +110,19 @@ function AppSettingsProvider({ children }: { children: ReactNode }) {
       dateFormat,
       endpoint,
       backendUrl,
-      backendAuthToken,
       network,
       nimApiKey,
       programId,
       resolvedProgramId,
+      selectedAgentId,
       setCurrency,
       setCustomRpcUrl,
       setDateFormat,
       setBackendUrl,
-      setBackendAuthToken,
       setNetwork,
       setNimApiKey,
       setProgramId,
+      setSelectedAgentId,
     ],
   );
 
@@ -143,7 +159,9 @@ function SolanaProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={settings.endpoint}>
         <WalletProvider wallets={wallets} autoConnect={true}>
-          <WalletModalProvider>{children}</WalletModalProvider>
+          <WalletModalProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>
     </QueryClientProvider>

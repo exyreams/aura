@@ -2,7 +2,8 @@
 
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
-import { Badge, Button, Card, Input } from "@/components/global";
+import { Badge, Button, Card } from "@/components/global";
+import { UsdInput } from "@/components/global/UsdInput";
 import type { TreasuryEntry } from "@/lib/hooks";
 
 interface ProposeOverrideProps {
@@ -36,25 +37,12 @@ export function ProposeOverride({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         <form className="lg:col-span-7 space-y-8">
           <div className="grid grid-cols-1 gap-8">
-            <div className="space-y-2">
-              <label
-                htmlFor="override-limit"
-                className="mono text-[10px] uppercase text-(--text-muted) font-bold block tracking-widest mb-4"
-              >
-                New daily limit (USD cents)
-              </label>
-              <Input
-                id="override-limit"
-                type="number"
-                value={overrideLimit}
-                onChange={(e) => setOverrideLimit(e.target.value)}
-                className="font-mono"
-                placeholder="2500000"
-              />
-              <p className="text-[11px] text-(--text-muted) mono">
-                ${(Number(overrideLimit) / 100).toFixed(2)}
-              </p>
-            </div>
+            <UsdInput
+              label="New daily limit"
+              valueCents={overrideLimit}
+              onChangeCents={setOverrideLimit}
+              placeholder="25000.00"
+            />
           </div>
           <div className="flex gap-3">
             <Button

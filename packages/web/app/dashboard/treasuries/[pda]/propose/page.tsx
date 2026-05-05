@@ -1,7 +1,7 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card } from "@/components/global";
@@ -19,8 +19,13 @@ import {
   getActivePendingProposal,
   sendWalletInstructions,
 } from "@/lib/aura-app";
-import { postBackend } from "@/lib/backend-client";
-import { useAppSettings, useAuraClient, useTreasury } from "@/lib/hooks";
+import { backendRequest, postBackend } from "@/lib/backend-client";
+import {
+  useAgents,
+  useAppSettings,
+  useAuraClient,
+  useTreasury,
+} from "@/lib/hooks";
 import { usePersistentState } from "@/lib/settings";
 import { shortenAddress } from "@/lib/utils";
 
@@ -43,6 +48,7 @@ export default function ProposeTransactionPage() {
   const { connection } = useConnection();
   const client = useAuraClient();
   const settings = useAppSettings();
+  const { selectedAgent } = useAgents();
   const queryClient = useQueryClient();
   const treasuryQuery = useTreasury(pda);
   const entry = treasuryQuery.data;
@@ -102,16 +108,29 @@ export default function ProposeTransactionPage() {
 
   const proposeMutation = useMutation({
     mutationFn: async () => {
-      if (!wallet.publicKey || !entry) {
-        throw new Error("Connect a wallet first.");
-      }
+      if (!entry) throw new Error("Treasury not loaded.");
+      const selectedAgentId = selectedAgent?.agentId;
+
+      // Determine whether the connected wallet is the ai_authority.
+      // If not (e.g. treasury uses the backend agent keypair), route the
+      // proposal through the backend so the correct signer is used.
+      const aiAuthority = entry.account.aiAuthority?.toString?.() ?? "";
+      const walletIsAiAuthority =
+        wallet.publicKey && aiAuthority === wallet.publicKey.toBase58();
+
       if (mode === "confidential") {
+        if (!selectedAgentId) {
+          throw new Error(
+            "Create and select an agent before using confidential proposals.",
+          );
+        }
         return await postBackend<{ signature: string }>(
           settings.backendUrl,
           "/v1/confidential/propose",
           {
             rpcUrl: settings.endpoint,
             programId: settings.programId || undefined,
+            agentId: selectedAgentId,
             treasury: pda,
             amountUsd: Number(form.amountUsd),
             chain: Number(form.chain),
@@ -134,6 +153,45 @@ export default function ProposeTransactionPage() {
           },
         );
       }
+
+      // Public mode — route through backend if wallet is not the ai_authority
+      if (!walletIsAiAuthority) {
+        if (!selectedAgentId) {
+          throw new Error(
+            "Create and select an agent before backend-signed proposals.",
+          );
+        }
+        return await postBackend<{ signature: string }>(
+          settings.backendUrl,
+          "/v1/proposals/public",
+          {
+            rpcUrl: settings.endpoint,
+            programId: settings.programId || undefined,
+            agentId: selectedAgentId,
+            treasury: pda,
+            amountUsd: Number(form.amountUsd),
+            chain: Number(form.chain),
+            txType: Number(form.txType),
+            recipient: form.recipient,
+            protocolId: form.protocolId ? Number(form.protocolId) : undefined,
+            expectedOutputUsd: form.expectedOutputUsd
+              ? Number(form.expectedOutputUsd)
+              : undefined,
+            actualOutputUsd: form.actualOutputUsd
+              ? Number(form.actualOutputUsd)
+              : undefined,
+            quoteAgeSecs: form.quoteAgeSecs
+              ? Number(form.quoteAgeSecs)
+              : undefined,
+            counterpartyRiskScore: form.counterpartyRiskScore
+              ? Number(form.counterpartyRiskScore)
+              : undefined,
+          },
+        );
+      }
+
+      // Public mode — wallet is the ai_authority, sign directly
+      if (!wallet.publicKey) throw new Error("Connect a wallet first.");
       const args = buildProposeTransactionArgs({
         amountUsd: Number(form.amountUsd),
         chain: Number(form.chain),
@@ -181,18 +239,25 @@ export default function ProposeTransactionPage() {
   });
 
   const requestDecryptionMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<{
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before requesting decryption.",
+        );
+      }
+      return postBackend<{
         signature: string;
         requestAccount: string;
         ciphertext: string;
       }>(settings.backendUrl, "/v1/confidential/request-decryption", {
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
+        agentId: selectedAgent.agentId,
         treasury: pda,
         ciphertext: lifecycleState.policyOutputCiphertext || undefined,
         wait: true,
-      }),
+      });
+    },
     onSuccess: async (result) => {
       setLifecycleState((current) => ({
         ...current,
@@ -203,8 +268,13 @@ export default function ProposeTransactionPage() {
   });
 
   const confirmDecryptionMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<{
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before confirming decryption.",
+        );
+      }
+      return postBackend<{
         signature: string;
         approved: boolean | null;
         violation: number | null;
@@ -212,9 +282,11 @@ export default function ProposeTransactionPage() {
       }>(settings.backendUrl, "/v1/confidential/confirm-decryption", {
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
+        agentId: selectedAgent.agentId,
         treasury: pda,
         requestAccount: lifecycleState.requestAccount || undefined,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
       await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
@@ -222,18 +294,25 @@ export default function ProposeTransactionPage() {
   });
 
   const executeMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<{
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before executing pending proposals.",
+        );
+      }
+      return postBackend<{
         signature: string;
         approved: boolean;
         messageApproval?: string;
       }>(settings.backendUrl, "/v1/execution/execute", {
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
+        agentId: selectedAgent.agentId,
         treasury: pda,
         wait: true,
         waitSigned: true,
-      }),
+      });
+    },
     onSuccess: async (result) => {
       setLifecycleState((current) => ({
         ...current,
@@ -245,16 +324,23 @@ export default function ProposeTransactionPage() {
   });
 
   const finalizeMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<{
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before finalizing execution.",
+        );
+      }
+      return postBackend<{
         signature: string;
         totalTransactions: string;
       }>(settings.backendUrl, "/v1/execution/finalize", {
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
+        agentId: selectedAgent.agentId,
         treasury: pda,
         messageApproval: lifecycleState.messageApproval || undefined,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
       await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
@@ -267,6 +353,37 @@ export default function ProposeTransactionPage() {
     proposeMutation.mutate();
   };
 
+  const messageApprovalAddress =
+    lifecycleState.messageApproval ||
+    pending?.signatureRequest?.messageApprovalAccount?.toString() ||
+    "";
+
+  const messageApprovalStatusQuery = useQuery({
+    queryKey: [
+      "message-approval-status",
+      messageApprovalAddress,
+      settings.backendUrl,
+      settings.endpoint,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        messageApproval: messageApprovalAddress,
+      });
+      if (settings.endpoint) params.set("rpcUrl", settings.endpoint);
+      return backendRequest<{
+        messageApproval: string;
+        state: "missing" | "pending" | "signed";
+      }>(settings.backendUrl, `/v1/execution/status?${params.toString()}`, {
+        method: "GET",
+      });
+    },
+    enabled: Boolean(messageApprovalAddress) && !finalizeMutation.isSuccess,
+    refetchInterval: (query) =>
+      query.state.data?.state === "signed" ? false : 4_000,
+  });
+
+  const messageApprovalState = messageApprovalStatusQuery.data?.state;
+
   const canRequestDecryption = Boolean(
     lifecycleState.policyOutputCiphertext ||
       pending?.policyOutputCiphertextAccount,
@@ -275,10 +392,8 @@ export default function ProposeTransactionPage() {
     lifecycleState.requestAccount || pending?.decryptionRequest?.requestAccount,
   );
   const canExecutePending = Boolean(pending);
-  const canFinalize = Boolean(
-    lifecycleState.messageApproval ||
-      pending?.signatureRequest?.messageApprovalAccount,
-  );
+  const canFinalize =
+    Boolean(messageApprovalAddress) && messageApprovalState === "signed";
 
   if (signature && mode === "public") {
     return (
@@ -325,11 +440,21 @@ export default function ProposeTransactionPage() {
                 variant="primary"
                 className="px-12 py-4"
                 loading={proposeMutation.isPending}
-                disabled={!wallet.publicKey || !entry}
+                disabled={!entry || (mode === "confidential" && !selectedAgent)}
               >
                 SUBMIT PROPOSAL
               </Button>
             </div>
+
+            {/* Show who will sign */}
+            {entry && (
+              <p className="text-[11px] text-(--text-muted) font-mono">
+                {entry.account.aiAuthority?.toString?.() ===
+                wallet.publicKey?.toBase58()
+                  ? "Signing with connected wallet"
+                  : `Signing via backend agent ${selectedAgent?.agentId ?? "not selected"}`}
+              </p>
+            )}
 
             {proposeMutation.error && (
               <div className="rounded-sm border border-danger/20 bg-danger/10 p-4 text-sm text-danger">
@@ -384,9 +509,24 @@ export default function ProposeTransactionPage() {
                   </p>
                 </div>
                 <div className="rounded-sm border border-white/8 bg-white/4 p-4 text-sm text-slate-300">
-                  <p className="font-mono text-[11px] text-white">
-                    message_approval
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-[11px] text-white">
+                      message_approval
+                    </p>
+                    {messageApprovalAddress && (
+                      <span
+                        className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
+                          messageApprovalState === "signed"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                            : messageApprovalState === "pending"
+                              ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                              : "border-white/10 bg-white/5 text-slate-400"
+                        }`}
+                      >
+                        {messageApprovalState ?? "checking..."}
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 break-all">
                     {lifecycleState.messageApproval || "n/a"}
                   </p>
@@ -398,7 +538,7 @@ export default function ProposeTransactionPage() {
                   variant="secondary"
                   className="w-full"
                   loading={requestDecryptionMutation.isPending}
-                  disabled={!canRequestDecryption}
+                  disabled={!canRequestDecryption || !selectedAgent}
                   onClick={() => requestDecryptionMutation.mutate()}
                 >
                   Request Policy Decryption
@@ -407,7 +547,7 @@ export default function ProposeTransactionPage() {
                   variant="secondary"
                   className="w-full"
                   loading={confirmDecryptionMutation.isPending}
-                  disabled={!canConfirmDecryption}
+                  disabled={!canConfirmDecryption || !selectedAgent}
                   onClick={() => confirmDecryptionMutation.mutate()}
                 >
                   Confirm Policy Decryption
@@ -416,7 +556,7 @@ export default function ProposeTransactionPage() {
                   variant="secondary"
                   className="w-full"
                   loading={executeMutation.isPending}
-                  disabled={!canExecutePending}
+                  disabled={!canExecutePending || !selectedAgent}
                   onClick={() => executeMutation.mutate()}
                 >
                   Execute Pending
@@ -425,10 +565,12 @@ export default function ProposeTransactionPage() {
                   variant="primary"
                   className="w-full"
                   loading={finalizeMutation.isPending}
-                  disabled={!canFinalize}
+                  disabled={!canFinalize || !selectedAgent}
                   onClick={() => finalizeMutation.mutate()}
                 >
-                  Finalize Execution
+                  {messageApprovalAddress && messageApprovalState !== "signed"
+                    ? "Waiting for Ika signature..."
+                    : "Finalize Execution"}
                 </Button>
               </div>
             </div>

@@ -19,7 +19,7 @@ export interface AppSettingsContextValue {
   programId: string;
   resolvedProgramId?: PublicKey;
   backendUrl: string;
-  backendAuthToken: string;
+  selectedAgentId: string;
   nimApiKey: string;
   currency: string;
   dateFormat: string;
@@ -27,7 +27,7 @@ export interface AppSettingsContextValue {
   setCustomRpcUrl: Dispatch<SetStateAction<string>>;
   setProgramId: Dispatch<SetStateAction<string>>;
   setBackendUrl: Dispatch<SetStateAction<string>>;
-  setBackendAuthToken: Dispatch<SetStateAction<string>>;
+  setSelectedAgentId: Dispatch<SetStateAction<string>>;
   setNimApiKey: Dispatch<SetStateAction<string>>;
   setCurrency: Dispatch<SetStateAction<string>>;
   setDateFormat: Dispatch<SetStateAction<string>>;
@@ -35,7 +35,7 @@ export interface AppSettingsContextValue {
 
 const Context = createContext<AppSettingsContextValue | null>(null);
 export const DEFAULT_BACKEND_URL =
-  process.env.NEXT_PUBLIC_AURA_BACKEND_URL?.trim() || "http://127.0.0.1:8787";
+  process.env.NEXT_PUBLIC_AURA_BACKEND_URL?.trim() || "/api/backend";
 export const DEFAULT_DOCS_URL =
   process.env.NEXT_PUBLIC_DOCS_URL?.trim() || "http://127.0.0.1:3001";
 

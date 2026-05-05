@@ -16,7 +16,7 @@ import {
   validateMultisigThreshold,
   validateSwarmMembers,
 } from "@aura-protocol/sdk-ts";
-import { EventParser } from "@coral-xyz/anchor";
+import { BorshCoder, EventParser, type Idl } from "@coral-xyz/anchor";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import {
   ComputeBudgetProgram,
@@ -29,7 +29,8 @@ import BN from "bn.js";
 // biome-ignore lint/style/useNodejsImportProtocol: this is the browser Buffer polyfill package used by Solana transaction data.
 import { Buffer } from "buffer";
 
-export const TREASURY_OWNER_OFFSET = 9;
+// Anchor discriminator (8) + schema_version u8 (1) + bump u8 (1) = 10
+export const TREASURY_OWNER_OFFSET = 10;
 
 export const CHAINS = [
   { code: 0, label: "Bitcoin" },
@@ -136,36 +137,56 @@ export async function fetchRecentActivity(
   }
 
   const client = createAuraClient(connection, programId);
-  const parser = new EventParser(client.programId, client.program.coder);
+  // BorshCoder (full coder) is required by EventParser — client.program.coder
+  // is only a BorshInstructionCoder and cannot decode events.
+  const coder = new BorshCoder(client.program.idl as Idl);
+  const parser = new EventParser(client.programId, coder);
+
+  // Collect signatures per treasury. Keep the limit small — each
+  // getSignaturesForAddress call is cheap (one RPC call), but we want to
+  // avoid fetching more transactions than we need.
+  const sigsPerTreasury = Math.max(2, Math.ceil(limit / treasuries.length));
   const signatureSet = new Set<string>();
 
   for (const treasury of treasuries) {
-    const signatures = await connection.getSignaturesForAddress(treasury, {
-      limit: 8,
-    });
-    for (const item of signatures) {
-      signatureSet.add(item.signature);
+    try {
+      const sigs = await connection.getSignaturesForAddress(treasury, {
+        limit: sigsPerTreasury,
+      });
+      for (const item of sigs) {
+        signatureSet.add(item.signature);
+      }
+    } catch {
+      // Skip this treasury if the RPC call fails (e.g. 429 on one address)
     }
   }
 
-  const signatures = Array.from(signatureSet).slice(0, 24);
+  const signatures = Array.from(signatureSet).slice(0, limit);
   if (signatures.length === 0) {
     return [] as ParsedActivity[];
   }
 
-  const transactions = await connection.getTransactions(signatures, {
-    maxSupportedTransactionVersion: 0,
-  });
-
+  // Fetch transactions one at a time with a small delay between each call.
+  // getTransactions() batches all sigs into a single JSON-RPC request which
+  // reliably triggers 429 on the public devnet endpoint. Sequential fetches
+  // with a short pause stay well within the rate limit.
   const events: ParsedActivity[] = [];
-  for (const [index, tx] of transactions.entries()) {
-    const logs = tx?.meta?.logMessages;
-    if (!logs) {
+  for (const sig of signatures) {
+    let tx: Awaited<ReturnType<typeof connection.getTransaction>> = null;
+    try {
+      tx = await connection.getTransaction(sig, {
+        maxSupportedTransactionVersion: 0,
+        commitment: "confirmed",
+      });
+    } catch {
       continue;
     }
 
+    const logs = tx?.meta?.logMessages;
+    if (!logs) continue;
+
     const parsed = Array.from(parser.parseLogs(logs));
-    for (const event of parsed) {
+    for (const [eventIdx, event] of parsed.entries()) {
       if (event.name === "proposalLifecycleEvent") {
         const data = event.data as {
           treasury: PublicKey;
@@ -175,14 +196,14 @@ export async function fetchRecentActivity(
           violation: number;
         };
         events.push({
-          signature: signatures[index],
+          signature: `${sig}:${eventIdx}`,
           treasury: data.treasury.toBase58(),
           proposalId: data.proposalId.toString(),
           kind: "proposal",
           status: data.status,
           approved: data.approved,
           violation: data.violation,
-          timestamp: tx.blockTime ?? undefined,
+          timestamp: tx?.blockTime ?? undefined,
         });
       }
       if (event.name === "treasuryAuditEvent") {
@@ -193,7 +214,7 @@ export async function fetchRecentActivity(
           timestamp: BN;
         };
         events.push({
-          signature: signatures[index],
+          signature: `${sig}:${eventIdx}`,
           treasury: data.treasury.toBase58(),
           kind: "audit",
           detail: `${data.kind}: ${data.detail}`,
@@ -201,6 +222,11 @@ export async function fetchRecentActivity(
         });
       }
     }
+
+    // Small pause between fetches to stay within public RPC rate limits.
+    // This is a no-op when a custom RPC URL is configured (Helius etc.)
+    // but prevents 429s on api.devnet.solana.com.
+    await new Promise((r) => setTimeout(r, 150));
   }
 
   return events

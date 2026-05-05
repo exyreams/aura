@@ -1,12 +1,48 @@
 "use client";
 
 import type { PublicKey } from "@solana/web3.js";
-import { Ban, Shield, ShieldCheck } from "lucide-react";
+import {
+  Ban,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  Shield,
+  ShieldCheck,
+} from "lucide-react";
+import { useState } from "react";
 import { Badge, StatusPill } from "@/components/global/Badge";
 import { Tabs } from "@/components/global/Tabs";
 import { CHAINS } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
-import { formatCurrency, shortenAddress } from "@/lib/utils";
+import { useAppSettings, useDWalletLiveBalance } from "@/lib/hooks";
+import { cn, formatCurrency, shortenAddress } from "@/lib/utils";
+
+/**
+ * Convert raw 32-byte Uint8Array to base58 (same encoding as Solana PublicKey).
+ * Used to fix legacy dWallet addresses stored as base64.
+ */
+const BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function bs58Encode(bytes: Uint8Array): string {
+  const digits: number[] = [0];
+  for (const byte of bytes) {
+    let carry = byte;
+    for (let i = 0; i < digits.length; i++) {
+      carry += digits[i] << 8;
+      digits[i] = carry % 58;
+      carry = Math.floor(carry / 58);
+    }
+    while (carry > 0) {
+      digits.push(carry % 58);
+      carry = Math.floor(carry / 58);
+    }
+  }
+  let result = "";
+  for (let i = 0; i < bytes.length && bytes[i] === 0; i++) result += "1";
+  for (let i = digits.length - 1; i >= 0; i--)
+    result += BASE58_ALPHABET[digits[i]];
+  return result;
+}
 
 interface PolicyConfigProps {
   treasury: TreasuryEntry;
@@ -17,37 +53,47 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
   const multisig = treasury.account.multisig;
   const swarm = treasury.account.swarm;
   const dwallets = treasury.account.dwallets;
+  const settings = useAppSettings();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = async (text: string, id: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const PolicyContent = () => (
     <div className="space-y-2">
       {[
         {
           label: "DAILY LIMIT",
-          value: formatCurrency(Number(policy.dailyLimitUsd.toString())),
+          value: formatCurrency(Number(policy.dailyLimitUsd.toString()) / 100),
           variant: "default" as const,
         },
         {
           label: "PER-TX LIMIT",
-          value: formatCurrency(Number(policy.perTxLimitUsd.toString())),
+          value: formatCurrency(Number(policy.perTxLimitUsd.toString()) / 100),
           variant: "default" as const,
         },
         {
           label: "DAYTIME HOURLY",
           value: formatCurrency(
-            Number(policy.daytimeHourlyLimitUsd.toString()),
+            Number(policy.daytimeHourlyLimitUsd.toString()) / 100,
           ),
           variant: "default" as const,
         },
         {
           label: "NIGHTTIME HOURLY",
           value: formatCurrency(
-            Number(policy.nighttimeHourlyLimitUsd.toString()),
+            Number(policy.nighttimeHourlyLimitUsd.toString()) / 100,
           ),
           variant: "default" as const,
         },
         {
           label: "VELOCITY LIMIT",
-          value: formatCurrency(Number(policy.velocityLimitUsd.toString())),
+          value: formatCurrency(
+            Number(policy.velocityLimitUsd.toString()) / 100,
+          ),
           variant: "default" as const,
         },
         {
@@ -70,7 +116,7 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
         {
           label: "SHARED POOL",
           value: policy.sharedPoolLimitUsd
-            ? formatCurrency(Number(policy.sharedPoolLimitUsd.toString()))
+            ? formatCurrency(Number(policy.sharedPoolLimitUsd.toString()) / 100)
             : "N/A",
           variant: "default" as const,
         },
@@ -145,7 +191,9 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
                 </div>
                 <p className="text-[11px] text-(--text-muted)">
                   Shared pool limit:{" "}
-                  {formatCurrency(Number(swarm.sharedPoolLimitUsd.toString()))}
+                  {formatCurrency(
+                    Number(swarm.sharedPoolLimitUsd.toString()) / 100,
+                  )}
                 </p>
               </>
             ) : (
@@ -185,6 +233,7 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
 
   const DWalletsContent = () => {
     const registeredDwallets = dwallets.filter((dw) => dw.dwalletId.length > 0);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     if (registeredDwallets.length === 0) {
       return (
@@ -196,43 +245,240 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
       );
     }
 
-    return (
-      <div className="space-y-3">
-        {registeredDwallets.map((dw) => {
-          const chain = CHAINS.find((c) => c.code === dw.chain);
-          const chainName = chain?.label || "Unknown";
-
-          return (
-            <div
-              key={dw.dwalletId}
-              className="flex items-center justify-between p-4 bg-(--card-content) border border-border rounded-sm hover:border-primary/30 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-sm bg-(--card-bg) flex items-center justify-center border border-border p-1.5">
-                  <span className="text-xs font-bold">{chainName[0]}</span>
-                </div>
-                <div>
-                  <div className="font-semibold text-sm text-(--text-main)">
-                    {chainName}
-                  </div>
-                  <div className="font-mono text-[10px] text-(--text-muted)">
-                    {dw.dwalletId}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right flex flex-col items-end">
-                <div className="font-mono text-xs text-(--text-main) mb-1">
-                  {formatCurrency(Number(dw.balanceUsd.toString()))}
-                </div>
-                <StatusPill variant="active">Active</StatusPill>
-              </div>
+    const InfoRow = ({
+      label,
+      value,
+      copyKey,
+      explorerUrl,
+    }: {
+      label: string;
+      value: string | null | undefined;
+      copyKey: string;
+      explorerUrl?: string;
+    }) => {
+      if (!value) return null;
+      return (
+        <div className="p-2 bg-(--card-bg) rounded-sm border border-border">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) block mb-0.5">
+            {label}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[11px] text-(--text-main) break-all flex-1">
+              {value}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleCopy(value, copyKey)}
+                className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+              >
+                <Copy size={11} />
+              </button>
+              {explorerUrl && (
+                <button
+                  type="button"
+                  onClick={() => window.open(explorerUrl, "_blank")}
+                  className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+                >
+                  <ExternalLink size={11} />
+                </button>
+              )}
+              {copiedId === copyKey && (
+                <span className="text-[10px] text-(--success-text) font-mono">
+                  copied
+                </span>
+              )}
             </div>
+          </div>
+        </div>
+      );
+    };
+
+    const chainIconMap: Record<string, string> = {
+      Bitcoin: "/assets/bitcoin.svg",
+      Ethereum: "/assets/ethereum.svg",
+      Solana: "/assets/solana.svg",
+      Polygon: "/assets/polygon.svg",
+      Arbitrum: "/assets/arbitrum.svg",
+      Optimism: "/assets/optimism.svg",
+    };
+
+    // Sub-component so we can call hooks per dWallet
+    const DWalletCard = ({ dw }: { dw: (typeof registeredDwallets)[0] }) => {
+      const chain = CHAINS.find((c) => c.code === dw.chain);
+      const chainName = chain?.label || "Unknown";
+      const isExpanded = expandedId === dw.dwalletId;
+      const chainIcon = chainIconMap[chainName];
+
+      // Normalise base64 address → base58
+      let displayAddress = dw.address;
+      if (dw.address && /[+/=]/.test(dw.address)) {
+        try {
+          const bytes = Uint8Array.from(atob(dw.address), (c) =>
+            c.charCodeAt(0),
           );
-        })}
+          if (bytes.length === 32) displayAddress = bs58Encode(bytes);
+        } catch {
+          /* keep original */
+        }
+      }
+
+      // Live on-chain balance — fetches SOL + all SPL tokens automatically
+      const liveBalance = useDWalletLiveBalance(displayAddress);
+
+      return (
+        <div
+          key={dw.dwalletId}
+          className="border border-border rounded-sm overflow-hidden"
+        >
+          {/* Always-visible header */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setExpandedId(isExpanded ? null : dw.dwalletId)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ")
+                setExpandedId(isExpanded ? null : dw.dwalletId);
+            }}
+            className="w-full text-left p-4 bg-(--card-content) hover:bg-(--hover-bg) transition-colors cursor-pointer"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Chain icon */}
+                <div className="w-8 h-8 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center shrink-0 p-1">
+                  {chainIcon ? (
+                    <img
+                      src={chainIcon}
+                      alt={chainName}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold">{chainName[0]}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-semibold text-sm text-(--text-main)">
+                      {chainName}
+                    </span>
+                    <StatusPill variant="active">Active</StatusPill>
+                  </div>
+                  {/* Address always visible */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-(--text-muted) truncate">
+                      {displayAddress
+                        ? shortenAddress(displayAddress, 8, 6)
+                        : "No address"}
+                    </span>
+                    {displayAddress && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(displayAddress, `hdr-${dw.dwalletId}`);
+                        }}
+                        className="text-(--text-muted) hover:text-(--text-main) transition-colors shrink-0"
+                      >
+                        <Copy size={10} />
+                      </button>
+                    )}
+                    {copiedId === `hdr-${dw.dwalletId}` && (
+                      <span className="text-[10px] text-(--success-text) font-mono">
+                        copied
+                      </span>
+                    )}
+                  </div>
+                  {/* Live balance row */}
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    {liveBalance.isLoading && (
+                      <span className="text-[10px] text-(--text-muted) font-mono animate-pulse">
+                        fetching balance...
+                      </span>
+                    )}
+                    {liveBalance.data && (
+                      <>
+                        {liveBalance.data.sol > 0 && (
+                          <span className="text-[10px] font-mono text-(--text-main)">
+                            {liveBalance.data.sol.toFixed(4)} SOL
+                          </span>
+                        )}
+                        {liveBalance.data.tokens.map((t) => (
+                          <span
+                            key={t.mint}
+                            className="text-[10px] font-mono text-(--text-main)"
+                          >
+                            {t.uiAmount}{" "}
+                            <span className="text-(--text-muted)">
+                              {t.symbol}
+                            </span>
+                          </span>
+                        ))}
+                        {liveBalance.data.sol === 0 &&
+                          liveBalance.data.tokens.length === 0 && (
+                            <span className="text-[10px] text-(--text-muted) font-mono">
+                              empty
+                            </span>
+                          )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <ChevronDown
+                size={14}
+                className={cn(
+                  "shrink-0 text-(--text-muted) transition-transform duration-200",
+                  isExpanded && "rotate-180",
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Expandable technical details */}
+          {isExpanded && (
+            <div className="p-4 bg-(--card-bg) border-t border-border space-y-2">
+              <InfoRow
+                label={`${chainName} Address — send tokens here`}
+                value={displayAddress}
+                copyKey={`addr-${dw.dwalletId}`}
+              />
+              <InfoRow
+                label="dWallet Account (Solana PDA)"
+                value={dw.dwalletId}
+                copyKey={`dwid-${dw.dwalletId}`}
+                explorerUrl={`https://explorer.solana.com/address/${dw.dwalletId}?cluster=${settings.network}`}
+              />
+              <InfoRow
+                label="Authorized User (agent keypair)"
+                value={dw.authorizedUserPubkey?.toString?.() ?? null}
+                copyKey={`auth-${dw.dwalletId}`}
+              />
+              <InfoRow
+                label="Public Key Hex (signing key)"
+                value={dw.publicKeyHex ?? null}
+                copyKey={`hex-${dw.dwalletId}`}
+              />
+              {dw.messageMetadataDigest && (
+                <InfoRow
+                  label="Message Metadata Digest"
+                  value={dw.messageMetadataDigest}
+                  copyKey={`digest-${dw.dwalletId}`}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-2">
+        {registeredDwallets.map((dw) => (
+          <DWalletCard key={dw.dwalletId} dw={dw} />
+        ))}
       </div>
     );
   };
-
   const tabs = [
     {
       id: "policy",

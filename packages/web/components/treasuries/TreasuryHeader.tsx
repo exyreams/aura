@@ -3,6 +3,8 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Copy,
+  ExternalLink,
   MoreVertical,
   Pause,
   Plus,
@@ -47,7 +49,21 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
   const activePending = getActivePendingProposal(treasury.account);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [copiedPda, setCopiedPda] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyPda = async () => {
+    await navigator.clipboard.writeText(pda);
+    setCopiedPda(true);
+    setTimeout(() => setCopiedPda(false), 2000);
+  };
+
+  const handleOpenExplorer = () => {
+    window.open(
+      `https://explorer.solana.com/address/${pda}?cluster=${settings.network}`,
+      "_blank",
+    );
+  };
 
   const pauseMutation = useMutation({
     mutationFn: async () => {
@@ -123,6 +139,11 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
         onClick: () => router.push(`/dashboard/treasuries/${pda}/governance`),
       },
       {
+        label: "View on Explorer",
+        icon: <ExternalLink size={16} />,
+        onClick: handleOpenExplorer,
+      },
+      {
         label: "Cancel Pending",
         icon: <XCircle size={16} />,
         onClick: () => cancelMutation.mutate(),
@@ -156,13 +177,33 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
               {treasury.account.executionPaused ? "Paused" : "Active"}
             </StatusPill>
           </div>
-          <p className="text-(--text-muted) font-light text-sm">
-            Live state for{" "}
-            <span className="font-mono text-(--text-main) opacity-80">
-              {shortenAddress(pda, 4, 4)}
-            </span>{" "}
-            on <span className="text-(--text-main)">{settings.network}</span>
-          </p>
+          {/* Full PDA with copy + explorer */}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="font-mono text-xs text-(--text-muted) break-all">
+              {pda}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyPda}
+              title="Copy PDA"
+              className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+            >
+              <Copy size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenExplorer}
+              title="View on Solana Explorer"
+              className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+            >
+              <ExternalLink size={12} />
+            </button>
+            {copiedPda && (
+              <span className="text-[10px] text-(--success-text) font-mono">
+                copied
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Button

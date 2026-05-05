@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { Dropdown, Input } from "@/components/global";
+import { UsdInput } from "@/components/global/UsdInput";
 import { CHAINS, TX_TYPES } from "@/lib/aura-app";
 
 interface FormState {
@@ -38,29 +39,13 @@ export function TransactionDetailsForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
         <div className="space-y-8">
-          <div className="space-y-2">
-            <label
-              htmlFor="amount-usd"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Amount (USD cents)
-            </label>
-            <Input
-              id="amount-usd"
-              placeholder="50000"
-              type="number"
-              value={form.amountUsd}
-              onChange={(e) =>
-                setForm((current) => ({
-                  ...current,
-                  amountUsd: e.target.value,
-                }))
-              }
-            />
-            <p className="text-[11px] text-(--text-muted) mt-1">
-              ${(Number(form.amountUsd) / 100).toFixed(2)}
-            </p>
-          </div>
+          <UsdInput
+            label="Amount"
+            valueCents={form.amountUsd}
+            onChangeCents={(v) =>
+              setForm((current) => ({ ...current, amountUsd: v }))
+            }
+          />
 
           <div className="space-y-2">
             <label
@@ -165,47 +150,23 @@ export function TransactionDetailsForm({
             />
           </div>
 
-          <div className="space-y-2">
-            <label
-              htmlFor="expected-output"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Expected output (USD cents)
-            </label>
-            <Input
-              id="expected-output"
-              placeholder="Optional"
-              type="number"
-              value={form.expectedOutputUsd}
-              onChange={(e) =>
-                setForm((current) => ({
-                  ...current,
-                  expectedOutputUsd: e.target.value,
-                }))
-              }
-            />
-          </div>
+          <UsdInput
+            label="Expected Output"
+            valueCents={form.expectedOutputUsd}
+            onChangeCents={(v) =>
+              setForm((current) => ({ ...current, expectedOutputUsd: v }))
+            }
+            placeholder="0.00"
+          />
 
-          <div className="space-y-2">
-            <label
-              htmlFor="actual-output"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Actual output (USD cents)
-            </label>
-            <Input
-              id="actual-output"
-              placeholder="Optional"
-              type="number"
-              value={form.actualOutputUsd}
-              onChange={(e) =>
-                setForm((current) => ({
-                  ...current,
-                  actualOutputUsd: e.target.value,
-                }))
-              }
-            />
-          </div>
+          <UsdInput
+            label="Actual Output"
+            valueCents={form.actualOutputUsd}
+            onChangeCents={(v) =>
+              setForm((current) => ({ ...current, actualOutputUsd: v }))
+            }
+            placeholder="0.00"
+          />
         </div>
 
         <div className="md:col-span-2 space-y-2">

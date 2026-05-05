@@ -3,6 +3,7 @@
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Card, Input, StatusPill } from "@/components/global";
+import { UsdInput } from "@/components/global/UsdInput";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { formatCurrency } from "@/lib/utils";
 
@@ -62,29 +63,14 @@ export function SwarmConfig({
                 placeholder="ALPHA-SWARM-01"
               />
             </div>
-            <div className="space-y-2">
-              <label
-                htmlFor="pool-limit"
-                className="mono text-[10px] uppercase text-(--text-muted) font-bold block"
-              >
-                Shared pool limit (USD cents)
-              </label>
-              <Input
-                id="pool-limit"
-                type="number"
-                value={swarmForm.poolLimit}
-                onChange={(e) =>
-                  setSwarmForm((current) => ({
-                    ...current,
-                    poolLimit: e.target.value,
-                  }))
-                }
-                placeholder="10000000"
-              />
-              <p className="text-[11px] text-(--text-muted) mono">
-                ${(Number(swarmForm.poolLimit) / 100).toFixed(2)}
-              </p>
-            </div>
+            <UsdInput
+              label="Shared pool limit"
+              valueCents={swarmForm.poolLimit}
+              onChangeCents={(v) =>
+                setSwarmForm((current) => ({ ...current, poolLimit: v }))
+              }
+              placeholder="100000.00"
+            />
             <div className="md:col-span-2 space-y-4">
               <label
                 htmlFor="member-agents"

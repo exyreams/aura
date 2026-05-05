@@ -23,6 +23,9 @@ export function useAppSettings() {
   return AppSettingsContext.useValue();
 }
 
+export type { AgentIdentity, AgentKeypair, AuthUser } from "@/lib/auth";
+export { useAgents, useAuth } from "@/lib/auth";
+
 export function useAuraClient() {
   const { connection } = useConnection();
   const settings = useAppSettings();
@@ -125,9 +128,18 @@ export function useBackendInfo() {
     queryKey: ["backend-info", settings.backendUrl],
     queryFn: () =>
       backendRequest<{
-        publicKey: string;
         defaultRpcUrl: string;
         defaultProgramId: string;
+        allowedOrigins?: string[];
+        authEnabled?: boolean;
+        auth?: {
+          mode: string;
+          cookieName: string;
+          jwtExpirySecs: number;
+        };
+        persistence?: {
+          sqlite: boolean;
+        };
         sdkSurface?: {
           domains: number;
           instructions: number;
@@ -246,3 +258,128 @@ export function useInstructionCatalog() {
 }
 
 export type { ParsedActivity, TreasuryEntry };
+
+/**
+ * Derives the Metaplex metadata PDA for a given mint.
+ * Seeds: ["metadata", METAPLEX_PROGRAM_ID, mint]
+ */
+function deriveMetadataPda(mint: PublicKey): PublicKey {
+  const METAPLEX_PROGRAM_ID = new PublicKey(
+    "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+  );
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("metadata"), METAPLEX_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    METAPLEX_PROGRAM_ID,
+  )[0];
+}
+
+/**
+ * Parses the symbol from a Metaplex metadata account buffer.
+ * Layout: 1 (key) + 32 (update_auth) + 32 (mint) + 4+len (name) + 4+len (symbol)
+ */
+function parseSymbolFromMetadata(data: Buffer): string | null {
+  try {
+    let offset = 1 + 32 + 32; // key + update_authority + mint
+    const nameLen = data.readUInt32LE(offset);
+    offset += 4 + nameLen;
+    const symbolLen = data.readUInt32LE(offset);
+    offset += 4;
+    const symbol = data
+      .slice(offset, offset + symbolLen)
+      .toString("utf8")
+      .replace(/\0/g, "")
+      .trim();
+    return symbol || null;
+  } catch {
+    return null;
+  }
+}
+
+export interface TokenBalance {
+  mint: string;
+  symbol: string;
+  amount: number;
+  decimals: number;
+  uiAmount: string;
+}
+
+export interface DWalletLiveBalance {
+  sol: number;
+  tokens: TokenBalance[];
+}
+
+/**
+ * Fetches live SOL + SPL token balances for a dWallet address directly
+ * from the RPC. Does not depend on the stored balanceUsd field.
+ */
+export function useDWalletLiveBalance(address: string | null | undefined) {
+  const { connection } = useConnection();
+  const settings = useAppSettings();
+
+  return useQuery({
+    queryKey: ["dwallet-balance", address, settings.endpoint],
+    queryFn: async (): Promise<DWalletLiveBalance> => {
+      const pubkey = new PublicKey(address as string);
+
+      // SOL balance
+      const lamports = await connection.getBalance(pubkey, "confirmed");
+      const sol = lamports / 1e9;
+
+      // SPL token accounts
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        pubkey,
+        {
+          programId: new PublicKey(
+            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          ),
+        },
+        "confirmed",
+      );
+
+      const tokens: TokenBalance[] = await Promise.all(
+        tokenAccounts.value
+          .filter((ta) => {
+            const uiAmount =
+              ta.account.data.parsed?.info?.tokenAmount?.uiAmount;
+            return uiAmount && uiAmount > 0;
+          })
+          .map(async (ta) => {
+            const info = ta.account.data.parsed?.info;
+            const tokenAmount = info?.tokenAmount;
+            const mintStr = info.mint as string;
+
+            // Try to fetch the symbol from Metaplex metadata
+            let symbol = mintStr.slice(0, 4).toUpperCase();
+            try {
+              const metadataPda = deriveMetadataPda(new PublicKey(mintStr));
+              const metaAccount = await connection.getAccountInfo(
+                metadataPda,
+                "confirmed",
+              );
+              if (metaAccount?.data) {
+                const parsed = parseSymbolFromMetadata(
+                  Buffer.from(metaAccount.data),
+                );
+                if (parsed) symbol = parsed;
+              }
+            } catch {
+              // fallback to mint prefix
+            }
+
+            return {
+              mint: mintStr,
+              symbol,
+              amount: tokenAmount.amount as number,
+              decimals: tokenAmount.decimals as number,
+              uiAmount: tokenAmount.uiAmountString as string,
+            };
+          }),
+      );
+
+      return { sol, tokens };
+    },
+    enabled: Boolean(address),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}

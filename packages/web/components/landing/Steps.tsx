@@ -2,7 +2,10 @@ import { Reveal } from "@/components/landing/Reveal";
 
 export function Steps() {
   return (
-    <section className="border-t border-border max-w-6xl mx-auto z-10 px-6 py-[120px] md:px-[4vw]">
+    <section
+      id="how-it-works"
+      className="border-t border-border max-w-6xl mx-auto z-10 px-6 py-[120px] md:px-[4vw]"
+    >
       <Reveal>
         <div className="mb-12 md:mb-16 text-center">
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">

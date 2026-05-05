@@ -9,12 +9,11 @@ interface SpendingProgressProps {
 }
 
 export const SpendingProgress = ({ treasury }: SpendingProgressProps) => {
-  const spentToday = Number(
-    treasury.account.policyState.spentTodayUsd.toString(),
-  );
-  const dailyLimit = Number(
-    treasury.account.policyConfig.dailyLimitUsd.toString(),
-  );
+  // Values are stored in USD cents — divide by 100 for display
+  const spentToday =
+    Number(treasury.account.policyState.spentTodayUsd.toString()) / 100;
+  const dailyLimit =
+    Number(treasury.account.policyConfig.dailyLimitUsd.toString()) / 100;
 
   const recentAmounts = treasury.account.policyState.recentAmounts as Array<{
     toString(): string;
@@ -23,7 +22,7 @@ export const SpendingProgress = ({ treasury }: SpendingProgressProps) => {
     recentAmounts.length > 0
       ? recentAmounts.map((amount, index) => ({
           day: `Tx ${index + 1}`,
-          amount: Number(amount.toString()),
+          amount: Number(amount.toString()) / 100,
         }))
       : [{ day: "Current", amount: spentToday }];
 

@@ -15,6 +15,7 @@ import {
 import { parsePublicKey, sendWalletInstructions } from "@/lib/aura-app";
 import { postBackend } from "@/lib/backend-client";
 import {
+  useAgents,
   useAppSettings,
   useAuraClient,
   useBackendInfo,
@@ -28,6 +29,7 @@ export default function ConfidentialGuardrailsPage() {
   const { connection } = useConnection();
   const client = useAuraClient();
   const settings = useAppSettings();
+  const { selectedAgent } = useAgents();
   const backendInfoQuery = useBackendInfo();
   const queryClient = useQueryClient();
   const treasuryQuery = useTreasury(pda);
@@ -82,15 +84,22 @@ export default function ConfidentialGuardrailsPage() {
   }, [account]);
 
   const ensureDepositMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<{
+    mutationFn: async () => {
+      if (!selectedAgent?.agentId) {
+        throw new Error(
+          "Create and select an agent before funding the Encrypt deposit.",
+        );
+      }
+      return postBackend<{
         created: boolean;
         signature?: string;
         accounts: Record<string, string>;
       }>(settings.backendUrl, "/v1/confidential/deposit/ensure", {
         rpcUrl: settings.endpoint,
         programId: settings.programId || undefined,
-      }),
+        agentId: selectedAgent.agentId,
+      });
+    },
   });
 
   const encryptScalarMutation = useMutation({
@@ -206,6 +215,7 @@ export default function ConfidentialGuardrailsPage() {
             scalarMutation={scalarMutation}
             backendUrl={settings.backendUrl}
             backendInfo={backendInfoQuery.data}
+            selectedAgentPublicKey={selectedAgent?.publicKey}
             ensureDepositMutation={ensureDepositMutation}
           />
         ) : (

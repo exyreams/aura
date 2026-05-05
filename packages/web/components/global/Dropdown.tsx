@@ -62,7 +62,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
         onClick={handleToggle}
         className="bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) flex items-center justify-between text-left focus:border-primary"
       >
-        <span className={cn(!selectedOption && "text-(--text-muted)")}>
+        <span
+          className={cn(
+            "flex items-center gap-2",
+            !selectedOption && "text-(--text-muted)",
+          )}
+        >
+          {selectedOption?.icon && (
+            <span className="shrink-0">{selectedOption.icon}</span>
+          )}
           {selectedOption?.label || placeholder}
         </span>
         <motion.div

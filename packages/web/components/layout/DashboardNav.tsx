@@ -1,10 +1,13 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import {
+  Bot,
   Check,
   Copy,
   ExternalLink,
+  KeyRound,
   LogOut,
   Menu,
   Settings,
@@ -16,30 +19,38 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
+import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
+import { Dropdown } from "@/components/global/Dropdown";
 import { WalletModal } from "@/components/global/WalletModal";
 import { CompactThemeToggle } from "@/components/theme/CompactThemeToggle";
-import { useAppSettings } from "@/lib/hooks";
+import { useAgents, useAppSettings, useAuth } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/dashboard", label: "Overview", exact: true },
   { href: "/dashboard/treasuries", label: "Treasuries" },
   { href: "/dashboard/controls", label: "Controls" },
-  { href: "/dashboard/agent", label: "Agents" },
+  { href: "/dashboard/agents", label: "Agents" },
+  { href: "/dashboard/agent", label: "Worker", exact: true },
   { href: "/dashboard/activity", label: "Activity" },
 ];
 
 export function DashboardNav() {
   const { resolvedTheme } = useTheme();
+  const { connection } = useConnection();
   const { publicKey, disconnect } = useWallet();
   const pathname = usePathname();
   const settings = useAppSettings();
+  const auth = useAuth();
+  const { agents, selectedAgent, selectedAgentId, setSelectedAgentId } =
+    useAgents();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [agentSolBalance, setAgentSolBalance] = useState<number | null>(null);
   const walletMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,6 +75,19 @@ export function DashboardNav() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [walletMenuOpen]);
+
+  useEffect(() => {
+    if (!selectedAgent?.publicKey || !connection) {
+      setAgentSolBalance(null);
+      return;
+    }
+    import("@solana/web3.js").then(({ PublicKey }) => {
+      connection
+        .getBalance(new PublicKey(selectedAgent.publicKey))
+        .then((lamports) => setAgentSolBalance(lamports / LAMPORTS_PER_SOL))
+        .catch(() => setAgentSolBalance(null));
+    });
+  }, [selectedAgent?.publicKey, connection]);
 
   const logoSrc =
     !mounted || resolvedTheme === "dark"
@@ -94,8 +118,9 @@ export function DashboardNav() {
     }
   };
 
-  const handleDisconnect = () => {
-    disconnect();
+  const handleDisconnect = async () => {
+    await auth.logout();
+    await disconnect();
     setWalletMenuOpen(false);
   };
 
@@ -110,6 +135,17 @@ export function DashboardNav() {
 
   return (
     <>
+      {auth.isAuthenticated &&
+        selectedAgent &&
+        agentSolBalance !== null &&
+        agentSolBalance < 0.005 && (
+          <div className="fixed top-[73px] left-0 right-0 z-90 px-8 py-2">
+            <Alert
+              variant="warning"
+              message={`Agent "${selectedAgent.label || selectedAgent.agentId}" has insufficient SOL (${agentSolBalance.toFixed(4)} SOL). Fund ${selectedAgent.publicKey.slice(0, 8)}...${selectedAgent.publicKey.slice(-4)} with at least 0.01 SOL to pay transaction fees.`}
+            />
+          </div>
+        )}
       <nav
         className={`fixed top-0 w-full px-8 py-4 flex justify-between items-center z-100 ${navBg} backdrop-blur-md border-b border-border transition-all duration-300`}
       >
@@ -147,6 +183,30 @@ export function DashboardNav() {
 
           <div className="h-4 w-px bg-border" />
 
+          {auth.isAuthenticated ? (
+            agents.length > 0 ? (
+              <Dropdown
+                options={agents.map((agent) => ({
+                  value: agent.agentId,
+                  label: agent.label || agent.agentId,
+                  icon: <Bot className="h-3 w-3" />,
+                }))}
+                value={selectedAgentId}
+                onChange={setSelectedAgentId}
+                placeholder="Select agent"
+                className="w-44"
+              />
+            ) : (
+              <Link
+                href="/dashboard/agents"
+                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-(--hover-bg) px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-(--text-main) transition-colors hover:border-primary"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                Create Agent
+              </Link>
+            )
+          ) : null}
+
           {isConnected ? (
             <div className="relative" ref={walletMenuRef}>
               <button
@@ -169,6 +229,15 @@ export function DashboardNav() {
                     <p className="text-[10px] font-mono text-(--text-main) break-all leading-relaxed">
                       {walletAddress}
                     </p>
+                    <p className="mt-2 text-[9px] font-mono text-(--text-muted) uppercase tracking-wider">
+                      Session:{" "}
+                      {auth.isAuthenticated ? "Signed in" : "Needs SIWS"}
+                    </p>
+                    {selectedAgent ? (
+                      <p className="mt-1 text-[10px] font-mono text-(--text-main)">
+                        Agent: {selectedAgent.agentId}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="p-1.5">
@@ -209,11 +278,11 @@ export function DashboardNav() {
 
                     <button
                       type="button"
-                      onClick={handleDisconnect}
+                      onClick={() => void handleDisconnect()}
                       className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-danger hover:bg-(--hover-bg) rounded-md transition-colors"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>Disconnect</span>
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 </div>
@@ -290,6 +359,35 @@ export function DashboardNav() {
                   </span>
                 </div>
 
+                {auth.isAuthenticated && agents.length > 0 ? (
+                  <div className="space-y-2">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                      Agent
+                    </span>
+                    <Dropdown
+                      options={agents.map((agent) => ({
+                        value: agent.agentId,
+                        label: agent.label || agent.agentId,
+                        icon: <Bot className="h-3 w-3" />,
+                      }))}
+                      value={selectedAgentId}
+                      onChange={setSelectedAgentId}
+                      placeholder="Select agent"
+                    />
+                  </div>
+                ) : auth.isAuthenticated ? (
+                  <Link
+                    href="/dashboard/agents"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
+                  >
+                    <Bot className="w-4 h-4 text-(--text-main)" />
+                    <span className="text-sm text-(--text-main)">
+                      Create Agent
+                    </span>
+                  </Link>
+                ) : null}
+
                 <button
                   type="button"
                   onClick={handleCopyAddress}
@@ -333,11 +431,11 @@ export function DashboardNav() {
                   className="font-mono! text-sm! uppercase! tracking-widest! w-full!"
                   icon={<LogOut className="w-4 h-4" />}
                   onClick={() => {
-                    disconnect();
+                    void handleDisconnect();
                     setMobileMenuOpen(false);
                   }}
                 >
-                  Disconnect
+                  Sign Out
                 </Button>
               </>
             ) : (

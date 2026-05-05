@@ -4,6 +4,7 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Card, Input } from "@/components/global";
+import { UsdInput } from "@/components/global/UsdInput";
 import type { TreasuryEntry } from "@/lib/hooks";
 
 interface ScalarConfigFormProps {
@@ -44,7 +45,8 @@ interface ScalarConfigFormProps {
   >;
   scalarMutation: UseMutationResult<string, Error, void, unknown>;
   backendUrl: string;
-  backendInfo?: { publicKey: string };
+  backendInfo?: { auth?: { mode: string } };
+  selectedAgentPublicKey?: string;
   ensureDepositMutation: UseMutationResult<
     {
       created: boolean;
@@ -66,6 +68,7 @@ export function ScalarConfigForm({
   scalarMutation,
   backendUrl,
   backendInfo,
+  selectedAgentPublicKey,
   ensureDepositMutation,
 }: ScalarConfigFormProps) {
   const canSubmitScalar = Boolean(
@@ -92,15 +95,20 @@ export function ScalarConfigForm({
             Backend URL: <span className="text-white">{backendUrl}</span>
           </p>
           <p>
-            Backend signer:{" "}
+            Selected agent signer:{" "}
             <span className="mono text-white">
-              {backendInfo?.publicKey ?? "Loading..."}
+              {selectedAgentPublicKey ??
+                backendInfo?.auth?.mode ??
+                "No agent selected"}
             </span>
           </p>
           <Button
             variant="secondary"
             onClick={() => ensureDepositMutation.mutate()}
             loading={ensureDepositMutation.isPending}
+            disabled={
+              !selectedAgentPublicKey || ensureDepositMutation.isPending
+            }
           >
             Ensure Encrypt Deposit
           </Button>
@@ -124,75 +132,27 @@ export function ScalarConfigForm({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="space-y-2">
-            <label
-              htmlFor="daily-limit-plain"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold"
-            >
-              Daily limit plaintext
-            </label>
-            <Input
-              id="daily-limit-plain"
-              type="number"
-              value={plaintextForm.dailyLimit}
-              onChange={(e) =>
-                setPlaintextForm((current) => ({
-                  ...current,
-                  dailyLimit: e.target.value,
-                }))
-              }
-              className="font-mono"
-            />
-            <p className="mono text-[10px] text-(--text-muted)">
-              ${(Number(plaintextForm.dailyLimit) / 100).toFixed(2)}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <label
-              htmlFor="per-tx-plain"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold"
-            >
-              Per-tx plaintext
-            </label>
-            <Input
-              id="per-tx-plain"
-              type="number"
-              value={plaintextForm.perTxLimit}
-              onChange={(e) =>
-                setPlaintextForm((current) => ({
-                  ...current,
-                  perTxLimit: e.target.value,
-                }))
-              }
-              className="font-mono"
-            />
-            <p className="mono text-[10px] text-(--text-muted)">
-              ${(Number(plaintextForm.perTxLimit) / 100).toFixed(2)}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <label
-              htmlFor="spent-today-plain"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold"
-            >
-              Spent today plaintext
-            </label>
-            <Input
-              id="spent-today-plain"
-              type="number"
-              value={plaintextForm.spentToday}
-              onChange={(e) =>
-                setPlaintextForm((current) => ({
-                  ...current,
-                  spentToday: e.target.value,
-                }))
-              }
-              className="font-mono"
-            />
-            <p className="mono text-[10px] text-(--text-muted)">
-              ${(Number(plaintextForm.spentToday) / 100).toFixed(2)}
-            </p>
-          </div>
+          <UsdInput
+            label="Daily limit"
+            valueCents={plaintextForm.dailyLimit}
+            onChangeCents={(v) =>
+              setPlaintextForm((current) => ({ ...current, dailyLimit: v }))
+            }
+          />
+          <UsdInput
+            label="Per-tx limit"
+            valueCents={plaintextForm.perTxLimit}
+            onChangeCents={(v) =>
+              setPlaintextForm((current) => ({ ...current, perTxLimit: v }))
+            }
+          />
+          <UsdInput
+            label="Spent today"
+            valueCents={plaintextForm.spentToday}
+            onChangeCents={(v) =>
+              setPlaintextForm((current) => ({ ...current, spentToday: v }))
+            }
+          />
         </div>
 
         <Button

@@ -7,16 +7,14 @@ interface TreasuryStatsProps {
 }
 
 export const TreasuryStats = ({ treasury }: TreasuryStatsProps) => {
-  const dailyLimit = Number(
-    treasury.account.policyConfig.dailyLimitUsd.toString(),
-  );
-  const perTxLimit = Number(
-    treasury.account.policyConfig.perTxLimitUsd.toString(),
-  );
+  // Values are stored on-chain in USD cents — divide by 100 for display
+  const dailyLimit =
+    Number(treasury.account.policyConfig.dailyLimitUsd.toString()) / 100;
+  const perTxLimit =
+    Number(treasury.account.policyConfig.perTxLimitUsd.toString()) / 100;
   const totalTx = Number(treasury.account.totalTransactions.toString());
-  const reputationVolume = Number(
-    treasury.account.reputation.totalVolumeUsd.toString(),
-  );
+  const reputationVolume =
+    Number(treasury.account.reputation.totalVolumeUsd.toString()) / 100;
   const successfulTransactions = Number(
     treasury.account.reputation.successfulTransactions.toString(),
   );
