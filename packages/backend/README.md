@@ -5,18 +5,19 @@ Backend service for the server-side parts of AURA:
 - confidential Encrypt bridge
 - decryption + dWallet execution lifecycle
 - autonomous agent loop
-- service-owned AI/operator keypair
+- user-scoped generated agent keypairs
+- SQLite persistence for agents, DKG sessions, treasuries, jobs, and auth nonces
+- SIWS wallet auth with httpOnly cookie sessions
 - structured JSON request logging
-- CORS, bearer auth, and in-memory rate limiting
+- CORS credentials and in-memory rate limiting
 
 ## Environment
 
 Required:
 
 ```bash
-AURA_BACKEND_KEYPAIR=../../wallet/wallet.json   # path to keypair (local/docker)
-# OR
-AURA_KEYPAIR_B64=<base64-encoded wallet.json>   # for Railway / cloud deployments
+AURA_ENCRYPTION_KEY=<64 hex chars>   # openssl rand -hex 32
+AURA_JWT_SECRET=<64 hex chars>       # openssl rand -hex 32
 ```
 
 Optional:
@@ -26,21 +27,27 @@ AURA_BACKEND_HOST=127.0.0.1
 AURA_BACKEND_PORT=8787
 AURA_DEFAULT_RPC_URL=https://api.devnet.solana.com
 AURA_DEFAULT_PROGRAM_ID=2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya
+AURA_DATABASE_PATH=./data/aura.db
+AURA_JWT_EXPIRY_SECS=86400
+AURA_COOKIE_DOMAIN=
+AURA_COOKIE_SECURE=true
 AURA_AGENT_INTERVAL_MS=30000
 AURA_BODY_LIMIT_BYTES=1000000
 AURA_RATE_LIMIT_WINDOW_MS=60000
 AURA_RATE_LIMIT_MAX_REQUESTS=120
 AURA_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
-AURA_API_TOKEN=
 AURA_LOG_LEVEL=info
 ```
 
 Notes:
 
-- `AURA_KEYPAIR_B64` takes precedence over `AURA_BACKEND_KEYPAIR` when both are set.
+- `AURA_DATABASE_PATH` is created automatically. Keep it on persistent storage in Docker or hosted deployments.
+- `AURA_ENCRYPTION_KEY` encrypts generated agent keypairs at rest with AES-256-GCM.
+- `AURA_JWT_SECRET` signs SIWS session JWTs stored in the `aura_session` httpOnly cookie.
 - `AURA_ALLOWED_ORIGINS` should list the web frontend origins allowed to call the backend.
-- When `AURA_API_TOKEN` is set, every route except `GET /health` and `GET /v1/service/info` requires `Authorization: Bearer <token>`.
-- If `AURA_API_TOKEN` is left empty, the server starts in local-dev mode and logs a warning.
+- Credentialed CORS cannot use `*`, so each frontend origin must be listed explicitly.
+- Leave `AURA_COOKIE_SECURE=true` in production. Set it to `false` only for local HTTP testing.
+- `AURA_API_TOKEN`, `AURA_BACKEND_KEYPAIR`, and `AURA_KEYPAIR_B64` are no longer used.
 
 ## Local Development
 
@@ -59,9 +66,9 @@ bun run build
 
 ## Docker
 
-The image uses a multi-stage build: `oven/bun:1-alpine` to build and bundle, `gcr.io/distroless/nodejs24-debian12:nonroot` as the runtime. No `node_modules` are shipped — esbuild bundles everything into a single file. Final image size is ~207MB.
+The image uses a multi-stage Bun build and keeps runtime `node_modules` because `better-sqlite3` ships a native binding. Mount `/app/data` as persistent storage so the SQLite database survives deploys.
 
-Build and run with Compose (uses `../../wallet/wallet.json` mounted as a read-only secret):
+Build and run with Compose:
 
 ```bash
 # Build
@@ -91,23 +98,13 @@ docker build -t aura-backend .
 docker run --rm \
   -p 8787:8787 \
   --env-file .env \
-  -v /absolute/path/to/wallet.json:/run/secrets/aura-backend-keypair.json:ro \
-  -e AURA_BACKEND_KEYPAIR=/run/secrets/aura-backend-keypair.json \
+  -v aura-backend-data:/app/data \
   aura-backend
 ```
 
 ## Railway Deployment
 
-Railway does not support file mounts. Pass the keypair as a base64 env var instead:
-
-```bash
-# Encode your keypair locally
-base64 -w 0 wallet/wallet.json
-```
-
-Set the output as `AURA_KEYPAIR_B64` in Railway's environment variables (mark it as a secret). The `AURA_BACKEND_KEYPAIR` variable is not needed when `AURA_KEYPAIR_B64` is set.
-
-Also set `AURA_BACKEND_HOST=0.0.0.0` so Railway's proxy can reach the service.
+Set `AURA_BACKEND_HOST=0.0.0.0` so Railway's proxy can reach the service. Use a persistent volume for `AURA_DATABASE_PATH`; without one, generated agent keypairs and DKG sessions are lost on redeploy.
 
 ## Generated Vendor Files
 
@@ -132,6 +129,18 @@ That script restores:
 
 - `GET /health`
 - `GET /v1/service/info`
+- `GET /v1/auth/nonce`
+- `POST /v1/auth/login`
+- `POST /v1/auth/logout`
+- `GET /v1/auth/me`
+- `POST /v1/agents`
+- `GET /v1/agents`
+- `GET /v1/agents/:id/download`
+- `DELETE /v1/agents/:id`
+- `GET /v1/features/catalog`
+- `GET /v1/instructions/catalog`
+- `POST /v1/instructions/build`
+- `POST /v1/instructions/send`
 - `POST /v1/confidential/encrypt-scalar`
 - `POST /v1/confidential/deposit/ensure`
 - `POST /v1/confidential/propose`
@@ -143,6 +152,18 @@ That script restores:
 - `POST /v1/agent/run-once`
 - `POST /v1/agent/stop`
 - `GET /v1/agent/status`
+
+Protected routes use the `aura_session` httpOnly cookie. Routes that need the backend to sign must include `agentId` in the request body:
+
+```json
+{
+  "agentId": "ops-agent",
+  "treasury": "base58...",
+  "rpcUrl": "https://api.devnet.solana.com"
+}
+```
+
+Create an agent keypair with `POST /v1/agents`. The response includes a public identity JSON object but never returns the secret key. The encrypted secret key stays in SQLite and is decrypted only for the duration of signing.
 
 All success responses:
 
@@ -159,7 +180,7 @@ All error responses:
 ```json
 {
   "ok": false,
-  "error": { "code": "UNAUTHORIZED", "message": "Missing or invalid bearer token." },
+  "error": { "code": "UNAUTHORIZED", "message": "Authentication is required." },
   "meta": { "requestId": "uuid", "timestamp": "2026-04-29T00:00:00.000Z" }
 }
 ```

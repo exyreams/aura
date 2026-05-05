@@ -4,6 +4,7 @@ export interface JsonRpcRequestBase {
 }
 
 export interface AgentJobConfig extends JsonRpcRequestBase {
+  agentId: string;
   treasury: string;
   strategy: string;
   mode: "public" | "confidential";

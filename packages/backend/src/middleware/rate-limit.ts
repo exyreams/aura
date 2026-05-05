@@ -1,4 +1,4 @@
-import { ApiError } from "./errors.js";
+import { ApiError } from "../errors.js";
 
 interface RateLimitEntry {
   count: number;

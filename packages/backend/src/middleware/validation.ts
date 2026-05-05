@@ -1,5 +1,5 @@
-import { ApiError } from "./errors.js";
-import type { AgentJobConfig } from "./types.js";
+import { ApiError } from "../errors.js";
+import type { AgentJobConfig } from "../types.js";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -106,6 +106,30 @@ function parseRpcBase(body: JsonRecord) {
   };
 }
 
+function parseAgentBase(body: JsonRecord) {
+  return {
+    ...parseRpcBase(body),
+    agentId: requiredString(body, "agentId"),
+  };
+}
+
+export function parseAuthLoginRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    walletAddress: requiredString(body, "walletAddress"),
+    message: requiredString(body, "message"),
+    signature: requiredString(body, "signature"),
+  };
+}
+
+export function parseCreateAgentRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    agentId: requiredString(body, "agentId"),
+    label: optionalString(body, "label"),
+  };
+}
+
 export function parseEncryptScalarRequest(input: unknown) {
   const body = ensureObject(input);
   return {
@@ -119,13 +143,13 @@ export function parseEncryptScalarRequest(input: unknown) {
 
 export function parseEnsureDepositRequest(input: unknown) {
   const body = ensureObject(input);
-  return parseRpcBase(body);
+  return parseAgentBase(body);
 }
 
 export function parseConfidentialProposalRequest(input: unknown) {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     amountUsd: requiredNumber(body, "amountUsd"),
     chain: requiredNumber(body, "chain"),
@@ -143,7 +167,7 @@ export function parseConfidentialProposalRequest(input: unknown) {
 export function parsePublicProposalRequest(input: unknown) {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     amountUsd: requiredNumber(body, "amountUsd"),
     chain: requiredNumber(body, "chain"),
@@ -160,7 +184,7 @@ export function parsePublicProposalRequest(input: unknown) {
 export function parseRequestDecryptionRequest(input: unknown) {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     ciphertext: optionalString(body, "ciphertext"),
     wait: optionalBoolean(body, "wait") === true,
@@ -170,7 +194,7 @@ export function parseRequestDecryptionRequest(input: unknown) {
 export function parseConfirmDecryptionRequest(input: unknown) {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     requestAccount: optionalString(body, "requestAccount"),
   };
@@ -179,7 +203,7 @@ export function parseConfirmDecryptionRequest(input: unknown) {
 export function parseExecutePendingRequest(input: unknown) {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     wait: optionalBoolean(body, "wait") === true,
     waitSigned: optionalBoolean(body, "waitSigned") === true,
@@ -189,7 +213,7 @@ export function parseExecutePendingRequest(input: unknown) {
 export function parseFinalizeExecutionRequest(input: unknown) {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     messageApproval: optionalString(body, "messageApproval"),
   };
@@ -198,7 +222,7 @@ export function parseFinalizeExecutionRequest(input: unknown) {
 export function parseAgentJobConfig(input: unknown): AgentJobConfig {
   const body = ensureObject(input);
   return {
-    ...parseRpcBase(body),
+    ...parseAgentBase(body),
     treasury: requiredString(body, "treasury"),
     strategy: requiredString(body, "strategy"),
     mode: requiredEnumString(body, "mode", ["public", "confidential"] as const),
@@ -216,7 +240,16 @@ export function parseAgentJobConfig(input: unknown): AgentJobConfig {
 export function parseStopAgentRequest(input: unknown) {
   const body = ensureObject(input);
   return {
+    agentId: requiredString(body, "agentId"),
     treasury: requiredString(body, "treasury"),
+  };
+}
+
+export function parseCreateDwalletRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    ...parseAgentBase(body),
+    ikaGrpcUrl: optionalString(body, "ikaGrpcUrl"),
   };
 }
 
@@ -244,6 +277,7 @@ export function parseProgramInstructionRequest(input: unknown) {
   }
   return {
     ...parseRpcBase(body),
+    agentId: optionalString(body, "agentId"),
     instruction: requiredString(body, "instruction"),
     accounts: optionalRecord(body, "accounts"),
     args:

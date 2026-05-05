@@ -12,7 +12,7 @@ import {
   type TransactionInstruction,
 } from "@solana/web3.js";
 
-import { ApiError } from "./errors.js";
+import { ApiError } from "../errors.js";
 
 type IdlType = unknown;
 type JsonRecord = Record<string, unknown>;
@@ -41,6 +41,7 @@ export interface ProgramInstructionRequest {
   instruction: string;
   accounts: JsonRecord;
   args: JsonRecord | unknown[];
+  agentId?: string;
   rpcUrl?: string;
   programId?: string;
   computeUnitLimit?: number;

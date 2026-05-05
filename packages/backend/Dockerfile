@@ -1,4 +1,4 @@
-FROM oven/bun:1-alpine AS build
+FROM oven/bun:1 AS build
 
 WORKDIR /app
 
@@ -6,22 +6,20 @@ COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
 COPY . .
-RUN bun run build && \
-    bun x esbuild dist/index.js \
-      --bundle \
-      --platform=node \
-      --target=node24 \
-      --outfile=bundle.js \
-      --external:bufferutil \
-      --external:utf-8-validate
+RUN bun run build
 
-FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
+FROM oven/bun:1 AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/bundle.js ./bundle.js
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
 
+RUN mkdir -p /app/data && chown -R bun:bun /app/data
+
+USER bun
 EXPOSE 8787
 
-CMD ["--no-deprecation", "bundle.js"]
+CMD ["bun", "dist/index.js"]

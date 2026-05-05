@@ -5,17 +5,33 @@ import {
 } from "node:http";
 import { randomUUID } from "node:crypto";
 import { loadEnvFile } from "node:process";
+import {
+  clearSessionCookie,
+  createAuthNonce,
+  loginWithWallet,
+  requireAuthenticatedUser,
+} from "./auth/index.js";
+import {
+  createAgentKeypair,
+  deleteAgentKeypair,
+  getAgentKeypairById,
+  identityForAgent,
+  listAgentKeypairs,
+} from "./agents/index.js";
 import { loadConfig } from "./config.js";
 import { ApiError } from "./errors.js";
 import { toApiError } from "./errors.js";
 import { createLogger } from "./logger.js";
-import { MemoryRateLimiter } from "./rate-limit.js";
+import { MemoryRateLimiter } from "./middleware/rate-limit.js";
 import {
   confirmPolicyDecryptionService,
+  createDwalletService,
   encryptScalarValues,
   ensureBackendEncryptDeposit,
   executePendingService,
   finalizeExecutionService,
+  getMessageApprovalStatusService,
+  triggerIkaSignService,
   buildGenericProgramInstruction,
   getBackendInfo,
   getFeatureCatalog,
@@ -29,12 +45,15 @@ import {
   stopAllAgentJobs,
   submitConfidentialProposal,
   submitPublicProposal,
-} from "./service.js";
+} from "./services/index.js";
 import type { ApiErrorResponse, ApiSuccessResponse } from "./types.js";
 import {
   parseAgentJobConfig,
+  parseAuthLoginRequest,
   parseConfirmDecryptionRequest,
   parseConfidentialProposalRequest,
+  parseCreateAgentRequest,
+  parseCreateDwalletRequest,
   parseEncryptScalarRequest,
   parseEnsureDepositRequest,
   parseExecutePendingRequest,
@@ -43,7 +62,7 @@ import {
   parsePublicProposalRequest,
   parseRequestDecryptionRequest,
   parseStopAgentRequest,
-} from "./validation.js";
+} from "./middleware/validation.js";
 
 try { loadEnvFile(); } catch { /* no .env file in production */ }
 
@@ -84,10 +103,11 @@ function applyCors(request: IncomingMessage, response: ServerResponse) {
 
   response.setHeader("vary", "Origin");
   response.setHeader("access-control-expose-headers", "x-request-id, retry-after");
-  response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+  response.setHeader("access-control-allow-credentials", "true");
+  response.setHeader("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
   response.setHeader(
     "access-control-allow-headers",
-    "content-type, authorization, x-request-id",
+    "content-type, x-request-id",
   );
 
   if (originHeader && isOriginAllowed(originHeader)) {
@@ -120,6 +140,20 @@ function sendSuccess<T>(
     data,
     meta: getMeta(requestId),
   });
+}
+
+function sendDownloadJson(
+  response: ServerResponse,
+  requestId: string,
+  filename: string,
+  data: unknown,
+) {
+  response.statusCode = 200;
+  response.setHeader("x-request-id", requestId);
+  response.setHeader("cache-control", "no-store");
+  response.setHeader("content-type", "application/json; charset=utf-8");
+  response.setHeader("content-disposition", `attachment; filename="${filename}"`);
+  response.end(JSON.stringify(data, null, 2));
 }
 
 function sendError(
@@ -197,26 +231,23 @@ async function readJson(request: IncomingMessage) {
   return raw ? (JSON.parse(raw) as unknown) : {};
 }
 
-function ensureAuthorized(request: IncomingMessage, requiresAuth: boolean) {
-  if (!requiresAuth || !config.apiToken) {
-    return;
-  }
-
-  const authorization = request.headers.authorization;
-  if (authorization !== `Bearer ${config.apiToken}`) {
-    throw new ApiError(
-      401,
-      "UNAUTHORIZED",
-      "Missing or invalid bearer token.",
-    );
-  }
-}
-
 function shouldApplyRateLimit(method: string, pathname: string) {
   if (method === "OPTIONS" || pathname === "/health") {
     return false;
   }
   return true;
+}
+
+function isPublicRoute(method: string, pathname: string) {
+  return (
+    (method === "GET" && pathname === "/health") ||
+    (method === "GET" && pathname === "/v1/service/info") ||
+    (method === "GET" && pathname === "/v1/features/catalog") ||
+    (method === "GET" && pathname === "/v1/instructions/catalog") ||
+    (method === "GET" && pathname === "/v1/auth/nonce") ||
+    (method === "POST" && pathname === "/v1/auth/login") ||
+    (method === "POST" && pathname === "/v1/auth/logout")
+  );
 }
 
 const server = createServer(async (request, response) => {
@@ -260,13 +291,11 @@ const server = createServer(async (request, response) => {
       rateLimiter.check(`${resolveClientIp(request)}:${routeKey}`);
     }
 
-    const requiresAuth = !(
-      routeKey === "GET /health" ||
-      routeKey === "GET /v1/service/info" ||
-      routeKey === "GET /v1/features/catalog" ||
-      routeKey === "GET /v1/instructions/catalog"
-    );
-    ensureAuthorized(request, requiresAuth);
+    const requiresAuth = !isPublicRoute(request.method, pathname);
+    const authUser = requiresAuth
+      ? await requireAuthenticatedUser(request)
+      : undefined;
+    const serviceContext = authUser ? { user: authUser } : undefined;
 
     if (routeKey === "GET /health") {
       sendSuccess(response, 200, requestId, {
@@ -280,7 +309,7 @@ const server = createServer(async (request, response) => {
       sendSuccess(response, 200, requestId, {
         ...getBackendInfo(),
         allowedOrigins: config.allowedOrigins,
-        authEnabled: Boolean(config.apiToken),
+        authEnabled: true,
       });
       return;
     }
@@ -295,13 +324,78 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (routeKey === "GET /v1/auth/nonce") {
+      sendSuccess(response, 200, requestId, createAuthNonce());
+      return;
+    }
+
+    if (routeKey === "POST /v1/auth/logout") {
+      response.setHeader("set-cookie", clearSessionCookie());
+      sendSuccess(response, 200, requestId, { loggedOut: true });
+      return;
+    }
+
+    if (routeKey === "GET /v1/auth/me") {
+      sendSuccess(response, 200, requestId, {
+        wallet: authUser?.wallet,
+      });
+      return;
+    }
+
+    if (routeKey === "GET /v1/agents") {
+      sendSuccess(response, 200, requestId, {
+        agents: listAgentKeypairs(authUser!),
+      });
+      return;
+    }
+
+    const agentDownloadMatch = pathname.match(/^\/v1\/agents\/(\d+)\/download$/);
+    if (request.method === "GET" && agentDownloadMatch?.[1]) {
+      const agent = getAgentKeypairById(authUser!, Number(agentDownloadMatch[1]));
+      sendDownloadJson(
+        response,
+        requestId,
+        `${agent.agentId}.aura-agent.json`,
+        identityForAgent(agent),
+      );
+      return;
+    }
+
+    const agentDeleteMatch = pathname.match(/^\/v1\/agents\/(\d+)$/);
+    if (request.method === "DELETE" && agentDeleteMatch?.[1]) {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        deleteAgentKeypair(authUser!, Number(agentDeleteMatch[1])),
+      );
+      return;
+    }
+
     if (routeKey === "GET /v1/agent/status") {
-      sendSuccess(response, 200, requestId, { jobs: listAgentJobs() });
+      sendSuccess(response, 200, requestId, { jobs: listAgentJobs(serviceContext!) });
       return;
     }
 
     ensureJsonRequest(request);
     const body = await readJson(request);
+
+    if (routeKey === "POST /v1/auth/login") {
+      const result = await loginWithWallet(parseAuthLoginRequest(body));
+      response.setHeader("set-cookie", result.cookie);
+      sendSuccess(response, 200, requestId, result.data);
+      return;
+    }
+
+    if (routeKey === "POST /v1/agents") {
+      sendSuccess(
+        response,
+        201,
+        requestId,
+        createAgentKeypair(authUser!, parseCreateAgentRequest(body)),
+      );
+      return;
+    }
 
     if (routeKey === "POST /v1/confidential/encrypt-scalar") {
       sendSuccess(
@@ -318,7 +412,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await ensureBackendEncryptDeposit(parseEnsureDepositRequest(body)),
+        await ensureBackendEncryptDeposit(serviceContext!, parseEnsureDepositRequest(body)),
       );
       return;
     }
@@ -328,7 +422,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await submitConfidentialProposal(parseConfidentialProposalRequest(body)),
+        await submitConfidentialProposal(serviceContext!, parseConfidentialProposalRequest(body)),
       );
       return;
     }
@@ -338,7 +432,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await submitPublicProposal(parsePublicProposalRequest(body)),
+        await submitPublicProposal(serviceContext!, parsePublicProposalRequest(body)),
       );
       return;
     }
@@ -348,7 +442,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await buildGenericProgramInstruction(parseProgramInstructionRequest(body)),
+        await buildGenericProgramInstruction(serviceContext!, parseProgramInstructionRequest(body)),
       );
       return;
     }
@@ -358,7 +452,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await sendGenericProgramInstruction(parseProgramInstructionRequest(body)),
+        await sendGenericProgramInstruction(serviceContext!, parseProgramInstructionRequest(body)),
       );
       return;
     }
@@ -368,7 +462,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await requestPolicyDecryptionService(parseRequestDecryptionRequest(body)),
+        await requestPolicyDecryptionService(serviceContext!, parseRequestDecryptionRequest(body)),
       );
       return;
     }
@@ -378,7 +472,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await confirmPolicyDecryptionService(parseConfirmDecryptionRequest(body)),
+        await confirmPolicyDecryptionService(serviceContext!, parseConfirmDecryptionRequest(body)),
       );
       return;
     }
@@ -388,7 +482,46 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await executePendingService(parseExecutePendingRequest(body)),
+        await executePendingService(serviceContext!, parseExecutePendingRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/dwallet/create") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await createDwalletService(serviceContext!, parseCreateDwalletRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/execution/sign") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await triggerIkaSignService(serviceContext!, {
+          rpcUrl: body && typeof body === "object" ? (body as Record<string, unknown>)["rpcUrl"] as string | undefined : undefined,
+          programId: body && typeof body === "object" ? (body as Record<string, unknown>)["programId"] as string | undefined : undefined,
+          agentId: body && typeof body === "object" ? (body as Record<string, unknown>)["agentId"] as string | undefined : undefined,
+          treasury: body && typeof body === "object" ? (body as Record<string, unknown>)["treasury"] as string : "",
+          txSignature: body && typeof body === "object" ? (body as Record<string, unknown>)["txSignature"] as string : "",
+        }),
+      );
+      return;
+    }
+
+    if (routeKey === "GET /v1/execution/status") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await getMessageApprovalStatusService({
+          rpcUrl: url.searchParams.get("rpcUrl") ?? undefined,
+          messageApproval: url.searchParams.get("messageApproval") ?? "",
+        }),
       );
       return;
     }
@@ -398,7 +531,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await finalizeExecutionService(parseFinalizeExecutionRequest(body)),
+        await finalizeExecutionService(serviceContext!, parseFinalizeExecutionRequest(body)),
       );
       return;
     }
@@ -408,7 +541,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await startAgentJob(parseAgentJobConfig(body)),
+        await startAgentJob(serviceContext!, parseAgentJobConfig(body)),
       );
       return;
     }
@@ -418,7 +551,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await runAgentOnce(parseAgentJobConfig(body)),
+        await runAgentOnce(serviceContext!, parseAgentJobConfig(body)),
       );
       return;
     }
@@ -428,7 +561,7 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        stopAgentJob(parseStopAgentRequest(body).treasury),
+        await stopAgentJob(serviceContext!, parseStopAgentRequest(body)),
       );
       return;
     }
@@ -449,16 +582,10 @@ server.listen(config.port, config.host, () => {
   logger.info("server.started", {
     host: config.host,
     port: config.port,
-    backendPublicKey: getBackendInfo().publicKey,
     allowedOrigins: config.allowedOrigins,
-    authEnabled: Boolean(config.apiToken),
+    authEnabled: true,
+    authMode: "siws-cookie",
   });
-  if (!config.apiToken) {
-    logger.warn("server.auth_disabled", {
-      message:
-        "AURA_API_TOKEN is not configured. Protected routes are reachable without bearer auth.",
-    });
-  }
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

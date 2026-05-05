@@ -42,6 +42,11 @@ const DEFAULT_COMPUTE_UNIT_LIMIT = 1_400_000;
 const DEFAULT_HEAP_FRAME_BYTES = 256 * 1024;
 export const ENCRYPT_NETWORK_KEY = Uint8Array.from({ length: 32 }, () => 0x55);
 
+// Curve25519 = discriminant 2 in the DWalletCurve enum (Secp256k1=0, Secp256r1=1, Curve25519=2)
+const CURVE25519_CODE = 2;
+// transfer_ownership instruction discriminator on the dWallet program
+const DWALLET_TRANSFER_OWNERSHIP_DISC = 24;
+
 type PendingProposal = TreasuryAccountRecord["pendingQueue"][number];
 type DwalletRecord = TreasuryAccountRecord["dwallets"][number];
 type BufferAccountInfo = AccountInfo<Buffer<ArrayBufferLike>>;
@@ -127,7 +132,7 @@ function findDwalletForPending(account: TreasuryAccountRecord, pending: PendingP
   return dwallet;
 }
 
-function buildPendingMessage(pending: PendingProposal, dwallet: DwalletRecord) {
+export function buildPendingMessage(pending: PendingProposal, dwallet: DwalletRecord) {
   return [
     pending.proposalId.toString(),
     pending.proposalDigest,
@@ -508,10 +513,164 @@ export function buildExecutePendingInstruction(options: {
   return new TransactionInstruction({
     programId: options.clientProgramId,
     keys,
-    data: options.coder.encode("executePending", { now: new BN(options.now) }),
+    data: options.coder.encode("execute_pending", { now: new BN(options.now) }),
   });
 }
 
 export function buildPolicyPlaintextDigestHex(plaintextBytes: Buffer) {
   return createHash("sha256").update(plaintextBytes).digest("hex");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// dWallet creation helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Derives the on-chain dWallet PDA from a curve code and raw public key bytes.
+ *
+ * Mirrors the Rust smoke test `derive_dwallet_pda()`:
+ *   seeds = ["dwallet", ...32-byte chunks of (u16LE(curve) ++ publicKey)]
+ *
+ * For Curve25519 (code=2) with a 32-byte Ed25519 public key the payload is
+ * 34 bytes, split into [2-byte prefix chunk, 32-byte key chunk].
+ */
+export function deriveDwalletPda(
+  curveCode: number,
+  publicKey: Uint8Array,
+  dwalletProgramId: PublicKey = DWALLET_DEVNET_PROGRAM_ID,
+): PublicKey {
+  const curveBytes = Buffer.alloc(2);
+  curveBytes.writeUInt16LE(curveCode, 0);
+  const payload = Buffer.concat([curveBytes, Buffer.from(publicKey)]);
+
+  const seeds: Buffer[] = [DWALLET_SEED];
+  for (let offset = 0; offset < payload.length; offset += 32) {
+    seeds.push(payload.subarray(offset, offset + 32));
+  }
+
+  return PublicKey.findProgramAddressSync(seeds, dwalletProgramId)[0];
+}
+
+/**
+ * Builds the `transfer_ownership` instruction for the dWallet program.
+ *
+ * Transfers the dWallet's authority to `newOwner` (typically AURA's
+ * `__ika_cpi_authority` PDA) so that `aura-core` can CPI `approve_message`
+ * on its behalf.
+ *
+ * Discriminator 24 matches the Rust smoke test `transfer_dwallet_authority()`.
+ */
+export function buildTransferDwalletOwnershipInstruction(
+  currentOwner: PublicKey,
+  dwalletAccount: PublicKey,
+  newOwner: PublicKey,
+  dwalletProgramId: PublicKey = DWALLET_DEVNET_PROGRAM_ID,
+): TransactionInstruction {
+  const data = Buffer.alloc(1 + 32);
+  data.writeUInt8(DWALLET_TRANSFER_OWNERSHIP_DISC, 0);
+  newOwner.toBuffer().copy(data, 1);
+
+  return new TransactionInstruction({
+    programId: dwalletProgramId,
+    data,
+    keys: [
+      { pubkey: currentOwner, isSigner: true, isWritable: false },
+      { pubkey: dwalletAccount, isSigner: false, isWritable: true },
+    ],
+  });
+}
+
+export interface ProvisionedDWallet {
+  /** On-chain Solana PDA of the dWallet account (use as dwalletAccount). */
+  dwalletAccount: PublicKey;
+  /** Authorized user pubkey — the backend keypair that owns this dWallet. */
+  authorizedUserPubkey: PublicKey;
+  /** Hex-encoded raw public key bytes (use as publicKeyHex). */
+  publicKeyHex: string;
+  /** Base58 address of the dWallet on the target chain (use as address). */
+  address: string;
+  /** The dWallet ID string to store on the treasury (= dwalletAccount base58). */
+  dwalletId: string;
+  /** Tx signature of the transfer_ownership instruction. */
+  transferSignature: string;
+  /** 32-byte session identifier from the DKG attestation V1 payload.
+   *  Must be passed as `sessionIdentifier` to requestDwalletSign(). */
+  sessionIdentifier: Uint8Array;
+  /** Full DKG attestation — must be passed as `dkgAttestation` to requestDwalletSign(). */
+  dkgAttestation: import("../ika/grpc.js").DKGAttestation;
+}
+
+/**
+ * Provisions a new Ed25519 dWallet via the Ika DKG gRPC service, waits for
+ * the PDA to appear on-chain, then transfers ownership to AURA's CPI
+ * authority PDA so `execute_pending` can CPI `approve_message`.
+ *
+ * This is the TypeScript port of `provision_dwallet()` +
+ * `transfer_dwallet_authority()` from the Rust smoke test.
+ */
+export async function provisionDwallet(options: {
+  connection: Connection;
+  payer: Signer;
+  auraProgramId?: PublicKey;
+  dwalletProgramId?: PublicKey;
+  ikaGrpcUrl?: string;
+}): Promise<ProvisionedDWallet> {
+  const { createIkaClient } = await import("../ika/grpc.js");
+
+  const dwalletProgramId = options.dwalletProgramId ?? DWALLET_DEVNET_PROGRAM_ID;
+  const auraProgramId = options.auraProgramId ?? AURA_PROGRAM_ID;
+  const grpcUrl = options.ikaGrpcUrl ?? "pre-alpha-dev-1.ika.ika-network.net:443";
+
+  // 1. Run DKG via Ika gRPC — pass the payer's secret key so requests are
+  //    signed with the real Ed25519 key (not zero bytes).
+  const secretKey = (options.payer as { secretKey?: Uint8Array }).secretKey;
+  const ikaClient = createIkaClient(grpcUrl, secretKey);
+  let dkgResult: Awaited<ReturnType<typeof ikaClient.requestDKG>>;
+  try {
+    dkgResult = await ikaClient.requestDKG(options.payer.publicKey.toBytes());
+  } finally {
+    ikaClient.close();
+  }
+
+  // 2. Derive the on-chain dWallet PDA from (Curve25519=2, publicKey)
+  const dwalletAccount = deriveDwalletPda(CURVE25519_CODE, dkgResult.publicKey, dwalletProgramId);
+
+  // 3. Wait for the PDA to appear on-chain (Ika network writes it after DKG)
+  await waitForAccountState(
+    options.connection,
+    dwalletAccount,
+    (account) => account.data.length > 2 && account.data[0] === 2,
+    { timeoutMs: 120_000, intervalMs: 1_500 },
+  );
+
+  // 4. Transfer ownership to AURA's __ika_cpi_authority PDA
+  const [auraCpiAuthority] = deriveDwalletCpiAuthorityAddress(auraProgramId);
+  const transferIx = buildTransferDwalletOwnershipInstruction(
+    options.payer.publicKey,
+    dwalletAccount,
+    auraCpiAuthority,
+    dwalletProgramId,
+  );
+  const transferSignature = await sendInstructionsWithBudget({
+    connection: options.connection,
+    payer: options.payer,
+    instructions: [transferIx],
+  });
+
+  const publicKeyHex = Buffer.from(dkgResult.publicKey).toString("hex");
+
+  // For Solana the "address" is the base58-encoded public key —
+  // this is the actual Solana address you send tokens to.
+  const address = new PublicKey(dkgResult.publicKey).toBase58();
+
+  return {
+    dwalletAccount,
+    authorizedUserPubkey: options.payer.publicKey,
+    publicKeyHex,
+    address,
+    dwalletId: dwalletAccount.toBase58(),
+    transferSignature,
+    sessionIdentifier: dkgResult.sessionIdentifier,
+    dkgAttestation: dkgResult.dkgAttestation,
+  };
 }

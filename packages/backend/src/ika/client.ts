@@ -4,8 +4,10 @@ import {
   createEncryptClient,
   DEVNET_PRE_ALPHA_GRPC_URL as ENCRYPT_GRPC_URL,
   encodeReadCiphertextMessage,
-} from "./vendor/encrypt/grpc.js";
-import { createIkaClient } from "./vendor/ika/grpc.js";
+} from "../vendor/encrypt/grpc.js";
+import { createIkaClient, type DKGAttestation } from "./grpc.js";
+
+export type { DKGAttestation };
 
 const IKA_GRPC_URL = "pre-alpha-dev-1.ika.ika-network.net:443";
 export { ENCRYPT_GRPC_URL, IKA_GRPC_URL };
@@ -117,19 +119,27 @@ export async function requestDwalletSign(
   message: Buffer,
   txSignature: Buffer,
   grpcUrl = IKA_GRPC_URL,
+  secretKey?: Uint8Array,
+  sessionIdentifier?: Uint8Array,
+  dkgAttestation?: DKGAttestation,
 ) {
-  const client = createIkaClient(grpcUrl);
-  try {
-    const presignId = await client.requestPresign(
-      senderPubkey.toBuffer(),
-      dwalletAddr.toBuffer(),
+  if (!sessionIdentifier || !dkgAttestation) {
+    throw new Error(
+      "requestDwalletSign requires sessionIdentifier and dkgAttestation from DKG. " +
+      "Pass the values returned by provisionDwallet().",
     );
+  }
+  const client = createIkaClient(grpcUrl, secretKey);
+  try {
+    const senderBytes = senderPubkey.toBuffer();
+    const presignId = await client.requestPresign(senderBytes, sessionIdentifier);
     const signature = await client.requestSign(
-      senderPubkey.toBuffer(),
-      dwalletAddr.toBuffer(),
+      senderBytes,
+      sessionIdentifier,
       message,
       presignId,
       txSignature,
+      dkgAttestation,
     );
     return Buffer.from(signature);
   } finally {

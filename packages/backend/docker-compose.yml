@@ -10,9 +10,12 @@ services:
     env_file:
       - .env
     environment:
-      AURA_BACKEND_KEYPAIR: /run/secrets/aura-backend-keypair.json
+      AURA_DATABASE_PATH: /app/data/aura.db
     ports:
       - "8787:8787"
     restart: unless-stopped
     volumes:
-      - ../../wallet/wallet.json:/run/secrets/aura-backend-keypair.json:ro
+      - aura-backend-data:/app/data
+
+volumes:
+  aura-backend-data:
