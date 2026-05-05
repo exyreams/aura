@@ -53,10 +53,11 @@ function parseCookies(header: string | string[] | undefined) {
 
 function sessionCookie(value: string, maxAgeSecs: number) {
   const config = loadConfig();
+  const sameSite = config.cookieSecure ? "Strict" : "Lax";
   const parts = [
     `${config.cookieName}=${encodeURIComponent(value)}`,
     "HttpOnly",
-    "SameSite=Strict",
+    `SameSite=${sameSite}`,
     "Path=/",
     `Max-Age=${maxAgeSecs}`,
   ];

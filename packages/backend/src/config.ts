@@ -1,6 +1,9 @@
 import { AURA_PROGRAM_ID, DEVNET_RPC_URL } from "@aura-protocol/sdk-ts";
 import path from "node:path";
+import { loadEnvFile } from "node:process";
 import { PublicKey } from "@solana/web3.js";
+
+try { loadEnvFile(); } catch { /* no .env file in production */ }
 
 export interface BackendConfig {
   host: string;

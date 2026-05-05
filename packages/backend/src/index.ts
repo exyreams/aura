@@ -4,10 +4,10 @@ import {
   type ServerResponse,
 } from "node:http";
 import { randomUUID } from "node:crypto";
-import { loadEnvFile } from "node:process";
 import {
   clearSessionCookie,
   createAuthNonce,
+  getAuthenticatedUser,
   loginWithWallet,
   requireAuthenticatedUser,
 } from "./auth/index.js";
@@ -63,8 +63,6 @@ import {
   parseRequestDecryptionRequest,
   parseStopAgentRequest,
 } from "./middleware/validation.js";
-
-try { loadEnvFile(); } catch { /* no .env file in production */ }
 
 const config = loadConfig();
 const logger = createLogger(config).child({ service: "aura-backend" });
@@ -245,6 +243,7 @@ function isPublicRoute(method: string, pathname: string) {
     (method === "GET" && pathname === "/v1/features/catalog") ||
     (method === "GET" && pathname === "/v1/instructions/catalog") ||
     (method === "GET" && pathname === "/v1/auth/nonce") ||
+    (method === "GET" && pathname === "/v1/auth/me") ||
     (method === "POST" && pathname === "/v1/auth/login") ||
     (method === "POST" && pathname === "/v1/auth/logout")
   );
@@ -336,8 +335,9 @@ const server = createServer(async (request, response) => {
     }
 
     if (routeKey === "GET /v1/auth/me") {
+      const sessionUser = await getAuthenticatedUser(request);
       sendSuccess(response, 200, requestId, {
-        wallet: authUser?.wallet,
+        wallet: sessionUser?.wallet ?? null,
       });
       return;
     }
@@ -388,12 +388,15 @@ const server = createServer(async (request, response) => {
     }
 
     if (routeKey === "POST /v1/agents") {
-      sendSuccess(
-        response,
-        201,
-        requestId,
-        createAgentKeypair(authUser!, parseCreateAgentRequest(body)),
-      );
+      const result = createAgentKeypair(authUser!, parseCreateAgentRequest(body));
+      // Fire-and-forget devnet airdrop so the agent can pay transaction fees
+      if (config.defaultRpcUrl.includes("devnet")) {
+        const { Connection, PublicKey: SolPublicKey, LAMPORTS_PER_SOL } = await import("@solana/web3.js");
+        const conn = new Connection(config.defaultRpcUrl, "confirmed");
+        conn.requestAirdrop(new SolPublicKey(result.agent.publicKey), 0.1 * LAMPORTS_PER_SOL)
+          .catch(() => { /* non-fatal — user can fund manually */ });
+      }
+      sendSuccess(response, 201, requestId, result);
       return;
     }
 
