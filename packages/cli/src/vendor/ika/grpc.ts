@@ -5,7 +5,7 @@
 // Uses @grpc/grpc-js for native gRPC transport.
 
 import * as grpc from '@grpc/grpc-js';
-import { bcs } from '@mysten/bcs';
+import { ed25519 } from '@noble/curves/ed25519';
 import {
   DWalletServiceClient,
   type UserSignedRequest as ProtoRequest,
@@ -17,26 +17,60 @@ const { SignedRequestData, TransactionResponseData, UserSignature, VersionedDWal
 
 export { defineBcsTypes } from './bcs-types.js';
 
+/** Raw DKG attestation fields needed for subsequent presign/sign requests. */
+export interface DKGAttestation {
+  attestationData: Uint8Array;
+  networkSignature: Uint8Array;
+  networkPubkey: Uint8Array;
+  epoch: bigint;
+}
+
 export interface DKGResult {
   dwalletAddr: Uint8Array;
   publicKey: Uint8Array;
   publicOutput: Uint8Array;
-  attestationData: Uint8Array;
-  networkSignature: Uint8Array;
-  networkPubkey: Uint8Array;
+  /** 32-byte session identifier from the DKG attestation V1 payload.
+   *  Must be used as `session_identifier_preimage` for presign and sign. */
+  sessionIdentifier: Uint8Array;
+  /** Full DKG attestation — must be passed as `dwallet_attestation` in Sign. */
+  dkgAttestation: DKGAttestation;
 }
 
 export interface IkaDWalletClient {
   requestDKG(senderPubkey: Uint8Array): Promise<DKGResult>;
-  requestPresign(senderPubkey: Uint8Array, dwalletAddr: Uint8Array): Promise<Uint8Array>;
+  /**
+   * @param senderPubkey        32-byte Ed25519 public key of the sender.
+   * @param sessionIdentifier   32-byte session identifier from DKG (live.session_identifier).
+   */
+  requestPresign(senderPubkey: Uint8Array, sessionIdentifier: Uint8Array): Promise<Uint8Array>;
+  /**
+   * @param senderPubkey        32-byte Ed25519 public key of the sender.
+   * @param sessionIdentifier   32-byte session identifier from DKG.
+   * @param message             Message bytes to sign.
+   * @param presignId           presign_session_identifier from the presign response.
+   * @param txSignature         Solana tx signature bytes (approval proof).
+   * @param dkgAttestation      Full DKG attestation from requestDKG.
+   */
   requestSign(
-    senderPubkey: Uint8Array, dwalletAddr: Uint8Array,
-    message: Uint8Array, presignId: Uint8Array, txSignature: Uint8Array,
+    senderPubkey: Uint8Array,
+    sessionIdentifier: Uint8Array,
+    message: Uint8Array,
+    presignId: Uint8Array,
+    txSignature: Uint8Array,
+    dkgAttestation: DKGAttestation,
   ): Promise<Uint8Array>;
   close(): void;
 }
 
-export function createIkaClient(grpcUrl?: string): IkaDWalletClient {
+/**
+ * Creates an Ika dWallet gRPC client.
+ *
+ * @param grpcUrl    gRPC endpoint URL.
+ * @param secretKey  64-byte Ed25519 secret key (Solana Keypair.secretKey).
+ *                   The first 32 bytes are the seed; the last 32 are the pubkey.
+ *                   Required to produce real signatures on BCS request data.
+ */
+export function createIkaClient(grpcUrl?: string, secretKey?: Uint8Array): IkaDWalletClient {
   const url = grpcUrl ?? '127.0.0.1:50051';
   const creds = url.includes('localhost') || url.match(/127\.0\.0\.1/)
     ? grpc.credentials.createInsecure()
@@ -55,9 +89,27 @@ export function createIkaClient(grpcUrl?: string): IkaDWalletClient {
     });
   }
 
-  function buildSig(pubkey: Uint8Array): Uint8Array {
+  /**
+   * Sign `data` with the Ed25519 secret key and wrap it in the UserSignature
+   * BCS envelope expected by the dWallet gRPC service.
+   *
+   * Mirrors the Rust smoke test `build_dwallet_request()`:
+   *   let sig = payer.sign_message(&data);
+   *   UserSignature::Ed25519 { signature: sig.as_ref().to_vec(), public_key: ... }
+   */
+  function buildSig(pubkey: Uint8Array, data: Uint8Array): Uint8Array {
+    let signature: Uint8Array;
+    if (secretKey && secretKey.length >= 32) {
+      // @noble/curves ed25519.sign takes the 32-byte seed (first half of the
+      // 64-byte Solana secret key).
+      const seed = secretKey.slice(0, 32);
+      signature = ed25519.sign(data, seed);
+    } else {
+      // Fallback: zero signature (pre-alpha networks that don't validate sigs).
+      signature = new Uint8Array(64);
+    }
     return UserSignature.serialize({
-      Ed25519: { signature: Array.from(new Uint8Array(64)), public_key: Array.from(pubkey) },
+      Ed25519: { signature: Array.from(signature), public_key: Array.from(pubkey) },
     }).toBytes();
   }
 
@@ -81,7 +133,7 @@ export function createIkaClient(grpcUrl?: string): IkaDWalletClient {
         }},
       }).toBytes();
 
-      const respBytes = await submit(buildSig(senderPubkey), data);
+      const respBytes = await submit(buildSig(senderPubkey, data), data);
       const resp = TransactionResponseData.parse(new Uint8Array(respBytes));
       if (!resp.Attestation) throw new Error(`DKG failed: ${JSON.stringify(resp)}`);
       const att = resp.Attestation;
@@ -91,37 +143,43 @@ export function createIkaClient(grpcUrl?: string): IkaDWalletClient {
         throw new Error(`unexpected DKG payload variant: ${JSON.stringify(payload)}`);
       }
       const created = payload.V1;
+
+      // Extract the 32-byte session_identifier from the DKG attestation.
+      // This is used as session_identifier_preimage for all subsequent requests
+      // (presign + sign), matching the Rust smoke test's live.session_identifier.
+      const sessionIdentifier = new Uint8Array(created.session_identifier);
+
+      const dkgAttestation: DKGAttestation = {
+        attestationData: new Uint8Array(att.attestation_data),
+        networkSignature: new Uint8Array(att.network_signature),
+        networkPubkey: new Uint8Array(att.network_pubkey),
+        epoch: BigInt(att.epoch),
+      };
+
       // dwalletAddr is now derived from (curve, public_key) on-chain via
       // the dwallet PDA seeds; we don't extract it from attestation bytes.
       return {
         dwalletAddr: new Uint8Array(32),
         publicKey: new Uint8Array(created.public_key),
         publicOutput: new Uint8Array(created.public_output),
-        attestationData: new Uint8Array(att.attestation_data),
-        networkSignature: new Uint8Array(att.network_signature),
-        networkPubkey: new Uint8Array(att.network_pubkey),
+        sessionIdentifier,
+        dkgAttestation,
       };
     },
 
-    async requestPresign(senderPubkey, dwalletAddr) {
+    async requestPresign(senderPubkey, sessionIdentifier) {
       const data = SignedRequestData.serialize({
-        session_identifier_preimage: Array.from(dwalletAddr),
+        session_identifier_preimage: Array.from(sessionIdentifier),
         epoch: 1n, chain_id: { Solana: true },
         intended_chain_sender: Array.from(senderPubkey),
-        request: { PresignForDWallet: {
+        request: { Presign: {
           dwallet_network_encryption_public_key: Array.from(new Uint8Array(32)),
-          dwallet_public_key: Array.from(dwalletAddr),
-          dwallet_attestation: {
-            attestation_data: Array.from(new Uint8Array(32)),
-            network_signature: Array.from(new Uint8Array(64)),
-            network_pubkey: Array.from(new Uint8Array(32)),
-            epoch: 1n,
-          },
-          curve: { Curve25519: true }, signature_algorithm: { EdDSA: true },
+          curve: { Curve25519: true },
+          signature_algorithm: { EdDSA: true },
         }},
       }).toBytes();
 
-      const respBytes = await submit(buildSig(senderPubkey), data);
+      const respBytes = await submit(buildSig(senderPubkey, data), data);
       const resp = TransactionResponseData.parse(new Uint8Array(respBytes));
       if (!resp.Attestation) throw new Error(`Presign failed: ${JSON.stringify(resp)}`);
       const payload = VersionedPresignDataAttestation.parse(new Uint8Array(resp.Attestation.attestation_data));
@@ -131,9 +189,9 @@ export function createIkaClient(grpcUrl?: string): IkaDWalletClient {
       return new Uint8Array(payload.V1.presign_session_identifier);
     },
 
-    async requestSign(senderPubkey, dwalletAddr, message, presignId, txSignature) {
+    async requestSign(senderPubkey, sessionIdentifier, message, presignId, txSignature, dkgAttestation) {
       const data = SignedRequestData.serialize({
-        session_identifier_preimage: Array.from(dwalletAddr),
+        session_identifier_preimage: Array.from(sessionIdentifier),
         epoch: 1n, chain_id: { Solana: true },
         intended_chain_sender: Array.from(senderPubkey),
         request: { Sign: {
@@ -141,16 +199,16 @@ export function createIkaClient(grpcUrl?: string): IkaDWalletClient {
           presign_session_identifier: Array.from(presignId),
           message_centralized_signature: Array.from(new Uint8Array(64)),
           dwallet_attestation: {
-            attestation_data: Array.from(new Uint8Array(32)),
-            network_signature: Array.from(new Uint8Array(64)),
-            network_pubkey: Array.from(new Uint8Array(32)),
-            epoch: 1n,
+            attestation_data: Array.from(dkgAttestation.attestationData),
+            network_signature: Array.from(dkgAttestation.networkSignature),
+            network_pubkey: Array.from(dkgAttestation.networkPubkey),
+            epoch: dkgAttestation.epoch,
           },
           approval_proof: { Solana: { transaction_signature: Array.from(txSignature), slot: 0n } },
         }},
       }).toBytes();
 
-      const respBytes = await submit(buildSig(senderPubkey), data);
+      const respBytes = await submit(buildSig(senderPubkey, data), data);
       const resp = TransactionResponseData.parse(new Uint8Array(respBytes));
       if (resp.Signature) return new Uint8Array(resp.Signature.signature);
       if (resp.Error) throw new Error(resp.Error.message);

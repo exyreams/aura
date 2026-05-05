@@ -203,7 +203,11 @@ export function registerExecutionCommands(program: Command): void {
           { timeoutMs: 120_000 },
         );
 
-        // Drive the dWallet presign + sign flow via the Ika gRPC network
+        // Drive the dWallet presign + sign flow via the Ika gRPC network.
+        // Requires DKG session data (sessionIdentifier + dkgAttestation) which
+        // is only available when the dWallet was provisioned in this process.
+        // The CLI delegates signing to the backend; this path is a best-effort
+        // fallback for direct CLI usage with a freshly provisioned dWallet.
         spinner.setText("Requesting dWallet presign + sign via Ika network...");
         try {
           const messageDigest = Buffer.from(
@@ -215,11 +219,20 @@ export function registerExecutionCommands(program: Command): void {
               ? Buffer.from(signature, "base64")
               : Buffer.alloc(64), // fallback for non-base64 signatures
           );
+          // sessionIdentifier and dkgAttestation are not available in the CLI
+          // (they come from DKG provisioning which happens in the backend).
+          // Pass undefined — requestDwalletSign will throw a descriptive error
+          // that is caught below and treated as non-fatal.
+          const secretKey = (ctx.wallet as { secretKey?: Uint8Array }).secretKey;
           await requestDwalletSign(
             ctx.wallet.publicKey,
             approvedAccounts.dwalletAccount,
             messageDigest,
             txSigBytes,
+            undefined, // grpcUrl — use default
+            secretKey,
+            undefined, // sessionIdentifier — not available in CLI
+            undefined, // dkgAttestation — not available in CLI
           );
           spinner.setText("Waiting for message approval to be signed...");
           await waitForMessageApproval(
@@ -230,7 +243,8 @@ export function registerExecutionCommands(program: Command): void {
           );
         } catch (err) {
           // Non-fatal — the message approval may already be signed or the
-          // dWallet network may process it asynchronously
+          // dWallet network may process it asynchronously. When using the
+          // backend service, signing is triggered server-side instead.
           spinner.setText(`dWallet sign request: ${err instanceof Error ? err.message : String(err)}`);
         }
       }

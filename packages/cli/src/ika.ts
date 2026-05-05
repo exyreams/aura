@@ -18,7 +18,10 @@ import {
 } from "./vendor/encrypt/grpc.js";
 import {
   createIkaClient,
+  type DKGAttestation,
 } from "./vendor/ika/grpc.js";
+
+export type { DKGAttestation };
 
 const IKA_GRPC_URL = "pre-alpha-dev-1.ika.ika-network.net:443";
 
@@ -196,12 +199,15 @@ export async function readU64Ciphertext(
  * on-chain. The dWallet network processes the presign and sign requests and
  * writes the signature back to the `MessageApproval` account.
  *
- * @param senderPubkey  The Solana pubkey of the transaction sender (payer).
- * @param dwalletAddr   The on-chain dWallet account pubkey (32 bytes).
- * @param message       The message bytes to sign (keccak256 digest of the proposal).
- * @param txSignature   The Solana transaction signature from `execute_pending`
- *                      (used as the approval proof).
- * @param grpcUrl       Override the gRPC endpoint.
+ * @param senderPubkey      The Solana pubkey of the transaction sender (payer).
+ * @param dwalletAddr       The on-chain dWallet account pubkey (32 bytes).
+ * @param message           The message bytes to sign (keccak256 digest of the proposal).
+ * @param txSignature       The Solana transaction signature from `execute_pending`
+ *                          (used as the approval proof).
+ * @param grpcUrl           Override the gRPC endpoint.
+ * @param secretKey         64-byte Ed25519 secret key for signing BCS request data.
+ * @param sessionIdentifier 32-byte session identifier from DKG (live.session_identifier).
+ * @param dkgAttestation    Full DKG attestation from requestDKG.
  * @returns The dWallet signature bytes.
  */
 export async function requestDwalletSign(
@@ -210,22 +216,31 @@ export async function requestDwalletSign(
   message: Buffer,
   txSignature: Buffer,
   grpcUrl: string = IKA_GRPC_URL,
+  secretKey?: Uint8Array,
+  sessionIdentifier?: Uint8Array,
+  dkgAttestation?: DKGAttestation,
 ): Promise<Buffer> {
-  const client = createIkaClient(grpcUrl);
+  if (!sessionIdentifier || !dkgAttestation) {
+    throw new Error(
+      "requestDwalletSign requires sessionIdentifier and dkgAttestation from DKG. " +
+      "Pass the values returned by provisionDwallet().",
+    );
+  }
+  const client = createIkaClient(grpcUrl, secretKey);
   try {
     const senderBytes = senderPubkey.toBuffer();
-    const dwalletBytes = dwalletAddr.toBuffer();
 
-    // Step 1: request presign
-    const presignId = await client.requestPresign(senderBytes, dwalletBytes);
+    // Step 1: request presign using the DKG session identifier
+    const presignId = await client.requestPresign(senderBytes, sessionIdentifier);
 
-    // Step 2: request sign with the presign ID and approval proof
+    // Step 2: request sign with the presign ID, approval proof, and DKG attestation
     const signature = await client.requestSign(
       senderBytes,
-      dwalletBytes,
+      sessionIdentifier,
       message,
       presignId,
       txSignature,
+      dkgAttestation,
     );
 
     return Buffer.from(signature);
