@@ -1,6 +1,6 @@
 {
   "name": "@aura-protocol/sdk-ts",
-  "version": "0.2.1",
+  "version": "0.2.11",
   "type": "module",
   "description": "TypeScript SDK for the AURA autonomous treasury program on Solana",
   "license": "MIT",

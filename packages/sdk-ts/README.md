@@ -415,6 +415,9 @@ import {
   ENCRYPT_DEVNET_PROGRAM_ID, // PublicKey — Ika Encrypt program
   DEVNET_RPC_URL,            // string — https://api.devnet.solana.com
   AURA_IDL,                  // the raw Anchor IDL object
+  AURA_FEATURE_DOMAINS,      // array of feature domains with instruction metadata
+  AURA_INSTRUCTION_FEATURES, // flat array of all instruction features
+  getAuraFeatureDomain,      // helper to lookup a domain by ID
 } from "@aura-protocol/sdk-ts";
 
 // Type aliases derived from the IDL
@@ -440,6 +443,43 @@ The raw IDL is also available at the `@aura-protocol/sdk-ts/idl` export path:
 
 ```ts
 import idl from "@aura-protocol/sdk-ts/idl";
+```
+
+---
+
+## Program Surface
+
+`AURA_FEATURE_DOMAINS` describes the full instruction surface grouped by feature
+domain. Useful for building UIs, CLIs, or API catalogs without hardcoding
+instruction names.
+
+```ts
+import {
+  AURA_FEATURE_DOMAINS,
+  AURA_INSTRUCTION_FEATURES,
+  getAuraFeatureDomain,
+  type AuraFeatureDomain,
+  type AuraFeatureDomainId,
+  type AuraInstructionFeature,
+  type AuraFeatureMaturity,
+} from "@aura-protocol/sdk-ts";
+
+// All domains with their instructions
+for (const domain of AURA_FEATURE_DOMAINS) {
+  console.log(domain.id, domain.label);
+  for (const ix of domain.instructions) {
+    console.log(" ", ix.name, ix.maturity);
+  }
+}
+
+// Flat list of every instruction feature
+console.log(AURA_INSTRUCTION_FEATURES.length, "instructions total");
+
+// Lookup a single domain
+const treasuryDomain = getAuraFeatureDomain("treasury");
+
+// Maturity levels: "wallet" | "backend" | "read_only" | "external_cpi"
+// Domain IDs: "treasury" | "confidential" | "dwallet" | "governance" | "policy" | ...
 ```
 
 ---
@@ -626,13 +666,14 @@ get a fully typed experience via the `.d.ts` files.
 ```
 packages/sdk-ts/
 ├─ src/
-│   ├─ client.ts       # AuraClient — core instruction flows + account fetching
-│   ├─ instructions/   # Domain-organized instruction-builder namespaces
-│   ├─ accounts.ts     # Typed account structs for each instruction group
-│   ├─ constants.ts    # Program IDs, seeds, IDL, and type aliases
-│   ├─ pda.ts          # PDA derivation helpers
-│   ├─ bn.ts           # BNish type and toBN helper
-│   └─ generated/      # Auto-generated from anchor build (gitignored)
+│   ├─ client.ts          # AuraClient — core instruction flows + account fetching
+│   ├─ instructions/      # Domain-organized instruction-builder namespaces
+│   ├─ accounts.ts        # Typed account structs for each instruction group
+│   ├─ constants.ts       # Program IDs, seeds, IDL, and type aliases
+│   ├─ pda.ts             # PDA derivation helpers
+│   ├─ bn.ts              # BNish type and toBN helper
+│   ├─ program-surface.ts # AURA_FEATURE_DOMAINS, instruction catalog metadata
+│   └─ generated/         # Auto-generated from anchor build (gitignored)
 │       ├─ aura_core.json
 │       └─ aura_core.ts
 ├─ tests/
