@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import {
@@ -23,8 +23,8 @@ import {
   sendWalletInstructions,
 } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
-import { useAppSettings, useAuraClient } from "@/lib/hooks";
-import { cn, shortenAddress } from "@/lib/utils";
+import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 import { RegisterDWalletForm } from "./RegisterDWalletForm";
 
 interface ActionOption {
@@ -45,6 +45,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
   const { connection } = useConnection();
   const client = useAuraClient();
   const settings = useAppSettings();
+  const { selectedAgent } = useAgents();
   const queryClient = useQueryClient();
   const activePending = getActivePendingProposal(treasury.account);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,12 +59,12 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
     setTimeout(() => setCopiedPda(false), 2000);
   };
 
-  const handleOpenExplorer = () => {
+  const handleOpenExplorer = useCallback(() => {
     window.open(
       `https://explorer.solana.com/address/${pda}?cluster=${settings.network}`,
       "_blank",
     );
-  };
+  }, [pda, settings.network]);
 
   const pauseMutation = useMutation({
     mutationFn: async () => {
@@ -150,7 +151,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
         disabled: !activePending || cancelMutation.isPending,
       },
     ],
-    [activePending, cancelMutation, pda, router],
+    [activePending, cancelMutation, pda, router, handleOpenExplorer],
   );
 
   const handleActionClick = (action: ActionOption) => {
@@ -164,6 +165,25 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
     <>
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-border">
         <div>
+          {/* Active signing agent banner */}
+          {selectedAgent ? (
+            <div className="inline-flex items-center gap-2 mb-3 rounded-sm border border-primary/30 bg-primary/5 px-2.5 py-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                Signing agent
+              </span>
+              <span className="font-mono text-[10px] text-(--text-main) font-semibold">
+                {selectedAgent.label || selectedAgent.agentId}
+              </span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 mb-3 rounded-sm border border-warning/30 bg-warning/5 px-2.5 py-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-(--warning-text)">
+                No agent selected
+              </span>
+            </div>
+          )}
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
             Treasury Detail
           </span>

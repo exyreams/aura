@@ -8,7 +8,8 @@ export type BadgeVariant =
   | "default"
   | "low"
   | "medium"
-  | "high";
+  | "high"
+  | "on-primary";
 
 export interface BadgeProps {
   variant?: BadgeVariant;
@@ -16,7 +17,7 @@ export interface BadgeProps {
   className?: string;
 }
 
-const variantClasses = {
+const variantClasses: Record<BadgeVariant, string> = {
   active: "bg-(--success-bg) border-(--success-border) text-(--success-text)",
   paused: "bg-(--warning-bg) border-(--warning-border) text-(--warning-text)",
   error: "bg-(--danger-bg) border-(--danger-border) text-(--danger-text)",
@@ -24,6 +25,10 @@ const variantClasses = {
   low: "bg-(--success-bg) border-(--success-border) text-(--success-text)",
   medium: "bg-(--warning-bg) border-(--warning-border) text-(--warning-text)",
   high: "bg-(--danger-bg) border-(--danger-border) text-(--danger-text)",
+  // Designed to sit on top of a primary-colored background.
+  // Light mode: white bg + dark border + dark text. Dark mode: black bg + white text.
+  "on-primary":
+    "bg-white border-black/30 text-black dark:bg-black dark:border-white/30 dark:text-white",
 };
 
 export const Badge: React.FC<BadgeProps> = ({

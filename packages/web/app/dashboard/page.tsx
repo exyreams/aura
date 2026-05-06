@@ -12,6 +12,7 @@ import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Card } from "@/components/global/Card";
 import { Table, type TableColumn } from "@/components/global/Table";
+import { CreateTreasuryModal } from "@/components/treasuries/CreateTreasuryModal";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useOwnedTreasuries, useRecentActivity } from "@/lib/hooks";
 import { formatCurrency, shortenAddress } from "@/lib/utils";
@@ -20,8 +21,9 @@ const ITEMS_PER_PAGE = 5;
 
 export default function DashboardPage() {
   const { publicKey } = useWallet();
-  const router = useRouter();
+  const _router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const treasuriesQuery = useOwnedTreasuries();
   const treasuries = treasuriesQuery.data ?? [];
@@ -43,12 +45,12 @@ export default function DashboardPage() {
   ).length;
   const totalDailyLimit = treasuries.reduce(
     (sum, entry) =>
-      sum + Number(entry.account.policyConfig.dailyLimitUsd.toString()),
+      sum + Number(entry.account.policyConfig.dailyLimitUsd.toString()) / 100,
     0,
   );
   const totalSpentToday = treasuries.reduce(
     (sum, entry) =>
-      sum + Number(entry.account.policyState.spentTodayUsd.toString()),
+      sum + Number(entry.account.policyState.spentTodayUsd.toString()) / 100,
     0,
   );
 
@@ -64,8 +66,10 @@ export default function DashboardPage() {
     .filter((entry) => entry.account?.agentId) // Only include entries with agentId
     .map((entry) => ({
       agentId: entry.account.agentId,
-      dailyLimit: Number(entry.account.policyConfig.dailyLimitUsd.toString()),
-      spentToday: Number(entry.account.policyState.spentTodayUsd.toString()),
+      dailyLimit:
+        Number(entry.account.policyConfig.dailyLimitUsd.toString()) / 100,
+      spentToday:
+        Number(entry.account.policyState.spentTodayUsd.toString()) / 100,
     }));
 
   const columns: TableColumn<TreasuryEntry>[] = [
@@ -111,7 +115,7 @@ export default function DashboardPage() {
       render: (item) => (
         <span className="mono text-[11px] text-(--text-main)">
           {formatCurrency(
-            Number(item.account.policyConfig.dailyLimitUsd.toString()),
+            Number(item.account.policyConfig.dailyLimitUsd.toString()) / 100,
           )}
         </span>
       ),
@@ -123,7 +127,7 @@ export default function DashboardPage() {
       render: (item) => (
         <span className="mono text-[11px] text-(--text-muted)">
           {formatCurrency(
-            Number(item.account.policyState.spentTodayUsd.toString()),
+            Number(item.account.policyState.spentTodayUsd.toString()) / 100,
           )}
         </span>
       ),
@@ -131,105 +135,113 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="relative max-w-[1600px] mx-auto">
-      {/* Header */}
-      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
-            Dashboard Overview
-          </span>
-          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-(--text-main) mb-2">
-            Connected treasury activity at a glance.
-          </h1>
-          <p className="text-(--text-muted) font-light max-w-xl">
-            This page reads treasury accounts and recent program events from the
-            connected wallet.
-          </p>
-        </div>
-        <Link href="/dashboard/treasuries/new">
+    <>
+      <CreateTreasuryModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
+      <div className="relative max-w-[1600px] mx-auto">
+        {/* Header */}
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
+              Dashboard Overview
+            </span>
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-(--text-main) mb-2">
+              Connected treasury activity at a glance.
+            </h1>
+            <p className="text-(--text-muted) font-light max-w-xl">
+              This page reads treasury accounts and recent program events from
+              the connected wallet.
+            </p>
+          </div>
           <Button
             variant="primary"
             size="medium"
             icon={<Plus className="w-4 h-4" />}
+            onClick={() => setCreateOpen(true)}
           >
             Create Treasury
           </Button>
-        </Link>
-      </header>
+        </header>
 
-      {/* Stats Grid */}
-      <StatsGrid
-        totalTreasuries={publicKey ? treasuries.length : 0}
-        totalTransactions={totalTransactions}
-        totalVolume={totalVolume}
-        activeAgents={activeAgents}
-        totalSpentToday={totalSpentToday}
-        totalDailyLimit={totalDailyLimit}
-        isConnected={!!publicKey}
-      />
+        {/* Stats Grid */}
+        <StatsGrid
+          totalTreasuries={publicKey ? treasuries.length : 0}
+          totalTransactions={totalTransactions}
+          totalVolume={totalVolume}
+          activeAgents={activeAgents}
+          totalSpentToday={totalSpentToday}
+          totalDailyLimit={totalDailyLimit}
+          isConnected={!!publicKey}
+        />
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
-        {/* Treasury List */}
-        <section className="lg:col-span-8 flex flex-col">
-          <Card className="h-full p-0" hover={false}>
-            <div className="flex items-center justify-between mb-8 px-8 pt-8">
-              <div>
-                <h2 className="text-xl font-bold text-(--text-main)">
-                  Treasury List
-                </h2>
-                <p className="text-[12px] text-(--text-muted)">
-                  Live account fetch for every treasury owned by the connected
-                  wallet.
-                </p>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+          {/* Treasury List */}
+          <section className="lg:col-span-8 flex flex-col">
+            <Card className="h-full p-0" hover={false}>
+              <div className="flex items-center justify-between mb-8 px-8 pt-8">
+                <div>
+                  <h2 className="text-xl font-bold text-(--text-main)">
+                    Treasury List
+                  </h2>
+                  <p className="text-[12px] text-(--text-muted)">
+                    Live account fetch for every treasury owned by the connected
+                    wallet.
+                  </p>
+                </div>
+                <Link href="/dashboard/treasuries">
+                  <Button variant="secondary" size="small">
+                    View All
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </Link>
               </div>
-              <Link href="/dashboard/treasuries">
-                <Button variant="secondary" size="small">
-                  View All
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
 
-            <div className="px-8 pb-8">
-              <Table<TreasuryEntry>
-                columns={columns}
-                data={publicKey ? paginatedData : []}
-                keyExtractor={(item) => item.publicKey.toBase58()}
-                loading={treasuriesQuery.isLoading}
-                emptyState={publicKey ? "empty" : "no-wallet"}
-                emptyAction={
-                  publicKey
-                    ? {
-                        label: "Create Treasury",
-                        onClick: () => router.push("/dashboard/treasuries/new"),
-                      }
-                    : undefined
-                }
-                pagination={
-                  publicKey && totalItems > 0
-                    ? {
-                        currentPage,
-                        totalPages,
-                        onPageChange: setCurrentPage,
-                        totalItems,
-                        itemsPerPage: ITEMS_PER_PAGE,
-                      }
-                    : undefined
-                }
-              />
-            </div>
-          </Card>
-        </section>
+              <div className="px-8 pb-8">
+                <Table<TreasuryEntry>
+                  columns={columns}
+                  data={publicKey ? paginatedData : []}
+                  keyExtractor={(item) => item.publicKey.toBase58()}
+                  loading={treasuriesQuery.isLoading}
+                  emptyState={publicKey ? "empty" : "no-wallet"}
+                  emptyAction={
+                    publicKey
+                      ? {
+                          label: "Create Treasury",
+                          onClick: () => setCreateOpen(true),
+                        }
+                      : undefined
+                  }
+                  pagination={
+                    publicKey && totalItems > 0
+                      ? {
+                          currentPage,
+                          totalPages,
+                          onPageChange: setCurrentPage,
+                          totalItems,
+                          itemsPerPage: ITEMS_PER_PAGE,
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </Card>
+          </section>
 
-        {/* Activity Feed */}
-        <aside className="lg:col-span-4">
-          <ActivityFeed activity={activity} loading={activityQuery.isLoading} />
-        </aside>
+          {/* Activity Feed */}
+          <aside className="lg:col-span-4">
+            <ActivityFeed
+              activity={activity}
+              loading={activityQuery.isLoading}
+            />
+          </aside>
+        </div>
+
+        {/* Spending Chart */}
+        <SpendingChart data={chartData} />
       </div>
-
-      {/* Spending Chart */}
-      <SpendingChart data={chartData} />
-    </div>
+    </>
   );
 }

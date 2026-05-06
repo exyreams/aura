@@ -4,12 +4,14 @@ import { Check, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/global/Badge";
 import { cn } from "@/lib/utils";
 
 export interface DropdownOption {
   value: string;
   label: string;
   icon?: React.ReactNode;
+  badge?: string;
 }
 
 export interface DropdownProps {
@@ -107,6 +109,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     <span className="shrink-0 text-base">{option.icon}</span>
                   )}
                   <span className="flex-1">{option.label}</span>
+                  {option.badge && (
+                    <Badge variant="on-primary" className="shrink-0">
+                      {option.badge}
+                    </Badge>
+                  )}
                   {option.value === value && (
                     <Check className="w-4 h-4 shrink-0" />
                   )}
