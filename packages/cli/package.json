@@ -30,7 +30,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@aura-protocol/sdk-ts": "file:../sdk-ts",
+    "@aura-protocol/sdk-ts": "^0.2.11",
     "@encrypt.xyz/pre-alpha-solana-client": "^0.1.1",
     "@ika.xyz/pre-alpha-solana-client": "^0.1.1",
     "@inquirer/prompts": "8.4.2",
@@ -39,7 +39,7 @@
     "chalk": "5.6.2",
     "cli-table3": "0.6.5",
     "commander": "14.0.3",
-    "ink": "7.0.1",
+    "ink": "7.0.2",
     "js-sha3": "0.9.3",
     "ora": "9.4.0",
     "react": "19.2.5"
