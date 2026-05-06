@@ -1,7 +1,6 @@
 "use client";
 
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
 import {
   Bot,
   Check,
@@ -19,7 +18,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
-import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
 import { Dropdown } from "@/components/global/Dropdown";
 import { WalletModal } from "@/components/global/WalletModal";
@@ -38,7 +36,6 @@ const navLinks = [
 
 export function DashboardNav() {
   const { resolvedTheme } = useTheme();
-  const { connection } = useConnection();
   const { publicKey, disconnect } = useWallet();
   const pathname = usePathname();
   const settings = useAppSettings();
@@ -50,7 +47,6 @@ export function DashboardNav() {
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [agentSolBalance, setAgentSolBalance] = useState<number | null>(null);
   const walletMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,19 +71,6 @@ export function DashboardNav() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [walletMenuOpen]);
-
-  useEffect(() => {
-    if (!selectedAgent?.publicKey || !connection) {
-      setAgentSolBalance(null);
-      return;
-    }
-    import("@solana/web3.js").then(({ PublicKey }) => {
-      connection
-        .getBalance(new PublicKey(selectedAgent.publicKey))
-        .then((lamports) => setAgentSolBalance(lamports / LAMPORTS_PER_SOL))
-        .catch(() => setAgentSolBalance(null));
-    });
-  }, [selectedAgent?.publicKey, connection]);
 
   const logoSrc =
     !mounted || resolvedTheme === "dark"
@@ -135,17 +118,6 @@ export function DashboardNav() {
 
   return (
     <>
-      {auth.isAuthenticated &&
-        selectedAgent &&
-        agentSolBalance !== null &&
-        agentSolBalance < 0.005 && (
-          <div className="fixed top-[73px] left-0 right-0 z-90 px-8 py-2">
-            <Alert
-              variant="warning"
-              message={`Agent "${selectedAgent.label || selectedAgent.agentId}" has insufficient SOL (${agentSolBalance.toFixed(4)} SOL). Fund ${selectedAgent.publicKey.slice(0, 8)}...${selectedAgent.publicKey.slice(-4)} with at least 0.01 SOL to pay transaction fees.`}
-            />
-          </div>
-        )}
       <nav
         className={`fixed top-0 w-full px-8 py-4 flex justify-between items-center z-100 ${navBg} backdrop-blur-md border-b border-border transition-all duration-300`}
       >

@@ -36,7 +36,7 @@ export function DashboardFooter() {
 
           <div className="h-4 w-px bg-border hidden md:block" />
 
-          <div className="flex gap-10 mono text-[10px] text-(--text-muted)">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mono text-[10px] text-(--text-muted)">
             <Link
               href="#"
               className="hover:text-(--text-main) transition-colors"
@@ -66,7 +66,7 @@ export function DashboardFooter() {
           <div className="h-4 w-px bg-border hidden md:block" />
 
           <div className="mono text-[10px] text-(--text-muted) uppercase tracking-widest">
-            © 2026 AURA LABS {"//"} APP_V1.0.4-BETA
+            © 2026 AURA PROTOCOL
           </div>
         </div>
       </div>

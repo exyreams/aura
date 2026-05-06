@@ -175,7 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: isAuthenticated ? user : null,
       walletAddress,
       isAuthenticated,
-      isLoading: sessionQuery.isLoading || sessionQuery.isFetching,
+      // isLoading is true only on the initial fetch (no cached data yet).
+      // isFetching alone would also fire on background refetches, causing
+      // the skeleton to flash on every navigation — so we exclude it here.
+      isLoading: sessionQuery.isLoading,
       isSigningIn: loginMutation.isPending,
       needsSignIn,
       error:

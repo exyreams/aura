@@ -10,6 +10,38 @@ import { Skeleton } from "@/components/global/Skeleton";
 import { WalletModal } from "@/components/global/WalletModal";
 import { useAuth } from "@/lib/hooks";
 
+// ─── Page-level skeleton shown while auth state is resolving on reload ────────
+
+function AuthLoadingSkeleton() {
+  return (
+    <div className="relative max-w-[1600px] mx-auto animate-pulse">
+      {/* Header */}
+      <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-3">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-24 rounded-sm" />
+          <Skeleton className="h-9 w-28 rounded-sm" />
+        </div>
+      </div>
+      {/* Stats card */}
+      <Skeleton className="h-16 w-full mb-8 rounded-sm" />
+      {/* Callout */}
+      <Skeleton className="h-10 w-full mb-8 rounded-sm" />
+      {/* List header */}
+      <Skeleton className="h-3 w-20 mb-3" />
+      {/* Agent rows */}
+      <div className="space-y-3">
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-36 w-full" />
+      </div>
+    </div>
+  );
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const pathname = usePathname();
@@ -17,6 +49,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (pathname === "/dashboard/settings") {
     return <>{children}</>;
+  }
+
+  // While the session check is in-flight on reload, show a page skeleton
+  // instead of flashing the auth gate or the real content.
+  if (auth.isLoading) {
+    return <AuthLoadingSkeleton />;
   }
 
   if (auth.isAuthenticated) {
@@ -32,13 +70,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       />
       <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-2xl items-center justify-center">
         <Card hover={false} className="w-full space-y-6">
-          {auth.isLoading ? (
-            <>
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-44" />
-            </>
-          ) : auth.walletAddress ? (
+          {auth.walletAddress ? (
             <>
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">

@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 export interface TooltipProps {
-  content: string;
+  content: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   position?: "top" | "bottom" | "left" | "right";
@@ -47,7 +47,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         onFocus={() => setIsVisible(true)}
         onBlur={() => setIsVisible(false)}
         role="tooltip"
-        aria-label={content}
+        aria-label={typeof content === "string" ? content : undefined}
       >
         {children}
       </span>
@@ -69,7 +69,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
                   animate="visible"
                   exit="hidden"
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="relative px-3 py-2 bg-(--card-bg) text-(--text-main) text-[10px] mono rounded border border-border shadow-xl backdrop-blur-md whitespace-nowrap"
+                  className="relative px-3 py-2 bg-(--card-bg) text-(--text-main) text-[10px] mono rounded border border-border shadow-xl backdrop-blur-md max-w-xs"
                   style={{
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",

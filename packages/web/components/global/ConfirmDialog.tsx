@@ -62,7 +62,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          className="fixed inset-0 z-9999 flex items-center justify-center p-4"
           style={{
             background: "rgba(0,0,0,0.8)",
             backdropFilter: "blur(8px)",
@@ -97,7 +97,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <div className="mx-6 mb-5 bg-(--card-bg) border border-border rounded-sm overflow-hidden">
                 {rows.map((row, i) => (
                   <div key={i}>
-                    {row.dividerAbove && <div className="h-px bg-(--border)" />}
+                    {row.dividerAbove && <div className="h-px bg-border" />}
                     <div className="flex items-center justify-between px-5 py-3.5">
                       <span
                         className={`text-xs ${row.bold ? "font-bold text-(--text-main)" : "text-(--text-muted)"}`}
