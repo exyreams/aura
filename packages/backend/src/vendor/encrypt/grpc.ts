@@ -30,7 +30,7 @@ export const Chain = {
 } as const;
 export type Chain = ProtoChain;
 
-// ── CreateInput ──
+// CreateInput
 
 export interface CreateInputParams {
   chain: Chain;
@@ -44,7 +44,7 @@ export interface CreateInputResult {
   ciphertextIdentifiers: Buffer[];
 }
 
-// ── ReadCiphertext ──
+// ReadCiphertext
 
 export interface ReadCiphertextParams {
   /** BCS-serialized ReadCiphertextMessage. */

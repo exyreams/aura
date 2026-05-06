@@ -86,7 +86,7 @@ export const RegisterDWalletForm = ({
     await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
   };
 
-  // ── Step 1: Create dWallet via backend (DKG + transfer ownership) ──
+  // Step 1: Create dWallet via backend (DKG + transfer ownership)
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedAgent?.agentId) {
@@ -120,7 +120,7 @@ export const RegisterDWalletForm = ({
     },
   });
 
-  // ── Step 2: Register on-chain (wallet signs) ──
+  // Step 2: Register on-chain (wallet signs)
   const registerMutation = useMutation({
     mutationFn: async () => {
       if (!wallet.publicKey) throw new Error("Connect a wallet first.");
@@ -177,7 +177,7 @@ export const RegisterDWalletForm = ({
         ? registerMutation.error.message
         : validationError;
 
-  // ── Create tab content ──
+  // Create tab content
   const CreateContent = () => {
     if (!createResult) {
       return (
@@ -285,7 +285,7 @@ export const RegisterDWalletForm = ({
     );
   };
 
-  // ── Manual tab content ──
+  // Manual tab content
   const ManualContent = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
@@ -384,7 +384,7 @@ export const RegisterDWalletForm = ({
     </div>
   );
 
-  // ── Current dWallets tab ──
+  // Current dWallets tab
   const CurrentContent = () => {
     const registered = treasury.account.dwallets.filter(
       (dw) => dw.dwalletId.length > 0,

@@ -6,14 +6,14 @@
  * tests in client.test.ts so the CI fast-path can skip them.
  *
  * Prerequisites
- * ─────────────
+ * 
  * 1. A funded devnet keypair at ~/.config/solana/id.json
  *    (or set PAYER_KEYPAIR=/path/to/keypair.json)
  * 2. Optionally set AURA_DEVNET_RPC_URL or SOLANA_RPC_URL to a custom RPC
  *    endpoint to avoid public rate limits.
  *
  * Run
- * ───
+ *
  *   npm run test:devnet
  *
  * Instructions that require the Ika dWallet / Encrypt gRPC network

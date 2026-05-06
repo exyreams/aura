@@ -17,7 +17,7 @@ import type { TreasuryEntry } from "@/lib/aura-app";
 import type { AgentKeypair } from "@/lib/hooks";
 import { cn, shortenAddress } from "@/lib/utils";
 
-// ─── Copy button ──────────────────────────────────────────────────────────────
+// Copy button
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -45,7 +45,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-// ─── Icon action button ───────────────────────────────────────────────────────
+// Icon action button
 
 function IconButton({
   label,
@@ -80,7 +80,7 @@ function IconButton({
   );
 }
 
-// ─── AgentRow ─────────────────────────────────────────────────────────────────
+// AgentRow
 
 export interface AgentRowProps {
   agent: AgentKeypair;
@@ -124,7 +124,7 @@ export function AgentRow({
           : "border-border/60 bg-(--card-bg) hover:border-border",
       )}
     >
-      {/* ── Clickable header row ── */}
+      {/* Clickable header row */}
       <div className="p-3 sm:p-4">
         <div className="flex items-center gap-3">
           {/* Chevron + key icon + name — this area toggles expand */}
@@ -196,7 +196,7 @@ export function AgentRow({
           </div>
         </div>
 
-        {/* ── Status badges row (always visible) ── */}
+        {/* Status badges row (always visible) */}
         <div className="mt-2.5 ml-17 flex flex-wrap items-center gap-1.5">
           {selected && <StatusPill variant="active">Active</StatusPill>}
           {solBalance !== null && (
@@ -225,7 +225,7 @@ export function AgentRow({
         </div>
       </div>
 
-      {/* ── Expandable details ── */}
+      {/* Expandable details */}
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
@@ -236,7 +236,7 @@ export function AgentRow({
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 sm:px-4 sm:pb-4 pt-0">
-              {/* ── Public key strip ── */}
+              {/* Public key strip */}
               <div className="flex items-center gap-2 rounded-sm border border-border/60 bg-(--card-content) px-2.5 py-1.5 min-w-0">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) shrink-0 select-none">
                   pubkey
@@ -247,7 +247,7 @@ export function AgentRow({
                 <CopyButton text={agent.publicKey} />
               </div>
 
-              {/* ── Meta row ── */}
+              {/* Meta row */}
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="font-mono text-[9px] text-(--text-muted)">
                   Created{" "}
@@ -271,7 +271,7 @@ export function AgentRow({
                 </span>
               </div>
 
-              {/* ── Linked treasury chips ── */}
+              {/* Linked treasury chips */}
               {linkedTreasuries.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-border/40 pt-2.5">
                   {linkedTreasuries.map((t) => (

@@ -6,7 +6,7 @@ import { Alert, Button, Modal } from "@/components/global";
 import { useAgents } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-// ─── name generator ──────────────────────────────────────────────────────────
+// name generator 
 
 const WORDS = [
   "sentinel",
@@ -47,7 +47,7 @@ function generateAgentId(): string {
   return `aura-${word}-${suffix}`;
 }
 
-// ─── validation ───────────────────────────────────────────────────────────────
+// validation 
 
 function validateAgentId(value: string): string | null {
   const normalized = value.trim();
@@ -57,7 +57,7 @@ function validateAgentId(value: string): string | null {
   return null;
 }
 
-// ─── component ────────────────────────────────────────────────────────────────
+// component 
 
 interface CreateAgentModalProps {
   open: boolean;

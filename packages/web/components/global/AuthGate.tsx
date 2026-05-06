@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/global/Skeleton";
 import { WalletModal } from "@/components/global/WalletModal";
 import { useAuth } from "@/lib/hooks";
 
-// ─── Page-level skeleton shown while auth state is resolving on reload ────────
+// Page-level skeleton shown while auth state is resolving on reload
 
 function AuthLoadingSkeleton() {
   return (

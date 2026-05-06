@@ -154,9 +154,7 @@ export function defineBcsTypes() {
     Error: bcs.struct('ErrResp', { message: bcs.string() }),
   });
 
-  // ──────────────────────────────────────────────────────────────────
   // Per-type versioned attestation enums for NetworkSignedAttestation.attestation_data
-  // ──────────────────────────────────────────────────────────────────
   // DKG results: decode with `VersionedDWalletDataAttestation.parse(...)`.
   const VersionedDWalletDataAttestation = bcs.enum('VersionedDWalletDataAttestation', {
     V1: bcs.struct('DWalletDataAttestationV1', {
@@ -184,9 +182,7 @@ export function defineBcsTypes() {
     }),
   });
 
-  // ──────────────────────────────────────────────────────────────────
   // Per-scheme message metadata structs
-  // ──────────────────────────────────────────────────────────────────
   const Blake2bMessageMetadata = bcs.struct('Blake2bMessageMetadata', {
     personal: bcs.vector(bcs.u8()),
     salt: bcs.vector(bcs.u8()),

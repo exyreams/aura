@@ -19,7 +19,7 @@ import {
 } from "@/lib/aura-app";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 
-// ─── default form values ──────────────────────────────────────────────────────
+// default form values 
 
 const DEFAULTS = {
   dailyLimit: "10000", // $100/day
@@ -34,7 +34,7 @@ const DEFAULTS = {
   btcThreshold: "1000", // $10 BTC manual review
 };
 
-// ─── component ────────────────────────────────────────────────────────────────
+// component 
 
 interface CreateTreasuryModalProps {
   open: boolean;
@@ -216,7 +216,7 @@ export function CreateTreasuryModal({
   const succeeded = createMutation.isSuccess && !!createMutation.data;
   const successData = createMutation.data;
 
-  // ── Single modal with animated form → success transition ─────────────────
+  // Single modal with animated form → success transition
   return (
     <Modal
       isOpen={open}

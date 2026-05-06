@@ -521,9 +521,7 @@ export function buildPolicyPlaintextDigestHex(plaintextBytes: Buffer) {
   return createHash("sha256").update(plaintextBytes).digest("hex");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // dWallet creation helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Derives the on-chain dWallet PDA from a curve code and raw public key bytes.

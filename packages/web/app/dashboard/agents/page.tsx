@@ -16,7 +16,7 @@ import type { AgentKeypair } from "@/lib/hooks";
 import { useAgents, useOwnedTreasuries } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// helpers
 
 function downloadJson(filename: string, value: unknown) {
   const blob = new Blob([JSON.stringify(value, null, 2)], {
@@ -37,7 +37,7 @@ function linkedFor(agent: AgentKeypair, treasuries: TreasuryEntry[]) {
   });
 }
 
-// ─── Per-agent balance fetcher ────────────────────────────────────────────────
+// Per-agent balance fetcher
 
 function useAgentBalances(agents: AgentKeypair[]) {
   const { connection } = useConnection();
@@ -56,14 +56,14 @@ function useAgentBalances(agents: AgentKeypair[]) {
             [agent.publicKey]: lamports / LAMPORTS_PER_SOL,
           }));
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [agents, connection]);
 
   return balances;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page
 
 export default function AgentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -100,7 +100,7 @@ export default function AgentsPage() {
       />
 
       <div className="relative max-w-[1600px] mx-auto">
-        {/* ── Header ── */}
+        {/* Header */}
         <header className="mb-6 sm:mb-10 flex flex-col gap-4">
           <div>
             <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
@@ -141,7 +141,7 @@ export default function AgentsPage() {
           </div>
         </header>
 
-        {/* ── Stats ── */}
+        {/* Stats */}
         {!isLoading && agents.length > 0 && (
           <Card hover={false} className="py-4 px-4 sm:px-5 mb-5 sm:mb-6">
             <AgentStatsBar
@@ -151,7 +151,7 @@ export default function AgentsPage() {
           </Card>
         )}
 
-        {/* ── Callout ── */}
+        {/* Callout */}
         <div className="flex items-start gap-2.5 rounded border border-border bg-(--card-bg) px-3 py-2.5 mb-5 sm:mb-6">
           <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--text-muted)" />
           <p className="text-[11px] leading-5 text-(--text-muted)">
@@ -164,7 +164,7 @@ export default function AgentsPage() {
           </p>
         </div>
 
-        {/* ── Agent List ── */}
+        {/* Agent List */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-(--text-muted)">
