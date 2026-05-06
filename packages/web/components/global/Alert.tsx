@@ -25,24 +25,28 @@ const variantConfig = {
     bg: "bg-(--success-bg)",
     border: "border-(--success-border)",
     text: "text-(--success-text)",
+    closeBg: "hover:bg-(--success-bg)",
     icon: CheckCircle2,
   },
   error: {
     bg: "bg-(--danger-bg)",
     border: "border-(--danger-border)",
     text: "text-(--danger-text)",
+    closeBg: "hover:bg-(--danger-bg)",
     icon: AlertCircle,
   },
   warning: {
     bg: "bg-(--warning-bg)",
     border: "border-(--warning-border)",
     text: "text-(--warning-text)",
+    closeBg: "hover:bg-(--warning-bg)",
     icon: AlertTriangle,
   },
   info: {
     bg: "bg-(--info-bg)",
     border: "border-(--info-border)",
     text: "text-(--info-text)",
+    closeBg: "hover:bg-(--info-bg)",
     icon: Info,
   },
 };
@@ -71,15 +75,20 @@ export const Alert: React.FC<AlertProps> = ({
     >
       <IconComponent className={cn("w-5 h-5 shrink-0", config.text)} />
       <span className={cn("text-xs flex-1", config.text)}>{message}</span>
-      {onClose && (
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 cursor-pointer text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) rounded-sm p-1 transition-all"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
+      <motion.button
+        type="button"
+        onClick={onClose}
+        className={cn(
+          "shrink-0 cursor-pointer rounded-sm p-1 transition-colors",
+          config.text,
+          config.closeBg,
+        )}
+        whileTap={{ scale: 0.88 }}
+        transition={{ type: "spring", stiffness: 500, damping: 20 }}
+        style={{ willChange: "transform" }}
+      >
+        <X className="w-4 h-4" />
+      </motion.button>
     </motion.div>
   );
 };

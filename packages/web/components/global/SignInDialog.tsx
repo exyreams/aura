@@ -1,10 +1,11 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/global/Button";
-import { Modal } from "@/components/global/Modal";
 import { useAuth } from "@/lib/hooks";
 import { shortenAddress } from "@/lib/utils";
 
@@ -13,12 +14,14 @@ export function SignInDialog() {
   const auth = useAuth();
   const walletAddress = wallet.publicKey?.toBase58() ?? "";
   const [dismissed, setDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Reset dismissed state when wallet changes or auth succeeds
   useEffect(() => {
-    if (auth.isAuthenticated) {
-      setDismissed(false);
-    }
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (auth.isAuthenticated) setDismissed(false);
   }, [auth.isAuthenticated]);
 
   useEffect(() => {
@@ -27,71 +30,121 @@ export function SignInDialog() {
 
   const isOpen = auth.needsSignIn && !dismissed && !auth.isAuthenticated;
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => setDismissed(true)}
-      className="max-w-lg"
-    >
-      <div className="space-y-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--text-muted)">
-              Wallet Verification
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-(--text-main)">
-              Sign in to AURA
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-(--text-muted)">
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  const handleBackdrop = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) setDismissed(true);
+  };
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{
+            background: "rgba(0,0,0,0.8)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
+          onClick={handleBackdrop}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="bg-(--bg) border border-border rounded-sm shadow-2xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-(--border) bg-(--hover-bg)">
+                  <ShieldCheck className="h-4 w-4 text-(--primary)" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--text-muted)">
+                    Wallet Verification
+                  </p>
+                  <h3 className="text-lg font-bold text-(--text-main) tracking-tight leading-tight">
+                    Sign in to AURA
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDismissed(true)}
+                className="text-(--text-muted) hover:text-(--text-main) transition-colors hover:bg-(--hover-bg) rounded-sm p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Description */}
+            <p className="px-6 pb-5 text-sm leading-relaxed text-(--text-muted)">
               Sign a message to verify wallet ownership. The backend will set a
-              secure session cookie; no bearer token is stored in the browser.
+              secure session cookie — no bearer token is stored in the browser.
             </p>
-          </div>
-        </div>
 
-        {walletAddress ? (
-          <div className="rounded-sm border border-border bg-(--card-bg) p-4">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
-              Connected Wallet
-            </p>
-            <p className="mt-2 break-all font-mono text-sm text-(--text-main)">
-              {shortenAddress(walletAddress, 8, 8)}
-            </p>
-          </div>
-        ) : null}
+            {/* Wallet row */}
+            {walletAddress && (
+              <div className="mx-6 mb-5 bg-(--card-bg) border border-border rounded-sm overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5">
+                  <span className="text-xs text-(--text-muted)">
+                    Connected Wallet
+                  </span>
+                  <span className="font-mono text-xs text-(--text-main)">
+                    {shortenAddress(walletAddress, 8, 8)}
+                  </span>
+                </div>
+              </div>
+            )}
 
-        {auth.error ? (
-          <div className="rounded-sm border border-danger/25 bg-danger/10 p-4 text-sm text-danger">
-            {auth.error}
-          </div>
-        ) : null}
+            {/* Error */}
+            {auth.error && (
+              <div className="mx-6 mb-5 rounded-sm border border-danger/25 bg-danger/10 px-4 py-3 text-xs text-danger font-mono">
+                {auth.error}
+              </div>
+            )}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            type="button"
-            variant="primary"
-            icon={<KeyRound className="h-4 w-4" />}
-            loading={auth.isSigningIn}
-            disabled={!wallet.publicKey || auth.isSigningIn}
-            onClick={() => void auth.login()}
-            className="w-full"
-          >
-            Sign In
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={auth.isSigningIn}
-            onClick={() => void wallet.disconnect()}
-            className="w-full"
-          >
-            Disconnect
-          </Button>
-        </div>
-      </div>
-    </Modal>
+            {/* Actions */}
+            <div className="flex gap-3 px-6 pb-6">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={auth.isSigningIn}
+                onClick={() => void wallet.disconnect()}
+                className="flex-1"
+              >
+                Disconnect
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                icon={<KeyRound className="h-4 w-4" />}
+                loading={auth.isSigningIn}
+                disabled={!wallet.publicKey || auth.isSigningIn}
+                onClick={() => void auth.login()}
+                className="flex-1"
+              >
+                Sign In
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }

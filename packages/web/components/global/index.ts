@@ -23,6 +23,11 @@ export {
 } from "./Button";
 export { Card, type CardProps } from "./Card";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
+export {
+  ConfirmDialog,
+  type ConfirmDialogProps,
+  type ConfirmDialogRow,
+} from "./ConfirmDialog";
 
 export { Dropdown, type DropdownOption, type DropdownProps } from "./Dropdown";
 

@@ -52,10 +52,10 @@ export function Table<T>({
   if (loading) {
     return (
       <div className={cn("space-y-6", className)}>
-        <div className="border border-border rounded-sm overflow-hidden bg-(--card-bg)">
+        <div className="border border-border rounded-sm overflow-hidden bg-(--input-bg)">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-(--card-content)">
+              <thead className="bg-(--card-bg)">
                 <tr className="border-b border-border">
                   {columns.map((column) => (
                     <th
@@ -119,10 +119,10 @@ export function Table<T>({
 
     return (
       <div className={cn("space-y-6", className)}>
-        <div className="bg-(--card-bg) border border-border rounded-sm overflow-hidden">
+        <div className="bg-(--input-bg) border border-border rounded-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-(--card-content)">
+              <thead className="bg-(--card-bg)">
                 <tr className="border-b border-border">
                   {columns.map((column) => (
                     <th
@@ -146,7 +146,7 @@ export function Table<T>({
             style={{ height: `${emptyHeight}px` }}
           >
             <div className="text-center space-y-4 px-6">
-              <div className="w-16 h-16 bg-(--card-content) rounded-full flex items-center justify-center mx-auto border border-border">
+              <div className="w-16 h-16 bg-(--card-bg) rounded-full flex items-center justify-center mx-auto border border-border">
                 {isNoWallet ? (
                   <Wallet className="text-(--text-muted) w-8 h-8" />
                 ) : isEmpty ? (
@@ -192,10 +192,10 @@ export function Table<T>({
 
   return (
     <div className={cn("space-y-6", className)}>
-      <div className="border border-border rounded-sm overflow-hidden bg-(--card-bg)">
+      <div className="border border-border rounded-sm overflow-hidden bg-(--input-bg)">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-(--card-content)">
+            <thead className="bg-(--card-bg)">
               <tr className="border-b border-border">
                 {columns.map((column) => (
                   <th
@@ -220,7 +220,7 @@ export function Table<T>({
                 <tr
                   key={keyExtractor(item)}
                   onClick={() => onRowClick?.(item)}
-                  className="transition-all hover:bg-(--hover-bg)"
+                  className="transition-all hover:bg-(--card-bg)"
                 >
                   {columns.map((column) => (
                     <td

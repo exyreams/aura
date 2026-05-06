@@ -94,7 +94,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   return (
     <div ref={dropdownRef} className={cn("relative w-full", className)}>
       {/* Combined Input + Tags */}
-      <div className="bg-(--input-bg) border border-border rounded-sm px-4 py-2 min-h-[48px] flex items-center gap-2 focus-within:border-primary transition-colors">
+      <div className="bg-(--input-bg) border border-border rounded-sm px-4 py-2 min-h-[48px] flex items-center gap-2 focus-within:border-(--text-muted) transition-colors">
         {/* Selected Tags Inline - Only wrap tags, not the whole container */}
         {selectedOptions.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 shrink-0">

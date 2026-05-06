@@ -52,7 +52,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             className={cn(
               "bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main)",
-              "focus:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus:border-(--text-muted)",
+              "disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-(--hover-bg)",
               error && "border-danger focus:border-danger",
               prefix && "pl-8",
               suffix && "pr-12",

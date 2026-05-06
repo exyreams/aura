@@ -60,7 +60,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <button
         type="button"
         onClick={handleToggle}
-        className="bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) flex items-center justify-between text-left focus:border-primary"
+        className="bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) flex items-center justify-between text-left focus:border-(--text-muted)"
       >
         <span
           className={cn(

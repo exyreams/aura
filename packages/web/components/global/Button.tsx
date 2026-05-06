@@ -5,8 +5,13 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
-export type ButtonSize = "small" | "medium" | "large";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "ghost"
+  | "disabled";
+export type ButtonSize = "small" | "medium";
 
 export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   variant?: ButtonVariant;
@@ -33,30 +38,36 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseClasses =
-      "inline-flex min-h-10 items-center justify-center font-mono font-bold uppercase tracking-wider transition-colors rounded-sm gap-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+      "inline-flex min-h-10 items-center justify-center font-mono font-bold uppercase tracking-wider transition-colors rounded-sm gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)";
 
     const variantClasses = {
-      primary: "bg-(--primary) text-(--bg) hover:opacity-90",
+      // Solid filled — primary action
+      primary: "bg-(--primary) text-(--bg) hover:opacity-80",
+      // Outlined — secondary action
       secondary:
         "bg-(--card-bg) border border-border text-(--text-main) hover:border-primary hover:bg-(--hover-bg)",
-      danger: "bg-danger text-white hover:opacity-90",
+      // Destructive — solid red
+      danger: "bg-[var(--danger)] text-white hover:opacity-80",
+      // Subtle — no border, no bg, text only
       ghost:
-        "bg-(--card-bg) text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg)",
+        "bg-transparent text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg)",
+      // Explicit disabled variant — flat, muted, non-interactive
+      disabled:
+        "bg-(--hover-bg) text-(--text-muted) cursor-not-allowed opacity-50",
     };
 
     const sizeClasses = {
       small: "px-4 py-2 text-[10px]",
       medium: "px-6 py-3 text-xs",
-      large: "px-8 py-4 text-sm",
     };
 
     const spinnerSizes = {
-      small: "small" as const,
-      medium: "small" as const,
-      large: "medium" as const,
+      small: "xs" as const,
+      medium: "xs" as const,
     };
 
-    const isDisabled = disabled || loading;
+    const isDisabledVariant = variant === "disabled";
+    const isDisabled = disabled || loading || isDisabledVariant;
 
     return (
       <motion.button
@@ -66,7 +77,12 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           baseClasses,
           variantClasses[variant],
           sizeClasses[size],
-          isDisabled && "opacity-30 cursor-not-allowed",
+          // prop-based disabled (not variant) — dim + block cursor
+          disabled &&
+            !isDisabledVariant &&
+            !loading &&
+            "opacity-70 cursor-not-allowed",
+          loading && "cursor-not-allowed",
           className,
         )}
         whileTap={isDisabled ? undefined : { scale: 0.98 }}
@@ -77,7 +93,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {loading ? (
           <>
             <Spinner size={spinnerSizes[size]} />
-            <span className="opacity-70">{children}</span>
+            <span>{children}</span>
           </>
         ) : (
           <>

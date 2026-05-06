@@ -4,17 +4,19 @@ import type React from "react";
 import { cn } from "@/lib/utils";
 
 export interface SpinnerProps {
-  size?: "small" | "medium" | "large";
+  size?: "xs" | "small" | "medium" | "large";
   className?: string;
 }
 
 const sizeClasses = {
+  xs: "w-3.5 h-3.5",
   small: "w-6 h-6",
   medium: "w-10 h-10",
   large: "w-14 h-14",
 };
 
 const strokeWidths = {
+  xs: 4,
   small: 3,
   medium: 5,
   large: 6,

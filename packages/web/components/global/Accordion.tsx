@@ -37,12 +37,20 @@ export const Accordion: React.FC<AccordionProps> = ({
         return (
           <div
             key={item.id}
-            className="border border-border bg-(--input-bg) rounded-sm overflow-hidden"
+            className="border border-border rounded-sm overflow-hidden"
+            style={{ background: "var(--accordion-bg)" }}
           >
             <button
               type="button"
               onClick={() => toggleItem(item.id)}
-              className="w-full px-5 py-4 flex justify-between items-center bg-(--input-bg) hover:bg-(--card-bg) transition-colors"
+              className="w-full px-5 py-4 flex justify-between items-center transition-colors"
+              style={{ background: "var(--accordion-bg)" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "var(--accordion-hover)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "var(--accordion-bg)")
+              }
             >
               <span className="text-sm font-semibold text-(--text-main)">
                 {item.title}
@@ -63,7 +71,10 @@ export const Accordion: React.FC<AccordionProps> = ({
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="overflow-hidden"
                 >
-                  <div className="p-5 text-xs text-(--text-muted) leading-relaxed border-t border-border bg-(--card-bg)">
+                  <div
+                    className="p-5 text-xs text-(--text-muted) leading-relaxed border-t border-border"
+                    style={{ background: "var(--accordion-content)" }}
+                  >
                     {item.content}
                   </div>
                 </motion.div>

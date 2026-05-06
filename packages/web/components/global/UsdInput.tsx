@@ -125,7 +125,7 @@ export const UsdInput = React.forwardRef<HTMLInputElement, UsdInputProps>(
             required={required}
             className={cn(
               "bg-(--input-bg) border border-border rounded-sm pl-7 pr-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main)",
-              "focus:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus:border-(--text-muted)",
               error && "border-danger focus:border-danger",
               className,
             )}
