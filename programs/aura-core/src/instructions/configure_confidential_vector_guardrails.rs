@@ -17,12 +17,13 @@ pub struct ConfigureConfidentialVectorGuardrails<'info> {
         constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
     )]
     pub treasury: Box<Account<'info, TreasuryAccount>>,
-    /// CHECK: Encrypt-owned ciphertext account containing [daily_limit, per_tx_limit, spent_today] as an EUint64Vector.
+    /// CHECK: Encrypt-owned ciphertext account containing [remaining_daily_limit, per_tx_limit, spent_today] as an EUint64Vector.
     pub guardrail_vector_ciphertext: UncheckedAccount<'info>,
 }
 
 /// Configures vector FHE guardrails on the treasury using a single
-/// `EUint64Vector` ciphertext that encodes `[daily_limit, per_tx_limit, spent_today]`.
+/// `EUint64Vector` ciphertext that encodes
+/// `[remaining_daily_limit, per_tx_limit, spent_today]`.
 ///
 /// The ciphertext account must be owned by the Encrypt program, have FHE type
 /// `ENCRYPT_FHE_VECTOR_U64`, and have status `1` (verified).

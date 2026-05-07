@@ -3,10 +3,7 @@ use aura_policy::{PauseScope, TransactionContext};
 
 use crate::{
     constants::TREASURY_SEED,
-    ext_cpi::{
-        parse_ciphertext_account, AuraEncryptContext, ENCRYPT_CPI_AUTHORITY_SEED,
-        ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_VECTOR_U64,
-    },
+    ext_cpi::{parse_ciphertext_account, ENCRYPT_FHE_VECTOR_U64},
     instructions::{
         propose_confidential_transaction::ProposeConfidentialTransactionArgs, sync_treasury_account,
     },
@@ -25,39 +22,37 @@ pub struct ProposeConfidentialVectorTransaction<'info> {
         constraint = treasury.ai_authority == ai_authority.key() @ crate::AuraCoreError::UnauthorizedAi
     )]
     pub treasury: Box<Account<'info, TreasuryAccount>>,
-    /// CHECK: Encrypt-owned ciphertext account containing [daily_limit, per_tx_limit, spent_today].
+    /// CHECK: Encrypt-owned ciphertext account containing [remaining_daily_limit, per_tx_limit, spent_today].
     pub guardrail_vector_ciphertext: UncheckedAccount<'info>,
-    /// CHECK: Encrypt-owned ciphertext account containing the proposed amount in lane 0.
-    pub amount_vector_ciphertext: UncheckedAccount<'info>,
-    /// CHECK: Encrypt-owned output ciphertext account that will receive [violation_code, next_spent_today].
-    #[account(mut)]
+    /// CHECK: Encrypt-owned ciphertext vector with `[-amount mod u64, 0, amount]`.
+    pub spend_delta_vector_ciphertext: UncheckedAccount<'info>,
+    /// CHECK: Encrypt-owned ciphertext vector with `[amount, amount]` for limit checks.
+    pub comparison_vector_ciphertext: UncheckedAccount<'info>,
+    /// CHECK: Encrypt-owned ciphertext vector with assign target lanes `[3, 4, 5, ...]`.
+    pub flag_indices_vector_ciphertext: UncheckedAccount<'info>,
+    /// CHECK: Pre-allocated Encrypt-owned output vector ciphertext account.
+    ///
+    /// Vector outputs must already be `EUint64Vector` ciphertext accounts. The
+    /// pre-alpha Encrypt runtime preserves that account type when the graph
+    /// overwrites the digest, avoiding the scalar default used for fresh signer
+    /// output accounts.
     pub policy_result_vector_ciphertext: UncheckedAccount<'info>,
     /// CHECK: Official Encrypt program account.
     pub encrypt_program: UncheckedAccount<'info>,
-    /// CHECK: Encrypt config account.
-    pub config: UncheckedAccount<'info>,
-    /// CHECK: Encrypt deposit account.
-    #[account(mut)]
-    pub deposit: UncheckedAccount<'info>,
-    /// CHECK: This program executable account.
-    pub caller_program: UncheckedAccount<'info>,
-    /// CHECK: Encrypt CPI authority PDA derived from this program.
-    pub cpi_authority: UncheckedAccount<'info>,
-    /// CHECK: Encrypt network encryption key account.
-    pub network_encryption_key: UncheckedAccount<'info>,
-    /// CHECK: Encrypt event authority PDA.
-    pub event_authority: UncheckedAccount<'info>,
     pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
-    pub system_program: Program<'info, System>,
 }
 
 /// Proposes a confidential vector FHE transaction.
 ///
 /// Like `propose_confidential_transaction` but uses the vector FHE graph
 /// which takes a single `EUint64Vector` guardrail ciphertext encoding
-/// `[daily_limit, per_tx_limit, spent_today]` and produces a result vector
-/// encoding `[violation_code, next_spent_today]`. The output ciphertext
-/// becomes the new guardrail vector for the next proposal.
+/// `[remaining_daily_limit, per_tx_limit, spent_today]` and produces a result
+/// vector encoding `[next_remaining_daily_limit, per_tx_limit,
+/// next_spent_today, daily_exceeded, per_tx_exceeded]`.
+///
+/// This instruction only persists the pending proposal. The expensive Encrypt
+/// graph CPI runs in `execute_pending_vector_fhe`, giving vector execution a
+/// fresh BPF heap frame instead of sharing the proposal serialization heap.
 pub fn handler(
     ctx: Context<ProposeConfidentialVectorTransaction>,
     args: ProposeConfidentialTransactionArgs,
@@ -100,28 +95,25 @@ pub fn handler(
     if ctx.accounts.encrypt_program.key() != expected_encrypt_program {
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
-    if ctx.accounts.caller_program.key() != crate::ID || !ctx.accounts.caller_program.executable {
-        return err!(crate::AuraCoreError::InvalidExternalAccountData);
-    }
-
-    let (expected_cpi_authority, cpi_authority_bump) =
-        Pubkey::find_program_address(&[ENCRYPT_CPI_AUTHORITY_SEED], &crate::ID);
-    if ctx.accounts.cpi_authority.key() != expected_cpi_authority {
-        return err!(crate::AuraCoreError::InvalidExternalAccountData);
-    }
-
-    let (expected_event_authority, _) =
-        Pubkey::find_program_address(&[ENCRYPT_EVENT_AUTHORITY_SEED], &expected_encrypt_program);
-    if ctx.accounts.event_authority.key() != expected_event_authority {
-        return err!(crate::AuraCoreError::InvalidExternalAccountData);
-    }
 
     validate_u64_vector_ciphertext(
         &ctx.accounts.guardrail_vector_ciphertext,
         &expected_encrypt_program,
     )?;
     validate_u64_vector_ciphertext(
-        &ctx.accounts.amount_vector_ciphertext,
+        &ctx.accounts.spend_delta_vector_ciphertext,
+        &expected_encrypt_program,
+    )?;
+    validate_u64_vector_ciphertext(
+        &ctx.accounts.comparison_vector_ciphertext,
+        &expected_encrypt_program,
+    )?;
+    validate_u64_vector_ciphertext(
+        &ctx.accounts.flag_indices_vector_ciphertext,
+        &expected_encrypt_program,
+    )?;
+    validate_u64_vector_ciphertext(
+        &ctx.accounts.policy_result_vector_ciphertext,
         &expected_encrypt_program,
     )?;
 
@@ -146,7 +138,15 @@ pub fn handler(
 
     let guardrail_vector_ciphertext_account =
         ctx.accounts.guardrail_vector_ciphertext.key().to_string();
-    let amount_vector_ciphertext_account = ctx.accounts.amount_vector_ciphertext.key().to_string();
+    let spend_delta_vector_ciphertext_account =
+        ctx.accounts.spend_delta_vector_ciphertext.key().to_string();
+    let comparison_vector_ciphertext_account =
+        ctx.accounts.comparison_vector_ciphertext.key().to_string();
+    let flag_indices_vector_ciphertext_account = ctx
+        .accounts
+        .flag_indices_vector_ciphertext
+        .key()
+        .to_string();
     let policy_output_ciphertext_account = ctx
         .accounts
         .policy_result_vector_ciphertext
@@ -159,43 +159,13 @@ pub fn handler(
         tx,
         args.recipient_or_contract,
         &guardrail_vector_ciphertext_account,
-        &amount_vector_ciphertext_account,
+        &spend_delta_vector_ciphertext_account,
+        &comparison_vector_ciphertext_account,
+        &flag_indices_vector_ciphertext_account,
         &policy_output_ciphertext_account,
     )
     .map_err(crate::map_treasury_error)?;
-    let should_execute_fhe = domain
-        .pending
-        .as_ref()
-        .and_then(|pending| pending.policy_output_ciphertext_account.as_ref())
-        .is_some();
-    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)?;
-    drop(domain);
-    if !should_execute_fhe {
-        return Ok(());
-    }
-
-    let encrypt_ctx = AuraEncryptContext {
-        encrypt_program: ctx.accounts.encrypt_program.to_account_info(),
-        config: ctx.accounts.config.to_account_info(),
-        deposit: ctx.accounts.deposit.to_account_info(),
-        cpi_authority: ctx.accounts.cpi_authority.to_account_info(),
-        caller_program: ctx.accounts.caller_program.to_account_info(),
-        network_encryption_key: ctx.accounts.network_encryption_key.to_account_info(),
-        payer: ctx.accounts.ai_authority.to_account_info(),
-        event_authority: ctx.accounts.event_authority.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        cpi_authority_bump,
-    };
-
-    aura_policy::execute_confidential_spend_guardrails_vector_graph(
-        &encrypt_ctx,
-        ctx.accounts.guardrail_vector_ciphertext.to_account_info(),
-        ctx.accounts.amount_vector_ciphertext.to_account_info(),
-        ctx.accounts
-            .policy_result_vector_ciphertext
-            .to_account_info(),
-    )?;
-    Ok(())
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
 }
 
 fn scoped_dependency_paused(

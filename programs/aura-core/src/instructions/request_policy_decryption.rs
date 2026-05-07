@@ -10,7 +10,7 @@ use crate::{
     },
     instructions::sync_treasury_pending_account,
     program_accounts::TreasuryAccount,
-    state::PendingDecryptionRequest,
+    state::{PendingDecryptionRequest, ProposalStatus},
 };
 
 #[derive(Accounts)]
@@ -99,6 +99,11 @@ fn prepare_live_decryption(
     let expected_fhe_type = pending
         .policy_output_fhe_type
         .ok_or_else(|| error!(crate::AuraCoreError::PolicyGraphMismatch))?;
+    if expected_fhe_type == ENCRYPT_FHE_VECTOR_U64
+        && pending.status != ProposalStatus::PolicyComputed
+    {
+        return err!(crate::AuraCoreError::PolicyOutputNotReady);
+    }
 
     let expected_encrypt_program: Pubkey = domain
         .deployment

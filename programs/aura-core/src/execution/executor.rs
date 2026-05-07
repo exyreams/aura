@@ -249,14 +249,18 @@ pub fn propose_confidential_transaction(
 /// against the treasury's configured value before the proposal is accepted.
 ///
 /// On approval the output ciphertext becomes the new guardrail vector for
-/// the next proposal, rotating the encrypted state forward.
+/// the next proposal, rotating the encrypted state forward. The vector graph
+/// takes separate helper vectors for state delta, amount comparisons, and
+/// flag assignment so the on-chain graph does not embed large vector constants.
 pub fn propose_confidential_vector_transaction(
     treasury: &mut AgentTreasury,
     ai_signer: &str,
     mut tx: TransactionContext,
     recipient_or_contract: impl Into<String>,
     guardrail_vector_ciphertext_account: &str,
-    amount_vector_ciphertext_account: &str,
+    spend_delta_vector_ciphertext_account: &str,
+    comparison_vector_ciphertext_account: &str,
+    flag_indices_vector_ciphertext_account: &str,
     policy_output_ciphertext_account: &str,
 ) -> Result<u64, TreasuryError> {
     if ai_signer != treasury.ai_authority {
@@ -297,10 +301,12 @@ pub fn propose_confidential_vector_transaction(
     };
     let policy_output_digest = if decision.approved {
         crate::hash_message(&format!(
-            "{}:{}:{}:{}:{}",
+            "{}:{}:{}:{}:{}:{}:{}",
             policy_graph_name,
             guardrail_vector_ciphertext_account,
-            amount_vector_ciphertext_account,
+            spend_delta_vector_ciphertext_account,
+            comparison_vector_ciphertext_account,
+            flag_indices_vector_ciphertext_account,
             policy_output_ciphertext_account,
             submitted_at
         ))
@@ -661,9 +667,9 @@ pub fn confirm_pending_decryption(
 /// If approved and `decrypted_next_spent_today` is provided, it is validated
 /// against the expected value and written into the next policy state.
 ///
-/// For vector FHE proposals (`fhe_type == 35`), the output ciphertext account
-/// is promoted to the treasury's new guardrail vector ciphertext, rotating
-/// the encrypted state forward.
+/// For approved vector FHE proposals (`fhe_type == 35`), the output ciphertext
+/// account is promoted to the treasury's new guardrail vector ciphertext,
+/// rotating the encrypted state forward.
 pub fn apply_confidential_policy_result(
     treasury: &mut AgentTreasury,
     violation_code: u64,
@@ -720,7 +726,7 @@ pub fn apply_confidential_policy_result(
     pending.decision.approved = approved;
     pending.decision.violation = violation;
     pending.last_updated_at = now;
-    if pending.policy_output_fhe_type == Some(35) {
+    if approved && pending.policy_output_fhe_type == Some(35) {
         next_guardrail_vector_ciphertext = pending.policy_output_ciphertext_account.clone();
     }
     pending.decision.trace.push(if approved {

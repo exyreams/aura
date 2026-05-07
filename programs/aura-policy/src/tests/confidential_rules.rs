@@ -249,8 +249,23 @@ fn confidential_vector_graph_exposes_vector_metadata_and_ops() {
     }
 
     assert_eq!(spec.name, "confidential_spend_guardrails_vector");
-    assert_eq!(graph.header().num_inputs(), 2);
+    assert_eq!(graph.header().num_inputs(), 4);
     assert_eq!(graph.header().num_outputs(), 1);
     assert!(op_types.contains(&92), "vector graph should use assign");
-    assert!(op_types.contains(&95), "vector graph should use get");
+    assert!(
+        !op_types.contains(&95),
+        "heap-safe vector graph should avoid lane get operations"
+    );
+    assert!(
+        (0..graph.header().num_nodes()).any(|index| {
+            let node = get_node(graph.node_bytes(), index).expect("node should parse");
+            node.kind() == GraphNodeKind::Output as u8 && node.fhe_type() == 35
+        }),
+        "vector graph output should stay tagged as EUint64Vector"
+    );
+    assert_eq!(
+        graph.header().constants_len(),
+        0,
+        "heap-safe vector graph should not embed 8,192-byte vector constants"
+    );
 }

@@ -79,6 +79,8 @@ fn propose_approved_confidential_vector(treasury: &mut crate::AgentTreasury, now
         &guardrail_vector,
         &Pubkey::new_unique().to_string(),
         &Pubkey::new_unique().to_string(),
+        &Pubkey::new_unique().to_string(),
+        &Pubkey::new_unique().to_string(),
     )
     .expect("vector confidential proposal should succeed")
 }
@@ -302,4 +304,28 @@ fn vector_confidential_result_rejects_mismatched_next_spent_today_lane() {
         .expect_err("mismatched decrypted lane should be rejected");
 
     assert!(matches!(err, TreasuryError::InvalidAccountData(_)));
+}
+
+#[test]
+fn vector_confidential_denial_keeps_existing_guardrail_vector() {
+    let mut treasury = treasury();
+    configure_vector_guardrails(&mut treasury, 1_700_000_100);
+    let original_guardrail_vector = treasury
+        .confidential_guardrails
+        .as_ref()
+        .and_then(|guardrails| guardrails.guardrail_vector_ciphertext.clone())
+        .expect("vector guardrail should be configured");
+    propose_approved_confidential_vector(&mut treasury, 43_200);
+
+    apply_confidential_policy_result(&mut treasury, 1, None, 43_210)
+        .expect("vector denial should apply");
+
+    assert_eq!(
+        treasury
+            .confidential_guardrails
+            .as_ref()
+            .and_then(|guardrails| guardrails.guardrail_vector_ciphertext.clone())
+            .as_deref(),
+        Some(original_guardrail_vector.as_str())
+    );
 }

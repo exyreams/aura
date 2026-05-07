@@ -57,16 +57,16 @@ use instructions::{
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
     __client_accounts_create_treasury, __client_accounts_execute_pending,
-    __client_accounts_finalize_execution, __client_accounts_grant_operator_role,
-    __client_accounts_init_activity_log, __client_accounts_init_address_list,
-    __client_accounts_init_exposure_group, __client_accounts_init_external_liveness,
-    __client_accounts_init_fee_vault, __client_accounts_init_health_score,
-    __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
-    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
-    __client_accounts_join_swarm, __client_accounts_manage_address_list,
-    __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
-    __client_accounts_pause_execution, __client_accounts_propose_batch,
-    __client_accounts_propose_confidential_transaction,
+    __client_accounts_execute_pending_vector_fhe, __client_accounts_finalize_execution,
+    __client_accounts_grant_operator_role, __client_accounts_init_activity_log,
+    __client_accounts_init_address_list, __client_accounts_init_exposure_group,
+    __client_accounts_init_external_liveness, __client_accounts_init_fee_vault,
+    __client_accounts_init_health_score, __client_accounts_init_policy_history,
+    __client_accounts_init_swarm_pool, __client_accounts_issue_session_key,
+    __client_accounts_join_exposure_group, __client_accounts_join_swarm,
+    __client_accounts_manage_address_list, __client_accounts_migrate_treasury,
+    __client_accounts_owner_treasury, __client_accounts_pause_execution,
+    __client_accounts_propose_batch, __client_accounts_propose_confidential_transaction,
     __client_accounts_propose_confidential_vector_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
     __client_accounts_refresh_external_liveness, __client_accounts_register_dwallet,
@@ -90,16 +90,16 @@ use instructions::{
     __cpi_client_accounts_configure_liveness_guardrails, __cpi_client_accounts_configure_multisig,
     __cpi_client_accounts_configure_swarm, __cpi_client_accounts_confirm_policy_decryption,
     __cpi_client_accounts_create_treasury, __cpi_client_accounts_execute_pending,
-    __cpi_client_accounts_finalize_execution, __cpi_client_accounts_grant_operator_role,
-    __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
-    __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_init_external_liveness,
-    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
-    __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
-    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
-    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
-    __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
-    __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
-    __cpi_client_accounts_propose_confidential_transaction,
+    __cpi_client_accounts_execute_pending_vector_fhe, __cpi_client_accounts_finalize_execution,
+    __cpi_client_accounts_grant_operator_role, __cpi_client_accounts_init_activity_log,
+    __cpi_client_accounts_init_address_list, __cpi_client_accounts_init_exposure_group,
+    __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_init_fee_vault,
+    __cpi_client_accounts_init_health_score, __cpi_client_accounts_init_policy_history,
+    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_issue_session_key,
+    __cpi_client_accounts_join_exposure_group, __cpi_client_accounts_join_swarm,
+    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_migrate_treasury,
+    __cpi_client_accounts_owner_treasury, __cpi_client_accounts_pause_execution,
+    __cpi_client_accounts_propose_batch, __cpi_client_accounts_propose_confidential_transaction,
     __cpi_client_accounts_propose_confidential_vector_transaction,
     __cpi_client_accounts_propose_override, __cpi_client_accounts_propose_transaction,
     __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_refresh_external_liveness,
@@ -165,6 +165,13 @@ pub mod aura_core {
 
     pub fn execute_pending(ctx: Context<ExecutePending>, now: i64) -> Result<()> {
         instructions::execute_pending::handler(ctx, now)
+    }
+
+    pub fn execute_pending_vector_fhe(
+        ctx: Context<ExecutePendingVectorFhe>,
+        args: ExecutePendingVectorFheArgs,
+    ) -> Result<()> {
+        instructions::execute_pending_vector_fhe::handler(ctx, args)
     }
 
     pub fn request_policy_decryption(

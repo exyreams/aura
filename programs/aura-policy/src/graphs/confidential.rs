@@ -93,38 +93,33 @@ where
 
 /// Vector confidential guardrails graph.
 ///
-/// Inputs:  guardrail_state (EUint64Vector, lanes: [daily_limit, per_tx_limit, spent_today, _]),
-///          proposed_amount (EUint64Vector, single-lane value at index 0)
-/// Output:  updated guardrail_state with lane[2]=next_spent_today, lane[3]=violation_code
+/// Inputs:
+/// - `guardrail_state`: lanes `[remaining_daily_limit, per_tx_limit, spent_today, ...]`
+/// - `spend_delta`: lanes `[-amount mod u64, 0, amount, ...]`
+/// - `comparison_amounts`: lanes `[amount, amount, 0, ...]`
+/// - `flag_indices`: lanes `[3, 4, 5, 6, ...]`
 ///
-/// Uses select_scalar for element-wise conditional selection within the vector.
+/// Output:
+/// - lane 0: next remaining daily limit
+/// - lane 1: unchanged per-transaction limit
+/// - lane 2: next spent-today value
+/// - lane 3: daily-limit exceeded flag
+/// - lane 4: per-transaction-limit exceeded flag
+///
+/// The graph intentionally avoids `get` and embedded vector constants because
+/// the current Encrypt pre-alpha vector runtime exhausts the 256 KB SBF heap
+/// before CPI when graph construction allocates multiple 8,192-byte constants.
 #[encrypt_fn]
 pub fn confidential_spend_guardrails_vector_graph(
     guardrail_state: EUint64Vector,
-    proposed_amount: EUint64Vector,
+    spend_delta: EUint64Vector,
+    comparison_amounts: EUint64Vector,
+    flag_indices: EUint64Vector,
 ) -> EUint64Vector {
-    let daily_limit = guardrail_state.get(&EUint64Vector::from(0u64));
-    let per_tx_limit = guardrail_state.get(&EUint64Vector::from(1u64));
-    let spent_today = guardrail_state.get(&EUint64Vector::from(2u64));
-    let projected_daily_spend = spent_today + proposed_amount;
+    let next_state = guardrail_state + spend_delta;
+    let violation_flags = comparison_amounts > guardrail_state;
 
-    // per_tx_exceeded: 1 if proposed_amount > per_tx_limit, else 0
-    let per_tx_exceeded = proposed_amount > per_tx_limit;
-    // daily_exceeded: 1 if projected_daily_spend > daily_limit, else 0
-    let daily_exceeded = projected_daily_spend > daily_limit;
-
-    // violation_code = per_tx_exceeded * 1 + (1 - per_tx_exceeded) * daily_exceeded * 2
-    let not_per_tx = per_tx_exceeded == 0u64;
-    let daily_only = not_per_tx * daily_exceeded;
-    let violation_code = per_tx_exceeded * 1 + daily_only * 2;
-
-    // next_spent_today: select projected if approved, else keep current
-    let approved = violation_code == 0u64;
-    let next_spent_today = approved.select_scalar(&projected_daily_spend, &spent_today);
-
-    guardrail_state
-        .assign(&EUint64Vector::from(2u64), &next_spent_today)
-        .assign(&EUint64Vector::from(3u64), &violation_code)
+    next_state.assign(&flag_indices, &violation_flags)
 }
 
 /// Returns the compiled vector FHE graph as raw bytes for submission to the Encrypt program.
@@ -140,19 +135,22 @@ pub fn confidential_policy_graph() -> PolicyGraphSpec {
         uses_update_mode: false,
         requires_decryption: true,
         purpose:
-            "Vectorized confidential guardrails that return the next encrypted guardrail state with violation metadata in lane 3.",
+            "Heap-safe vector confidential guardrails that return the next encrypted state with violation flags in lanes 3 and 4.",
     }
 }
 
 /// Submits the vector confidential guardrails graph via CPI to the Encrypt program.
 ///
 /// The output `policy_result_output` receives the updated guardrail vector with
-/// `lane[2] = next_spent_today` and `lane[3] = violation_code`. The caller
-/// promotes this output to the treasury's new guardrail vector ciphertext.
+/// `lane[2] = next_spent_today`, `lane[3] = daily_exceeded`, and
+/// `lane[4] = per_tx_exceeded`. The caller promotes this output to the
+/// treasury's new guardrail vector ciphertext only after an approval.
 pub fn execute_confidential_spend_guardrails_vector_graph<'a, C>(
     ctx: &'a C,
     guardrail_state: C::Account<'a>,
-    proposed_amount: C::Account<'a>,
+    spend_delta: C::Account<'a>,
+    comparison_amounts: C::Account<'a>,
+    flag_indices: C::Account<'a>,
     policy_result_output: C::Account<'a>,
 ) -> Result<(), C::Error>
 where
@@ -160,7 +158,9 @@ where
 {
     ctx.confidential_spend_guardrails_vector_graph(
         guardrail_state,
-        proposed_amount,
+        spend_delta,
+        comparison_amounts,
+        flag_indices,
         policy_result_output,
     )
 }

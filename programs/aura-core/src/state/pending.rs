@@ -7,6 +7,8 @@ use crate::state::{ComplianceMetadata, SignatureScheme};
 pub enum ProposalStatus {
     /// Submitted by the AI; policy decision recorded but not yet executed.
     Proposed,
+    /// Confidential vector policy graph has been submitted to Encrypt.
+    PolicyComputed,
     /// A decryption request has been submitted to the Encrypt network.
     DecryptionRequested,
     /// An `approve_message` CPI has been submitted; waiting for the dWallet signature.

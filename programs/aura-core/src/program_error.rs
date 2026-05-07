@@ -47,6 +47,8 @@ pub enum AuraCoreError {
     ConfidentialGuardrailsNotConfigured,
     #[msg("encrypted policy output is not ready yet")]
     PolicyOutputNotReady,
+    #[msg("encrypted policy output has already been computed")]
+    PolicyOutputAlreadyComputed,
     #[msg("execution is paused")]
     ExecutionPaused,
     #[msg("pending transaction expired")]

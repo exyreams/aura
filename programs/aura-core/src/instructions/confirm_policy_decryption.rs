@@ -34,7 +34,8 @@ pub struct ConfirmPolicyDecryption<'info> {
 /// the decrypted violation code (and optionally `next_spent_today` for vector
 /// FHE), then calls `confirm_pending_decryption` and
 /// `apply_confidential_policy_result`. The operator must be the owner or AI
-/// authority.
+/// authority. Vector outputs use lanes 3 and 4 as daily/per-transaction flags
+/// so the graph can avoid heap-heavy lane extraction.
 pub fn handler(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> Result<()> {
     confirm_live_decryption(ctx, now)
 }
@@ -130,10 +131,26 @@ fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> R
                     Some(decrypt_scalar_u64(&parsed).map_err(crate::map_treasury_error)?),
                     None,
                 ),
-                (true, ENCRYPT_FHE_VECTOR_U64) => (
-                    Some(decrypt_u64_lane(&parsed, 3).map_err(crate::map_treasury_error)?),
-                    Some(decrypt_u64_lane(&parsed, 2).map_err(crate::map_treasury_error)?),
-                ),
+                (true, ENCRYPT_FHE_VECTOR_U64) => {
+                    let daily_exceeded =
+                        decrypt_u64_lane(&parsed, 3).map_err(crate::map_treasury_error)?;
+                    let per_tx_exceeded =
+                        decrypt_u64_lane(&parsed, 4).map_err(crate::map_treasury_error)?;
+                    if daily_exceeded > 1 || per_tx_exceeded > 1 {
+                        return err!(crate::AuraCoreError::InvalidExternalAccountData);
+                    }
+                    let violation_code = if per_tx_exceeded == 1 {
+                        1
+                    } else if daily_exceeded == 1 {
+                        2
+                    } else {
+                        0
+                    };
+                    (
+                        Some(violation_code),
+                        Some(decrypt_u64_lane(&parsed, 2).map_err(crate::map_treasury_error)?),
+                    )
+                }
                 (true, _) => return err!(crate::AuraCoreError::InvalidExternalAccountData),
                 (false, _) => (None, None),
             };
@@ -189,7 +206,7 @@ fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> R
                 }
                 _ => return err!(crate::AuraCoreError::InvalidExternalAccountData),
             }
-            if expected_fhe_type == ENCRYPT_FHE_VECTOR_U64 {
+            if expected_fhe_type == ENCRYPT_FHE_VECTOR_U64 && violation_code_value == 0 {
                 next_guardrail_vector_ciphertext = pending
                     .policy_output_ciphertext_account
                     .as_ref()

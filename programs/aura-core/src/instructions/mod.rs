@@ -18,6 +18,7 @@ pub mod configure_swarm;
 pub mod confirm_policy_decryption;
 pub mod create_treasury;
 pub mod execute_pending;
+pub mod execute_pending_vector_fhe;
 pub mod external_liveness;
 pub mod fee_vault;
 pub mod finalize_execution;
@@ -107,6 +108,9 @@ pub use create_treasury::{CreateTreasury, CreateTreasuryArgs};
 pub use execute_pending::ExecutePending;
 pub(crate) use execute_pending::__client_accounts_execute_pending;
 pub(crate) use execute_pending::__cpi_client_accounts_execute_pending;
+pub(crate) use execute_pending_vector_fhe::__client_accounts_execute_pending_vector_fhe;
+pub(crate) use execute_pending_vector_fhe::__cpi_client_accounts_execute_pending_vector_fhe;
+pub use execute_pending_vector_fhe::{ExecutePendingVectorFhe, ExecutePendingVectorFheArgs};
 pub use external_liveness::{
     ConfigureLivenessGuardrails, ConfigureLivenessGuardrailsArgs, InitExternalLiveness,
     InitExternalLivenessArgs, RefreshExternalLiveness, RefreshExternalLivenessArgs,
