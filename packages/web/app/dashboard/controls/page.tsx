@@ -21,9 +21,9 @@ import { Button } from "@/components/global/Button";
 import { Card } from "@/components/global/Card";
 import { Skeleton } from "@/components/global/Skeleton";
 import {
-  type FeatureCatalogResponse,
+  type InstructionCatalogResponse,
   useBackendInfo,
-  useFeatureCatalog,
+  useInstructionCatalog,
 } from "@/lib/hooks";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -67,7 +67,7 @@ const maturityFilters: Array<"all" | AuraFeatureMaturity> = [
 
 const statSkeletonKeys = ["domains", "instructions", "backend", "sdk"];
 
-function countByMaturity(catalog: FeatureCatalogResponse) {
+function countByMaturity(catalog: InstructionCatalogResponse) {
   return catalog.domains.reduce(
     (counts, domain) => {
       for (const instruction of domain.instructions) {
@@ -88,7 +88,7 @@ export default function FeatureSurfacePage() {
   const [maturityFilter, setMaturityFilter] = useState<
     "all" | AuraFeatureMaturity
   >("all");
-  const catalogQuery = useFeatureCatalog();
+  const catalogQuery = useInstructionCatalog();
   const backendInfoQuery = useBackendInfo();
   const catalog = catalogQuery.data;
 
@@ -115,6 +115,26 @@ export default function FeatureSurfacePage() {
       .filter((domain) => domain.instructions.length > 0);
   }, [catalog, maturityFilter]);
 
+  const listedInstructionCount = useMemo(
+    () =>
+      catalog
+        ? catalog.domains.reduce(
+            (total, domain) => total + domain.instructions.length,
+            0,
+          )
+        : 0,
+    [catalog],
+  );
+
+  const expectedInstructionCount =
+    backendInfoQuery.data?.sdkSurface?.instructions ??
+    catalog?.totals.instructions ??
+    0;
+  const hasCatalogMismatch =
+    catalog !== undefined &&
+    expectedInstructionCount > 0 &&
+    listedInstructionCount !== expectedInstructionCount;
+
   return (
     <div className="relative max-w-[1600px] mx-auto">
       <header className="mb-10 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
@@ -127,7 +147,7 @@ export default function FeatureSurfacePage() {
           </h1>
           <p className="text-(--text-muted) font-light max-w-2xl">
             A live capability map sourced from the latest TypeScript SDK and the
-            backend feature catalog endpoint.
+            backend instruction catalog endpoint.
           </p>
         </div>
 
@@ -153,7 +173,14 @@ export default function FeatureSurfacePage() {
       {catalogQuery.isError && (
         <Alert
           variant="warning"
-          message="Backend feature catalog is unavailable. Showing the local SDK catalog instead."
+          message="Backend instruction catalog is unavailable. Instruction builders cannot refresh until the backend is reachable."
+          className="mb-6"
+        />
+      )}
+      {hasCatalogMismatch && (
+        <Alert
+          variant="warning"
+          message={`Instruction catalog mismatch: ${listedInstructionCount} listed, ${expectedInstructionCount} expected from the current SDK surface.`}
           className="mb-6"
         />
       )}
@@ -171,10 +198,10 @@ export default function FeatureSurfacePage() {
             </Card>
             <Card className="p-5" hover={false}>
               <p className="mono text-[10px] uppercase tracking-widest text-(--text-muted) mb-2">
-                Instructions
+                Buildable instructions
               </p>
               <p className="text-3xl font-bold text-(--text-main)">
-                {formatNumber(catalog.totals.instructions)}
+                {formatNumber(listedInstructionCount)}
               </p>
             </Card>
             <Card className="p-5" hover={false}>
@@ -187,14 +214,14 @@ export default function FeatureSurfacePage() {
             </Card>
             <Card className="p-5" hover={false}>
               <p className="mono text-[10px] uppercase tracking-widest text-(--text-muted) mb-2">
-                SDK Sync
+                Builder Sync
               </p>
               <div className="flex items-center gap-2 text-(--text-main)">
                 <CheckCircle2 className="w-5 h-5 text-primary" />
                 <span className="font-mono text-sm">
-                  {backendInfoQuery.data?.sdkSurface
-                    ? `${backendInfoQuery.data.sdkSurface.instructions} exposed`
-                    : "local catalog"}
+                  {expectedInstructionCount > 0
+                    ? `${listedInstructionCount}/${expectedInstructionCount} listed`
+                    : "awaiting catalog"}
                 </span>
               </div>
             </Card>

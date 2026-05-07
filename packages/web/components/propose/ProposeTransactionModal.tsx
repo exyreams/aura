@@ -114,7 +114,11 @@ export function ProposeTransactionModal({
             "Create and select an agent before using confidential proposals.",
           );
         }
-        return await postBackend<{ signature: string }>(
+        return await postBackend<{
+          signature: string;
+          executeSignature?: string;
+          policyOutputCiphertext?: string;
+        }>(
           settings.backendUrl,
           "/v1/confidential/propose",
           {
@@ -139,7 +143,7 @@ export function ProposeTransactionModal({
             counterpartyRiskScore: form.counterpartyRiskScore
               ? Number(form.counterpartyRiskScore)
               : undefined,
-            waitForOutput: true,
+            waitForOutput: false,
           },
           { timeoutMs: LONG_TIMEOUT_MS },
         );
@@ -211,6 +215,18 @@ export function ProposeTransactionModal({
     onSuccess: async (result) => {
       if (mode === "public") {
         setSignature(result.signature);
+      }
+      const policyOutputCiphertext =
+        mode === "confidential" &&
+        "policyOutputCiphertext" in result &&
+        typeof result.policyOutputCiphertext === "string"
+          ? result.policyOutputCiphertext
+          : null;
+      if (policyOutputCiphertext) {
+        localStorage.setItem(
+          `aura:policy-output-ciphertext:${pda}`,
+          policyOutputCiphertext,
+        );
       }
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
       await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });

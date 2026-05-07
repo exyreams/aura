@@ -57,6 +57,7 @@ export const PROPOSAL_STATUSES = [
   "Denied",
   "Cancelled",
   "Expired",
+  "Policy Computed",
 ] as const;
 
 export const VIOLATIONS = [
@@ -270,9 +271,9 @@ export async function sendWalletInstructions(
         const logs: string[] = await (
           err as { getLogs: () => Promise<string[]> }
         ).getLogs();
-        const enriched = new Error(
-          (err as Error).message || "Transaction failed",
-        ) as Error & { logs: string[] };
+        const message =
+          err instanceof Error ? err.message : "Transaction failed";
+        const enriched = new Error(message) as Error & { logs: string[] };
         enriched.logs = logs;
         throw enriched;
       } catch (logErr) {

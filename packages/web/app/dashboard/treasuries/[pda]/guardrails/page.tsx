@@ -39,6 +39,10 @@ export default function ConfidentialGuardrailsPage() {
 
   const [mode, setMode] = useState<EncryptionMode>("scalar");
   const modeInitializedRef = useRef(false);
+  // Prevent the account-sync useEffect from overwriting ciphertexts the user
+  // just generated (but hasn't submitted yet).
+  const scalarDirtyRef = useRef(false);
+  const vectorDirtyRef = useRef(false);
   const [scalarForm, setScalarForm] = useState({
     dailyLimitCiphertext:
       account?.confidentialGuardrails?.dailyLimitCiphertext?.toBase58() ?? "",
@@ -109,7 +113,10 @@ export default function ConfidentialGuardrailsPage() {
     const onChainSpent =
       account.confidentialGuardrails?.spentTodayCiphertext?.toBase58() ?? "";
 
-    if (onChainDaily || onChainPerTx || onChainSpent) {
+    if (
+      !scalarDirtyRef.current &&
+      (onChainDaily || onChainPerTx || onChainSpent)
+    ) {
       setScalarForm({
         dailyLimitCiphertext: onChainDaily,
         perTxLimitCiphertext: onChainPerTx,
@@ -126,7 +133,7 @@ export default function ConfidentialGuardrailsPage() {
     const onChainVector =
       account.confidentialGuardrails?.guardrailVectorCiphertext?.toBase58() ??
       "";
-    if (onChainVector) {
+    if (!vectorDirtyRef.current && onChainVector) {
       setVectorCiphertext(onChainVector);
     }
 
@@ -174,6 +181,7 @@ export default function ConfidentialGuardrailsPage() {
         wait: true,
       }),
     onSuccess: (result) => {
+      scalarDirtyRef.current = true;
       setScalarForm({
         dailyLimitCiphertext: result.dailyLimitCiphertext,
         perTxLimitCiphertext: result.perTxLimitCiphertext,
@@ -237,6 +245,7 @@ export default function ConfidentialGuardrailsPage() {
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
+      scalarDirtyRef.current = false;
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
     },
   });
@@ -256,6 +265,7 @@ export default function ConfidentialGuardrailsPage() {
         },
       ),
     onSuccess: (result) => {
+      vectorDirtyRef.current = true;
       setVectorCiphertext(result.guardrailVectorCiphertext);
     },
   });
@@ -277,6 +287,7 @@ export default function ConfidentialGuardrailsPage() {
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
+      vectorDirtyRef.current = false;
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
     },
   });
@@ -308,7 +319,17 @@ export default function ConfidentialGuardrailsPage() {
       <main className="max-w-5xl mx-auto px-8 py-12 relative z-10">
         <GuardrailsHeader treasury={entry} />
 
-        <EncryptionModeSelector mode={mode} onModeChange={setMode} />
+        <EncryptionModeSelector
+          mode={mode}
+          onModeChange={setMode}
+          activeMode={
+            account?.confidentialGuardrails?.guardrailVectorCiphertext
+              ? "vector"
+              : account?.confidentialGuardrails?.dailyLimitCiphertext
+                ? "scalar"
+                : undefined
+          }
+        />
 
         {mode === "scalar" ? (
           <ScalarConfigForm

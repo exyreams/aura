@@ -74,7 +74,9 @@ export const Alert: React.FC<AlertProps> = ({
       )}
     >
       <IconComponent className={cn("w-5 h-5 shrink-0", config.text)} />
-      <span className={cn("text-xs flex-1", config.text)}>{message}</span>
+      <span className={cn("text-xs flex-1 min-w-0 break-words", config.text)}>
+        {message}
+      </span>
       <motion.button
         type="button"
         onClick={onClose}

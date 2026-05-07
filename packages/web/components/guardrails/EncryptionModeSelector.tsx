@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BarChart3, Layers } from "lucide-react";
+import { BarChart3, Layers } from "lucide-react";
 import { Badge } from "@/components/global";
 import { cn } from "@/lib/utils";
 
@@ -9,11 +9,13 @@ export type EncryptionMode = "scalar" | "vector";
 interface EncryptionModeSelectorProps {
   mode: EncryptionMode;
   onModeChange: (mode: EncryptionMode) => void;
+  activeMode?: EncryptionMode;
 }
 
 export function EncryptionModeSelector({
   mode,
   onModeChange,
+  activeMode,
 }: EncryptionModeSelectorProps) {
   return (
     <section className="mb-10">
@@ -27,7 +29,7 @@ export function EncryptionModeSelector({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Scalar — recommended */}
+        {/* Scalar */}
         <button
           type="button"
           onClick={() => onModeChange("scalar")}
@@ -42,9 +44,15 @@ export function EncryptionModeSelector({
             <div className="w-10 h-10 bg-white/5 rounded flex items-center justify-center border border-white/5">
               <BarChart3 className="w-5 h-5 text-(--text-muted) group-hover:text-(--text-main) transition-colors" />
             </div>
-            <Badge variant="active" className="px-2 py-0.5 text-[9px]">
-              Recommended
-            </Badge>
+            {activeMode === "scalar" ? (
+              <Badge variant="active" className="px-2 py-0.5 text-[9px]">
+                Active
+              </Badge>
+            ) : activeMode === undefined ? (
+              <Badge variant="active" className="px-2 py-0.5 text-[9px]">
+                Recommended
+              </Badge>
+            ) : null}
           </div>
           <h3 className="text-(--text-main) font-bold mb-2">Scalar Mode</h3>
           <p className="text-xs text-(--text-muted) leading-relaxed">
@@ -53,7 +61,7 @@ export function EncryptionModeSelector({
           </p>
         </button>
 
-        {/* Vector — known issue */}
+        {/* Vector */}
         <button
           type="button"
           onClick={() => onModeChange("vector")}
@@ -68,16 +76,16 @@ export function EncryptionModeSelector({
             <div className="w-10 h-10 bg-white/5 rounded flex items-center justify-center border border-white/5">
               <Layers className="w-5 h-5 text-(--text-muted) group-hover:text-(--text-main) transition-colors" />
             </div>
-            <Badge variant="medium" className="px-2 py-0.5 text-[9px] gap-1">
-              <AlertTriangle className="w-2.5 h-2.5" />
-              Known Issue
-            </Badge>
+            {activeMode === "vector" && (
+              <Badge variant="active" className="px-2 py-0.5 text-[9px]">
+                Active
+              </Badge>
+            )}
           </div>
           <h3 className="text-(--text-main) font-bold mb-2">Vector Mode</h3>
           <p className="text-xs text-(--text-muted) leading-relaxed">
-            Single vector ciphertext. Configuration works, but proposals hit the
-            BPF heap limit during FHE execution — use Scalar until this is
-            resolved.
+            Encrypts all policy limits into a single vector ciphertext. More
+            compact on-chain representation.
           </p>
         </button>
       </div>

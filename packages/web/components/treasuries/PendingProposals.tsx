@@ -30,6 +30,15 @@ type PendingSignatureRequest = {
   } | null;
 };
 
+const STATUS_PROPOSED = 0;
+const STATUS_DECRYPTION_REQUESTED = 1;
+const STATUS_SIGNATURE_PENDING = 2;
+const STATUS_EXECUTED = 3;
+const STATUS_DENIED = 4;
+const STATUS_CANCELLED = 5;
+const STATUS_EXPIRED = 6;
+const STATUS_POLICY_COMPUTED = 7;
+
 function messageApprovalFromPending(pending: unknown) {
   return (
     (
@@ -80,7 +89,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
     enabled:
       Boolean(messageApprovalAddress) &&
       Boolean(hasPending) &&
-      pending?.status === 2,
+      pending?.status === STATUS_SIGNATURE_PENDING,
     refetchInterval: (query) => {
       const d = query.state.data as { state?: string } | undefined;
       return d?.state === "signed" ? false : 10_000;
@@ -90,14 +99,40 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
 
   const ikaState = messageApprovalStatusQuery.data?.state;
 
-  // status codes: 0=Proposed, 1=DecryptionRequested, 2=AwaitingSignature, 3=Executed, 4=Denied, 5=Cancelled, 6=Expired
-  const isConfidential = hasPending && !!pending.policyOutputCiphertextAccount;
+  // status codes: 0=Proposed, 1=DecryptionRequested, 2=AwaitingSignature,
+  // 3=Executed, 4=Denied, 5=Cancelled, 6=Expired, 7=PolicyComputed.
+  // Detect confidential: on-chain field may be null for vector proposals, so fall back to guardrails config
+  const hasVectorGuardrails =
+    !!treasury.account.confidentialGuardrails?.guardrailVectorCiphertext;
+  const hasScalarGuardrails =
+    !!treasury.account.confidentialGuardrails?.dailyLimitCiphertext;
+  const policyFheType = hasPending
+    ? (pending as { policyOutputFheType?: number | null }).policyOutputFheType
+    : null;
+  const isConfidential = Boolean(
+    hasPending &&
+      (!!pending.policyOutputCiphertextAccount ||
+        policyFheType != null ||
+        !!treasury.account.confidentialGuardrails),
+  );
+  const isVectorConfidential = Boolean(
+    isConfidential && (hasVectorGuardrails || policyFheType === 35),
+  );
   // For confidential proposals, Execute is handled inside ConfidentialLifecycleModal
-  const canExecute = hasPending && pending.status === 0 && !isConfidential;
+  const canExecute =
+    hasPending && pending.status === STATUS_PROPOSED && !isConfidential;
   const canFinalize =
-    hasPending && Boolean(messageApprovalAddress) && ikaState === "signed";
+    hasPending &&
+    pending.status === STATUS_SIGNATURE_PENDING &&
+    Boolean(messageApprovalAddress) &&
+    ikaState === "signed";
   // Can cancel any non-terminal proposal
-  const canCancel = hasPending && pending.status <= 2;
+  const canCancel =
+    hasPending &&
+    pending.status !== STATUS_EXECUTED &&
+    pending.status !== STATUS_DENIED &&
+    pending.status !== STATUS_CANCELLED &&
+    pending.status !== STATUS_EXPIRED;
 
   const executeMutation = useMutation({
     mutationFn: async () => {
@@ -191,9 +226,11 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const amountUsd = Number(pending.amountUsd.toString()) / 100;
 
   const statusVariant =
-    pending.status === 3
+    pending.status === STATUS_EXECUTED
       ? ("active" as const)
-      : pending.status === 4 || pending.status === 5 || pending.status === 6
+      : pending.status === STATUS_DENIED ||
+          pending.status === STATUS_CANCELLED ||
+          pending.status === STATUS_EXPIRED
         ? ("error" as const)
         : ("medium" as const);
 
@@ -302,13 +339,15 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   // Terminal statuses: 4=Denied, 5=Cancelled, 6=Expired
   const isTerminal =
     hasPending &&
-    (pending.status === 4 || pending.status === 5 || pending.status === 6);
+    (pending.status === STATUS_DENIED ||
+      pending.status === STATUS_CANCELLED ||
+      pending.status === STATUS_EXPIRED);
   const rejectionMessage =
-    pending?.status === 4
+    pending?.status === STATUS_DENIED
       ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} was denied by the policy engine.${pending.decision?.violation ? ` Violation: ${pending.decision.violation}` : ""}`
-      : pending?.status === 5
+      : pending?.status === STATUS_CANCELLED
         ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} was cancelled.`
-        : pending?.status === 6
+        : pending?.status === STATUS_EXPIRED
           ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} expired before execution.`
           : null;
 
@@ -318,7 +357,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       {isTerminal && rejectionMessage && (
         <div className="mb-6">
           <Alert
-            variant={pending.status === 5 ? "warning" : "error"}
+            variant={pending.status === STATUS_CANCELLED ? "warning" : "error"}
             message={rejectionMessage}
           />
         </div>
@@ -390,7 +429,17 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                 PROP-{pending.proposalId.toString().padStart(4, "0")}
               </td>
               <td className="px-4 py-4 font-mono text-sm text-(--text-main)">
-                {txType}
+                <div className="flex flex-col gap-1">
+                  <span>{txType}</span>
+                  {isConfidential && (
+                    <span
+                      className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border w-fit
+                      border-(--warning-border) text-(--warning-text) bg-(--warning-bg)"
+                    >
+                      {isVectorConfidential ? "Vector FHE" : "Scalar FHE"}
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-4 py-4 font-mono text-sm text-(--text-main)">
                 {chain}
@@ -484,23 +533,27 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       <div className="mt-4 px-4 py-3 bg-(--card-content) border border-border rounded-sm">
         <p className="text-[11px] font-mono text-(--text-muted)">
           {isConfidential
-            ? "Confidential proposal — click Lifecycle to manage the decryption and execution steps."
-            : pending.status === 0
+            ? isVectorConfidential
+              ? "Vector FHE proposal — click Lifecycle to request decryption, confirm, and execute."
+              : "Scalar FHE proposal — click Lifecycle to manage the decryption and execution steps."
+            : pending.status === STATUS_PROPOSED
               ? "Step 1 of 2 — Click Execute to send the approve_message CPI to the dWallet. Requires the backend service running at " +
                 settings.backendUrl
-              : pending.status === 1
+              : pending.status === STATUS_DECRYPTION_REQUESTED
                 ? "Decryption in progress — waiting for Ika Encrypt network."
-                : pending.status === 2
+                : pending.status === STATUS_SIGNATURE_PENDING
                   ? "Step 2 of 2 — dWallet has signed. Click Finalize to verify the signature and close the proposal."
-                  : pending.status === 3
+                  : pending.status === STATUS_EXECUTED
                     ? "✓ Executed — proposal completed successfully."
-                    : pending.status === 4
+                    : pending.status === STATUS_DENIED
                       ? "✗ Denied — policy engine rejected this proposal."
-                      : pending.status === 5
+                      : pending.status === STATUS_CANCELLED
                         ? "Cancelled by owner."
-                        : pending.status === 6
+                        : pending.status === STATUS_EXPIRED
                           ? "Expired — TTL elapsed before execution."
-                          : null}
+                          : pending.status === STATUS_POLICY_COMPUTED
+                            ? "Vector FHE completed — click Lifecycle to request decryption."
+                            : null}
         </p>
       </div>
 
@@ -510,6 +563,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
           onClose={() => setLifecycleOpen(false)}
           pending={pending}
           pda={pda}
+          isVector={isVectorConfidential}
         />
       )}
     </div>

@@ -22,7 +22,7 @@ export const LandingCTA = () => {
               placeholder="agent_id@protocol.com"
               className="bg-black border border-white/20 px-6 py-4 mono text-sm focus:border-primary text-white outline-none md:w-80 rounded"
             />
-            <Button variant="primary" size="large" className="px-10">
+            <Button variant="primary" size="medium" className="px-10">
               Initialize Access
             </Button>
           </div>

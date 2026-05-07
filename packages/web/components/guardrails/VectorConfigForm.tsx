@@ -1,7 +1,7 @@
 "use client";
 
 import type { UseMutationResult } from "@tanstack/react-query";
-import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Card, Skeleton } from "@/components/global";
@@ -60,25 +60,6 @@ export function VectorConfigForm({
 
   return (
     <>
-      {/* Known issue banner */}
-      <div className="mb-6 flex gap-3 p-4 rounded-sm border border-(--warning-border) bg-(--warning-bg)">
-        <AlertTriangle className="w-4 h-4 text-(--warning-text) shrink-0 mt-0.5" />
-        <div>
-          <p className="text-xs font-semibold text-(--warning-text) mb-1">
-            Vector proposals have a known on-chain issue
-          </p>
-          <p className="text-[11px] text-(--text-muted) leading-relaxed">
-            The vector proposal instruction hits the BPF heap limit during FHE
-            execution. Configuration here will succeed, but confidential
-            proposals will fail. Use{" "}
-            <span className="text-(--text-main) font-semibold">
-              Scalar Mode
-            </span>{" "}
-            until this is resolved.
-          </p>
-        </div>
-      </div>
-
       <Card className="mb-4 p-6" hover={false}>
         <div className="mb-6">
           <h2 className="text-lg font-bold text-(--text-main) mb-1">

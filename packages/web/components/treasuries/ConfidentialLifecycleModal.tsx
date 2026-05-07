@@ -29,7 +29,17 @@ interface ConfidentialLifecycleModalProps {
   onClose: () => void;
   pending: PendingProposalRecord;
   pda: string;
+  isVector?: boolean;
 }
+
+const STATUS_PROPOSED = 0;
+const STATUS_DECRYPTION_REQUESTED = 1;
+const STATUS_SIGNATURE_PENDING = 2;
+const STATUS_EXECUTED = 3;
+const STATUS_DENIED = 4;
+const STATUS_CANCELLED = 5;
+const STATUS_EXPIRED = 6;
+const STATUS_POLICY_COMPUTED = 7;
 
 function StepIndicator({
   number,
@@ -73,6 +83,7 @@ export function ConfidentialLifecycleModal({
   onClose,
   pending,
   pda,
+  isVector = false,
 }: ConfidentialLifecycleModalProps) {
   const settings = useAppSettings();
   const { selectedAgent } = useAgents();
@@ -83,6 +94,12 @@ export function ConfidentialLifecycleModal({
 
   const messageApprovalAddress =
     pending.signatureRequest?.messageApprovalAccount?.toString() ?? "";
+
+  const storedPolicyOutputCiphertext =
+    typeof window !== "undefined"
+      ? (localStorage.getItem(`aura:policy-output-ciphertext:${pda}`) ??
+        undefined)
+      : undefined;
 
   const messageApprovalStatusQuery = useQuery({
     queryKey: [
@@ -103,7 +120,9 @@ export function ConfidentialLifecycleModal({
         method: "GET",
       });
     },
-    enabled: Boolean(messageApprovalAddress) && pending.status === 2,
+    enabled:
+      Boolean(messageApprovalAddress) &&
+      pending.status === STATUS_SIGNATURE_PENDING,
     refetchInterval: (query) => {
       const d = query.state.data as { state?: string } | undefined;
       return d?.state === "signed" ? false : 4_000;
@@ -131,7 +150,9 @@ export function ConfidentialLifecycleModal({
           programId: settings.programId || undefined,
           agentId: selectedAgent.agentId,
           treasury: pda,
-          ciphertext: pending.policyOutputCiphertextAccount ?? undefined,
+          ciphertext:
+            pending.policyOutputCiphertextAccount ??
+            storedPolicyOutputCiphertext,
           wait: true,
         },
         { timeoutMs: LONG_TIMEOUT_MS },
@@ -223,40 +244,54 @@ export function ConfidentialLifecycleModal({
   const hasDecryptionRequest = !!pending.decryptionRequest?.requestAccount;
   const decryptionVerified = !!pending.decryptionRequest?.verifiedAt;
   const isPolicyOutputSet = !!pending.policyOutputCiphertextAccount;
+  const isTerminal =
+    pending.status === STATUS_EXECUTED ||
+    pending.status === STATUS_DENIED ||
+    pending.status === STATUS_CANCELLED ||
+    pending.status === STATUS_EXPIRED;
+  const isPolicyComputed =
+    pending.status === STATUS_POLICY_COMPUTED ||
+    (!isVector && pending.status === STATUS_PROPOSED && isPolicyOutputSet);
+  const isDecryptionRequested =
+    pending.status === STATUS_DECRYPTION_REQUESTED || hasDecryptionRequest;
+  const isSignaturePending = pending.status === STATUS_SIGNATURE_PENDING;
 
   const step1State: "done" | "active" | "upcoming" =
-    hasDecryptionRequest || pending.status >= 1
+    isDecryptionRequested || isSignaturePending || isTerminal
       ? "done"
-      : isPolicyOutputSet && pending.status === 0
+      : isPolicyComputed
         ? "active"
         : "upcoming";
 
   const step2State: "done" | "active" | "upcoming" =
-    decryptionVerified || (pending.status === 0 && step1State === "done")
+    decryptionVerified || isSignaturePending || isTerminal
       ? "done"
-      : pending.status === 1
+      : pending.status === STATUS_DECRYPTION_REQUESTED
         ? "active"
         : "upcoming";
 
   const step3State: "done" | "active" | "upcoming" =
-    pending.status >= 2
+    isSignaturePending || pending.status === STATUS_EXECUTED
       ? "done"
       : step2State === "done"
         ? "active"
         : "upcoming";
 
   const step4State: "done" | "active" | "upcoming" =
-    pending.status === 3
+    pending.status === STATUS_EXECUTED
       ? "done"
-      : pending.status === 2
+      : pending.status === STATUS_SIGNATURE_PENDING
         ? "active"
         : "upcoming";
 
   const canRequestDecryption =
-    isPolicyOutputSet && pending.status === 0 && !hasDecryptionRequest;
-  const canConfirmDecryption = pending.status === 1 && hasDecryptionRequest;
-  const canExecute = step2State === "done" && pending.status < 2;
-  const canFinalize = pending.status === 2 && ikaState === "signed";
+    isPolicyOutputSet && isPolicyComputed && !hasDecryptionRequest;
+  const canConfirmDecryption =
+    pending.status === STATUS_DECRYPTION_REQUESTED && hasDecryptionRequest;
+  const canExecute =
+    step2State === "done" && !isSignaturePending && !isTerminal;
+  const canFinalize =
+    pending.status === STATUS_SIGNATURE_PENDING && ikaState === "signed";
 
   const anyPending =
     requestDecryptionMutation.isPending ||
@@ -284,10 +319,15 @@ export function ConfidentialLifecycleModal({
     >
       {/* Proposal summary */}
       <div className="mb-6 p-4 bg-(--card-content) border border-border rounded-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Lock className="w-3.5 h-3.5 text-(--text-muted)" />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
-            Confidential Proposal
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-(--text-muted)" />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              Confidential Proposal
+            </span>
+          </div>
+          <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-(--warning-border) text-(--warning-text) bg-(--warning-bg)">
+            {isVector ? "Vector FHE" : "Scalar FHE"}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -313,9 +353,9 @@ export function ConfidentialLifecycleModal({
             </div>
             <StatusPill
               variant={
-                pending.status === 3
+                pending.status === STATUS_EXECUTED
                   ? "active"
-                  : pending.status >= 4
+                  : isTerminal
                     ? "error"
                     : "medium"
               }
@@ -360,31 +400,32 @@ export function ConfidentialLifecycleModal({
       )}
 
       {/* IKA status */}
-      {messageApprovalAddress && pending.status === 2 && (
-        <div className="mb-4 flex items-center gap-2">
-          <div className="text-[10px] font-mono uppercase text-(--text-muted)">
-            IKA
+      {messageApprovalAddress &&
+        pending.status === STATUS_SIGNATURE_PENDING && (
+          <div className="mb-4 flex items-center gap-2">
+            <div className="text-[10px] font-mono uppercase text-(--text-muted)">
+              IKA
+            </div>
+            <StatusPill
+              variant={
+                ikaState === "signed"
+                  ? "active"
+                  : ikaState === "pending"
+                    ? "paused"
+                    : "default"
+              }
+              className="text-[9px] px-2 py-0.5"
+            >
+              {messageApprovalStatusQuery.isFetching && (
+                <Loader2 className="w-2.5 h-2.5 animate-spin inline mr-1" />
+              )}
+              {ikaState ?? "..."}
+            </StatusPill>
+            <span className="font-mono text-[10px] text-(--text-muted)">
+              {shortenAddress(messageApprovalAddress, 6, 4)}
+            </span>
           </div>
-          <StatusPill
-            variant={
-              ikaState === "signed"
-                ? "active"
-                : ikaState === "pending"
-                  ? "paused"
-                  : "default"
-            }
-            className="text-[9px] px-2 py-0.5"
-          >
-            {messageApprovalStatusQuery.isFetching && (
-              <Loader2 className="w-2.5 h-2.5 animate-spin inline mr-1" />
-            )}
-            {ikaState ?? "..."}
-          </StatusPill>
-          <span className="font-mono text-[10px] text-(--text-muted)">
-            {shortenAddress(messageApprovalAddress, 6, 4)}
-          </span>
-        </div>
-      )}
+        )}
 
       {/* Step indicators */}
       <div className="mb-6 space-y-3 p-4 border border-border rounded-sm">
