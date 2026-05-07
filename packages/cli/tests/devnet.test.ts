@@ -107,13 +107,13 @@ test("devnet CLI release flow covers catalog, treasury, policy, governance, and 
   const features = runJson<{
     totals: { domains: number; instructions: number; allInstructions: number };
   }>(["features"]).json;
-  assert.equal(features.totals.allInstructions, 69);
-  assert.equal(features.totals.instructions, 69);
+  assert.equal(features.totals.allInstructions, 70);
+  assert.equal(features.totals.instructions, 70);
 
   const instructionCatalog = runJson<{
     totals: { domains: number; instructions: number };
   }>(["instruction", "list"]).json;
-  assert.equal(instructionCatalog.totals.instructions, 69);
+  assert.equal(instructionCatalog.totals.instructions, 70);
 
   const schema = runJson<{ name: string; args: unknown[] }>([
     "instruction",

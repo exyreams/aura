@@ -23,6 +23,7 @@ const PROPOSAL_STATUSES = [
   { code: 4, label: "Denied" },
   { code: 5, label: "Cancelled" },
   { code: 6, label: "Expired" },
+  { code: 7, label: "Policy Computed" },
 ] as const;
 
 const VIOLATIONS = [

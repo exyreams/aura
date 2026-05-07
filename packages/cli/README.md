@@ -190,6 +190,15 @@ aura confidential guardrails vector \
   --agent-id my-agent \
   --guardrail-ciphertext <pk>
 
+# Propose with vector guardrails — auto-encrypts helper vectors, submits the
+# proposal, then executes the vector FHE graph in a second transaction
+aura confidential propose-vector \
+  --agent-id my-agent \
+  --amount 250 \
+  --chain ethereum \
+  --recipient 0xdeadbeef... \
+  --wait
+
 # Show confidential guardrails and pending state
 aura confidential status --agent-id my-agent
 
@@ -319,6 +328,11 @@ aura confidential guardrails scalar \
 
 # 5. Propose confidential transaction (auto-encrypts amount)
 aura confidential propose \
+  --agent-id my-agent --amount 250 --chain ethereum \
+  --recipient 0xdeadbeef... --wait
+
+# Vector guardrails use the matching vector proposal flow instead:
+aura confidential propose-vector \
   --agent-id my-agent --amount 250 --chain ethereum \
   --recipient 0xdeadbeef... --wait
 
