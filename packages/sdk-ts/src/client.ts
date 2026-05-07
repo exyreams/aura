@@ -52,6 +52,7 @@ import type {
   ConfigureConfidentialVectorGuardrailsAccounts,
   ConfirmPolicyDecryptionAccounts,
   ExecutePendingAccounts,
+  ExecutePendingVectorFheAccounts,
   FinalizeExecutionAccounts,
   GrantOperatorRoleAccounts,
   GuardianTreasuryAccounts,
@@ -102,6 +103,7 @@ import {
   type ConfigureMultisigArgs,
   type ConfigureSwarmArgs,
   type CreateTreasuryArgs,
+  type ExecutePendingVectorFheArgs,
   type GrantOperatorRoleArgs,
   type InitExposureGroupArgs,
   type InitExternalLivenessArgs,
@@ -539,9 +541,8 @@ export class AuraClient {
 
   /**
    * Builds a `propose_confidential_vector_transaction` instruction.
-   * Uses a single `EUint64Vector` guardrail ciphertext. After each approved
-   * transaction the output vector is promoted to become the new guardrail,
-   * rotating the encrypted state forward automatically.
+   * Uses a single `EUint64Vector` guardrail ciphertext and persists the
+   * pending proposal without running the Encrypt graph CPI.
    */
   async proposeConfidentialVectorTransactionInstruction(
     accounts: ProposeConfidentialVectorTransactionAccounts,
@@ -559,8 +560,6 @@ export class AuraClient {
 
   /**
    * Builds and sends a `propose_confidential_vector_transaction` transaction.
-   *
-   * @param extraSigners Additional signers required by the Encrypt CPI.
    */
   async proposeConfidentialVectorTransaction(
     aiAuthority: Signer,
@@ -570,6 +569,43 @@ export class AuraClient {
   ): Promise<string> {
     assertSignerMatches(aiAuthority, accounts.aiAuthority, "aiAuthority");
     const instruction = await this.proposeConfidentialVectorTransactionInstruction(accounts, args);
+    return await this.sendInstructions(aiAuthority, [instruction], extraSigners);
+  }
+
+  // execute_pending_vector_fhe
+
+  /**
+   * Builds an `execute_pending_vector_fhe` instruction.
+   * Runs the vector Encrypt graph for a pending vector proposal in a separate
+   * transaction, avoiding the BPF heap pressure of the proposal path.
+   */
+  async executePendingVectorFheInstruction(
+    accounts: ExecutePendingVectorFheAccounts,
+    args: ExecutePendingVectorFheArgs,
+  ): Promise<TransactionInstruction> {
+    const resolvedAccounts = {
+      externalLiveness: null,
+      ...accounts,
+    };
+    return await this.program.methods
+      .executePendingVectorFhe(args)
+      .accountsStrict(resolvedAccounts as any)
+      .instruction();
+  }
+
+  /**
+   * Builds and sends an `execute_pending_vector_fhe` transaction.
+   *
+   * @param extraSigners Additional signers, if a caller composes this with other setup instructions.
+   */
+  async executePendingVectorFhe(
+    aiAuthority: Signer,
+    accounts: ExecutePendingVectorFheAccounts,
+    args: ExecutePendingVectorFheArgs,
+    extraSigners: Signer[] = [],
+  ): Promise<string> {
+    assertSignerMatches(aiAuthority, accounts.aiAuthority, "aiAuthority");
+    const instruction = await this.executePendingVectorFheInstruction(accounts, args);
     return await this.sendInstructions(aiAuthority, [instruction], extraSigners);
   }
 

@@ -34,6 +34,14 @@ export function proposeConfidentialVectorTransactionInstruction(
   return client.proposeConfidentialVectorTransactionInstruction(...args);
 }
 
+/** Builds `execute_pending_vector_fhe`. */
+export function executePendingVectorFheInstruction(
+  client: AuraClient,
+  ...args: Parameters<AuraClient["executePendingVectorFheInstruction"]>
+): ReturnType<AuraClient["executePendingVectorFheInstruction"]> {
+  return client.executePendingVectorFheInstruction(...args);
+}
+
 /** Builds `request_policy_decryption`. */
 export function requestPolicyDecryptionInstruction(
   client: AuraClient,

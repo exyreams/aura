@@ -91,7 +91,7 @@ export interface ConfigureConfidentialGuardrailsAccounts extends OwnerTreasuryAc
  */
 export interface ConfigureConfidentialVectorGuardrailsAccounts
   extends OwnerTreasuryAccounts {
-  /** Vector ciphertext encoding `[daily_limit, per_tx_limit, spent_today]`. */
+  /** Vector ciphertext encoding `[remaining_daily_limit, per_tx_limit, spent_today]`. */
   guardrailVectorCiphertext: PublicKey;
 }
 
@@ -137,17 +137,44 @@ export interface ProposeConfidentialTransactionAccounts
  * Accounts for `propose_confidential_vector_transaction` (vector FHE path).
  *
  * Uses a single `EUint64Vector` guardrail ciphertext instead of three
- * separate scalars. The output vector ciphertext is promoted to become the
- * new guardrail after each approved transaction, rotating the encrypted state
- * forward automatically.
+ * separate scalars. This instruction only creates the pending proposal; call
+ * `execute_pending_vector_fhe` next to submit the Encrypt graph CPI.
  */
 export interface ProposeConfidentialVectorTransactionAccounts
   extends AiAuthorityTreasuryAccounts {
   /** Vector ciphertext encoding the current guardrail state. */
   guardrailVectorCiphertext: PublicKey;
-  /** Freshly created vector ciphertext for the encrypted transaction amount. */
-  amountVectorCiphertext: PublicKey;
-  /** Output vector ciphertext that will hold the policy result. */
+  /** Freshly created vector ciphertext encoding `[-amount mod u64, 0, amount]`. */
+  spendDeltaVectorCiphertext: PublicKey;
+  /** Freshly created vector ciphertext encoding `[amount, amount]` for limit checks. */
+  comparisonVectorCiphertext: PublicKey;
+  /** Vector ciphertext encoding assign target lanes `[3, 4, 5, ...]`. */
+  flagIndicesVectorCiphertext: PublicKey;
+  /** Pre-allocated output vector ciphertext that will hold the policy result. */
+  policyResultVectorCiphertext: PublicKey;
+  /** Ika Encrypt program ID. */
+  encryptProgram: PublicKey;
+  /** Optional liveness record when policy requires fresh Encrypt evidence. */
+  externalLiveness?: OptionalAccount;
+}
+
+/**
+ * Accounts for `execute_pending_vector_fhe`.
+ *
+ * Runs the vector Encrypt CPI for a pending vector proposal in its own
+ * transaction so graph execution receives a fresh BPF heap frame.
+ */
+export interface ExecutePendingVectorFheAccounts
+  extends AiAuthorityTreasuryAccounts {
+  /** Vector ciphertext encoding the current guardrail state. */
+  guardrailVectorCiphertext: PublicKey;
+  /** Vector ciphertext encoding `[-amount mod u64, 0, amount]`. */
+  spendDeltaVectorCiphertext: PublicKey;
+  /** Vector ciphertext encoding `[amount, amount]` for limit checks. */
+  comparisonVectorCiphertext: PublicKey;
+  /** Vector ciphertext encoding assign target lanes `[3, 4, 5, ...]`. */
+  flagIndicesVectorCiphertext: PublicKey;
+  /** Pre-allocated output vector ciphertext that will hold the policy result. */
   policyResultVectorCiphertext: PublicKey;
   /** Ika Encrypt program ID. */
   encryptProgram: PublicKey;

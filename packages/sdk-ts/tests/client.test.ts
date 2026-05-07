@@ -116,7 +116,13 @@ function defaultConfidentialArgs(): ProposeConfidentialTransactionArgs {
     quoteAgeSecs: null,
     counterpartyRiskScore: null,
     recipientOrContract: "0xdeadbeef",
-    sanctionsProof: [],
+  };
+}
+
+function defaultExecutePendingVectorFheArgs() {
+  return {
+    proposalId: new BN(0),
+    currentTimestamp: new BN(101),
   };
 }
 
@@ -632,7 +638,38 @@ test("proposeConfidentialVectorTransactionInstruction builds and decodes", async
       "aiAuthority",
       "treasury",
       "guardrailVectorCiphertext",
-      "amountVectorCiphertext",
+      "spendDeltaVectorCiphertext",
+      "comparisonVectorCiphertext",
+      "flagIndicesVectorCiphertext",
+      "policyResultVectorCiphertext",
+      "encryptProgram",
+    ] as const),
+  };
+  const instruction = await client.proposeConfidentialVectorTransactionInstruction(
+    accounts,
+    defaultConfidentialArgs(),
+  );
+  const decoded = client.coder.decode(instruction.data);
+  assert.ok(decoded);
+  assert.equal(decoded?.name, "propose_confidential_vector_transaction");
+  const outputMeta = instruction.keys.find((meta) =>
+    meta.pubkey.equals(accounts.policyResultVectorCiphertext),
+  );
+  assert.equal(outputMeta?.isSigner, false);
+});
+
+// executePendingVectorFheInstruction
+
+test("executePendingVectorFheInstruction builds and decodes", async () => {
+  const client = makeClient();
+  const accounts = {
+    ...randomAccounts([
+      "aiAuthority",
+      "treasury",
+      "guardrailVectorCiphertext",
+      "spendDeltaVectorCiphertext",
+      "comparisonVectorCiphertext",
+      "flagIndicesVectorCiphertext",
       "policyResultVectorCiphertext",
       "encryptProgram",
       "config",
@@ -644,13 +681,18 @@ test("proposeConfidentialVectorTransactionInstruction builds and decodes", async
       "systemProgram",
     ] as const),
   };
-  const instruction = await client.proposeConfidentialVectorTransactionInstruction(
+  const instruction = await client.executePendingVectorFheInstruction(
     accounts,
-    defaultConfidentialArgs(),
+    defaultExecutePendingVectorFheArgs(),
   );
   const decoded = client.coder.decode(instruction.data);
   assert.ok(decoded);
-  assert.equal(decoded?.name, "propose_confidential_vector_transaction");
+  assert.equal(decoded?.name, "execute_pending_vector_fhe");
+  const outputMeta = instruction.keys.find((meta) =>
+    meta.pubkey.equals(accounts.policyResultVectorCiphertext),
+  );
+  assert.equal(outputMeta?.isSigner, false);
+  assert.equal(outputMeta?.isWritable, true);
 });
 
 // signer mismatch guards
@@ -758,16 +800,11 @@ test("proposeConfidentialVectorTransaction rejects aiAuthority mismatch", async 
           "aiAuthority",
           "treasury",
           "guardrailVectorCiphertext",
-          "amountVectorCiphertext",
+          "spendDeltaVectorCiphertext",
+          "comparisonVectorCiphertext",
+          "flagIndicesVectorCiphertext",
           "policyResultVectorCiphertext",
           "encryptProgram",
-          "config",
-          "deposit",
-          "callerProgram",
-          "cpiAuthority",
-          "networkEncryptionKey",
-          "eventAuthority",
-          "systemProgram",
         ] as const),
       },
       defaultConfidentialArgs(),

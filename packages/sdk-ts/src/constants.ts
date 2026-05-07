@@ -107,6 +107,10 @@ export type ProposeTransactionArgs = AuraTypeDefs["proposeTransactionArgs"];
 export type ProposeConfidentialTransactionArgs =
   AuraTypeDefs["proposeConfidentialTransactionArgs"];
 
+/** Arguments for the `execute_pending_vector_fhe` instruction. */
+export type ExecutePendingVectorFheArgs =
+  AuraTypeDefs["executePendingVectorFheArgs"];
+
 /** Arguments for the `configure_multisig` instruction. */
 export type ConfigureMultisigArgs = AuraTypeDefs["configureMultisigArgs"];
 

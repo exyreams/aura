@@ -99,7 +99,13 @@ export const AURA_FEATURE_DOMAINS: AuraFeatureDomain[] = [
       {
         name: "propose_confidential_vector_transaction",
         label: "Propose vector transaction",
-        description: "Submits vector FHE policy evaluation and state rotation.",
+        description: "Creates a pending vector proposal with heap-safe helper-vector inputs.",
+        maturity: "external_cpi",
+      },
+      {
+        name: "execute_pending_vector_fhe",
+        label: "Execute vector FHE",
+        description: "Runs the compact vector Encrypt graph in a separate transaction.",
         maturity: "external_cpi",
       },
       {
