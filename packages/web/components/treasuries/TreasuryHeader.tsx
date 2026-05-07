@@ -25,6 +25,7 @@ import {
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import { ProposeTransactionModal } from "@/components/propose/ProposeTransactionModal";
 import { RegisterDWalletForm } from "./RegisterDWalletForm";
 
 interface ActionOption {
@@ -49,6 +50,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
   const queryClient = useQueryClient();
   const activePending = getActivePendingProposal(treasury.account);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProposeOpen, setIsProposeOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copiedPda, setCopiedPda] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -127,7 +129,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       {
         label: "Propose Transaction",
         icon: <Send size={16} />,
-        onClick: () => router.push(`/dashboard/treasuries/${pda}/propose`),
+        onClick: () => setIsProposeOpen(true),
       },
       {
         label: "Configure Confidential Guardrails",
@@ -291,6 +293,12 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         treasury={treasury}
+      />
+
+      <ProposeTransactionModal
+        isOpen={isProposeOpen}
+        onClose={() => setIsProposeOpen(false)}
+        pda={pda}
       />
     </>
   );

@@ -1,0 +1,451 @@
+"use client";
+
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, ExternalLink, Loader2, Lock, ShieldAlert } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { Alert } from "@/components/global/Alert";
+import { Button } from "@/components/global/Button";
+import { Modal } from "@/components/global/Modal";
+import {
+  buildProposeTransactionArgs,
+  sendWalletInstructions,
+} from "@/lib/aura-app";
+import { postBackend, LONG_TIMEOUT_MS } from "@/lib/backend-client";
+import {
+  useAgents,
+  useAppSettings,
+  useAuraClient,
+  useTreasury,
+} from "@/lib/hooks";
+import { usePersistentState } from "@/lib/settings";
+import { shortenAddress } from "@/lib/utils";
+import { PolicyPreview } from "./PolicyPreview";
+import { ProposalModeSelector } from "./ProposalModeSelector";
+import { TransactionDetailsForm } from "./TransactionDetailsForm";
+
+const initialForm = {
+  amountUsd: "6400",
+  chain: "2",
+  txType: "1",
+  recipient: "",
+  protocolId: "",
+  expectedOutputUsd: "",
+  actualOutputUsd: "",
+  quoteAgeSecs: "6",
+  counterpartyRiskScore: "18",
+};
+
+interface ProposeTransactionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  pda: string;
+}
+
+export function ProposeTransactionModal({
+  isOpen,
+  onClose,
+  pda,
+}: ProposeTransactionModalProps) {
+  const wallet = useWallet();
+  const { connection } = useConnection();
+  const client = useAuraClient();
+  const settings = useAppSettings();
+  const { selectedAgent } = useAgents();
+  const queryClient = useQueryClient();
+  const treasuryQuery = useTreasury(pda);
+  const entry = treasuryQuery.data;
+
+  // null = still loading, false = not configured, true = ready
+  const confidentialReady: boolean | null = entry
+    ? Boolean(entry.account.confidentialGuardrails)
+    : null;
+
+  const [mode, setMode] = usePersistentState<"public" | "confidential">(
+    `aura:proposal-mode:${pda}`,
+    "public",
+  );
+  const [form, setForm] = usePersistentState(
+    `aura:proposal-form:${pda}`,
+    initialForm,
+  );
+  const [showPreview, setShowPreview] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSignature(null);
+      setShowPreview(false);
+    }
+  }, [isOpen]);
+
+  const preview = useMemo(
+    () => ({
+      dailyLimitPass:
+        Number(form.amountUsd) <=
+        Number(entry?.account.policyConfig.dailyLimitUsd.toString() ?? "0"),
+      perTxLimitPass:
+        Number(form.amountUsd) <=
+        Number(entry?.account.policyConfig.perTxLimitUsd.toString() ?? "0"),
+      quoteAgePass:
+        Number(form.quoteAgeSecs) <=
+        Number(entry?.account.policyConfig.maxQuoteAgeSecs?.toString() ?? "0"),
+      riskPass:
+        Number(form.counterpartyRiskScore) <=
+        Number(entry?.account.policyConfig.maxCounterpartyRiskScore ?? "0"),
+    }),
+    [entry, form.amountUsd, form.counterpartyRiskScore, form.quoteAgeSecs],
+  );
+
+  const proposeMutation = useMutation({
+    mutationFn: async () => {
+      if (!entry) throw new Error("Treasury not loaded.");
+      const selectedAgentId = selectedAgent?.agentId;
+
+      const aiAuthority = entry.account.aiAuthority?.toString?.() ?? "";
+      const walletIsAiAuthority =
+        wallet.publicKey && aiAuthority === wallet.publicKey.toBase58();
+
+      if (mode === "confidential") {
+        if (!selectedAgentId) {
+          throw new Error(
+            "Create and select an agent before using confidential proposals.",
+          );
+        }
+        return await postBackend<{ signature: string }>(
+          settings.backendUrl,
+          "/v1/confidential/propose",
+          {
+            rpcUrl: settings.endpoint,
+            programId: settings.programId || undefined,
+            agentId: selectedAgentId,
+            treasury: pda,
+            amountUsd: Number(form.amountUsd),
+            chain: Number(form.chain),
+            txType: Number(form.txType),
+            recipient: form.recipient,
+            protocolId: form.protocolId ? Number(form.protocolId) : undefined,
+            expectedOutputUsd: form.expectedOutputUsd
+              ? Number(form.expectedOutputUsd)
+              : undefined,
+            actualOutputUsd: form.actualOutputUsd
+              ? Number(form.actualOutputUsd)
+              : undefined,
+            quoteAgeSecs: form.quoteAgeSecs
+              ? Number(form.quoteAgeSecs)
+              : undefined,
+            counterpartyRiskScore: form.counterpartyRiskScore
+              ? Number(form.counterpartyRiskScore)
+              : undefined,
+            waitForOutput: true,
+          },
+          { timeoutMs: LONG_TIMEOUT_MS },
+        );
+      }
+
+      if (!walletIsAiAuthority) {
+        if (!selectedAgentId) {
+          throw new Error(
+            "Create and select an agent before backend-signed proposals.",
+          );
+        }
+        return await postBackend<{ signature: string }>(
+          settings.backendUrl,
+          "/v1/proposals/public",
+          {
+            rpcUrl: settings.endpoint,
+            programId: settings.programId || undefined,
+            agentId: selectedAgentId,
+            treasury: pda,
+            amountUsd: Number(form.amountUsd),
+            chain: Number(form.chain),
+            txType: Number(form.txType),
+            recipient: form.recipient,
+            protocolId: form.protocolId ? Number(form.protocolId) : undefined,
+            expectedOutputUsd: form.expectedOutputUsd
+              ? Number(form.expectedOutputUsd)
+              : undefined,
+            actualOutputUsd: form.actualOutputUsd
+              ? Number(form.actualOutputUsd)
+              : undefined,
+            quoteAgeSecs: form.quoteAgeSecs
+              ? Number(form.quoteAgeSecs)
+              : undefined,
+            counterpartyRiskScore: form.counterpartyRiskScore
+              ? Number(form.counterpartyRiskScore)
+              : undefined,
+          },
+        );
+      }
+
+      if (!wallet.publicKey) throw new Error("Connect a wallet first.");
+      const args = buildProposeTransactionArgs({
+        amountUsd: Number(form.amountUsd),
+        chain: Number(form.chain),
+        txType: Number(form.txType),
+        recipient: form.recipient,
+        protocolId: form.protocolId ? Number(form.protocolId) : undefined,
+        expectedOutputUsd: form.expectedOutputUsd
+          ? Number(form.expectedOutputUsd)
+          : undefined,
+        actualOutputUsd: form.actualOutputUsd
+          ? Number(form.actualOutputUsd)
+          : undefined,
+        quoteAgeSecs: form.quoteAgeSecs ? Number(form.quoteAgeSecs) : undefined,
+        counterpartyRiskScore: form.counterpartyRiskScore
+          ? Number(form.counterpartyRiskScore)
+          : undefined,
+      });
+      const instruction = await client.proposeTransactionInstruction(
+        { aiAuthority: wallet.publicKey, treasury: entry.publicKey },
+        args,
+      );
+      return {
+        signature: await sendWalletInstructions(connection, wallet, [
+          instruction,
+        ]),
+      };
+    },
+    onSuccess: async (result) => {
+      if (mode === "public") {
+        setSignature(result.signature);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
+      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    proposeMutation.mutate();
+  };
+
+  const succeededPublic = proposeMutation.isSuccess && signature !== null && mode === "public";
+  const succeededConfidential = proposeMutation.isSuccess && mode === "confidential";
+  const succeeded = succeededPublic || succeededConfidential;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      className={succeeded ? "max-w-lg" : "max-w-3xl"}
+      footer={
+        succeeded ? (
+          <Button
+            variant="secondary"
+            size="medium"
+            className="flex-1"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-2 w-full">
+            {proposeMutation.error && (
+              <Alert
+                variant="error"
+                message={
+                  proposeMutation.error instanceof Error
+                    ? proposeMutation.error.message
+                    : "Failed to submit proposal"
+                }
+                onClose={() => proposeMutation.reset()}
+              />
+            )}
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="secondary"
+                size="medium"
+                className="flex-1"
+                disabled={proposeMutation.isPending}
+                onClick={() => setShowPreview((v) => !v)}
+              >
+                {showPreview ? "Hide Preview" : "Preview Policy"}
+              </Button>
+              <Button
+                type="submit"
+                form="propose-transaction-form"
+                variant="primary"
+                size="medium"
+                className="flex-1"
+                loading={proposeMutation.isPending}
+                disabled={
+                  !entry ||
+                  proposeMutation.isPending ||
+                  (mode === "confidential" && !selectedAgent) ||
+                  (mode === "confidential" && confidentialReady !== true)
+                }
+              >
+                {proposeMutation.isPending ? "Submitting…" : "Submit Proposal"}
+              </Button>
+            </div>
+          </div>
+        )
+      }
+    >
+      <div className="overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          {succeeded ? (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="flex flex-col items-center text-center mb-6">
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{
+                    delay: 0.1,
+                    duration: 0.4,
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 15,
+                  }}
+                  className="flex h-14 w-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
+                  >
+                    <Check className="h-6 w-6 text-success" strokeWidth={2.5} />
+                  </motion.div>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <h3 className="text-lg font-bold text-(--text-main) tracking-tight">
+                    Proposal submitted
+                  </h3>
+                  <p className="mt-1 text-xs text-(--text-muted)">
+                    {succeededConfidential
+                      ? "Confidential proposal broadcast — use the Lifecycle button in Pending Proposals to complete decryption and execution."
+                      : <>Broadcast to{" "}<span className="mono text-(--text-main)">{settings.network}</span>{" "}and pending evaluation.</>}
+                  </p>
+                </motion.div>
+              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+                className="space-y-3"
+              >
+                {succeededPublic && signature && (
+                <div className="rounded-sm border border-border bg-(--card-content) p-3">
+                  <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
+                    Transaction Signature
+                  </p>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <code className="flex-1 mono text-[11px] text-success break-all leading-relaxed min-w-0">
+                      {signature}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(
+                          `https://explorer.solana.com/tx/${signature}?cluster=${settings.network}`,
+                          "_blank",
+                        )
+                      }
+                      className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                      aria-label="View on explorer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                )}
+                <div className="rounded-sm border border-border bg-(--card-content) p-3">
+                  <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
+                    Treasury
+                  </p>
+                  <code className="mono text-[11px] text-(--text-main) break-all">
+                    {shortenAddress(pda, 8, 8)}
+                  </code>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="space-y-6"
+            >
+              <form
+                id="propose-transaction-form"
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
+                <TransactionDetailsForm form={form} setForm={setForm} />
+                <ProposalModeSelector mode={mode} onModeChange={setMode} />
+
+                {/* Confidential readiness check */}
+                {mode === "confidential" && (
+                  <>
+                    {confidentialReady === null ? (
+                      <div className="flex items-center gap-3 rounded-sm border border-border bg-(--card-content) px-4 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-(--text-muted) shrink-0" />
+                        <p className="text-xs text-(--text-muted) font-mono">
+                          Checking confidential guardrails setup…
+                        </p>
+                      </div>
+                    ) : confidentialReady === false ? (
+                      <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4 flex gap-3">
+                        <ShieldAlert className="h-4 w-4 text-(--warning-text) shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-(--warning-text) mb-1">
+                            Confidential guardrails not configured
+                          </p>
+                          <p className="text-[11px] text-(--text-muted) mb-3 leading-relaxed">
+                            You need to set up FHE ciphertext guardrails before
+                            submitting a confidential proposal.
+                          </p>
+                          <Link
+                            href={`/dashboard/treasuries/${pda}/guardrails`}
+                            onClick={onClose}
+                            className="inline-flex items-center gap-1.5 mono text-[10px] uppercase tracking-widest text-(--warning-text) hover:underline"
+                          >
+                            <Lock className="h-3 w-3" />
+                            Configure Guardrails
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-sm border border-white/8 bg-white/4 p-4 text-sm text-slate-300">
+                        Submit through the backend signer, then use the{" "}
+                        <span className="font-mono text-white">Lifecycle</span>{" "}
+                        button in Pending Proposals to complete decryption and
+                        execution.
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {entry && (
+                  <p className="text-[11px] text-(--text-muted) font-mono">
+                    {entry.account.aiAuthority?.toString?.() ===
+                      wallet.publicKey?.toBase58()
+                      ? "Signing with connected wallet"
+                      : `Signing via backend agent ${selectedAgent?.agentId ?? "not selected"}`}
+                  </p>
+                )}
+              </form>
+
+              {showPreview && <PolicyPreview preview={preview} />}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Modal>
+  );
+}

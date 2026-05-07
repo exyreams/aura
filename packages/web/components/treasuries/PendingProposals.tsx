@@ -2,9 +2,10 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { StatusPill } from "@/components/global/Badge";
+import { useState } from "react";
+import { Alert } from "@/components/global/Alert"; import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
+import { ConfidentialLifecycleModal } from "@/components/treasuries/ConfidentialLifecycleModal";
 import {
   CHAINS,
   getActivePendingProposal,
@@ -39,6 +40,7 @@ function messageApprovalFromPending(pending: unknown) {
 export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const pending = getActivePendingProposal(treasury.account);
   const hasPending = pending && Number(pending.proposalId.toString()) > 0;
+  const [lifecycleOpen, setLifecycleOpen] = useState(false);
   const wallet = useWallet();
   const { connection } = useConnection();
   const settings = useAppSettings();
@@ -50,6 +52,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
     await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
     await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
     await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+    await queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] });
   };
 
   const messageApprovalAddress = messageApprovalFromPending(pending);
@@ -87,7 +90,9 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const ikaState = messageApprovalStatusQuery.data?.state;
 
   // status codes: 0=Proposed, 1=DecryptionRequested, 2=AwaitingSignature, 3=Executed, 4=Denied, 5=Cancelled, 6=Expired
-  const canExecute = hasPending && pending.status === 0;
+  const isConfidential = hasPending && !!pending.policyOutputCiphertextAccount;
+  // For confidential proposals, Execute is handled inside ConfidentialLifecycleModal
+  const canExecute = hasPending && pending.status === 0 && !isConfidential;
   const canFinalize =
     hasPending && Boolean(messageApprovalAddress) && ikaState === "signed";
   // Can cancel any non-terminal proposal
@@ -171,12 +176,6 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
         </div>
         <div className="p-8 text-center border border-dashed border-border rounded-sm">
           <p className="text-sm text-(--text-muted)">No pending proposals</p>
-          <Link
-            href={`/dashboard/treasuries/${pda}/propose`}
-            className="inline-flex mt-4 text-[10px] font-mono uppercase tracking-wider text-(--text-main) hover:text-primary transition-colors"
-          >
-            Create Proposal
-          </Link>
         </div>
       </div>
     );
@@ -206,15 +205,122 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
           ? cancelMutation.error.message
           : null;
 
+  function sanitizeError(msg: string): string {
+    // --- Wallet / signing ---
+    if (/user rejected|rejected the request|user denied/i.test(msg))
+      return "Transaction cancelled by wallet.";
+    if (/wallet not connected|no wallet|connect.*wallet/i.test(msg))
+      return "No wallet connected. Connect a wallet and try again.";
+    if (/wallet.*locked|please unlock/i.test(msg))
+      return "Your wallet is locked. Unlock it and try again.";
+    // --- Funds / fees ---
+    if (/insufficient funds for rent/i.test(msg))
+      return "Not enough SOL to cover rent. Top up your wallet and try again.";
+    if (/insufficient lamports|insufficient funds/i.test(msg))
+      return "Insufficient funds to complete this transaction.";
+    if (/0x1\b/.test(msg))
+      return "Not enough SOL in your wallet. Fund it with devnet SOL and try again.";
+    // --- Transaction lifecycle ---
+    if (/blockhash not found|blockhash.*expired/i.test(msg))
+      return "Transaction expired — the network was too slow. Please try again.";
+    if (/was not confirmed|transaction not confirmed/i.test(msg))
+      return "Transaction timed out waiting for confirmation. Try again.";
+    if (/transaction too large/i.test(msg))
+      return "Transaction is too large to submit. Contact support.";
+    if (/transaction.*failed|failed.*transaction/i.test(msg))
+      return "Transaction failed on-chain. Check your wallet balance and try again.";
+    if (/simulation failed/i.test(msg))
+      return "Transaction simulation failed. Check your wallet balance and try again.";
+    if (/already.*processed|duplicate.*transaction/i.test(msg))
+      return "This transaction was already processed. Refresh and check the proposal status.";
+    // --- RPC / network ---
+    if (/fetch.*fail|network.*error|econnrefused|enotfound|failed to fetch/i.test(msg))
+      return "Could not reach the backend. Check your network connection and backend URL in Settings.";
+    if (/timeout|timed out/i.test(msg))
+      return "Request timed out. The network may be congested — please try again.";
+    if (/429|rate.?limit/i.test(msg))
+      return "Too many requests. Wait a moment and try again.";
+    if (/rpc.*error|node.*error/i.test(msg))
+      return "RPC node error. Try switching to a different endpoint in Settings.";
+    // --- Accounts / program ---
+    if (/account.*not found|could not find account|invalid.*account/i.test(msg))
+      return "Account not found on-chain. The treasury or dWallet may not be initialized.";
+    if (/account.*already.*exist|already in use/i.test(msg))
+      return "Account already exists. Refresh the page and check for an active proposal.";
+    if (/invalid.*program|program.*not.*found/i.test(msg))
+      return "Program not found. Verify the Program ID in Settings.";
+    if (/owner.*mismatch|invalid.*owner/i.test(msg))
+      return "Account owner mismatch. Ensure you are using the correct program ID.";
+    // --- Proposal / treasury state ---
+    if (/no pending transaction|no pending proposal/i.test(msg))
+      return "No pending proposal found on this treasury.";
+    if (/proposal.*already.*exists/i.test(msg))
+      return "A proposal is already active on this treasury. Cancel it before creating a new one.";
+    if (/execution paused/i.test(msg))
+      return "Execution is paused on this treasury. Unpause it in treasury settings.";
+    if (/treasury.*not.*found/i.test(msg))
+      return "Treasury not found. It may have been closed or the address is incorrect.";
+    if (/ttl.*elapsed|proposal.*expired/i.test(msg))
+      return "This proposal has expired. Create a new one.";
+    if (/proposal.*denied/i.test(msg))
+      return "Proposal was denied by the policy engine.";
+    // --- Agent ---
+    if (/agent.*not found|invalid.*agent/i.test(msg))
+      return "Agent not found. Select a valid agent in the agent panel.";
+    if (/create and select an agent/i.test(msg))
+      return "No agent selected. Create and select an agent first.";
+    if (/agent.*not.*authorized|agent.*permission/i.test(msg))
+      return "This agent is not authorized to act on this treasury.";
+    // --- Ika / dWallet ---
+    if (/timed out waiting for/i.test(msg))
+      return "Ika didn't respond in time — the signing window (~15 min) may have passed. Re-execute the proposal to request a fresh signature.";
+    if (/message approval not ready|approval.*not.*ready/i.test(msg))
+      return "Waiting for Ika to sign — the signature isn't ready yet. Check the IKA status indicator.";
+    if (/dwallet not configured|no dwallet/i.test(msg))
+      return "No dWallet registered for this chain. Register one in treasury settings first.";
+    if (/dwallet.*mismatch/i.test(msg))
+      return "dWallet mismatch. The registered dWallet doesn't match the proposal.";
+    if (/ika.*unavailable|ika.*error/i.test(msg))
+      return "Ika network is unavailable. Try again in a few moments.";
+    // --- Auth ---
+    if (/unauthorized|not authorized|forbidden/i.test(msg))
+      return "You are not authorized to perform this action.";
+    // Fallback: strip backend UUIDs and Program log prefixes
+    return msg
+      .replace(/\s*\([0-9a-f-]{36}\)\s*$/i, "")
+      .replace(/^Program log:\s*/i, "")
+      .trim();
+  }
+
+  const sanitizedError = mutationError ? sanitizeError(mutationError) : null;
+
+  // Terminal statuses: 4=Denied, 5=Cancelled, 6=Expired
+  const isTerminal = hasPending && (pending.status === 4 || pending.status === 5 || pending.status === 6);
+  const rejectionMessage =
+    pending?.status === 4
+      ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} was denied by the policy engine.${pending.decision?.violation ? ` Violation: ${pending.decision.violation}` : ""}`
+      : pending?.status === 5
+        ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} was cancelled.`
+        : pending?.status === 6
+          ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} expired before execution.`
+          : null;
+
   return (
     <div>
+      {/* Rejection / terminal state alert — shown above the section */}
+      {isTerminal && rejectionMessage && (
+        <div className="mb-6">
+          <Alert variant={pending.status === 5 ? "warning" : "error"} message={rejectionMessage} />
+        </div>
+      )}
+
       <div className="mb-6 pb-4 border-b border-border">
         <div className="flex items-center gap-3 mb-2">
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted)">
             Queue
           </span>
-          <span className="px-2 py-0.5 bg-(--warning-bg) border border-(--warning-border) rounded-sm text-[10px] font-mono text-(--warning-text)">
-            1 ACTIVE
+          <span className={`px-2 py-0.5 rounded-sm text-[10px] font-mono ${isTerminal ? "bg-(--card-bg) border border-border text-(--text-muted)" : "bg-(--warning-bg) border border-(--warning-border) text-(--warning-text)"}`}>
+            {isTerminal ? "0 PENDING" : "1 ACTIVE"}
           </span>
         </div>
         <h2 className="text-xl font-bold text-(--text-main) mb-1">
@@ -225,7 +331,22 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
         </p>
       </div>
 
+      {sanitizedError && (
+        <div className="mb-4">
+          <Alert
+            variant="error"
+            message={sanitizedError}
+            onClose={() => {
+              executeMutation.reset();
+              finalizeMutation.reset();
+              cancelMutation.reset();
+            }}
+          />
+        </div>
+      )}
+
       <div className="border border-border rounded-sm overflow-hidden">
+
         <table className="w-full">
           <thead>
             <tr className="bg-(--card-content) border-b border-border">
@@ -295,6 +416,16 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
               </td>
               <td className="px-4 py-4 text-right">
                 <div className="flex items-center justify-end gap-2">
+                  {isConfidential && (
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => setLifecycleOpen(true)}
+                    >
+                      Lifecycle
+                    </Button>
+                  )}
+                  {!isConfidential && (
                   <Button
                     variant="primary"
                     size="small"
@@ -306,6 +437,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                   >
                     Execute
                   </Button>
+                  )}
                   <Button
                     variant="secondary"
                     size="small"
@@ -338,26 +470,34 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       {/* Lifecycle step hint */}
       <div className="mt-4 px-4 py-3 bg-(--card-content) border border-border rounded-sm">
         <p className="text-[11px] font-mono text-(--text-muted)">
-          {pending.status === 0 &&
-            "Step 1 of 2 — Click Execute to send the approve_message CPI to the dWallet. Requires the backend service running at " +
-              settings.backendUrl}
-          {pending.status === 1 &&
-            "Decryption in progress — waiting for Ika Encrypt network."}
-          {pending.status === 2 &&
-            "Step 2 of 2 — dWallet has signed. Click Finalize to verify the signature and close the proposal."}
-          {pending.status === 3 &&
-            "✓ Executed — proposal completed successfully."}
-          {pending.status === 4 &&
-            "✗ Denied — policy engine rejected this proposal."}
-          {pending.status === 5 && "Cancelled by owner."}
-          {pending.status === 6 && "Expired — TTL elapsed before execution."}
+          {isConfidential
+            ? "Confidential proposal — click Lifecycle to manage the decryption and execution steps."
+            : pending.status === 0
+              ? "Step 1 of 2 — Click Execute to send the approve_message CPI to the dWallet. Requires the backend service running at " +
+                settings.backendUrl
+              : pending.status === 1
+                ? "Decryption in progress — waiting for Ika Encrypt network."
+                : pending.status === 2
+                  ? "Step 2 of 2 — dWallet has signed. Click Finalize to verify the signature and close the proposal."
+                  : pending.status === 3
+                    ? "✓ Executed — proposal completed successfully."
+                    : pending.status === 4
+                      ? "✗ Denied — policy engine rejected this proposal."
+                      : pending.status === 5
+                        ? "Cancelled by owner."
+                        : pending.status === 6
+                          ? "Expired — TTL elapsed before execution."
+                          : null}
         </p>
       </div>
 
-      {mutationError && (
-        <div className="mt-3 px-4 py-3 bg-(--danger-bg) border border-(--danger-border) rounded-sm text-sm text-(--danger-text)">
-          {mutationError}
-        </div>
+      {isConfidential && pending && (
+        <ConfidentialLifecycleModal
+          isOpen={lifecycleOpen}
+          onClose={() => setLifecycleOpen(false)}
+          pending={pending}
+          pda={pda}
+        />
       )}
     </div>
   );
