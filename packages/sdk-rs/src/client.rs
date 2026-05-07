@@ -22,8 +22,8 @@ use crate::{
     },
     types::{
         AgentTreasury, ConfigureMultisigArgs, ConfigureSwarmArgs, CreateTreasuryArgs,
-        ProposeConfidentialTransactionArgs, ProposeTransactionArgs, RegisterDwalletArgs,
-        TreasuryAccount,
+        ExecutePendingVectorFheArgs, ProposeConfidentialTransactionArgs, ProposeTransactionArgs,
+        RegisterDwalletArgs, TreasuryAccount,
     },
     SdkError, AURA_DEVNET_PROGRAM_ID,
 };
@@ -392,6 +392,30 @@ impl AuraClient {
     ) -> Result<Signature, SdkError> {
         ensure_signer_matches(ai_authority, accounts.ai_authority, "ai_authority")?;
         let instruction = self.propose_confidential_vector_transaction_instruction(accounts, args);
+        self.send_instructions(ai_authority, vec![instruction], extra_signers)
+    }
+
+    /// Builds `execute_pending_vector_fhe`.
+    pub fn execute_pending_vector_fhe_instruction(
+        &self,
+        accounts: aura_core::accounts::ExecutePendingVectorFhe,
+        args: ExecutePendingVectorFheArgs,
+    ) -> Instruction {
+        self.with_program_id(instructions::confidential::execute_pending_vector_fhe(
+            accounts, args,
+        ))
+    }
+
+    /// Submits `execute_pending_vector_fhe`.
+    pub fn execute_pending_vector_fhe(
+        &self,
+        ai_authority: &Keypair,
+        accounts: aura_core::accounts::ExecutePendingVectorFhe,
+        args: ExecutePendingVectorFheArgs,
+        extra_signers: &[&Keypair],
+    ) -> Result<Signature, SdkError> {
+        ensure_signer_matches(ai_authority, accounts.ai_authority, "ai_authority")?;
+        let instruction = self.execute_pending_vector_fhe_instruction(accounts, args);
         self.send_instructions(ai_authority, vec![instruction], extra_signers)
     }
 

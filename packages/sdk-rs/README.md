@@ -203,7 +203,9 @@ client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
 client.propose_confidential_transaction(&ai_authority, accounts, args, &[])?;
 
 // Confidential vector proposal (FHE — requires Ika Encrypt network)
+// Accounts include the guardrail vector, helper vectors, and a pre-allocated output vector.
 client.propose_confidential_vector_transaction(&ai_authority, accounts, args, &[])?;
+client.execute_pending_vector_fhe(&ai_authority, execute_accounts, execute_args, &[])?;
 ```
 
 ### Confidential guardrails (FHE)
@@ -218,7 +220,7 @@ client.configure_confidential_guardrails(
     now,
 )?;
 
-// Vector ciphertext — all three encoded in a single EUint64Vector account
+// Vector ciphertext — remaining daily limit, per-tx limit, and spent-today encoded together
 client.configure_confidential_vector_guardrails(
     &owner, treasury, guardrail_vector_ciphertext, now,
 )?;

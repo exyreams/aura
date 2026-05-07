@@ -52,6 +52,18 @@ pub fn propose_confidential_vector_transaction(
     }
 }
 
+/// Builds `execute_pending_vector_fhe`.
+pub fn execute_pending_vector_fhe(
+    accounts: accounts::ExecutePendingVectorFhe,
+    args: aura_core::ExecutePendingVectorFheArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ExecutePendingVectorFhe { args }.data(),
+    }
+}
+
 /// Builds `request_policy_decryption`.
 pub fn request_policy_decryption(
     accounts: accounts::RequestPolicyDecryption,
