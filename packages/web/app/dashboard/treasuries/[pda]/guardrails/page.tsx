@@ -1,9 +1,10 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { type PublicKey, Transaction } from "@solana/web3.js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CurrentEncryptedState,
   type EncryptionMode,
@@ -37,6 +38,7 @@ export default function ConfidentialGuardrailsPage() {
   const account = entry?.account;
 
   const [mode, setMode] = useState<EncryptionMode>("scalar");
+  const modeInitializedRef = useRef(false);
   const [scalarForm, setScalarForm] = useState({
     dailyLimitCiphertext:
       account?.confidentialGuardrails?.dailyLimitCiphertext?.toBase58() ?? "",
@@ -55,31 +57,86 @@ export default function ConfidentialGuardrailsPage() {
       "",
   );
 
+  // Check whether the encrypted ciphertext accounts actually exist on-chain
+  // before allowing the configure instruction to be submitted.
+  const ciphertextAddresses = [
+    scalarForm.dailyLimitCiphertext,
+    scalarForm.perTxLimitCiphertext,
+    scalarForm.spentTodayCiphertext,
+  ].filter(Boolean);
+
+  const ciphertextExistenceQuery = useQuery({
+    queryKey: ["ciphertext-existence", ...ciphertextAddresses],
+    queryFn: async () => {
+      const results = await Promise.all(
+        ciphertextAddresses.map(async (addr) => {
+          try {
+            const info = await connection.getAccountInfo(
+              parsePublicKey(addr),
+              "confirmed",
+            );
+            return {
+              addr,
+              exists: info !== null,
+              dataLen: info?.data.length ?? 0,
+            };
+          } catch {
+            return { addr, exists: false, dataLen: 0 };
+          }
+        }),
+      );
+      return results;
+    },
+    enabled: ciphertextAddresses.length === 3,
+    refetchInterval: 3_000,
+  });
+
+  const allCiphertextsExist =
+    ciphertextAddresses.length === 3 &&
+    (ciphertextExistenceQuery.data?.every((r) => r.exists) ?? false);
+
   useEffect(() => {
     if (!account) {
       return;
     }
-    setScalarForm({
-      dailyLimitCiphertext:
-        account.confidentialGuardrails?.dailyLimitCiphertext?.toBase58() ?? "",
-      perTxLimitCiphertext:
-        account.confidentialGuardrails?.perTxLimitCiphertext?.toBase58() ?? "",
-      spentTodayCiphertext:
-        account.confidentialGuardrails?.spentTodayCiphertext?.toBase58() ?? "",
-    });
+    // Only sync ciphertext fields from on-chain if they actually have values.
+    // If they're empty on-chain (guardrails not configured yet), leave whatever
+    // the user or encryptScalarMutation already put in the fields alone.
+    const onChainDaily =
+      account.confidentialGuardrails?.dailyLimitCiphertext?.toBase58() ?? "";
+    const onChainPerTx =
+      account.confidentialGuardrails?.perTxLimitCiphertext?.toBase58() ?? "";
+    const onChainSpent =
+      account.confidentialGuardrails?.spentTodayCiphertext?.toBase58() ?? "";
+
+    if (onChainDaily || onChainPerTx || onChainSpent) {
+      setScalarForm({
+        dailyLimitCiphertext: onChainDaily,
+        perTxLimitCiphertext: onChainPerTx,
+        spentTodayCiphertext: onChainSpent,
+      });
+    }
+
     setPlaintextForm({
       dailyLimit: account.policyConfig.dailyLimitUsd.toString(),
       perTxLimit: account.policyConfig.perTxLimitUsd.toString(),
       spentToday: account.policyState.spentTodayUsd.toString(),
     });
-    setVectorCiphertext(
+
+    const onChainVector =
       account.confidentialGuardrails?.guardrailVectorCiphertext?.toBase58() ??
-        "",
-    );
-    if (account.confidentialGuardrails?.guardrailVectorCiphertext) {
-      setMode("vector");
-    } else if (account.confidentialGuardrails) {
-      setMode("scalar");
+      "";
+    if (onChainVector) {
+      setVectorCiphertext(onChainVector);
+    }
+
+    if (!modeInitializedRef.current) {
+      modeInitializedRef.current = true;
+      if (account.confidentialGuardrails?.guardrailVectorCiphertext) {
+        setMode("vector");
+      } else if (account.confidentialGuardrails) {
+        setMode("scalar");
+      }
     }
   }, [account]);
 
@@ -130,27 +187,76 @@ export default function ConfidentialGuardrailsPage() {
       if (!wallet.publicKey || !entry) {
         throw new Error("Connect a wallet first.");
       }
+
+      // Validate ciphertext addresses before building the instruction
+      let dailyKey: PublicKey;
+      let perTxKey: PublicKey;
+      let spentKey: PublicKey;
+      try {
+        dailyKey = parsePublicKey(scalarForm.dailyLimitCiphertext);
+        perTxKey = parsePublicKey(scalarForm.perTxLimitCiphertext);
+        spentKey = parsePublicKey(scalarForm.spentTodayCiphertext);
+      } catch {
+        throw new Error(
+          "One or more ciphertext addresses are invalid. Re-run Encrypt Plaintext Values and try again.",
+        );
+      }
+
       const instruction =
         await client.configureConfidentialGuardrailsInstruction(
           {
             owner: wallet.publicKey,
             treasury: entry.publicKey,
-            dailyLimitCiphertext: parsePublicKey(
-              scalarForm.dailyLimitCiphertext,
-            ),
-            perTxLimitCiphertext: parsePublicKey(
-              scalarForm.perTxLimitCiphertext,
-            ),
-            spentTodayCiphertext: parsePublicKey(
-              scalarForm.spentTodayCiphertext,
-            ),
+            dailyLimitCiphertext: dailyKey,
+            perTxLimitCiphertext: perTxKey,
+            spentTodayCiphertext: spentKey,
           },
           Math.floor(Date.now() / 1000),
         );
+
+      // Simulate first to get readable logs before sending to wallet
+      const simTx = new Transaction().add(instruction);
+      simTx.feePayer = wallet.publicKey;
+      const { blockhash: simBlockhash } =
+        await connection.getLatestBlockhash("confirmed");
+      simTx.recentBlockhash = simBlockhash;
+      const sim = await connection.simulateTransaction(simTx);
+      if (sim.value.err) {
+        const logs = sim.value.logs ?? [];
+        const programErr = logs.find(
+          (l) =>
+            l.includes("Error") || l.includes("error") || l.includes("failed"),
+        );
+        const enriched = new Error(
+          programErr ?? `Simulation failed: ${JSON.stringify(sim.value.err)}`,
+        ) as Error & { logs: string[] };
+        enriched.logs = logs;
+        throw enriched;
+      }
+
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
+    },
+  });
+
+  const encryptVectorMutation = useMutation({
+    mutationFn: async () =>
+      postBackend<{ guardrailVectorCiphertext: string }>(
+        settings.backendUrl,
+        "/v1/confidential/encrypt-vector",
+        {
+          rpcUrl: settings.endpoint,
+          programId: settings.programId || undefined,
+          dailyLimit: Number(plaintextForm.dailyLimit),
+          perTxLimit: Number(plaintextForm.perTxLimit),
+          spentToday: Number(plaintextForm.spentToday),
+          wait: true,
+        },
+      ),
+    onSuccess: (result) => {
+      setVectorCiphertext(result.guardrailVectorCiphertext);
     },
   });
 
@@ -213,16 +319,21 @@ export default function ConfidentialGuardrailsPage() {
             setScalarForm={setScalarForm}
             encryptScalarMutation={encryptScalarMutation}
             scalarMutation={scalarMutation}
-            backendUrl={settings.backendUrl}
             backendInfo={backendInfoQuery.data}
             selectedAgentPublicKey={selectedAgent?.publicKey}
             ensureDepositMutation={ensureDepositMutation}
+            allCiphertextsExist={allCiphertextsExist}
+            ciphertextExistence={ciphertextExistenceQuery.data}
           />
         ) : (
           <VectorConfigForm
             account={account}
+            pda={pda}
+            plaintextForm={plaintextForm}
+            setPlaintextForm={setPlaintextForm}
             vectorCiphertext={vectorCiphertext}
             setVectorCiphertext={setVectorCiphertext}
+            encryptVectorMutation={encryptVectorMutation}
             vectorMutation={vectorMutation}
           />
         )}

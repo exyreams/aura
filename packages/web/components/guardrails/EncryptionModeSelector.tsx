@@ -1,6 +1,7 @@
 "use client";
 
-import { BarChart3, Layers } from "lucide-react";
+import { AlertTriangle, BarChart3, Layers } from "lucide-react";
+import { Badge } from "@/components/global";
 import { cn } from "@/lib/utils";
 
 export type EncryptionMode = "scalar" | "vector";
@@ -16,19 +17,17 @@ export function EncryptionModeSelector({
 }: EncryptionModeSelectorProps) {
   return (
     <section className="mb-10">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-(--text-main) mb-1">
-            Encryption Mode
-          </h2>
-          <p className="text-sm text-(--text-muted)">
-            Choose between scalar (individual encrypted values) or vector
-            (single encrypted structure).
-          </p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+          Encryption Mode
+        </h2>
+        <p className="text-sm text-(--text-muted)">
+          Choose how guardrail values are encrypted on-chain.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Scalar — recommended */}
         <button
           type="button"
           onClick={() => onModeChange("scalar")}
@@ -43,19 +42,18 @@ export function EncryptionModeSelector({
             <div className="w-10 h-10 bg-white/5 rounded flex items-center justify-center border border-white/5">
               <BarChart3 className="w-5 h-5 text-(--text-muted) group-hover:text-(--text-main) transition-colors" />
             </div>
-            {mode === "scalar" && (
-              <span className="px-2 py-0.5 bg-white/10 text-(--text-main) mono text-[9px] rounded uppercase font-bold">
-                Recommended
-              </span>
-            )}
+            <Badge variant="active" className="px-2 py-0.5 text-[9px]">
+              Recommended
+            </Badge>
           </div>
           <h3 className="text-(--text-main) font-bold mb-2">Scalar Mode</h3>
           <p className="text-xs text-(--text-muted) leading-relaxed">
-            Individual ciphertext for each limit. Best for simple policies where
-            individual values are updated independently.
+            Individual ciphertext per limit. Works end-to-end on-chain — the
+            recommended path.
           </p>
         </button>
 
+        {/* Vector — known issue */}
         <button
           type="button"
           onClick={() => onModeChange("vector")}
@@ -70,11 +68,16 @@ export function EncryptionModeSelector({
             <div className="w-10 h-10 bg-white/5 rounded flex items-center justify-center border border-white/5">
               <Layers className="w-5 h-5 text-(--text-muted) group-hover:text-(--text-main) transition-colors" />
             </div>
+            <Badge variant="medium" className="px-2 py-0.5 text-[9px] gap-1">
+              <AlertTriangle className="w-2.5 h-2.5" />
+              Known Issue
+            </Badge>
           </div>
           <h3 className="text-(--text-main) font-bold mb-2">Vector Mode</h3>
           <p className="text-xs text-(--text-muted) leading-relaxed">
-            Single encrypted vector structure. More efficient for complex
-            multi-limit configurations evaluated as a set.
+            Single vector ciphertext. Configuration works, but proposals hit the
+            BPF heap limit during FHE execution — use Scalar until this is
+            resolved.
           </p>
         </button>
       </div>
