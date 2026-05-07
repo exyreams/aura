@@ -342,15 +342,62 @@ export async function encryptVectorValues(input: {
   wait?: boolean;
 }) {
   const { connection, programId } = buildClient(input.rpcUrl, input.programId);
+  const spentToday = input.spentToday ?? 0;
+  if (spentToday > input.dailyLimit) {
+    throw new Error("spentToday cannot exceed dailyLimit for vector guardrails");
+  }
+  const remainingDailyLimit = input.dailyLimit - spentToday;
   const guardrailVectorCiphertext = await encryptU64Vector(
-    [input.dailyLimit, input.perTxLimit, input.spentToday ?? 0],
+    [remainingDailyLimit, input.perTxLimit, spentToday],
     programId,
+    undefined,
+    8192,
   );
   if (input.wait) {
-    await waitForCiphertextVerified(connection, guardrailVectorCiphertext);
+    // Vector ciphertexts are 8,192 bytes and take significantly longer to process than scalars.
+    // Pre-alpha Encrypt network can take 5-10 minutes for vector verification.
+    await waitForCiphertextVerified(connection, guardrailVectorCiphertext, { timeoutMs: 600_000 });
   }
   return {
     guardrailVectorCiphertext: guardrailVectorCiphertext.toBase58(),
+  };
+}
+
+const U64_MODULUS = 1n << 64n;
+const U64_VECTOR_LANES = 1024;
+
+function wrappingNegU64(value: number | bigint) {
+  const amount = BigInt(value);
+  return (U64_MODULUS - (amount % U64_MODULUS)) % U64_MODULUS;
+}
+
+function vectorFlagIndices() {
+  return Array.from({ length: U64_VECTOR_LANES }, (_, index) => {
+    if (index === 0) return 3n;
+    if (index === 1) return 4n;
+    return BigInt(Math.min(index + 3, U64_VECTOR_LANES - 1));
+  });
+}
+
+async function encryptVectorProposalInputs(amountUsd: number, programId: PublicKey) {
+  const amount = BigInt(amountUsd);
+  const [
+    spendDeltaVectorCiphertext,
+    comparisonVectorCiphertext,
+    flagIndicesVectorCiphertext,
+    policyOutputVectorCiphertext,
+  ] =
+    await Promise.all([
+      encryptU64Vector([wrappingNegU64(amount), 0n, amount], programId, undefined, 8192),
+      encryptU64Vector([amount, amount], programId, undefined, 8192),
+      encryptU64Vector(vectorFlagIndices(), programId, undefined, 8192),
+      encryptU64Vector([], programId, undefined, 8192),
+    ]);
+  return {
+    spendDeltaVectorCiphertext,
+    comparisonVectorCiphertext,
+    flagIndicesVectorCiphertext,
+    policyOutputVectorCiphertext,
   };
 }
 
@@ -409,18 +456,51 @@ export async function submitConfidentialProposal(context: ServiceContext, input:
       auraProgramId: programId,
     });
     if (account.confidentialGuardrails?.guardrailVectorCiphertext) {
-      // Vector FHE path — lower memory footprint, works within the 256 KB heap limit
+      // Vector FHE path — proposal and graph execution are split across two transactions
+      // so the Encrypt CPI receives a fresh 256 KB BPF heap frame.
       const guardrailVectorCiphertext = resolveVectorGuardrail(account);
-      const amountVectorCiphertext = await encryptU64Vector([input.amountUsd], programId);
-      await waitForCiphertextVerified(connection, amountVectorCiphertext);
-      const policyResultSigner = createEphemeralKeypair();
+      const vectorInputs = await encryptVectorProposalInputs(input.amountUsd, programId);
+      // Vector ciphertexts are 8,192 bytes and take significantly longer to process than scalars.
+      // Pre-alpha Encrypt network can take 5-10 minutes for vector verification.
+      await Promise.all([
+        waitForCiphertextVerified(connection, vectorInputs.spendDeltaVectorCiphertext, { timeoutMs: 600_000 }),
+        waitForCiphertextVerified(connection, vectorInputs.comparisonVectorCiphertext, { timeoutMs: 600_000 }),
+        waitForCiphertextVerified(connection, vectorInputs.flagIndicesVectorCiphertext, { timeoutMs: 600_000 }),
+        waitForCiphertextVerified(connection, vectorInputs.policyOutputVectorCiphertext, { timeoutMs: 600_000 }),
+      ]);
+      const proposalId = new BN(account.nextProposalId.toString());
       const vectorInstruction = await client.proposeConfidentialVectorTransactionInstruction(
         {
           aiAuthority: agentKeypair.publicKey,
           treasury,
           guardrailVectorCiphertext,
-          amountVectorCiphertext,
-          policyResultVectorCiphertext: policyResultSigner.publicKey,
+          spendDeltaVectorCiphertext: vectorInputs.spendDeltaVectorCiphertext,
+          comparisonVectorCiphertext: vectorInputs.comparisonVectorCiphertext,
+          flagIndicesVectorCiphertext: vectorInputs.flagIndicesVectorCiphertext,
+          policyResultVectorCiphertext: vectorInputs.policyOutputVectorCiphertext,
+          encryptProgram: depositResult.accounts.encryptProgram,
+        },
+        args,
+      );
+      const vectorSignature = await sendInstructionsWithBudget({
+        connection,
+        payer: agentKeypair,
+        instructions: [vectorInstruction],
+      });
+      // Persist so request-decryption can find it even if the frontend has no localStorage entry.
+      db.update(treasuryRows)
+        .set({ pendingVectorPolicyCiphertext: vectorInputs.policyOutputVectorCiphertext.toBase58() })
+        .where(eq(treasuryRows.treasuryAddress, treasury.toBase58()))
+        .run();
+      const executeVectorInstruction = await client.executePendingVectorFheInstruction(
+        {
+          aiAuthority: agentKeypair.publicKey,
+          treasury,
+          guardrailVectorCiphertext,
+          spendDeltaVectorCiphertext: vectorInputs.spendDeltaVectorCiphertext,
+          comparisonVectorCiphertext: vectorInputs.comparisonVectorCiphertext,
+          flagIndicesVectorCiphertext: vectorInputs.flagIndicesVectorCiphertext,
+          policyResultVectorCiphertext: vectorInputs.policyOutputVectorCiphertext,
           encryptProgram: depositResult.accounts.encryptProgram,
           config: depositResult.accounts.config,
           deposit: depositResult.accounts.deposit,
@@ -430,22 +510,29 @@ export async function submitConfidentialProposal(context: ServiceContext, input:
           eventAuthority: depositResult.accounts.eventAuthority,
           systemProgram: SystemProgram.programId,
         },
-        args,
+        {
+          proposalId,
+          currentTimestamp: new BN(args.currentTimestamp.toString()).addn(1),
+        },
       );
-      markInstructionSigner(vectorInstruction, policyResultSigner.publicKey);
-      const vectorSignature = await sendInstructionsWithBudget({
+      const executeSignature = await sendInstructionsWithBudget({
         connection,
         payer: agentKeypair,
-        instructions: [vectorInstruction],
-        extraSigners: [policyResultSigner],
+        instructions: [executeVectorInstruction],
       });
       if (input.waitForOutput) {
-        await waitForCiphertextVerified(connection, policyResultSigner.publicKey);
+        // Vector ciphertexts are 8,192 bytes and take significantly longer to process than scalars.
+        // Pre-alpha Encrypt network can take 5-10 minutes for vector verification.
+        await waitForCiphertextVerified(connection, vectorInputs.policyOutputVectorCiphertext, { timeoutMs: 600_000 });
       }
       return {
         signature: vectorSignature,
-        amountCiphertext: amountVectorCiphertext.toBase58(),
-        policyOutputCiphertext: policyResultSigner.publicKey.toBase58(),
+        executeSignature,
+        amountCiphertext: vectorInputs.spendDeltaVectorCiphertext.toBase58(),
+        spendDeltaCiphertext: vectorInputs.spendDeltaVectorCiphertext.toBase58(),
+        comparisonCiphertext: vectorInputs.comparisonVectorCiphertext.toBase58(),
+        flagIndicesCiphertext: vectorInputs.flagIndicesVectorCiphertext.toBase58(),
+        policyOutputCiphertext: vectorInputs.policyOutputVectorCiphertext.toBase58(),
         deposit: depositResult.accounts.deposit.toBase58(),
       };
     }
@@ -506,9 +593,26 @@ export async function requestPolicyDecryptionService(context: ServiceContext, in
     const treasury = new PublicKey(input.treasury);
     ensureTreasuryRecord({ agent, treasuryAddress: treasury.toBase58() });
     const account = await client.getTreasuryAccount(treasury);
-    const ciphertext = input.ciphertext
-      ? new PublicKey(input.ciphertext)
-      : resolvePendingPolicyOutput(account);
+    let ciphertext: PublicKey;
+    if (input.ciphertext) {
+      ciphertext = new PublicKey(input.ciphertext);
+    } else {
+      try {
+        ciphertext = resolvePendingPolicyOutput(account);
+      } catch {
+        // Fall back to the ciphertext persisted when the proposal was submitted.
+        // This covers stale frontend state or a backend restart between lifecycle steps.
+        const record = db.select().from(treasuryRows)
+          .where(eq(treasuryRows.treasuryAddress, input.treasury))
+          .get();
+        if (!record?.pendingVectorPolicyCiphertext) {
+          throw new Error(
+            "No policy output ciphertext found. The proposal may not have been submitted through this backend, or the record was cleared.",
+          );
+        }
+        ciphertext = new PublicKey(record.pendingVectorPolicyCiphertext);
+      }
+    }
     const requestSigner = createEphemeralKeypair();
     const depositResult = await ensureEncryptDeposit({
       connection,

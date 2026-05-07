@@ -26,8 +26,8 @@ function signSiwsMessage(keypair: Keypair, message: string) {
   return bs58.encode(sign(null, Buffer.from(message, "utf8"), privateKey));
 }
 
-const auth = await import("../src/auth.js");
-const agents = await import("../src/agent-keypairs.js");
+const auth = await import("../src/auth/index.js");
+const agents = await import("../src/agents/index.js");
 const database = await import("../src/db/client.js");
 
 after(() => {

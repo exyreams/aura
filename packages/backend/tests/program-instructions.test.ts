@@ -12,8 +12,8 @@ import {
   getProgramInstructionCatalog,
   getProgramInstructionSchema,
   type ProgramInstructionSchema,
-} from "../src/program-instructions.js";
-import { parseProgramInstructionRequest } from "../src/validation.js";
+} from "../src/services/program-instructions.js";
+import { parseProgramInstructionRequest } from "../src/middleware/validation.js";
 
 const DUMMY_CONNECTION = new Connection("http://127.0.0.1:8899", "confirmed");
 
@@ -64,7 +64,7 @@ test("backend instruction catalog maps every SDK feature to an IDL schema", () =
     0,
   );
 
-  assert.equal(catalog.totals.instructions, 69);
+  assert.equal(catalog.totals.instructions, 70);
   assert.equal(featureCount, catalog.totals.instructions);
   assert.equal(
     catalog.domains.flatMap((domain) =>
