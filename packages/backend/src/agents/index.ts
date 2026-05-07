@@ -173,6 +173,8 @@ export function ensureTreasuryRecord(input: {
   agentId?: string;
 }): TreasuryRecord {
   const now = nowSecs();
+
+  // Check by treasury address first (most common path)
   const existing = db
     .select()
     .from(treasuries)
@@ -184,12 +186,36 @@ export function ensureTreasuryRecord(input: {
     }
     return existing;
   }
+
+  // Also check by (agent_keypair_id, agent_id) to avoid the unique constraint
+  // error when the same agent_id was used with a different treasury address.
+  const agentId = input.agentId ?? input.agent.agentId;
+  const existingByAgentId = db
+    .select()
+    .from(treasuries)
+    .where(
+      and(
+        eq(treasuries.agentKeypairId, input.agent.id),
+        eq(treasuries.agentId, agentId),
+      ),
+    )
+    .get();
+  if (existingByAgentId) {
+    // Different treasury address but same agent+name — update the address
+    return db
+      .update(treasuries)
+      .set({ treasuryAddress: input.treasuryAddress })
+      .where(eq(treasuries.id, existingByAgentId.id))
+      .returning()
+      .get();
+  }
+
   return db
     .insert(treasuries)
     .values({
       agentKeypairId: input.agent.id,
       treasuryAddress: input.treasuryAddress,
-      agentId: input.agentId ?? input.agent.agentId,
+      agentId,
       createdAt: now,
     })
     .returning()

@@ -12,7 +12,8 @@ export type { DKGAttestation };
 const IKA_GRPC_URL = "pre-alpha-dev-1.ika.ika-network.net:443";
 export { ENCRYPT_GRPC_URL, IKA_GRPC_URL };
 
-const FHE_TYPE_UINT64 = 0;
+const FHE_TYPE_UINT64 = 4;
+const FHE_TYPE_UINT64_VECTOR = 35;
 export const ENCRYPT_NETWORK_KEY = Buffer.alloc(32, 0x55);
 
 export async function encryptU64(
@@ -68,6 +69,37 @@ export async function encryptU64Batch(
       }
       return new PublicKey(id);
     });
+  } finally {
+    client.close();
+  }
+}
+
+export async function encryptU64Vector(
+  values: Array<number | bigint>,
+  authorized: PublicKey,
+  grpcUrl = ENCRYPT_GRPC_URL,
+) {
+  if (values.length === 0) {
+    throw new Error("encryptU64Vector requires at least one value");
+  }
+  const client = createEncryptClient(grpcUrl);
+  try {
+    const ciphertextBytes = Buffer.alloc(values.length * 8);
+    values.forEach((value, i) => {
+      ciphertextBytes.writeBigUInt64LE(BigInt(value), i * 8);
+    });
+    const result = await client.createInput({
+      chain: EncryptChain.Solana,
+      inputs: [{ ciphertextBytes, fheType: FHE_TYPE_UINT64_VECTOR }],
+      proof: Buffer.alloc(0),
+      authorized: authorized.toBuffer(),
+      networkEncryptionPublicKey: ENCRYPT_NETWORK_KEY,
+    });
+    const id = result.ciphertextIdentifiers[0];
+    if (!id || id.length !== 32) {
+      throw new Error("Encrypt service returned an invalid ciphertext identifier");
+    }
+    return new PublicKey(id);
   } finally {
     client.close();
   }

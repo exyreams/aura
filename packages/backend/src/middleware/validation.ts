@@ -141,6 +141,17 @@ export function parseEncryptScalarRequest(input: unknown) {
   };
 }
 
+export function parseEncryptVectorRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    ...parseRpcBase(body),
+    dailyLimit: requiredNumber(body, "dailyLimit"),
+    perTxLimit: requiredNumber(body, "perTxLimit"),
+    spentToday: optionalNumber(body, "spentToday"),
+    wait: optionalBoolean(body, "wait") === true,
+  };
+}
+
 export function parseEnsureDepositRequest(input: unknown) {
   const body = ensureObject(input);
   return parseAgentBase(body);

@@ -38,6 +38,7 @@ import {
 import {
   encryptU64,
   encryptU64Batch,
+  encryptU64Vector,
   readU64Ciphertext,
   requestDwalletSign,
 } from "../ika/client.js";
@@ -55,6 +56,7 @@ import {
   resolvePendingProposal,
   resolvePendingRequestAccount,
   resolveScalarGuardrails,
+  resolveVectorGuardrail,
   sendInstructionsWithBudget,
   waitForCiphertextVerified,
   waitForDecryptionReady,
@@ -331,6 +333,27 @@ export async function encryptScalarValues(input: {
   };
 }
 
+export async function encryptVectorValues(input: {
+  rpcUrl?: string;
+  programId?: string;
+  dailyLimit: number;
+  perTxLimit: number;
+  spentToday?: number;
+  wait?: boolean;
+}) {
+  const { connection, programId } = buildClient(input.rpcUrl, input.programId);
+  const guardrailVectorCiphertext = await encryptU64Vector(
+    [input.dailyLimit, input.perTxLimit, input.spentToday ?? 0],
+    programId,
+  );
+  if (input.wait) {
+    await waitForCiphertextVerified(connection, guardrailVectorCiphertext);
+  }
+  return {
+    guardrailVectorCiphertext: guardrailVectorCiphertext.toBase58(),
+  };
+}
+
 export async function ensureBackendEncryptDeposit(context: ServiceContext, input: {
   rpcUrl?: string;
   programId?: string;
@@ -379,13 +402,55 @@ export async function submitConfidentialProposal(context: ServiceContext, input:
     const treasury = new PublicKey(input.treasury);
     ensureTreasuryRecord({ agent, treasuryAddress: treasury.toBase58() });
     const account = await client.getTreasuryAccount(treasury);
-    const guardrails = resolveScalarGuardrails(account);
     const args = buildConfidentialArgs(input);
     const depositResult = await ensureEncryptDeposit({
       connection,
       payer: agentKeypair,
       auraProgramId: programId,
     });
+    if (account.confidentialGuardrails?.guardrailVectorCiphertext) {
+      // Vector FHE path — lower memory footprint, works within the 256 KB heap limit
+      const guardrailVectorCiphertext = resolveVectorGuardrail(account);
+      const amountVectorCiphertext = await encryptU64Vector([input.amountUsd], programId);
+      await waitForCiphertextVerified(connection, amountVectorCiphertext);
+      const policyResultSigner = createEphemeralKeypair();
+      const vectorInstruction = await client.proposeConfidentialVectorTransactionInstruction(
+        {
+          aiAuthority: agentKeypair.publicKey,
+          treasury,
+          guardrailVectorCiphertext,
+          amountVectorCiphertext,
+          policyResultVectorCiphertext: policyResultSigner.publicKey,
+          encryptProgram: depositResult.accounts.encryptProgram,
+          config: depositResult.accounts.config,
+          deposit: depositResult.accounts.deposit,
+          callerProgram: programId,
+          cpiAuthority: depositResult.accounts.cpiAuthority,
+          networkEncryptionKey: depositResult.accounts.networkEncryptionKey,
+          eventAuthority: depositResult.accounts.eventAuthority,
+          systemProgram: SystemProgram.programId,
+        },
+        args,
+      );
+      markInstructionSigner(vectorInstruction, policyResultSigner.publicKey);
+      const vectorSignature = await sendInstructionsWithBudget({
+        connection,
+        payer: agentKeypair,
+        instructions: [vectorInstruction],
+        extraSigners: [policyResultSigner],
+      });
+      if (input.waitForOutput) {
+        await waitForCiphertextVerified(connection, policyResultSigner.publicKey);
+      }
+      return {
+        signature: vectorSignature,
+        amountCiphertext: amountVectorCiphertext.toBase58(),
+        policyOutputCiphertext: policyResultSigner.publicKey.toBase58(),
+        deposit: depositResult.accounts.deposit.toBase58(),
+      };
+    }
+
+    const guardrails = resolveScalarGuardrails(account);
     const amountCiphertext = await encryptU64(input.amountUsd, programId);
     await waitForCiphertextVerified(connection, amountCiphertext);
     const policyOutputSigner = createEphemeralKeypair();
@@ -962,25 +1027,25 @@ async function runAgentOnceInternal(job: AgentJobState) {
   const result =
     job.config.mode === "confidential"
       ? await submitConfidentialProposal(job.context, {
-          rpcUrl: job.config.rpcUrl,
-          programId: job.config.programId,
-          agentId: job.agent.agentId,
-          treasury: job.config.treasury,
-          amountUsd,
-          chain: job.config.chain,
-          txType: job.config.txType,
-          recipient: job.config.recipient,
-        })
+        rpcUrl: job.config.rpcUrl,
+        programId: job.config.programId,
+        agentId: job.agent.agentId,
+        treasury: job.config.treasury,
+        amountUsd,
+        chain: job.config.chain,
+        txType: job.config.txType,
+        recipient: job.config.recipient,
+      })
       : await submitPublicProposal(job.context, {
-          rpcUrl: job.config.rpcUrl,
-          programId: job.config.programId,
-          agentId: job.agent.agentId,
-          treasury: job.config.treasury,
-          amountUsd,
-          chain: job.config.chain,
-          txType: job.config.txType,
-          recipient: job.config.recipient,
-        });
+        rpcUrl: job.config.rpcUrl,
+        programId: job.config.programId,
+        agentId: job.agent.agentId,
+        treasury: job.config.treasury,
+        amountUsd,
+        chain: job.config.chain,
+        txType: job.config.txType,
+        recipient: job.config.recipient,
+      });
   job.lastResult = { decision, result };
   job.history.unshift({ timestamp: unixNow(), decision, result });
   job.history = job.history.slice(0, 20);
