@@ -71,6 +71,8 @@ export function useTreasury(treasury: string | undefined) {
         settings.resolvedProgramId,
       ),
     enabled: Boolean(treasury),
+    refetchInterval: 8_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -118,6 +120,8 @@ export function useTreasuryAuditTrail(
         limit,
       ),
     enabled: Boolean(treasuryPda),
+    refetchInterval: 12_000,
+    refetchIntervalInBackground: false,
   });
 }
 

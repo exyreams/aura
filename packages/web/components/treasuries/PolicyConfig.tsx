@@ -3,6 +3,7 @@
 import type { PublicKey } from "@solana/web3.js";
 import {
   Ban,
+  Check,
   ChevronDown,
   Copy,
   ExternalLink,
@@ -12,6 +13,7 @@ import {
 import { useState } from "react";
 import { Badge, StatusPill } from "@/components/global/Badge";
 import { Tabs } from "@/components/global/Tabs";
+import { Tooltip } from "@/components/global/Tooltip";
 import { CHAINS } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAppSettings, useDWalletLiveBalance } from "@/lib/hooks";
@@ -60,6 +62,168 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
     await navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const InfoContent = () => {
+    const [copiedField, setCopiedField] = useState<string | null>(null);
+    const pda = treasury.publicKey.toBase58();
+    const aiAuthority = treasury.account.aiAuthority?.toString?.() ?? null;
+    const spentToday =
+      Number(treasury.account.policyState.spentTodayUsd.toString()) / 100;
+    const dailyLimit =
+      Number(treasury.account.policyConfig.dailyLimitUsd.toString()) / 100;
+    const totalTx = Number(treasury.account.totalTransactions.toString());
+    const hasGuardrails = !!treasury.account.confidentialGuardrails;
+    const guardrailMode = treasury.account.confidentialGuardrails
+      ?.guardrailVectorCiphertext
+      ? "Vector"
+      : hasGuardrails
+        ? "Scalar"
+        : null;
+
+    const copy = async (text: string, key: string) => {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(key);
+      setTimeout(() => setCopiedField(null), 2000);
+    };
+
+    const AddressField = ({
+      label,
+      value,
+      fieldKey,
+    }: {
+      label: string;
+      value: string;
+      fieldKey: string;
+    }) => (
+      <div className="py-2 border-b border-border last:border-0">
+        <span className="mono text-[9px] uppercase text-(--text-muted) tracking-wider block mb-1">
+          {label}
+        </span>
+        <div className="flex items-center gap-2">
+          <Tooltip content={value}>
+            <span className="mono text-[11px] text-(--text-main) cursor-default">
+              {shortenAddress(value, 10, 8)}
+            </span>
+          </Tooltip>
+          <div className="flex items-center gap-1 shrink-0">
+            <Tooltip content={copiedField === fieldKey ? "Copied!" : "Copy"}>
+              <button
+                type="button"
+                onClick={() => copy(value, fieldKey)}
+                className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
+              >
+                {copiedField === fieldKey ? (
+                  <Check className="w-3 h-3 text-active" />
+                ) : (
+                  <Copy className="w-3 h-3" />
+                )}
+              </button>
+            </Tooltip>
+            <Tooltip content="View on Solana Explorer">
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(
+                    `https://explorer.solana.com/address/${value}?cluster=${settings.network}`,
+                    "_blank",
+                  )
+                }
+                className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="space-y-4">
+        {/* Identity */}
+        <div className="p-4 bg-(--card-content) border border-border rounded-sm">
+          <span className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-wider block mb-3">
+            Identity
+          </span>
+          <div className="space-y-1">
+            <div className="py-2 border-b border-border">
+              <span className="mono text-[9px] uppercase text-(--text-muted) tracking-wider block mb-1">
+                Agent ID
+              </span>
+              <span className="text-sm font-semibold text-(--text-main)">
+                {treasury.account.agentId}
+              </span>
+            </div>
+            <AddressField
+              label="Treasury Address (PDA)"
+              value={pda}
+              fieldKey="pda"
+            />
+            {aiAuthority && (
+              <AddressField
+                label="AI Authority (Agent Signer)"
+                value={aiAuthority}
+                fieldKey="aiAuth"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="p-4 bg-(--card-content) border border-border rounded-sm">
+          <span className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-wider block mb-3">
+            Status
+          </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1.5">
+                Execution
+              </span>
+              <Badge
+                variant={treasury.account.executionPaused ? "paused" : "active"}
+                className="text-[9px] px-2 py-0.5"
+              >
+                {treasury.account.executionPaused ? "Paused" : "Active"}
+              </Badge>
+            </div>
+            <div>
+              <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1.5">
+                FHE Guardrails
+              </span>
+              {guardrailMode ? (
+                <Badge variant="active" className="text-[9px] px-2 py-0.5">
+                  {guardrailMode}
+                </Badge>
+              ) : (
+                <Badge variant="default" className="text-[9px] px-2 py-0.5">
+                  Not set
+                </Badge>
+              )}
+            </div>
+            <div>
+              <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1">
+                Today's Spend
+              </span>
+              <span className="text-sm font-semibold text-(--text-main)">
+                {formatCurrency(spentToday)}
+              </span>
+              <span className="mono text-[9px] text-(--text-muted) block">
+                of {formatCurrency(dailyLimit)} limit
+              </span>
+            </div>
+            <div>
+              <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1">
+                Total Transactions
+              </span>
+              <span className="text-sm font-semibold text-(--text-main)">
+                {totalTx}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const PolicyContent = () => (
@@ -481,6 +645,11 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
   };
   const tabs = [
     {
+      id: "info",
+      label: "Info",
+      content: <InfoContent />,
+    },
+    {
       id: "policy",
       label: "Policy",
       content: <PolicyContent />,
@@ -505,7 +674,7 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
           Policy limits, governance settings, and registered dWallets.
         </p>
       </div>
-      <Tabs tabs={tabs} defaultTab="policy" layoutId="configTabs" />
+      <Tabs tabs={tabs} defaultTab="info" layoutId="configTabs" />
     </div>
   );
 };

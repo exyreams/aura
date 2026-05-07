@@ -254,14 +254,34 @@ export async function sendWalletInstructions(
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash("confirmed");
   tx.recentBlockhash = blockhash;
-  const signature = await wallet.sendTransaction(tx, connection, {
-    preflightCommitment: "confirmed",
-  });
-  await connection.confirmTransaction(
-    { signature, blockhash, lastValidBlockHeight },
-    "confirmed",
-  );
-  return signature;
+  try {
+    const signature = await wallet.sendTransaction(tx, connection, {
+      preflightCommitment: "confirmed",
+    });
+    await connection.confirmTransaction(
+      { signature, blockhash, lastValidBlockHeight },
+      "confirmed",
+    );
+    return signature;
+  } catch (err: unknown) {
+    // Try to extract simulation logs from SendTransactionError
+    if (err && typeof err === "object" && "getLogs" in err) {
+      try {
+        const logs: string[] = await (
+          err as { getLogs: () => Promise<string[]> }
+        ).getLogs();
+        const enriched = new Error(
+          (err as Error).message || "Transaction failed",
+        ) as Error & { logs: string[] };
+        enriched.logs = logs;
+        throw enriched;
+      } catch (logErr) {
+        // If getLogs itself fails, just rethrow the original
+        if ((logErr as Error & { logs?: string[] }).logs) throw logErr;
+      }
+    }
+    throw err;
+  }
 }
 
 export function deserializeInstruction(input: {

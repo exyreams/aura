@@ -6,7 +6,7 @@ import { Alert, Button, Modal } from "@/components/global";
 import { useAgents } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-// name generator 
+// name generator
 
 const WORDS = [
   "sentinel",
@@ -47,17 +47,17 @@ function generateAgentId(): string {
   return `aura-${word}-${suffix}`;
 }
 
-// validation 
+// validation
 
 function validateAgentId(value: string): string | null {
   const normalized = value.trim();
   if (!normalized) return "Agent ID is required.";
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(normalized))
-    return "Use 1–64 characters: letters, numbers, dashes, or underscores.";
+  if (new TextEncoder().encode(normalized).length > 64)
+    return "Must be 64 characters or fewer.";
   return null;
 }
 
-// component 
+// component
 
 interface CreateAgentModalProps {
   open: boolean;
@@ -223,7 +223,7 @@ export function CreateAgentModal({ open, onClose }: CreateAgentModalProps) {
             <p className="mono text-[10px] text-danger">{validationError}</p>
           ) : (
             <p className="mono text-[10px] text-(--text-muted)">
-              letters, numbers, dashes, underscores
+              any characters, up to 64 bytes
             </p>
           )}
         </div>

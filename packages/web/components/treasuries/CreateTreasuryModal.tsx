@@ -19,7 +19,7 @@ import {
 } from "@/lib/aura-app";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 
-// default form values 
+// default form values
 
 const DEFAULTS = {
   dailyLimit: "10000", // $100/day
@@ -34,7 +34,7 @@ const DEFAULTS = {
   btcThreshold: "1000", // $10 BTC manual review
 };
 
-// component 
+// component
 
 interface CreateTreasuryModalProps {
   open: boolean;
@@ -144,9 +144,8 @@ export function CreateTreasuryModal({
     const errors: Record<string, string> = {};
     if (!treasuryName.trim()) {
       errors.treasuryName = "Treasury name is required.";
-    } else if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(treasuryName.trim())) {
-      errors.treasuryName =
-        "Use 1–64 chars: letters, numbers, dashes, underscores.";
+    } else if (new TextEncoder().encode(treasuryName.trim()).length > 64) {
+      errors.treasuryName = "Must be 64 characters or fewer.";
     }
     if (!selectedAgent) {
       errors.agent = "Create and select an agent first.";
@@ -457,8 +456,8 @@ export function CreateTreasuryModal({
                       className="bg-(--input-bg) border border-border rounded-sm px-3 py-3 text-sm outline-none w-full transition-colors text-(--text-main) focus:border-(--text-muted) placeholder:text-(--text-muted) disabled:opacity-50"
                     />
                     <p className="text-[11px] text-(--text-muted)">
-                      Unique name — used as the on-chain PDA seed. Letters,
-                      numbers, dashes, underscores.
+                      Unique name — used as the on-chain PDA seed. Any
+                      characters, up to 64 bytes.
                     </p>
                     {validationErrors.treasuryName && (
                       <p className="text-xs text-danger">

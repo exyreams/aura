@@ -17,20 +17,19 @@ interface BackendEnvelope<T> {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+export const LONG_TIMEOUT_MS = 180_000; // 3 min for FHE operations
 
 export async function backendRequest<T>(
   baseUrl: string,
   path: string,
-  init?: RequestInit,
+  init?: RequestInit & { timeoutMs?: number },
 ) {
   const headers = new Headers(init?.headers);
   headers.set("content-type", "application/json");
 
+  const timeoutMs = init?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
-  const timeout = window.setTimeout(
-    () => controller.abort(),
-    DEFAULT_TIMEOUT_MS,
-  );
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
@@ -43,7 +42,7 @@ export async function backendRequest<T>(
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(
-        `Backend request timed out after ${DEFAULT_TIMEOUT_MS}ms`,
+        `Backend request timed out after ${timeoutMs / 1000}s. The Ika network may be slow — check the lifecycle section for progress.`,
       );
     }
     throw error;
@@ -99,9 +98,11 @@ export function postBackend<T>(
   baseUrl: string,
   path: string,
   body: Record<string, unknown>,
+  options: { timeoutMs?: number } = {},
 ) {
   return backendRequest<T>(baseUrl, path, {
     method: "POST",
     body: JSON.stringify(body),
+    timeoutMs: options.timeoutMs,
   });
 }
