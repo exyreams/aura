@@ -7,7 +7,9 @@ icon: Play
 import { Card, Cards } from 'fumadocs-ui/components/card';
 
 After a proposal is created, execution follows a fixed sequence. For public
-proposals it's two steps; for confidential proposals it's four.
+proposals it is two steps. Scalar confidential proposals add decryption.
+Vector confidential proposals add one extra FHE execution transaction before
+decryption.
 
 ## Flow
 
@@ -21,7 +23,19 @@ Confidential:
     → confirmPolicyDecryption
     → executePending
     → finalizeExecution
+
+Vector confidential:
+  proposeConfidentialVectorTransaction
+    → executePendingVectorFhe
+    → requestPolicyDecryption
+    → confirmPolicyDecryption
+    → executePending
+    → finalizeExecution
 ```
+
+`executePendingVectorFhe` moves the heap-heavy Encrypt graph CPI out of the
+proposal transaction. Request decryption only after the pending proposal reaches
+`PolicyComputed`.
 
 ---
 

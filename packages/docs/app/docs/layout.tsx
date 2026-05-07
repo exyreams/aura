@@ -1,6 +1,6 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
-import { BookOpen, Box, Code2, Globe, Server, Terminal } from "lucide-react";
+import { BookOpen, Box, Code, Globe, Server, Terminal } from "lucide-react";
 import type { ReactNode } from "react";
 import { baseOptions } from "@/lib/layout.shared";
 import { source } from "@/lib/source";
@@ -20,7 +20,7 @@ const TAB_META: Record<string, { icon: ReactNode; description: string }> = {
     description: "REST & gRPC services",
   },
   "TypeScript SDK": {
-    icon: <Code2 className="size-4" />,
+    icon: <Code className="size-4" />,
     description: "JS/TS client library",
   },
   "Rust SDK": {

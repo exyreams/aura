@@ -1,45 +1,39 @@
-# docs
+# AURA Documentation
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+Production documentation for AURA packages, built with Next.js and Fumadocs.
 
-Run development server:
+The docs cover:
+
+- TypeScript SDK (`@aura-protocol/sdk-ts`)
+- Rust SDK (`aura-sdk`)
+- CLI (`@aura-protocol/cli`)
+- confidential scalar and vector FHE flows
+- dWallet execution and finalization
+- generic program-instruction builders
 
 ```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+bun install
+bun run dev
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Open `http://localhost:3001`.
 
-## Explore
+## Scripts
 
-In the project, you can see:
+```bash
+bun run types:check
+bun run build
+bun run lint
+```
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+## Content Layout
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+```text
+content/docs/
+  sdk-ts/
+  sdk-rs/
+  cli/
+```
 
-### Fumadocs MDX
-
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
-
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
-
-## Learn More
-
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+Keep package docs synchronized with the published SDK and CLI surfaces before
+tagging releases.

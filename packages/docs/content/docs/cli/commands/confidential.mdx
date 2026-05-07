@@ -53,6 +53,7 @@ aura confidential guardrails scalar \
 ## aura confidential guardrails vector
 
 Attach a vector FHE guardrail ciphertext (single account encoding all limits).
+The vector lanes are `[remainingDailyLimit, perTxLimit, spentToday]`.
 
 ```bash
 aura confidential guardrails vector \
@@ -112,6 +113,45 @@ aura confidential propose \
 
 ---
 
+## aura confidential propose-vector
+
+Propose a confidential transaction against vector guardrails. The CLI creates
+the helper `EUint64Vector` ciphertexts, submits the pending proposal, then calls
+`execute_pending_vector_fhe` in a second transaction.
+
+```bash
+aura confidential propose-vector \
+  --agent-id agent-1 \
+  --amount 250 \
+  --chain ethereum \
+  --recipient 0xdeadbeef... \
+  --wait
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--amount <usd>` | Amount in USD — auto-encrypted into vector helpers |
+| `--chain <name\|number>` | Target chain |
+| `--recipient <address>` | Recipient address or contract |
+| `--tx-type <type>` | Transaction type |
+| `--protocol-id <id>` | Protocol ID |
+| `--expected-output <usd>` | Expected output for slippage check |
+| `--actual-output <usd>` | Actual output for slippage check |
+| `--quote-age <secs>` | Quote age in seconds |
+| `--counterparty-risk <score>` | Counterparty risk score 0–100 |
+| `--spend-delta-ciphertext <pubkey>` | Pre-created vector for `[-amount mod u64, 0, amount]` |
+| `--comparison-ciphertext <pubkey>` | Pre-created vector for `[amount, amount]` |
+| `--flag-indices-ciphertext <pubkey>` | Pre-created vector for assign lanes `[3, 4, 5, ...]` |
+| `--policy-output-ciphertext <pubkey>` | Pre-allocated zero `EUint64Vector` output |
+| `--wait` | Wait until vector policy output is verified |
+
+If one helper ciphertext override is provided, all four helper ciphertexts must
+be provided together.
+
+---
+
 ## aura confidential request-decryption
 
 Request the Ika Encrypt network to decrypt the pending policy output.
@@ -158,8 +198,12 @@ aura confidential deposit ensure
 # 2. Configure scalar guardrails
 aura confidential guardrails scalar --agent-id agent-1 --daily-limit 10000 --per-tx-limit 1000
 
-# 3. Propose confidential transaction
+# 3. Propose confidential scalar transaction
 aura confidential propose --agent-id agent-1 --amount 250 --chain ethereum \
+  --recipient 0xdeadbeef... --wait
+
+# Vector guardrails use the vector proposal flow instead
+aura confidential propose-vector --agent-id agent-1 --amount 250 --chain ethereum \
   --recipient 0xdeadbeef... --wait
 
 # 4. Request decryption

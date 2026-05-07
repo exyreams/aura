@@ -10,6 +10,9 @@ Confidential guardrails store spending limits as FHE ciphertexts on-chain.
 Policy evaluation happens over encrypted values — limits are never revealed,
 preventing MEV exploitation.
 
+Vector proposals now use a split lifecycle: store the pending vector proposal
+first, then call `execute_pending_vector_fhe` in a second transaction.
+
 ## configure_confidential_guardrails
 
 Configure scalar FHE guardrails — three separate ciphertexts for daily limit,
@@ -44,13 +47,49 @@ client.configure_confidential_vector_guardrails(
 
 ---
 
+## propose_confidential_vector_transaction
+
+Create the pending vector proposal without running the Encrypt graph CPI.
+
+```rust
+let propose_ix = aura_sdk::instructions::confidential::propose_confidential_vector_transaction(
+    propose_accounts,
+    args,
+);
+```
+
+The proposal accounts include the current guardrail vector, spend-delta vector,
+comparison vector, flag-indices vector, and a pre-allocated zero
+`EUint64Vector` policy output account.
+
+---
+
+## execute_pending_vector_fhe
+
+Run the compact vector FHE graph for the pending proposal.
+
+```rust
+let execute_ix = aura_sdk::instructions::confidential::execute_pending_vector_fhe(
+    execute_accounts,
+    aura_core::ExecutePendingVectorFheArgs {
+        proposal_id,
+        current_timestamp: now + 1,
+    },
+);
+```
+
+Request policy decryption only after this transaction has marked the pending
+proposal as `PolicyComputed`.
+
+---
+
 ## Scalar vs Vector
 
 | | Scalar | Vector |
 |---|---|---|
 | Ciphertext accounts | 3 (daily, per-tx, spent) | 1 (packed vector) |
 | Update individual limits | Yes | No — replace all |
-| FHE evaluation cost | Higher | Lower |
+| Proposal execution | Single Encrypt CPI | Proposal tx + `execute_pending_vector_fhe` tx |
 | Best for | Frequent limit updates | Stable configurations |
 
 <Cards>

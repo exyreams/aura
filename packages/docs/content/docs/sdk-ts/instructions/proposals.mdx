@@ -141,8 +141,9 @@ interface ProposeConfidentialTransactionAccounts {
 
 ## proposeConfidentialVectorTransaction
 
-Propose a confidential transaction using a single vector ciphertext — more
-efficient when all limits are packed into one FHE vector.
+Persist a confidential vector proposal using the current guardrail vector and
+the helper vectors created off-chain. This instruction does not run the Encrypt
+graph CPI; call `executePendingVectorFhe` immediately after the proposal lands.
 
 ```typescript
 // Build only
@@ -166,8 +167,48 @@ await client.proposeConfidentialVectorTransaction(
 interface ProposeConfidentialVectorTransactionAccounts {
   aiAuthority: PublicKey;
   treasury: PublicKey;
-  guardrailVectorCiphertext: PublicKey;   // current guardrail vector
-  amountVectorCiphertext: PublicKey;      // freshly created amount vector
+  guardrailVectorCiphertext: PublicKey;   // [remainingDaily, perTx, spentToday]
+  spendDeltaVectorCiphertext: PublicKey;  // [-amount mod u64, 0, amount]
+  comparisonVectorCiphertext: PublicKey;  // [amount, amount]
+  flagIndicesVectorCiphertext: PublicKey; // [3, 4, 5, ...]
+  policyResultVectorCiphertext: PublicKey; // pre-allocated zero EUint64Vector
+  encryptProgram: PublicKey;
+  externalLiveness?: PublicKey | null;
+}
+```
+
+---
+
+## executePendingVectorFhe
+
+Run the compact vector FHE graph for a pending vector proposal. This must be a
+separate transaction so the Encrypt CPI gets a fresh heap frame.
+
+```typescript
+// Build only
+const instruction = await client.executePendingVectorFheInstruction(
+  accounts: ExecutePendingVectorFheAccounts,
+  args: ExecutePendingVectorFheArgs,
+);
+
+// Build + send
+await client.executePendingVectorFhe(
+  aiAuthority: Signer,
+  accounts: ExecutePendingVectorFheAccounts,
+  args: ExecutePendingVectorFheArgs,
+);
+```
+
+### Accounts
+
+```typescript
+interface ExecutePendingVectorFheAccounts {
+  aiAuthority: PublicKey;
+  treasury: PublicKey;
+  guardrailVectorCiphertext: PublicKey;
+  spendDeltaVectorCiphertext: PublicKey;
+  comparisonVectorCiphertext: PublicKey;
+  flagIndicesVectorCiphertext: PublicKey;
   policyResultVectorCiphertext: PublicKey;
   encryptProgram: PublicKey;
   config: PublicKey;
@@ -181,6 +222,15 @@ interface ProposeConfidentialVectorTransactionAccounts {
 }
 ```
 
+```typescript
+await client.proposeConfidentialVectorTransaction(aiAuthority, vectorAccounts, args);
+
+await client.executePendingVectorFhe(aiAuthority, executeVectorAccounts, {
+  proposalId,
+  currentTimestamp: new BN(Math.floor(Date.now() / 1000) + 1),
+});
+```
+
 ---
 
 ## Public vs Confidential
@@ -192,6 +242,7 @@ interface ProposeConfidentialVectorTransactionAccounts {
 | Extra accounts needed | No | Yes (ciphertext PDAs) |
 | MEV risk | Higher | Eliminated |
 | Setup required | None | `configureConfidentialGuardrails` first |
+| Vector lifecycle | n/a | `proposeConfidentialVectorTransaction` then `executePendingVectorFhe` |
 
 <Cards>
   <Card title="Confidential Setup" description="Configure FHE guardrails before confidential proposals." href="/docs/sdk-ts/instructions/confidential" />

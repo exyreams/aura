@@ -10,6 +10,11 @@ Confidential guardrails store spending limits as FHE ciphertexts on-chain.
 Policy evaluation happens over encrypted values — limits are never revealed,
 preventing MEV exploitation.
 
+Vector guardrails use the current split lifecycle: proposal persistence happens
+first, and `executePendingVectorFhe` runs the compact Encrypt graph in a second
+transaction. This avoids sharing the proposal instruction's BPF heap with the
+vector graph CPI.
+
 ## configureConfidentialGuardrails
 
 Configure scalar FHE guardrails — three separate `EUint64` ciphertext accounts
@@ -68,8 +73,8 @@ await client.configureConfidentialGuardrails(
 
 ## configureConfidentialVectorGuardrails
 
-Configure vector FHE guardrails — all three limits packed into a single
-`EUint64Vector` ciphertext for more efficient evaluation.
+Configure vector FHE guardrails — remaining daily limit, per-transaction limit,
+and spent-today packed into a single `EUint64Vector` ciphertext.
 
 ```typescript
 // Build only
@@ -120,11 +125,22 @@ await client.configureConfidentialVectorGuardrails(
 |---|---|---|
 | Ciphertext accounts | 3 (daily, per-tx, spent-today) | 1 (packed vector) |
 | Update individual limits | Yes | No — replace all |
-| FHE evaluation cost | Higher | Lower |
+| Proposal execution | Single proposal CPI | Proposal tx + `executePendingVectorFhe` tx |
 | Best for | Frequent limit updates | Stable configurations |
 
 After guardrails are configured, use `proposeConfidentialTransaction` or
 `proposeConfidentialVectorTransaction` to submit proposals over encrypted values.
+
+Vector proposal helpers must create these `EUint64Vector` inputs off-chain via
+Encrypt gRPC:
+
+| Vector | Lanes |
+| --- | --- |
+| Guardrail state | `[remainingDailyLimit, perTxLimit, spentToday]` |
+| Spend delta | `[-amount mod u64, 0, amount]` |
+| Comparison | `[amount, amount]` |
+| Flag indices | `[3, 4, 5, ...]` |
+| Policy output | pre-allocated zero `EUint64Vector` |
 
 <Cards>
   <Card title="Proposals" description="Submit confidential transactions after guardrails are set." href="/docs/sdk-ts/instructions/proposals" />

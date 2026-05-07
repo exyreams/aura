@@ -5,7 +5,7 @@ description: All AURA program instructions grouped by domain.
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 
-The TypeScript SDK mirrors the current AURA Anchor IDL and groups all 50+
+The TypeScript SDK mirrors the current AURA Anchor IDL and groups all 70
 instruction builders by domain. Every instruction is available in two forms —
 build-only (`*Instruction()`) and build-and-send.
 
@@ -14,7 +14,7 @@ build-only (`*Instruction()`) and build-and-send.
 | Domain | Key methods |
 | --- | --- |
 | Treasury | `createTreasury`, `pauseExecution`, `cancelPending` |
-| Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `requestPolicyDecryption` |
+| Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `proposeConfidentialVectorTransaction`, `executePendingVectorFhe`, `requestPolicyDecryption` |
 | Execution | `proposeTransaction`, `approvePendingExecution`, `executePending`, `finalizeExecution` |
 | Governance | `configureMultisig`, `proposeAiRotation`, `executeConfigChange`, `vetoConfigChange`, `emergencyShutdown` |
 | Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` |
