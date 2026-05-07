@@ -52,7 +52,7 @@ export function Slider({
 }: SliderProps) {
   const isControlled = valueProp !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? min);
-  const value = isControlled ? valueProp! : internal;
+  const value = valueProp ?? internal;
 
   const reactId = useId();
   const sliderId = id ?? reactId;

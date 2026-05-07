@@ -153,7 +153,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
         {/* Vertical timeline line */}
         <div className="absolute left-0 top-2 bottom-6 w-px bg-border" />
 
-        {events.map((event, idx) => {
+        {events.map((event) => {
           const eventType = getEventType(event);
           const description = getEventDescription(event);
           const variant = getEventVariant(event);
@@ -161,10 +161,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
           const timeAgo = formatTimestamp(event.timestamp);
 
           return (
-            <div
-              key={`${event.signature}-${idx}`}
-              className="relative pl-6 pb-6 last:pb-0"
-            >
+            <div key={event.signature} className="relative pl-6 pb-6 last:pb-0">
               {/* Timeline dot */}
               <div className="absolute left-[-4px] top-1 w-[7px] h-[7px] bg-primary rounded-full z-10" />
 

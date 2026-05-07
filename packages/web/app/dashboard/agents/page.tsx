@@ -56,7 +56,7 @@ function useAgentBalances(agents: AgentKeypair[]) {
             [agent.publicKey]: lamports / LAMPORTS_PER_SOL,
           }));
         })
-        .catch(() => { });
+        .catch(() => {});
     }
   }, [agents, connection]);
 

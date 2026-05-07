@@ -151,18 +151,21 @@ export function Switch({
     >
       {switchEl}
       {hiddenFormInput}
-      <span
+      <button
+        type="button"
         id={labelId}
+        tabIndex={disabled ? -1 : 0}
         onClick={toggle}
+        disabled={disabled}
         className={cn(
-          "text-xs text-(--text-muted) select-none transition-colors",
+          "text-xs text-(--text-muted) select-none transition-colors bg-transparent border-0 p-0 m-0",
           disabled
             ? "cursor-not-allowed"
             : "cursor-pointer hover:text-(--text-main)",
         )}
       >
         {label}
-      </span>
+      </button>
     </div>
   );
 }

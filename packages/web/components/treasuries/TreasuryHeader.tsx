@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
+import { ProposeTransactionModal } from "@/components/propose/ProposeTransactionModal";
 import {
   getActivePendingProposal,
   sendWalletInstructions,
@@ -25,7 +26,6 @@ import {
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ProposeTransactionModal } from "@/components/propose/ProposeTransactionModal";
 import { RegisterDWalletForm } from "./RegisterDWalletForm";
 
 interface ActionOption {

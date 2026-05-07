@@ -182,9 +182,9 @@ export function ScalarConfigForm({
         <div className="grid grid-cols-1 gap-4 mb-8">
           {ciphertextFields.map(({ label, key }) => (
             <div key={key} className="space-y-1.5">
-              <label className="mono text-[10px] uppercase text-(--text-muted) font-bold block">
+              <span className="mono text-[10px] uppercase text-(--text-muted) font-bold block">
                 {label}
-              </label>
+              </span>
               {isEncrypting ? (
                 <Skeleton className="h-10 w-full rounded-sm" />
               ) : (

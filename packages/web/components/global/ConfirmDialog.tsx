@@ -95,8 +95,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {/* Detail rows */}
             {rows.length > 0 && (
               <div className="mx-6 mb-5 bg-(--card-bg) border border-border rounded-sm overflow-hidden">
-                {rows.map((row, i) => (
-                  <div key={i}>
+                {rows.map((row) => (
+                  <div key={row.label}>
                     {row.dividerAbove && <div className="h-px bg-border" />}
                     <div className="flex items-center justify-between px-5 py-3.5">
                       <span

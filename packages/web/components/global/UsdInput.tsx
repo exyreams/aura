@@ -26,6 +26,12 @@ export interface UsdInputProps {
  * - Displays a live "$X.XX" preview below the field while typing
  * - Accepts the current cents value and converts back to dollars for display
  */
+function centsToDisplay(cents: number | string): string {
+  const n = Number(cents);
+  if (!Number.isFinite(n) || n === 0) return "";
+  return n % 100 === 0 ? String(n / 100) : (n / 100).toFixed(2);
+}
+
 export const UsdInput = React.forwardRef<HTMLInputElement, UsdInputProps>(
   (
     {
@@ -43,14 +49,6 @@ export const UsdInput = React.forwardRef<HTMLInputElement, UsdInputProps>(
   ) => {
     const inputId =
       id || `usd-input-${label?.toLowerCase().replace(/\s+/g, "-")}`;
-
-    // Convert incoming cents to a display dollar string
-    const centsToDisplay = (cents: number | string) => {
-      const n = Number(cents);
-      if (!Number.isFinite(n) || n === 0) return "";
-      // Only show decimals if there are non-zero cents
-      return n % 100 === 0 ? String(n / 100) : (n / 100).toFixed(2);
-    };
 
     const [displayValue, setDisplayValue] = useState(
       centsToDisplay(valueCents),
@@ -92,7 +90,7 @@ export const UsdInput = React.forwardRef<HTMLInputElement, UsdInputProps>(
 
     // Live preview in cents for the hint line
     const previewCents = Number(valueCents);
-    const previewDollars = Number.isFinite(previewCents)
+    const _previewDollars = Number.isFinite(previewCents)
       ? previewCents / 100
       : 0;
 

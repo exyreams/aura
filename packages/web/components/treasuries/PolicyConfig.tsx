@@ -10,6 +10,7 @@ import {
   Shield,
   ShieldCheck,
 } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { Badge, StatusPill } from "@/components/global/Badge";
 import { Tabs } from "@/components/global/Tabs";
@@ -496,14 +497,9 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
           className="border border-border rounded-sm overflow-hidden"
         >
           {/* Always-visible header */}
-          <div
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             onClick={() => setExpandedId(isExpanded ? null : dw.dwalletId)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ")
-                setExpandedId(isExpanded ? null : dw.dwalletId);
-            }}
             className="w-full text-left p-4 bg-(--card-content) hover:bg-(--hover-bg) transition-colors cursor-pointer"
           >
             <div className="flex items-center justify-between gap-3">
@@ -511,9 +507,11 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
                 {/* Chain icon */}
                 <div className="w-8 h-8 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center shrink-0 p-1">
                   {chainIcon ? (
-                    <img
+                    <Image
                       src={chainIcon}
                       alt={chainName}
+                      width={24}
+                      height={24}
                       className="w-full h-full object-contain"
                     />
                   ) : (
@@ -596,7 +594,7 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
                 )}
               />
             </div>
-          </div>
+          </button>
 
           {/* Expandable technical details */}
           {isExpanded && (

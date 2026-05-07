@@ -3,7 +3,8 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert } from "@/components/global/Alert"; import { StatusPill } from "@/components/global/Badge";
+import { Alert } from "@/components/global/Alert";
+import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { ConfidentialLifecycleModal } from "@/components/treasuries/ConfidentialLifecycleModal";
 import {
@@ -234,7 +235,11 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
     if (/already.*processed|duplicate.*transaction/i.test(msg))
       return "This transaction was already processed. Refresh and check the proposal status.";
     // --- RPC / network ---
-    if (/fetch.*fail|network.*error|econnrefused|enotfound|failed to fetch/i.test(msg))
+    if (
+      /fetch.*fail|network.*error|econnrefused|enotfound|failed to fetch/i.test(
+        msg,
+      )
+    )
       return "Could not reach the backend. Check your network connection and backend URL in Settings.";
     if (/timeout|timed out/i.test(msg))
       return "Request timed out. The network may be congested — please try again.";
@@ -295,7 +300,9 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const sanitizedError = mutationError ? sanitizeError(mutationError) : null;
 
   // Terminal statuses: 4=Denied, 5=Cancelled, 6=Expired
-  const isTerminal = hasPending && (pending.status === 4 || pending.status === 5 || pending.status === 6);
+  const isTerminal =
+    hasPending &&
+    (pending.status === 4 || pending.status === 5 || pending.status === 6);
   const rejectionMessage =
     pending?.status === 4
       ? `Proposal PROP-${pending.proposalId.toString().padStart(4, "0")} was denied by the policy engine.${pending.decision?.violation ? ` Violation: ${pending.decision.violation}` : ""}`
@@ -310,7 +317,10 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       {/* Rejection / terminal state alert — shown above the section */}
       {isTerminal && rejectionMessage && (
         <div className="mb-6">
-          <Alert variant={pending.status === 5 ? "warning" : "error"} message={rejectionMessage} />
+          <Alert
+            variant={pending.status === 5 ? "warning" : "error"}
+            message={rejectionMessage}
+          />
         </div>
       )}
 
@@ -319,7 +329,9 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted)">
             Queue
           </span>
-          <span className={`px-2 py-0.5 rounded-sm text-[10px] font-mono ${isTerminal ? "bg-(--card-bg) border border-border text-(--text-muted)" : "bg-(--warning-bg) border border-(--warning-border) text-(--warning-text)"}`}>
+          <span
+            className={`px-2 py-0.5 rounded-sm text-[10px] font-mono ${isTerminal ? "bg-(--card-bg) border border-border text-(--text-muted)" : "bg-(--warning-bg) border border-(--warning-border) text-(--warning-text)"}`}
+          >
             {isTerminal ? "0 PENDING" : "1 ACTIVE"}
           </span>
         </div>
@@ -346,7 +358,6 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       )}
 
       <div className="border border-border rounded-sm overflow-hidden">
-
         <table className="w-full">
           <thead>
             <tr className="bg-(--card-content) border-b border-border">
@@ -426,17 +437,19 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                     </Button>
                   )}
                   {!isConfidential && (
-                  <Button
-                    variant="primary"
-                    size="small"
-                    loading={executeMutation.isPending}
-                    disabled={
-                      !canExecute || executeMutation.isPending || !selectedAgent
-                    }
-                    onClick={() => executeMutation.mutate()}
-                  >
-                    Execute
-                  </Button>
+                    <Button
+                      variant="primary"
+                      size="small"
+                      loading={executeMutation.isPending}
+                      disabled={
+                        !canExecute ||
+                        executeMutation.isPending ||
+                        !selectedAgent
+                      }
+                      onClick={() => executeMutation.mutate()}
+                    >
+                      Execute
+                    </Button>
                   )}
                   <Button
                     variant="secondary"

@@ -24,6 +24,7 @@ export function SignInDialog() {
     if (auth.isAuthenticated) setDismissed(false);
   }, [auth.isAuthenticated]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: walletAddress is an intentional trigger — reset dismissed state on wallet change
   useEffect(() => {
     setDismissed(false);
   }, [walletAddress]);

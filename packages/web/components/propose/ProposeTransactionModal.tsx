@@ -13,7 +13,7 @@ import {
   buildProposeTransactionArgs,
   sendWalletInstructions,
 } from "@/lib/aura-app";
-import { postBackend, LONG_TIMEOUT_MS } from "@/lib/backend-client";
+import { LONG_TIMEOUT_MS, postBackend } from "@/lib/backend-client";
 import {
   useAgents,
   useAppSettings,
@@ -222,8 +222,10 @@ export function ProposeTransactionModal({
     proposeMutation.mutate();
   };
 
-  const succeededPublic = proposeMutation.isSuccess && signature !== null && mode === "public";
-  const succeededConfidential = proposeMutation.isSuccess && mode === "confidential";
+  const succeededPublic =
+    proposeMutation.isSuccess && signature !== null && mode === "public";
+  const succeededConfidential =
+    proposeMutation.isSuccess && mode === "confidential";
   const succeeded = succeededPublic || succeededConfidential;
 
   return (
@@ -325,9 +327,17 @@ export function ProposeTransactionModal({
                     Proposal submitted
                   </h3>
                   <p className="mt-1 text-xs text-(--text-muted)">
-                    {succeededConfidential
-                      ? "Confidential proposal broadcast — use the Lifecycle button in Pending Proposals to complete decryption and execution."
-                      : <>Broadcast to{" "}<span className="mono text-(--text-main)">{settings.network}</span>{" "}and pending evaluation.</>}
+                    {succeededConfidential ? (
+                      "Confidential proposal broadcast — use the Lifecycle button in Pending Proposals to complete decryption and execution."
+                    ) : (
+                      <>
+                        Broadcast to{" "}
+                        <span className="mono text-(--text-main)">
+                          {settings.network}
+                        </span>{" "}
+                        and pending evaluation.
+                      </>
+                    )}
                   </p>
                 </motion.div>
               </div>
@@ -338,29 +348,29 @@ export function ProposeTransactionModal({
                 className="space-y-3"
               >
                 {succeededPublic && signature && (
-                <div className="rounded-sm border border-border bg-(--card-content) p-3">
-                  <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
-                    Transaction Signature
-                  </p>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <code className="flex-1 mono text-[11px] text-success break-all leading-relaxed min-w-0">
-                      {signature}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        window.open(
-                          `https://explorer.solana.com/tx/${signature}?cluster=${settings.network}`,
-                          "_blank",
-                        )
-                      }
-                      className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
-                      aria-label="View on explorer"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
+                  <div className="rounded-sm border border-border bg-(--card-content) p-3">
+                    <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
+                      Transaction Signature
+                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <code className="flex-1 mono text-[11px] text-success break-all leading-relaxed min-w-0">
+                        {signature}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(
+                            `https://explorer.solana.com/tx/${signature}?cluster=${settings.network}`,
+                            "_blank",
+                          )
+                        }
+                        className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                        aria-label="View on explorer"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
                 )}
                 <div className="rounded-sm border border-border bg-(--card-content) p-3">
                   <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
@@ -390,51 +400,48 @@ export function ProposeTransactionModal({
                 <ProposalModeSelector mode={mode} onModeChange={setMode} />
 
                 {/* Confidential readiness check */}
-                {mode === "confidential" && (
-                  <>
-                    {confidentialReady === null ? (
-                      <div className="flex items-center gap-3 rounded-sm border border-border bg-(--card-content) px-4 py-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-(--text-muted) shrink-0" />
-                        <p className="text-xs text-(--text-muted) font-mono">
-                          Checking confidential guardrails setup…
+                {mode === "confidential" &&
+                  (confidentialReady === null ? (
+                    <div className="flex items-center gap-3 rounded-sm border border-border bg-(--card-content) px-4 py-3">
+                      <Loader2 className="h-4 w-4 animate-spin text-(--text-muted) shrink-0" />
+                      <p className="text-xs text-(--text-muted) font-mono">
+                        Checking confidential guardrails setup…
+                      </p>
+                    </div>
+                  ) : confidentialReady === false ? (
+                    <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4 flex gap-3">
+                      <ShieldAlert className="h-4 w-4 text-(--warning-text) shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-(--warning-text) mb-1">
+                          Confidential guardrails not configured
                         </p>
+                        <p className="text-[11px] text-(--text-muted) mb-3 leading-relaxed">
+                          You need to set up FHE ciphertext guardrails before
+                          submitting a confidential proposal.
+                        </p>
+                        <Link
+                          href={`/dashboard/treasuries/${pda}/guardrails`}
+                          onClick={onClose}
+                          className="inline-flex items-center gap-1.5 mono text-[10px] uppercase tracking-widest text-(--warning-text) hover:underline"
+                        >
+                          <Lock className="h-3 w-3" />
+                          Configure Guardrails
+                        </Link>
                       </div>
-                    ) : confidentialReady === false ? (
-                      <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4 flex gap-3">
-                        <ShieldAlert className="h-4 w-4 text-(--warning-text) shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-(--warning-text) mb-1">
-                            Confidential guardrails not configured
-                          </p>
-                          <p className="text-[11px] text-(--text-muted) mb-3 leading-relaxed">
-                            You need to set up FHE ciphertext guardrails before
-                            submitting a confidential proposal.
-                          </p>
-                          <Link
-                            href={`/dashboard/treasuries/${pda}/guardrails`}
-                            onClick={onClose}
-                            className="inline-flex items-center gap-1.5 mono text-[10px] uppercase tracking-widest text-(--warning-text) hover:underline"
-                          >
-                            <Lock className="h-3 w-3" />
-                            Configure Guardrails
-                          </Link>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-sm border border-white/8 bg-white/4 p-4 text-sm text-slate-300">
-                        Submit through the backend signer, then use the{" "}
-                        <span className="font-mono text-white">Lifecycle</span>{" "}
-                        button in Pending Proposals to complete decryption and
-                        execution.
-                      </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  ) : (
+                    <div className="rounded-sm border border-white/8 bg-white/4 p-4 text-sm text-slate-300">
+                      Submit through the backend signer, then use the{" "}
+                      <span className="font-mono text-white">Lifecycle</span>{" "}
+                      button in Pending Proposals to complete decryption and
+                      execution.
+                    </div>
+                  ))}
 
                 {entry && (
                   <p className="text-[11px] text-(--text-muted) font-mono">
                     {entry.account.aiAuthority?.toString?.() ===
-                      wallet.publicKey?.toBase58()
+                    wallet.publicKey?.toBase58()
                       ? "Signing with connected wallet"
                       : `Signing via backend agent ${selectedAgent?.agentId ?? "not selected"}`}
                   </p>
