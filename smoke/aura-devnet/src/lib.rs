@@ -26,7 +26,7 @@ use aura_core::{
     accounts, build_message_approval_request, instruction, parse_message_approval_account,
     CreateTreasuryArgs, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord, RegisterDwalletArgs,
     TreasuryAccount, DWALLET_CPI_AUTHORITY_SEED, DWALLET_DEVNET_GRPC_ENDPOINT,
-    ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64, ID,
+    ENCRYPT_FHE_UINT64, ID,
 };
 use encrypt_compute::mock_crypto::MockEncryptor;
 use encrypt_grpc::{
@@ -251,8 +251,7 @@ pub fn wait_for_ciphertext_verified(
 }
 
 /// Wait for an Encrypt `Ciphertext` account to reach "verified" status using
-/// a caller-provided timeout. Vector ciphertexts can take several minutes on
-/// the pre-alpha network.
+/// a caller-provided timeout.
 pub fn wait_for_ciphertext_verified_with_timeout(
     client: &RpcClient,
     ciphertext: &Pubkey,
@@ -474,69 +473,6 @@ pub async fn encrypt_u64(value: u64, authorized: &Pubkey) -> anyhow::Result<Pubk
                 tokio::time::sleep(Duration::from_secs(attempt * 2)).await;
             }
             Err(e) => return Err(anyhow!("Encrypt create_input failed after 8 attempts: {e}")),
-        }
-    }
-    unreachable!()
-}
-
-/// Encrypt an `EUint64Vector` input and return the on-chain ciphertext account
-/// pubkey. The plaintext payload is always 8,192 bytes, with provided values
-/// written into the leading `u64` lanes and the remaining lanes zero-filled.
-pub async fn encrypt_u64_vector(values: &[u64], authorized: &Pubkey) -> anyhow::Result<Pubkey> {
-    ensure!(
-        values.len() * 8 <= 8192,
-        "EUint64Vector input exceeds 8,192-byte vector payload"
-    );
-    let mut value_bytes = vec![0u8; 8192];
-    for (i, value) in values.iter().enumerate() {
-        let start = i * 8;
-        value_bytes[start..start + 8].copy_from_slice(&value.to_le_bytes());
-    }
-    let inputs = [PlaintextInput {
-        plaintext_bytes: &value_bytes,
-        fhe_type: FheType::EVectorU64,
-    }];
-    let enc =
-        MockEncryptor.encrypt_and_prove(&inputs, &ENCRYPT_NETWORK_KEY, EncryptProofChain::Solana);
-
-    let req = CreateInputRequest {
-        chain: EncryptChain::Solana.into(),
-        inputs: enc
-            .ciphertexts
-            .iter()
-            .map(|ct| EncryptedInput {
-                ciphertext_bytes: ct.clone(),
-                fhe_type: ENCRYPT_FHE_VECTOR_U64 as u32,
-            })
-            .collect(),
-        proof: enc.proof,
-        authorized: authorized.to_bytes().to_vec(),
-        network_encryption_public_key: ENCRYPT_NETWORK_KEY.to_vec(),
-    };
-
-    for attempt in 1u64..=8 {
-        let mut client = connect_encrypt_client()
-            .await
-            .context("connect to Encrypt gRPC")?;
-        match client.create_input(req.clone()).await {
-            Ok(resp) => {
-                let id = resp
-                    .into_inner()
-                    .ciphertext_identifiers
-                    .into_iter()
-                    .next()
-                    .ok_or_else(|| anyhow!("Encrypt returned no identifier for vector input"))?;
-                return Ok(Pubkey::from(<[u8; 32]>::try_from(id.as_slice())?));
-            }
-            Err(e) if attempt < 8 => {
-                eprintln!("  retrying encrypt_u64_vector (attempt {attempt}/8): {e}");
-                tokio::time::sleep(Duration::from_secs(attempt * 2)).await;
-            }
-            Err(e) => {
-                return Err(anyhow!(
-                    "Encrypt vector create_input failed after 8 attempts: {e}"
-                ))
-            }
         }
     }
     unreachable!()
