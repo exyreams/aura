@@ -75,12 +75,7 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
       Number(treasury.account.policyConfig.dailyLimitUsd.toString()) / 100;
     const totalTx = Number(treasury.account.totalTransactions.toString());
     const hasGuardrails = !!treasury.account.confidentialGuardrails;
-    const guardrailMode = treasury.account.confidentialGuardrails
-      ?.guardrailVectorCiphertext
-      ? "Vector"
-      : hasGuardrails
-        ? "Scalar"
-        : null;
+    const guardrailMode = hasGuardrails ? "Scalar" : null;
 
     const copy = async (text: string, key: string) => {
       await navigator.clipboard.writeText(text);

@@ -84,11 +84,6 @@ function AddressRow({ label, address, network, isLast }: AddressRowProps) {
 export function CurrentEncryptedState({ account }: CurrentEncryptedStateProps) {
   const settings = useAppSettings();
   const guardrails = account?.confidentialGuardrails;
-  const mode = guardrails?.guardrailVectorCiphertext
-    ? "Vector"
-    : guardrails
-      ? "Scalar"
-      : null;
 
   if (!guardrails) {
     return null;
@@ -106,10 +101,6 @@ export function CurrentEncryptedState({ account }: CurrentEncryptedStateProps) {
     guardrails.spentTodayCiphertext && {
       label: "spent_today",
       address: guardrails.spentTodayCiphertext.toBase58(),
-    },
-    guardrails.guardrailVectorCiphertext && {
-      label: "guardrail_vector",
-      address: guardrails.guardrailVectorCiphertext.toBase58(),
     },
   ].filter(Boolean) as { label: string; address: string }[];
 
@@ -130,7 +121,7 @@ export function CurrentEncryptedState({ account }: CurrentEncryptedStateProps) {
             Guardrails configured
           </span>
           <Badge variant="active" className="text-[11px] px-2 py-0.5">
-            {mode}
+            Scalar
           </Badge>
         </div>
 

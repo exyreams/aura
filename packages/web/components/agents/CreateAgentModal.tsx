@@ -12,7 +12,6 @@ const WORDS = [
   "sentinel",
   "phantom",
   "cipher",
-  "vector",
   "nexus",
   "apex",
   "delta",

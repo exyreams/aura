@@ -29,7 +29,6 @@ interface ConfidentialLifecycleModalProps {
   onClose: () => void;
   pending: PendingProposalRecord;
   pda: string;
-  isVector?: boolean;
 }
 
 const STATUS_PROPOSED = 0;
@@ -39,7 +38,6 @@ const STATUS_EXECUTED = 3;
 const STATUS_DENIED = 4;
 const STATUS_CANCELLED = 5;
 const STATUS_EXPIRED = 6;
-const STATUS_POLICY_COMPUTED = 7;
 
 function StepIndicator({
   number,
@@ -83,7 +81,6 @@ export function ConfidentialLifecycleModal({
   onClose,
   pending,
   pda,
-  isVector = false,
 }: ConfidentialLifecycleModalProps) {
   const settings = useAppSettings();
   const { selectedAgent } = useAgents();
@@ -169,13 +166,18 @@ export function ConfidentialLifecycleModal({
         approved: boolean | null;
         violation: number | null;
         violationCode: string | null;
-      }>(settings.backendUrl, "/v1/confidential/confirm-decryption", {
-        rpcUrl: settings.endpoint,
-        programId: settings.programId || undefined,
-        agentId: selectedAgent.agentId,
-        treasury: pda,
-        requestAccount: pending.decryptionRequest?.requestAccount ?? undefined,
-      });
+      }>(
+        settings.backendUrl,
+        "/v1/confidential/confirm-decryption",
+        {
+          rpcUrl: settings.endpoint,
+          programId: settings.programId || undefined,
+          agentId: selectedAgent.agentId,
+          treasury: pda,
+          requestAccount: pending.decryptionRequest?.requestAccount ?? undefined,
+        },
+        { timeoutMs: LONG_TIMEOUT_MS },
+      );
     },
     onSuccess: invalidate,
   });
@@ -250,8 +252,7 @@ export function ConfidentialLifecycleModal({
     pending.status === STATUS_CANCELLED ||
     pending.status === STATUS_EXPIRED;
   const isPolicyComputed =
-    pending.status === STATUS_POLICY_COMPUTED ||
-    (!isVector && pending.status === STATUS_PROPOSED && isPolicyOutputSet);
+    pending.status === STATUS_PROPOSED && isPolicyOutputSet;
   const isDecryptionRequested =
     pending.status === STATUS_DECRYPTION_REQUESTED || hasDecryptionRequest;
   const isSignaturePending = pending.status === STATUS_SIGNATURE_PENDING;
@@ -327,7 +328,7 @@ export function ConfidentialLifecycleModal({
             </span>
           </div>
           <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-(--warning-border) text-(--warning-text) bg-(--warning-bg)">
-            {isVector ? "Vector FHE" : "Scalar FHE"}
+            Scalar FHE
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3">

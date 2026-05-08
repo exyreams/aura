@@ -37,7 +37,6 @@ const STATUS_EXECUTED = 3;
 const STATUS_DENIED = 4;
 const STATUS_CANCELLED = 5;
 const STATUS_EXPIRED = 6;
-const STATUS_POLICY_COMPUTED = 7;
 
 function messageApprovalFromPending(pending: unknown) {
   return (
@@ -100,10 +99,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const ikaState = messageApprovalStatusQuery.data?.state;
 
   // status codes: 0=Proposed, 1=DecryptionRequested, 2=AwaitingSignature,
-  // 3=Executed, 4=Denied, 5=Cancelled, 6=Expired, 7=PolicyComputed.
-  // Detect confidential: on-chain field may be null for vector proposals, so fall back to guardrails config
-  const hasVectorGuardrails =
-    !!treasury.account.confidentialGuardrails?.guardrailVectorCiphertext;
+  // 3=Executed, 4=Denied, 5=Cancelled, 6=Expired.
   const hasScalarGuardrails =
     !!treasury.account.confidentialGuardrails?.dailyLimitCiphertext;
   const policyFheType = hasPending
@@ -113,10 +109,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
     hasPending &&
       (!!pending.policyOutputCiphertextAccount ||
         policyFheType != null ||
-        !!treasury.account.confidentialGuardrails),
-  );
-  const isVectorConfidential = Boolean(
-    isConfidential && (hasVectorGuardrails || policyFheType === 35),
+        hasScalarGuardrails),
   );
   // For confidential proposals, Execute is handled inside ConfidentialLifecycleModal
   const canExecute =
@@ -436,7 +429,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                       className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border w-fit
                       border-(--warning-border) text-(--warning-text) bg-(--warning-bg)"
                     >
-                      {isVectorConfidential ? "Vector FHE" : "Scalar FHE"}
+                      Scalar FHE
                     </span>
                   )}
                 </div>
@@ -533,9 +526,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       <div className="mt-4 px-4 py-3 bg-(--card-content) border border-border rounded-sm">
         <p className="text-[11px] font-mono text-(--text-muted)">
           {isConfidential
-            ? isVectorConfidential
-              ? "Vector FHE proposal — click Lifecycle to request decryption, confirm, and execute."
-              : "Scalar FHE proposal — click Lifecycle to manage the decryption and execution steps."
+            ? "Scalar FHE proposal — click Lifecycle to manage the decryption and execution steps."
             : pending.status === STATUS_PROPOSED
               ? "Step 1 of 2 — Click Execute to send the approve_message CPI to the dWallet. Requires the backend service running at " +
                 settings.backendUrl
@@ -551,9 +542,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                         ? "Cancelled by owner."
                         : pending.status === STATUS_EXPIRED
                           ? "Expired — TTL elapsed before execution."
-                          : pending.status === STATUS_POLICY_COMPUTED
-                            ? "Vector FHE completed — click Lifecycle to request decryption."
-                            : null}
+                          : null}
         </p>
       </div>
 
@@ -563,7 +552,6 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
           onClose={() => setLifecycleOpen(false)}
           pending={pending}
           pda={pda}
-          isVector={isVectorConfidential}
         />
       )}
     </div>

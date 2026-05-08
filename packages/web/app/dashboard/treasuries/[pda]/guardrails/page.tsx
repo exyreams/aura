@@ -7,11 +7,9 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   CurrentEncryptedState,
-  type EncryptionMode,
   EncryptionModeSelector,
   GuardrailsHeader,
   ScalarConfigForm,
-  VectorConfigForm,
 } from "@/components/guardrails";
 import { parsePublicKey, sendWalletInstructions } from "@/lib/aura-app";
 import { postBackend } from "@/lib/backend-client";
@@ -37,12 +35,9 @@ export default function ConfidentialGuardrailsPage() {
   const entry = treasuryQuery.data;
   const account = entry?.account;
 
-  const [mode, setMode] = useState<EncryptionMode>("scalar");
-  const modeInitializedRef = useRef(false);
   // Prevent the account-sync useEffect from overwriting ciphertexts the user
   // just generated (but hasn't submitted yet).
   const scalarDirtyRef = useRef(false);
-  const vectorDirtyRef = useRef(false);
   const [scalarForm, setScalarForm] = useState({
     dailyLimitCiphertext:
       account?.confidentialGuardrails?.dailyLimitCiphertext?.toBase58() ?? "",
@@ -56,11 +51,6 @@ export default function ConfidentialGuardrailsPage() {
     perTxLimit: account?.policyConfig.perTxLimitUsd.toString() ?? "5000",
     spentToday: account?.policyState.spentTodayUsd.toString() ?? "0",
   });
-  const [vectorCiphertext, setVectorCiphertext] = useState(
-    account?.confidentialGuardrails?.guardrailVectorCiphertext?.toBase58() ??
-      "",
-  );
-
   // Check whether the encrypted ciphertext accounts actually exist on-chain
   // before allowing the configure instruction to be submitted.
   const ciphertextAddresses = [
@@ -130,21 +120,6 @@ export default function ConfidentialGuardrailsPage() {
       spentToday: account.policyState.spentTodayUsd.toString(),
     });
 
-    const onChainVector =
-      account.confidentialGuardrails?.guardrailVectorCiphertext?.toBase58() ??
-      "";
-    if (!vectorDirtyRef.current && onChainVector) {
-      setVectorCiphertext(onChainVector);
-    }
-
-    if (!modeInitializedRef.current) {
-      modeInitializedRef.current = true;
-      if (account.confidentialGuardrails?.guardrailVectorCiphertext) {
-        setMode("vector");
-      } else if (account.confidentialGuardrails) {
-        setMode("scalar");
-      }
-    }
   }, [account]);
 
   const ensureDepositMutation = useMutation({
@@ -250,48 +225,6 @@ export default function ConfidentialGuardrailsPage() {
     },
   });
 
-  const encryptVectorMutation = useMutation({
-    mutationFn: async () =>
-      postBackend<{ guardrailVectorCiphertext: string }>(
-        settings.backendUrl,
-        "/v1/confidential/encrypt-vector",
-        {
-          rpcUrl: settings.endpoint,
-          programId: settings.programId || undefined,
-          dailyLimit: Number(plaintextForm.dailyLimit),
-          perTxLimit: Number(plaintextForm.perTxLimit),
-          spentToday: Number(plaintextForm.spentToday),
-          wait: true,
-        },
-      ),
-    onSuccess: (result) => {
-      vectorDirtyRef.current = true;
-      setVectorCiphertext(result.guardrailVectorCiphertext);
-    },
-  });
-
-  const vectorMutation = useMutation({
-    mutationFn: async () => {
-      if (!wallet.publicKey || !entry) {
-        throw new Error("Connect a wallet first.");
-      }
-      const instruction =
-        await client.configureConfidentialVectorGuardrailsInstruction(
-          {
-            owner: wallet.publicKey,
-            treasury: entry.publicKey,
-            guardrailVectorCiphertext: parsePublicKey(vectorCiphertext),
-          },
-          Math.floor(Date.now() / 1000),
-        );
-      return await sendWalletInstructions(connection, wallet, [instruction]);
-    },
-    onSuccess: async () => {
-      vectorDirtyRef.current = false;
-      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
-    },
-  });
-
   return (
     <div className="relative min-h-screen">
       {/* Background Elements */}
@@ -320,44 +253,23 @@ export default function ConfidentialGuardrailsPage() {
         <GuardrailsHeader treasury={entry} />
 
         <EncryptionModeSelector
-          mode={mode}
-          onModeChange={setMode}
-          activeMode={
-            account?.confidentialGuardrails?.guardrailVectorCiphertext
-              ? "vector"
-              : account?.confidentialGuardrails?.dailyLimitCiphertext
-                ? "scalar"
-                : undefined
-          }
+          active={Boolean(account?.confidentialGuardrails?.dailyLimitCiphertext)}
         />
 
-        {mode === "scalar" ? (
-          <ScalarConfigForm
-            account={account}
-            plaintextForm={plaintextForm}
-            setPlaintextForm={setPlaintextForm}
-            scalarForm={scalarForm}
-            setScalarForm={setScalarForm}
-            encryptScalarMutation={encryptScalarMutation}
-            scalarMutation={scalarMutation}
-            backendInfo={backendInfoQuery.data}
-            selectedAgentPublicKey={selectedAgent?.publicKey}
-            ensureDepositMutation={ensureDepositMutation}
-            allCiphertextsExist={allCiphertextsExist}
-            ciphertextExistence={ciphertextExistenceQuery.data}
-          />
-        ) : (
-          <VectorConfigForm
-            account={account}
-            pda={pda}
-            plaintextForm={plaintextForm}
-            setPlaintextForm={setPlaintextForm}
-            vectorCiphertext={vectorCiphertext}
-            setVectorCiphertext={setVectorCiphertext}
-            encryptVectorMutation={encryptVectorMutation}
-            vectorMutation={vectorMutation}
-          />
-        )}
+        <ScalarConfigForm
+          account={account}
+          plaintextForm={plaintextForm}
+          setPlaintextForm={setPlaintextForm}
+          scalarForm={scalarForm}
+          setScalarForm={setScalarForm}
+          encryptScalarMutation={encryptScalarMutation}
+          scalarMutation={scalarMutation}
+          backendInfo={backendInfoQuery.data}
+          selectedAgentPublicKey={selectedAgent?.publicKey}
+          ensureDepositMutation={ensureDepositMutation}
+          allCiphertextsExist={allCiphertextsExist}
+          ciphertextExistence={ciphertextExistenceQuery.data}
+        />
 
         <CurrentEncryptedState account={account} />
       </main>
