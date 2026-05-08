@@ -1,6 +1,9 @@
 "use client";
 
-import type { AuraFeatureMaturity } from "@aura-protocol/sdk-ts";
+import {
+  AURA_FEATURE_DOMAINS,
+  type AuraFeatureMaturity,
+} from "@aura-protocol/sdk-ts";
 import {
   Activity,
   Bot,
@@ -22,7 +25,6 @@ import { Card } from "@/components/global/Card";
 import { Skeleton } from "@/components/global/Skeleton";
 import {
   type InstructionCatalogResponse,
-  useBackendInfo,
   useInstructionCatalog,
 } from "@/lib/hooks";
 import { cn, formatNumber } from "@/lib/utils";
@@ -66,6 +68,20 @@ const maturityFilters: Array<"all" | AuraFeatureMaturity> = [
 ];
 
 const statSkeletonKeys = ["domains", "instructions", "backend", "sdk"];
+const currentInstructionNames = new Set(
+  AURA_FEATURE_DOMAINS.flatMap((domain) =>
+    domain.instructions.map((instruction) => instruction.name),
+  ),
+);
+const currentInstructionCount = currentInstructionNames.size;
+const currentDomainById = new Map(
+  AURA_FEATURE_DOMAINS.map((domain) => [domain.id, domain]),
+);
+const currentInstructionByName = new Map(
+  AURA_FEATURE_DOMAINS.flatMap((domain) =>
+    domain.instructions.map((instruction) => [instruction.name, instruction]),
+  ),
+);
 
 function countByMaturity(catalog: InstructionCatalogResponse) {
   return catalog.domains.reduce(
@@ -84,13 +100,59 @@ function countByMaturity(catalog: InstructionCatalogResponse) {
   );
 }
 
+function normalizeCatalog(
+  catalog: InstructionCatalogResponse | undefined,
+): InstructionCatalogResponse | undefined {
+  if (!catalog) {
+    return undefined;
+  }
+
+  const domains = catalog.domains
+    .map((domain) => {
+      const currentDomain = currentDomainById.get(domain.id);
+      const instructions = domain.instructions
+        .filter((instruction) => currentInstructionNames.has(instruction.name))
+        .map((instruction) => {
+          const current = currentInstructionByName.get(instruction.name);
+          return current
+            ? {
+                ...instruction,
+                label: current.label,
+                description: current.description,
+                maturity: current.maturity,
+              }
+            : instruction;
+        });
+
+      return {
+        ...domain,
+        label: currentDomain?.label ?? domain.label,
+        description: currentDomain?.description ?? domain.description,
+        instructions,
+      };
+    })
+    .filter((domain) => domain.instructions.length > 0);
+
+  return {
+    ...catalog,
+    domains,
+    totals: {
+      domains: domains.length,
+      instructions: domains.reduce(
+        (total, domain) => total + domain.instructions.length,
+        0,
+      ),
+    },
+  };
+}
+
 export default function FeatureSurfacePage() {
   const [maturityFilter, setMaturityFilter] = useState<
     "all" | AuraFeatureMaturity
   >("all");
   const catalogQuery = useInstructionCatalog();
-  const backendInfoQuery = useBackendInfo();
-  const catalog = catalogQuery.data;
+  const rawCatalog = catalogQuery.data;
+  const catalog = useMemo(() => normalizeCatalog(rawCatalog), [rawCatalog]);
 
   const maturityCounts = useMemo(
     () => (catalog ? countByMaturity(catalog) : undefined),
@@ -126,14 +188,13 @@ export default function FeatureSurfacePage() {
     [catalog],
   );
 
-  const expectedInstructionCount =
-    backendInfoQuery.data?.sdkSurface?.instructions ??
-    catalog?.totals.instructions ??
-    0;
+  const expectedInstructionCount = currentInstructionCount;
   const hasCatalogMismatch =
     catalog !== undefined &&
-    expectedInstructionCount > 0 &&
     listedInstructionCount !== expectedInstructionCount;
+  const hasStaleBackendCatalog =
+    rawCatalog !== undefined &&
+    rawCatalog.totals.instructions !== listedInstructionCount;
 
   return (
     <div className="relative max-w-[1600px] mx-auto">
@@ -181,6 +242,13 @@ export default function FeatureSurfacePage() {
         <Alert
           variant="warning"
           message={`Instruction catalog mismatch: ${listedInstructionCount} listed, ${expectedInstructionCount} expected from the current SDK surface.`}
+          className="mb-6"
+        />
+      )}
+      {hasStaleBackendCatalog && !hasCatalogMismatch && (
+        <Alert
+          variant="warning"
+          message="Backend returned stale instruction metadata. Showing the current scalar-only SDK control surface."
           className="mb-6"
         />
       )}

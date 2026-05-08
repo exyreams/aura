@@ -208,12 +208,12 @@ test("devnet backend HTTP API covers catalog, generic send, and public proposals
     const features = (await request<{
       totals: { domains: number; instructions: number };
     }>(baseUrl, "GET", "/v1/features/catalog")).data;
-    assert.equal(features.totals.instructions, 69);
+    assert.equal(features.totals.instructions, 67);
 
     const catalog = (await request<{
       totals: { domains: number; instructions: number };
     }>(baseUrl, "GET", "/v1/instructions/catalog")).data;
-    assert.equal(catalog.totals.instructions, 69);
+    assert.equal(catalog.totals.instructions, 67);
 
     const nonce = (await request<{ message: string }>(
       baseUrl,

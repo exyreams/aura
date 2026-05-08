@@ -63,7 +63,7 @@ test("instruction catalog exposes every current IDL instruction", () => {
     0,
   );
 
-  assert.equal(catalog.totals.instructions, 70);
+  assert.equal(catalog.totals.instructions, 67);
   assert.equal(featureCount, catalog.totals.instructions);
   assert.equal(
     catalog.domains.flatMap((domain) =>
