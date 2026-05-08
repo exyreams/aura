@@ -6,11 +6,10 @@ use crate::{
     ext_cpi::{
         is_supported_policy_scalar_fhe_type, parse_ciphertext_account, request_decryption_via_cpi,
         ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
-        ENCRYPT_FHE_VECTOR_U64,
     },
     instructions::sync_treasury_pending_account,
     program_accounts::TreasuryAccount,
-    state::{PendingDecryptionRequest, ProposalStatus},
+    state::PendingDecryptionRequest,
 };
 
 #[derive(Accounts)]
@@ -99,11 +98,6 @@ fn prepare_live_decryption(
     let expected_fhe_type = pending
         .policy_output_fhe_type
         .ok_or_else(|| error!(crate::AuraCoreError::PolicyGraphMismatch))?;
-    if expected_fhe_type == ENCRYPT_FHE_VECTOR_U64
-        && pending.status != ProposalStatus::PolicyComputed
-    {
-        return err!(crate::AuraCoreError::PolicyOutputNotReady);
-    }
 
     let expected_encrypt_program: Pubkey = domain
         .deployment
@@ -144,9 +138,7 @@ fn prepare_live_decryption(
         if ciphertext.fhe_type != expected_fhe_type && !scalar_policy_output_matches {
             return err!(crate::AuraCoreError::InvalidExternalAccountData);
         }
-        if !is_supported_policy_scalar_fhe_type(ciphertext.fhe_type)
-            && ciphertext.fhe_type != ENCRYPT_FHE_VECTOR_U64
-        {
+        if !is_supported_policy_scalar_fhe_type(ciphertext.fhe_type) {
             return err!(crate::AuraCoreError::InvalidExternalAccountData);
         }
         if ciphertext.status != 1 {

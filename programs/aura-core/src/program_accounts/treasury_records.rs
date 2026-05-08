@@ -190,7 +190,6 @@ pub struct ConfidentialGuardrailsRecord {
     pub daily_limit_ciphertext: Option<Pubkey>,
     pub per_tx_limit_ciphertext: Option<Pubkey>,
     pub spent_today_ciphertext: Option<Pubkey>,
-    pub guardrail_vector_ciphertext: Option<Pubkey>,
 }
 
 impl ConfidentialGuardrailsRecord {
@@ -214,14 +213,6 @@ impl ConfidentialGuardrailsRecord {
                 .map(parse_pubkey)
                 .transpose()
                 .expect("stored confidential spent-today ciphertext must be a pubkey when present"),
-            guardrail_vector_ciphertext: domain
-                .guardrail_vector_ciphertext
-                .as_deref()
-                .map(parse_pubkey)
-                .transpose()
-                .expect(
-                    "stored confidential guardrail vector ciphertext must be a pubkey when present",
-                ),
         }
     }
 
@@ -230,9 +221,6 @@ impl ConfidentialGuardrailsRecord {
             daily_limit_ciphertext: self.daily_limit_ciphertext.map(|key| key.to_string()),
             per_tx_limit_ciphertext: self.per_tx_limit_ciphertext.map(|key| key.to_string()),
             spent_today_ciphertext: self.spent_today_ciphertext.map(|key| key.to_string()),
-            guardrail_vector_ciphertext: self
-                .guardrail_vector_ciphertext
-                .map(|key| key.to_string()),
         }
     }
 }

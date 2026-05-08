@@ -53,21 +53,19 @@ use instructions::{
     __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
     __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
-    __client_accounts_configure_confidential_vector_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
     __client_accounts_create_treasury, __client_accounts_execute_pending,
-    __client_accounts_execute_pending_vector_fhe, __client_accounts_finalize_execution,
-    __client_accounts_grant_operator_role, __client_accounts_init_activity_log,
-    __client_accounts_init_address_list, __client_accounts_init_exposure_group,
-    __client_accounts_init_external_liveness, __client_accounts_init_fee_vault,
-    __client_accounts_init_health_score, __client_accounts_init_policy_history,
-    __client_accounts_init_swarm_pool, __client_accounts_issue_session_key,
-    __client_accounts_join_exposure_group, __client_accounts_join_swarm,
-    __client_accounts_manage_address_list, __client_accounts_migrate_treasury,
-    __client_accounts_owner_treasury, __client_accounts_pause_execution,
-    __client_accounts_propose_batch, __client_accounts_propose_confidential_transaction,
-    __client_accounts_propose_confidential_vector_transaction, __client_accounts_propose_override,
+    __client_accounts_finalize_execution, __client_accounts_grant_operator_role,
+    __client_accounts_init_activity_log, __client_accounts_init_address_list,
+    __client_accounts_init_exposure_group, __client_accounts_init_external_liveness,
+    __client_accounts_init_fee_vault, __client_accounts_init_health_score,
+    __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
+    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
+    __client_accounts_join_swarm, __client_accounts_manage_address_list,
+    __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
+    __client_accounts_pause_execution, __client_accounts_propose_batch,
+    __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
     __client_accounts_refresh_external_liveness, __client_accounts_register_dwallet,
     __client_accounts_request_policy_decryption, __client_accounts_revoke_operator_role,
@@ -86,29 +84,26 @@ use instructions::{
     __cpi_client_accounts_configure_approval_ladder,
     __cpi_client_accounts_configure_budget_envelope,
     __cpi_client_accounts_configure_confidential_guardrails,
-    __cpi_client_accounts_configure_confidential_vector_guardrails,
     __cpi_client_accounts_configure_liveness_guardrails, __cpi_client_accounts_configure_multisig,
     __cpi_client_accounts_configure_swarm, __cpi_client_accounts_confirm_policy_decryption,
     __cpi_client_accounts_create_treasury, __cpi_client_accounts_execute_pending,
-    __cpi_client_accounts_execute_pending_vector_fhe, __cpi_client_accounts_finalize_execution,
-    __cpi_client_accounts_grant_operator_role, __cpi_client_accounts_init_activity_log,
-    __cpi_client_accounts_init_address_list, __cpi_client_accounts_init_exposure_group,
-    __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_init_fee_vault,
-    __cpi_client_accounts_init_health_score, __cpi_client_accounts_init_policy_history,
-    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_issue_session_key,
-    __cpi_client_accounts_join_exposure_group, __cpi_client_accounts_join_swarm,
-    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_migrate_treasury,
-    __cpi_client_accounts_owner_treasury, __cpi_client_accounts_pause_execution,
-    __cpi_client_accounts_propose_batch, __cpi_client_accounts_propose_confidential_transaction,
-    __cpi_client_accounts_propose_confidential_vector_transaction,
-    __cpi_client_accounts_propose_override, __cpi_client_accounts_propose_transaction,
-    __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_refresh_external_liveness,
-    __cpi_client_accounts_register_dwallet, __cpi_client_accounts_request_policy_decryption,
-    __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_revoke_session_key,
-    __cpi_client_accounts_set_scoped_pause, __cpi_client_accounts_simulate_policy,
-    __cpi_client_accounts_take_snapshot, __cpi_client_accounts_trigger_dead_mans_switch,
-    __cpi_client_accounts_update_health_score, __cpi_client_accounts_veto_config_change,
-    __cpi_client_accounts_write_policy_receipt,
+    __cpi_client_accounts_finalize_execution, __cpi_client_accounts_grant_operator_role,
+    __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
+    __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_init_external_liveness,
+    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
+    __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
+    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
+    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
+    __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
+    __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
+    __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
+    __cpi_client_accounts_propose_transaction, __cpi_client_accounts_refresh_dwallet_balance,
+    __cpi_client_accounts_refresh_external_liveness, __cpi_client_accounts_register_dwallet,
+    __cpi_client_accounts_request_policy_decryption, __cpi_client_accounts_revoke_operator_role,
+    __cpi_client_accounts_revoke_session_key, __cpi_client_accounts_set_scoped_pause,
+    __cpi_client_accounts_simulate_policy, __cpi_client_accounts_take_snapshot,
+    __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_update_health_score,
+    __cpi_client_accounts_veto_config_change, __cpi_client_accounts_write_policy_receipt,
 };
 
 declare_id!("2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya");
@@ -135,13 +130,6 @@ pub mod aura_core {
         instructions::configure_confidential_guardrails::handler(ctx, now)
     }
 
-    pub fn configure_confidential_vector_guardrails(
-        ctx: Context<ConfigureConfidentialVectorGuardrails>,
-        now: i64,
-    ) -> Result<()> {
-        instructions::configure_confidential_vector_guardrails::handler(ctx, now)
-    }
-
     pub fn propose_transaction(
         ctx: Context<ProposeTransaction>,
         args: ProposeTransactionArgs,
@@ -156,22 +144,8 @@ pub mod aura_core {
         instructions::propose_confidential_transaction::handler(ctx, args)
     }
 
-    pub fn propose_confidential_vector_transaction(
-        ctx: Context<ProposeConfidentialVectorTransaction>,
-        args: ProposeConfidentialTransactionArgs,
-    ) -> Result<()> {
-        instructions::propose_confidential_vector_transaction::handler(ctx, args)
-    }
-
     pub fn execute_pending(ctx: Context<ExecutePending>, now: i64) -> Result<()> {
         instructions::execute_pending::handler(ctx, now)
-    }
-
-    pub fn execute_pending_vector_fhe(
-        ctx: Context<ExecutePendingVectorFhe>,
-        args: ExecutePendingVectorFheArgs,
-    ) -> Result<()> {
-        instructions::execute_pending_vector_fhe::handler(ctx, args)
     }
 
     pub fn request_policy_decryption(
@@ -528,19 +502,18 @@ pub use execution::{
     evaluate_batch_preview, expire_pending_transaction, finalize_signed_pending,
     generate_proposal_digest, hash_message, keccak_message_digest, keccak_message_digest_hex,
     mark_pending_decryption_request, mark_signature_requested, propose_confidential_transaction,
-    propose_confidential_vector_transaction, propose_transaction,
+    propose_transaction,
 };
 pub use ext_cpi::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex, decrypt_u64,
-    decrypt_u64_lane, find_message_approval_pda, parse_ciphertext_account,
-    parse_decryption_request_account, parse_message_approval_account, parse_runtime_pubkey,
-    pending_signature_request_from_live, request_decryption_via_cpi, transfer_dwallet_via_cpi,
-    transfer_future_sign_via_cpi, verify_decryption_request_digest, verify_message_approval,
-    zero_message_metadata_digest_hex, AuraEncryptContext, DecryptionStatus, EncryptEvaluation,
-    MessageApprovalRequest, MessageApprovalStatus, OnchainCiphertext, OnchainDecryptionRequest,
-    OnchainMessageApproval, DWALLET_CPI_AUTHORITY_SEED, ENCRYPT_CPI_AUTHORITY_SEED,
-    ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64, ENCRYPT_FHE_VECTOR_U64,
-    MESSAGE_APPROVAL_SEED,
+    find_message_approval_pda, parse_ciphertext_account, parse_decryption_request_account,
+    parse_message_approval_account, parse_runtime_pubkey, pending_signature_request_from_live,
+    request_decryption_via_cpi, transfer_dwallet_via_cpi, transfer_future_sign_via_cpi,
+    verify_decryption_request_digest, verify_message_approval, zero_message_metadata_digest_hex,
+    AuraEncryptContext, DecryptionStatus, EncryptEvaluation, MessageApprovalRequest,
+    MessageApprovalStatus, OnchainCiphertext, OnchainDecryptionRequest, OnchainMessageApproval,
+    DWALLET_CPI_AUTHORITY_SEED, ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED,
+    ENCRYPT_FHE_UINT64, MESSAGE_APPROVAL_SEED,
 };
 pub use governance::{EmergencyMultisig, OverrideProposal};
 pub use program_accounts::*;

@@ -4,8 +4,7 @@ use aura_policy::{Chain, TransactionContext, TransactionType, ViolationCode};
 use crate::{
     apply_confidential_policy_result, confirm_pending_decryption, deny_pending_transaction,
     finalize_signed_pending, mark_pending_decryption_request, propose_confidential_transaction,
-    propose_confidential_vector_transaction, AuditKind, PendingDecryptionRequest, ProposalStatus,
-    TreasuryError,
+    AuditKind, PendingDecryptionRequest, ProposalStatus, TreasuryError,
 };
 
 use super::proposal_flow::{request_signature_for_pending, treasury};
@@ -18,11 +17,6 @@ fn configure_guardrails(treasury: &mut crate::AgentTreasury, now: i64) {
         Pubkey::new_unique().to_string(),
         now,
     );
-}
-
-/// Configures vector FHE guardrails (single EUint64Vector ciphertext account).
-fn configure_vector_guardrails(treasury: &mut crate::AgentTreasury, now: i64) {
-    treasury.configure_confidential_vector_guardrails(Pubkey::new_unique().to_string(), now);
 }
 
 /// Submits a confidential scalar proposal that passes the public pre-check
@@ -49,40 +43,6 @@ fn propose_approved_confidential(treasury: &mut crate::AgentTreasury, now: i64) 
         &Pubkey::new_unique().to_string(),
     )
     .expect("confidential proposal should succeed")
-}
-
-/// Submits a confidential vector proposal using the currently configured
-/// guardrail vector ciphertext.
-fn propose_approved_confidential_vector(treasury: &mut crate::AgentTreasury, now: i64) -> u64 {
-    let ai = treasury.ai_authority.clone();
-    let guardrail_vector = treasury
-        .confidential_guardrails
-        .as_ref()
-        .and_then(|guardrails| guardrails.guardrail_vector_ciphertext.clone())
-        .expect("guardrail vector should be configured");
-    propose_confidential_vector_transaction(
-        treasury,
-        &ai,
-        TransactionContext {
-            amount_usd: 500,
-            target_chain: Chain::Ethereum,
-            tx_type: TransactionType::Transfer,
-            protocol_id: None,
-            current_timestamp: now,
-            expected_output_usd: None,
-            actual_output_usd: None,
-            quote_age_secs: None,
-            counterparty_risk_score: None,
-            recipient_or_contract: Some("0xrecipient".to_string()),
-        },
-        "0xrecipient",
-        &guardrail_vector,
-        &Pubkey::new_unique().to_string(),
-        &Pubkey::new_unique().to_string(),
-        &Pubkey::new_unique().to_string(),
-        &Pubkey::new_unique().to_string(),
-    )
-    .expect("vector confidential proposal should succeed")
 }
 
 /// Records a decryption request and immediately confirms it with a synthetic
@@ -258,74 +218,4 @@ fn confidential_denial_after_decrypted_violation_clears_pending_state() {
         .iter()
         .any(|outcome| outcome.rule_name == "confidential_policy_result" && !outcome.passed));
     assert!(treasury.pending.is_none());
-}
-
-#[test]
-fn vector_confidential_flow_uses_decrypted_next_spent_today_lane() {
-    let mut treasury = treasury();
-    configure_vector_guardrails(&mut treasury, 1_700_000_100);
-    let proposal_id = propose_approved_confidential_vector(&mut treasury, 43_200);
-    let expected_guardrail_vector = treasury
-        .pending
-        .as_ref()
-        .and_then(|pending| pending.policy_output_ciphertext_account.clone())
-        .expect("vector output account should be staged");
-
-    let request_account = Pubkey::new_unique().to_string();
-    mark_and_confirm_decryption(&mut treasury, &request_account, 43_210);
-    apply_confidential_policy_result(&mut treasury, 0, Some(500), 43_212)
-        .expect("vector confidential result should apply");
-    assert_eq!(
-        treasury
-            .confidential_guardrails
-            .as_ref()
-            .and_then(|guardrails| guardrails.guardrail_vector_ciphertext.clone())
-            .as_deref(),
-        Some(expected_guardrail_vector.as_str())
-    );
-
-    let (message, digest) = request_signature_for_pending(&mut treasury, 43_220);
-    let receipt = finalize_signed_pending(&mut treasury, message.clone(), "ef".repeat(64), 43_221)
-        .expect("vector confidential execution should finalize");
-
-    assert_eq!(receipt.proposal_id, proposal_id);
-    assert!(receipt.approved);
-    assert_eq!(receipt.final_status, ProposalStatus::Executed);
-    assert_eq!(receipt.message_digest.as_deref(), Some(digest.as_str()));
-}
-
-#[test]
-fn vector_confidential_result_rejects_mismatched_next_spent_today_lane() {
-    let mut treasury = treasury();
-    configure_vector_guardrails(&mut treasury, 1_700_000_100);
-    propose_approved_confidential_vector(&mut treasury, 43_200);
-
-    let err = apply_confidential_policy_result(&mut treasury, 0, Some(999), 43_210)
-        .expect_err("mismatched decrypted lane should be rejected");
-
-    assert!(matches!(err, TreasuryError::InvalidAccountData(_)));
-}
-
-#[test]
-fn vector_confidential_denial_keeps_existing_guardrail_vector() {
-    let mut treasury = treasury();
-    configure_vector_guardrails(&mut treasury, 1_700_000_100);
-    let original_guardrail_vector = treasury
-        .confidential_guardrails
-        .as_ref()
-        .and_then(|guardrails| guardrails.guardrail_vector_ciphertext.clone())
-        .expect("vector guardrail should be configured");
-    propose_approved_confidential_vector(&mut treasury, 43_200);
-
-    apply_confidential_policy_result(&mut treasury, 1, None, 43_210)
-        .expect("vector denial should apply");
-
-    assert_eq!(
-        treasury
-            .confidential_guardrails
-            .as_ref()
-            .and_then(|guardrails| guardrails.guardrail_vector_ciphertext.clone())
-            .as_deref(),
-        Some(original_guardrail_vector.as_str())
-    );
 }

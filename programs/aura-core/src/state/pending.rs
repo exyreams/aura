@@ -7,8 +7,6 @@ use crate::state::{ComplianceMetadata, SignatureScheme};
 pub enum ProposalStatus {
     /// Submitted by the AI; policy decision recorded but not yet executed.
     Proposed,
-    /// Confidential vector policy graph has been submitted to Encrypt.
-    PolicyComputed,
     /// A decryption request has been submitted to the Encrypt network.
     DecryptionRequested,
     /// An `approve_message` CPI has been submitted; waiting for the dWallet signature.
@@ -75,7 +73,7 @@ pub struct PendingTransaction {
     pub policy_output_digest: String,
     /// Encrypt ciphertext account holding the encrypted violation code (confidential proposals only).
     pub policy_output_ciphertext_account: Option<String>,
-    /// FHE type code of `policy_output_ciphertext_account` (`4` = u64, `35` = vector).
+    /// FHE type code of `policy_output_ciphertext_account` (`4` = u64).
     pub policy_output_fhe_type: Option<u8>,
     /// Chain on which the transaction will be executed.
     pub target_chain: Chain,

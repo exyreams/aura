@@ -12,7 +12,7 @@ pub enum AuditKind {
     /// Emitted on both first registration of a dWallet and subsequent
     /// runtime metadata updates (dwallet account, authorized user, etc.).
     DWalletRegistered,
-    /// Emitted when FHE guardrails are configured, whether scalar or vector mode.
+    /// Emitted when scalar FHE guardrails are configured.
     ConfidentialGuardrailsConfigured,
     /// Emitted when the AI authority submits a new transaction proposal.
     ProposalCreated,

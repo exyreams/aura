@@ -29,10 +29,6 @@ pub const IX_EXECUTE_GRAPH: u8 = 4;
 /// FHE type code for a single encrypted `u64` scalar.
 pub const ENCRYPT_FHE_UINT64: u8 = 4;
 
-/// FHE type code for an encrypted vector of `u64` values (used for multi-lane
-/// policy outputs such as swarm shared-pool limits).
-pub const ENCRYPT_FHE_VECTOR_U64: u8 = 35;
-
 /// Version byte expected in all Encrypt program accounts.
 pub const ENCRYPT_ACCOUNT_VERSION: u8 = 1;
 
@@ -201,7 +197,7 @@ pub enum DecryptionStatus {
 pub struct OnchainCiphertext {
     /// SHA-384 digest of the raw FHE ciphertext bytes, used for tamper detection.
     pub digest: [u8; 32],
-    /// FHE type code (e.g. `ENCRYPT_FHE_UINT64` or `ENCRYPT_FHE_VECTOR_U64`).
+    /// FHE type code (for AURA confidential policy outputs this is `ENCRYPT_FHE_UINT64`).
     pub fhe_type: u8,
     /// Raw status byte from the account (interpretation is Encrypt-program-internal).
     pub status: u8,
@@ -532,10 +528,10 @@ pub fn is_supported_policy_scalar_fhe_type(fhe_type: u8) -> bool {
 
 /// Reads the decrypted `u64` value from a specific lane of a completed decryption request.
 ///
-/// Each lane occupies 8 bytes in the plaintext. Lane 0 is the primary policy
-/// output; higher lanes are used for vector FHE types (e.g. swarm shared-pool
-/// limits). Returns `TreasuryError::InvalidAccountData` if the plaintext is
-/// absent or too short for the requested lane.
+/// Each lane occupies 8 bytes in the plaintext. AURA's canonical confidential
+/// policy flow reads lane 0 only; the lane-indexed helper remains useful for
+/// low-level account parsing tests. Returns `TreasuryError::InvalidAccountData`
+/// if the plaintext is absent or too short for the requested lane.
 pub fn decrypt_u64_lane(
     request: &OnchainDecryptionRequest<'_>,
     lane_index: usize,

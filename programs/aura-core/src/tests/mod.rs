@@ -2,7 +2,7 @@
 ///
 /// Each sub-module exercises a distinct slice of the treasury lifecycle:
 /// - `proposal_flow`    — public (non-confidential) propose → execute → finalize
-/// - `confidential_flow` — FHE scalar and vector confidential proposal flows
+/// - `confidential_flow` — scalar FHE confidential proposal flows
 /// - `governance_flow`  — emergency multisig override and protocol fee logic
 /// - `advanced_flow`    — reputation scaling, swarm limits, batch preview, edge cases
 /// - `policy_controls_flow` — approval ladder, envelopes, exposure, roles, liveness

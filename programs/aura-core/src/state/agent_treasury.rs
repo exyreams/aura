@@ -310,33 +310,11 @@ impl AgentTreasury {
             daily_limit_ciphertext: Some(daily_limit_ciphertext.into()),
             per_tx_limit_ciphertext: Some(per_tx_limit_ciphertext.into()),
             spent_today_ciphertext: Some(spent_today_ciphertext.into()),
-            guardrail_vector_ciphertext: None,
         });
 
         self.audit_trail.record(
             AuditKind::ConfidentialGuardrailsConfigured,
             "confidential guardrails configured",
-            timestamp,
-        );
-    }
-
-    /// Configures vector FHE guardrails using a single `EUint64Vector`
-    /// ciphertext. Replaces any existing guardrails configuration.
-    pub fn configure_confidential_vector_guardrails(
-        &mut self,
-        guardrail_vector_ciphertext: impl Into<String>,
-        timestamp: i64,
-    ) {
-        self.confidential_guardrails = Some(ConfidentialGuardrails {
-            daily_limit_ciphertext: None,
-            per_tx_limit_ciphertext: None,
-            spent_today_ciphertext: None,
-            guardrail_vector_ciphertext: Some(guardrail_vector_ciphertext.into()),
-        });
-
-        self.audit_trail.record(
-            AuditKind::ConfidentialGuardrailsConfigured,
-            "confidential vector guardrails configured",
             timestamp,
         );
     }

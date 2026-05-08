@@ -17,8 +17,7 @@ pub use executor::{
     apply_confidential_policy_result, approve_pending_execution, confirm_pending_decryption,
     deny_pending_transaction, enforce_pending_approval, evaluate_batch_preview,
     expire_pending_transaction, finalize_signed_pending, mark_pending_decryption_request,
-    mark_signature_requested, propose_confidential_transaction,
-    propose_confidential_vector_transaction, propose_transaction,
+    mark_signature_requested, propose_confidential_transaction, propose_transaction,
 };
 pub use message::{
     build_chain_message, generate_proposal_digest, hash_message, keccak_message_digest,

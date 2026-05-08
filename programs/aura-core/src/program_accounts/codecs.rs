@@ -88,7 +88,6 @@ pub fn proposal_status_code(status: ProposalStatus) -> u8 {
         ProposalStatus::Denied => 4,
         ProposalStatus::Cancelled => 5,
         ProposalStatus::Expired => 6,
-        ProposalStatus::PolicyComputed => 7,
     }
 }
 
@@ -260,7 +259,6 @@ pub(crate) fn proposal_status_from_code(code: u8) -> Result<ProposalStatus> {
         4 => Ok(ProposalStatus::Denied),
         5 => Ok(ProposalStatus::Cancelled),
         6 => Ok(ProposalStatus::Expired),
-        7 => Ok(ProposalStatus::PolicyComputed),
         _ => err!(AuraCoreError::InvalidProposalStatus),
     }
 }

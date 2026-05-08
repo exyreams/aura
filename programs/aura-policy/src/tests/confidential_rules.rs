@@ -10,11 +10,7 @@ use encrypt_types::{
 use crate::{
     context::PolicyEvaluationContext,
     engine::evaluate_public_precheck,
-    graphs::{
-        confidential_policy_graph, confidential_scalar_policy_graph,
-        confidential_spend_guardrails_graph_bytes,
-        confidential_spend_guardrails_vector_graph_bytes,
-    },
+    graphs::{confidential_scalar_policy_graph, confidential_spend_guardrails_graph_bytes},
     state::PolicyState,
     violations::ViolationCode,
 };
@@ -232,40 +228,4 @@ fn confidential_graph_spec_exposes_encrypt_metadata() {
     assert_eq!(spec.name, "confidential_spend_guardrails_scalar");
     assert!(spec.uses_update_mode);
     assert!(spec.requires_decryption);
-}
-
-#[test]
-fn confidential_vector_graph_exposes_vector_metadata_and_ops() {
-    let spec = confidential_policy_graph();
-    let graph_bytes = confidential_spend_guardrails_vector_graph_bytes();
-    let graph = parse_graph(&graph_bytes).expect("vector graph should parse");
-    let mut op_types = Vec::new();
-
-    for index in 0..graph.header().num_nodes() {
-        let node = get_node(graph.node_bytes(), index).expect("node should parse");
-        if node.kind() == GraphNodeKind::Op as u8 {
-            op_types.push(node.op_type());
-        }
-    }
-
-    assert_eq!(spec.name, "confidential_spend_guardrails_vector");
-    assert_eq!(graph.header().num_inputs(), 4);
-    assert_eq!(graph.header().num_outputs(), 1);
-    assert!(op_types.contains(&92), "vector graph should use assign");
-    assert!(
-        !op_types.contains(&95),
-        "heap-safe vector graph should avoid lane get operations"
-    );
-    assert!(
-        (0..graph.header().num_nodes()).any(|index| {
-            let node = get_node(graph.node_bytes(), index).expect("node should parse");
-            node.kind() == GraphNodeKind::Output as u8 && node.fhe_type() == 35
-        }),
-        "vector graph output should stay tagged as EUint64Vector"
-    );
-    assert_eq!(
-        graph.header().constants_len(),
-        0,
-        "heap-safe vector graph should not embed 8,192-byte vector constants"
-    );
 }

@@ -13,8 +13,7 @@ use crate::{
     },
 };
 
-/// Instruction data shared by `propose_confidential_transaction` and
-/// `propose_confidential_vector_transaction`.
+/// Instruction data for scalar confidential proposals.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProposeConfidentialTransactionArgs {
     /// Transaction amount in USD cents.

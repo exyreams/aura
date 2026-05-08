@@ -1,6 +1,6 @@
 use aura_policy::{
-    advanced_policy_graph, confidential_policy_graph, confidential_scalar_policy_graph,
-    evaluate_batch, evaluate_public_precheck, evaluate_transaction, required_approval_level,
+    advanced_policy_graph, confidential_scalar_policy_graph, evaluate_batch,
+    evaluate_public_precheck, evaluate_transaction, required_approval_level,
     transaction_policy_graph, ApprovalLevel, PolicyDecision, RuleOutcome, TransactionContext,
     ViolationCode,
 };
@@ -207,137 +207,6 @@ pub fn propose_confidential_transaction(
             .approved
             .then(|| policy_output_ciphertext_account.to_string()),
         policy_output_fhe_type: decision.approved.then_some(4),
-        target_chain,
-        tx_type,
-        amount_usd,
-        recipient_or_contract,
-        protocol_id,
-        submitted_at,
-        expires_at: submitted_at + treasury.pending_transaction_ttl_secs,
-        last_updated_at: submitted_at,
-        execution_attempts: 0,
-        status: ProposalStatus::Proposed,
-        decryption_request: None,
-        signature_request: None,
-        risk_score: decision.risk_score,
-        required_approval_level: approval.required_level,
-        satisfied_approval_level: approval.satisfied_level,
-        earliest_execution_at: approval.earliest_execution_at,
-        requires_guardian_cosign,
-        policy_version: treasury.current_policy_version,
-        compliance_metadata: Some(crate::state::ComplianceMetadata::from_policy_flags(
-            0,
-            decision.regulatory_flags,
-        )),
-        decision,
-    })?;
-
-    treasury.audit_trail.record(
-        AuditKind::ProposalCreated,
-        format!("proposal {proposal_id} submitted on {target_chain} via graph {policy_graph_name}"),
-        submitted_at,
-    );
-
-    Ok(proposal_id)
-}
-
-/// Creates a new confidential vector FHE pending transaction.
-///
-/// Like `propose_confidential_transaction` but uses the vector FHE graph
-/// (`confidential_policy_graph`) which evaluates against an encrypted
-/// guardrail vector ciphertext. The guardrail vector account is validated
-/// against the treasury's configured value before the proposal is accepted.
-///
-/// On approval the output ciphertext becomes the new guardrail vector for
-/// the next proposal, rotating the encrypted state forward. The vector graph
-/// takes separate helper vectors for state delta, amount comparisons, and
-/// flag assignment so the on-chain graph does not embed large vector constants.
-pub fn propose_confidential_vector_transaction(
-    treasury: &mut AgentTreasury,
-    ai_signer: &str,
-    mut tx: TransactionContext,
-    recipient_or_contract: impl Into<String>,
-    guardrail_vector_ciphertext_account: &str,
-    spend_delta_vector_ciphertext_account: &str,
-    comparison_vector_ciphertext_account: &str,
-    flag_indices_vector_ciphertext_account: &str,
-    policy_output_ciphertext_account: &str,
-) -> Result<u64, TreasuryError> {
-    if ai_signer != treasury.ai_authority {
-        return Err(TreasuryError::UnauthorizedAi);
-    }
-
-    let guardrails = treasury
-        .confidential_guardrails
-        .as_ref()
-        .ok_or(TreasuryError::ConfidentialGuardrailsNotConfigured)?;
-    if guardrails.guardrail_vector_ciphertext.as_deref()
-        != Some(guardrail_vector_ciphertext_account)
-    {
-        return Err(TreasuryError::InvalidAccountData(
-            "confidential guardrail vector account does not match configured treasury state"
-                .to_string(),
-        ));
-    }
-
-    let recipient_or_contract = recipient_or_contract.into();
-    tx.recipient_or_contract = Some(recipient_or_contract.clone());
-    treasury.can_accept_proposal(tx.current_timestamp)?;
-    enforce_cooldown(treasury, &tx)?;
-    let submitted_at = tx.current_timestamp;
-    let target_chain = tx.target_chain;
-    let tx_type = tx.tx_type;
-    let protocol_id = tx.protocol_id;
-    let amount_usd = tx.amount_usd;
-    let decision = evaluate_public_precheck(
-        &treasury.policy_config,
-        &treasury.policy_state,
-        &treasury.policy_context(tx),
-    );
-    let policy_graph_name = if decision.approved {
-        confidential_policy_graph().name.to_string()
-    } else {
-        advanced_policy_graph().name.to_string()
-    };
-    let policy_output_digest = if decision.approved {
-        crate::hash_message(&format!(
-            "{}:{}:{}:{}:{}:{}:{}",
-            policy_graph_name,
-            guardrail_vector_ciphertext_account,
-            spend_delta_vector_ciphertext_account,
-            comparison_vector_ciphertext_account,
-            flag_indices_vector_ciphertext_account,
-            policy_output_ciphertext_account,
-            submitted_at
-        ))
-    } else {
-        decision_digest(&decision)
-    };
-    let proposal_id = treasury.next_proposal_id;
-    treasury.next_proposal_id = treasury.next_proposal_id.saturating_add(1);
-    let proposal_digest = generate_proposal_digest(
-        proposal_id,
-        target_chain,
-        tx_type,
-        &recipient_or_contract,
-        amount_usd,
-        submitted_at,
-        &policy_output_digest,
-    );
-
-    let approval = pending_approval_requirements(treasury, &decision, amount_usd, submitted_at);
-    let requires_guardian_cosign = treasury.high_risk_require_guardian
-        && decision.risk_score >= treasury.high_risk_threshold
-        || approval.required_level == ApprovalLevel::Guardian.code();
-    treasury.push_pending(PendingTransaction {
-        proposal_id,
-        proposal_digest,
-        policy_graph_name: policy_graph_name.clone(),
-        policy_output_digest,
-        policy_output_ciphertext_account: decision
-            .approved
-            .then(|| policy_output_ciphertext_account.to_string()),
-        policy_output_fhe_type: decision.approved.then_some(35),
         target_chain,
         tx_type,
         amount_usd,
@@ -665,18 +534,15 @@ pub fn confirm_pending_decryption(
 /// Interprets `violation_code` (0 = approved, 1 = per-tx limit, 2 = daily
 /// limit) and updates `pending.decision.approved` and `violation` accordingly.
 /// If approved and `decrypted_next_spent_today` is provided, it is validated
-/// against the expected value and written into the next policy state.
-///
-/// For approved vector FHE proposals (`fhe_type == 35`), the output ciphertext
-/// account is promoted to the treasury's new guardrail vector ciphertext,
-/// rotating the encrypted state forward.
+/// against the expected value and written into the next policy state. Normal
+/// execution only reveals the small violation code; confidential guardrail
+/// ciphertexts remain encrypted.
 pub fn apply_confidential_policy_result(
     treasury: &mut AgentTreasury,
     violation_code: u64,
     decrypted_next_spent_today: Option<u64>,
     now: i64,
 ) -> Result<(), TreasuryError> {
-    let mut next_guardrail_vector_ciphertext = None;
     let pending = treasury
         .active_pending_mut()
         .ok_or(TreasuryError::NoPendingTransaction)?;
@@ -726,19 +592,11 @@ pub fn apply_confidential_policy_result(
     pending.decision.approved = approved;
     pending.decision.violation = violation;
     pending.last_updated_at = now;
-    if approved && pending.policy_output_fhe_type == Some(35) {
-        next_guardrail_vector_ciphertext = pending.policy_output_ciphertext_account.clone();
-    }
     pending.decision.trace.push(if approved {
         RuleOutcome::passed("confidential_policy_result", detail)
     } else {
         RuleOutcome::failed("confidential_policy_result", detail)
     });
-    if let Some(next_guardrail_vector_ciphertext) = next_guardrail_vector_ciphertext {
-        if let Some(guardrails) = treasury.confidential_guardrails.as_mut() {
-            guardrails.guardrail_vector_ciphertext = Some(next_guardrail_vector_ciphertext);
-        }
-    }
     treasury.sync_pending_front();
     Ok(())
 }

@@ -12,13 +12,11 @@ pub mod budget_envelopes;
 pub mod cancel_pending;
 pub mod collect_override_signature;
 pub mod configure_confidential_guardrails;
-pub mod configure_confidential_vector_guardrails;
 pub mod configure_multisig;
 pub mod configure_swarm;
 pub mod confirm_policy_decryption;
 pub mod create_treasury;
 pub mod execute_pending;
-pub mod execute_pending_vector_fhe;
 pub mod external_liveness;
 pub mod fee_vault;
 pub mod finalize_execution;
@@ -33,7 +31,6 @@ pub mod policy_receipts;
 pub mod policy_services;
 pub mod policy_simulation;
 pub mod propose_confidential_transaction;
-pub mod propose_confidential_vector_transaction;
 pub mod propose_override;
 pub mod propose_transaction;
 pub mod register_dwallet;
@@ -90,9 +87,6 @@ pub(crate) use collect_override_signature::__cpi_client_accounts_collect_overrid
 pub use configure_confidential_guardrails::ConfigureConfidentialGuardrails;
 pub(crate) use configure_confidential_guardrails::__client_accounts_configure_confidential_guardrails;
 pub(crate) use configure_confidential_guardrails::__cpi_client_accounts_configure_confidential_guardrails;
-pub use configure_confidential_vector_guardrails::ConfigureConfidentialVectorGuardrails;
-pub(crate) use configure_confidential_vector_guardrails::__client_accounts_configure_confidential_vector_guardrails;
-pub(crate) use configure_confidential_vector_guardrails::__cpi_client_accounts_configure_confidential_vector_guardrails;
 pub(crate) use configure_multisig::__client_accounts_configure_multisig;
 pub(crate) use configure_multisig::__cpi_client_accounts_configure_multisig;
 pub use configure_multisig::{ConfigureMultisig, ConfigureMultisigArgs};
@@ -108,9 +102,6 @@ pub use create_treasury::{CreateTreasury, CreateTreasuryArgs};
 pub use execute_pending::ExecutePending;
 pub(crate) use execute_pending::__client_accounts_execute_pending;
 pub(crate) use execute_pending::__cpi_client_accounts_execute_pending;
-pub(crate) use execute_pending_vector_fhe::__client_accounts_execute_pending_vector_fhe;
-pub(crate) use execute_pending_vector_fhe::__cpi_client_accounts_execute_pending_vector_fhe;
-pub use execute_pending_vector_fhe::{ExecutePendingVectorFhe, ExecutePendingVectorFheArgs};
 pub use external_liveness::{
     ConfigureLivenessGuardrails, ConfigureLivenessGuardrailsArgs, InitExternalLiveness,
     InitExternalLivenessArgs, RefreshExternalLiveness, RefreshExternalLivenessArgs,
@@ -178,9 +169,6 @@ pub(crate) use propose_confidential_transaction::__cpi_client_accounts_propose_c
 pub use propose_confidential_transaction::{
     ProposeConfidentialTransaction, ProposeConfidentialTransactionArgs,
 };
-pub use propose_confidential_vector_transaction::ProposeConfidentialVectorTransaction;
-pub(crate) use propose_confidential_vector_transaction::__client_accounts_propose_confidential_vector_transaction;
-pub(crate) use propose_confidential_vector_transaction::__cpi_client_accounts_propose_confidential_vector_transaction;
 pub use propose_override::ProposeOverride;
 pub(crate) use propose_override::__client_accounts_propose_override;
 pub(crate) use propose_override::__cpi_client_accounts_propose_override;
