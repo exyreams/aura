@@ -25,7 +25,8 @@ import {
   resolveTreasuryAccount,
 } from "./helpers.js";
 
-const TREASURY_OWNER_OFFSET = 9;
+// Anchor discriminator (8) + schema_version u8 (1) + bump u8 (1) = 10
+const TREASURY_OWNER_OFFSET = 10;
 
 async function renderTreasuryView(command: Command, treasury: PublicKey, account: TreasuryAccountRecord) {
   const ctx = buildCliContext(command);
