@@ -41,7 +41,6 @@ export const treasuries = sqliteTable(
       .references(() => agentKeypairs.id, { onDelete: "cascade" }),
     treasuryAddress: text("treasury_address").notNull().unique(),
     agentId: text("agent_id").notNull(),
-    pendingVectorPolicyCiphertext: text("pending_vector_policy_ciphertext"),
     createdAt: integer("created_at").notNull(),
   },
   (table) => [

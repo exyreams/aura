@@ -27,7 +27,6 @@ import {
   confirmPolicyDecryptionService,
   createDwalletService,
   encryptScalarValues,
-  encryptVectorValues,
   ensureBackendEncryptDeposit,
   executePendingService,
   finalizeExecutionService,
@@ -56,7 +55,6 @@ import {
   parseCreateAgentRequest,
   parseCreateDwalletRequest,
   parseEncryptScalarRequest,
-  parseEncryptVectorRequest,
   parseEnsureDepositRequest,
   parseExecutePendingRequest,
   parseFinalizeExecutionRequest,
@@ -408,16 +406,6 @@ const server = createServer(async (request, response) => {
         200,
         requestId,
         await encryptScalarValues(parseEncryptScalarRequest(body)),
-      );
-      return;
-    }
-
-    if (routeKey === "POST /v1/confidential/encrypt-vector") {
-      sendSuccess(
-        response,
-        200,
-        requestId,
-        await encryptVectorValues(parseEncryptVectorRequest(body)),
       );
       return;
     }

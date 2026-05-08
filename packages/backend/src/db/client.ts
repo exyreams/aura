@@ -85,15 +85,6 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS auth_nonces_expires_at_idx
       ON auth_nonces(expires_at);
   `);
-
-  // Additive column migrations — each guarded with try/catch for idempotency.
-  try {
-    sqlite.exec(
-      `ALTER TABLE treasuries ADD COLUMN pending_vector_policy_ciphertext TEXT`,
-    );
-  } catch {
-    // Column already exists — safe to ignore.
-  }
 }
 
 migrate();

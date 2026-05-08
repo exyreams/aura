@@ -13,8 +13,6 @@ const IKA_GRPC_URL = "pre-alpha-dev-1.ika.ika-network.net:443";
 export { ENCRYPT_GRPC_URL, IKA_GRPC_URL };
 
 const FHE_TYPE_UINT64 = 4;
-const FHE_TYPE_UINT64_VECTOR = 35;
-const U64_MAX = (1n << 64n) - 1n;
 export const ENCRYPT_NETWORK_KEY = Buffer.alloc(32, 0x55);
 
 export async function encryptU64(
@@ -70,49 +68,6 @@ export async function encryptU64Batch(
       }
       return new PublicKey(id);
     });
-  } finally {
-    client.close();
-  }
-}
-
-export async function encryptU64Vector(
-  values: Array<number | bigint>,
-  authorized: PublicKey,
-  grpcUrl = ENCRYPT_GRPC_URL,
-  bufferBytes?: number,
-) {
-  if (values.length * 8 > 8192) {
-    throw new Error("encryptU64Vector values exceed the 8,192-byte EUint64Vector payload");
-  }
-  const client = createEncryptClient(grpcUrl);
-  try {
-    // Arithmetic vectors are 8,192 bytes. Callers may pass a larger explicit
-    // buffer during compatibility testing, but production vector inputs should
-    // use the Encrypt-required 8,192-byte payload.
-    const size = bufferBytes ?? 8192;
-    if (size < values.length * 8) {
-      throw new Error("encryptU64Vector buffer is too small for the provided values");
-    }
-    const ciphertextBytes = Buffer.alloc(size);
-    values.forEach((value, i) => {
-      const bigintValue = BigInt(value);
-      if (bigintValue < 0n || bigintValue > U64_MAX) {
-        throw new Error("encryptU64Vector values must fit in u64");
-      }
-      ciphertextBytes.writeBigUInt64LE(bigintValue, i * 8);
-    });
-    const result = await client.createInput({
-      chain: EncryptChain.Solana,
-      inputs: [{ ciphertextBytes, fheType: FHE_TYPE_UINT64_VECTOR }],
-      proof: Buffer.alloc(0),
-      authorized: authorized.toBuffer(),
-      networkEncryptionPublicKey: ENCRYPT_NETWORK_KEY,
-    });
-    const id = result.ciphertextIdentifiers[0];
-    if (!id || id.length !== 32) {
-      throw new Error("Encrypt service returned an invalid ciphertext identifier");
-    }
-    return new PublicKey(id);
   } finally {
     client.close();
   }

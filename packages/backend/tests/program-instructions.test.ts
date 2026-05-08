@@ -64,7 +64,7 @@ test("backend instruction catalog maps every SDK feature to an IDL schema", () =
     0,
   );
 
-  assert.equal(catalog.totals.instructions, 70);
+  assert.equal(catalog.totals.instructions, 67);
   assert.equal(featureCount, catalog.totals.instructions);
   assert.equal(
     catalog.domains.flatMap((domain) =>
