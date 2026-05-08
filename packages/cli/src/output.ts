@@ -116,9 +116,6 @@ export function formatError(error: unknown): string {
   if (message.includes("Scalar confidential guardrails are not configured")) {
     return `${message}\nSuggestion: run 'aura confidential guardrails scalar ...' before proposing a confidential spend.`;
   }
-  if (message.includes("Vector confidential guardrails are not configured")) {
-    return `${message}\nSuggestion: run 'aura confidential guardrails vector ...' before proposing a vector confidential spend.`;
-  }
   return message;
 }
 

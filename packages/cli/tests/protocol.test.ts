@@ -10,7 +10,6 @@ import {
   parseDecryptionReady,
   parseMessageApprovalState,
   resolveScalarGuardrails,
-  resolveVectorGuardrail,
 } from "../src/protocol.js";
 import type { TreasuryAccountRecord } from "../src/sdk.js";
 
@@ -61,7 +60,6 @@ function sampleAccount(): TreasuryAccountRecord {
       dailyLimitCiphertext: new PublicKey("Stake11111111111111111111111111111111111111"),
       perTxLimitCiphertext: new PublicKey("Config1111111111111111111111111111111111111"),
       spentTodayCiphertext: new PublicKey("AddressLookupTab1e1111111111111111111111111"),
-      guardrailVectorCiphertext: new PublicKey("SysvarC1ock11111111111111111111111111111111"),
     },
     reputation: {
       totalTransactions: 0n,
@@ -153,16 +151,14 @@ test("deriveApprovedExecutionAccounts derives the message approval and dWallet C
   assert.equal(resolved.pending.proposalId.toString(), "42");
 });
 
-test("guardrail resolvers return configured scalar and vector ciphertexts", () => {
+test("guardrail resolver returns configured scalar ciphertexts", () => {
   const account = sampleAccount();
   const scalar = resolveScalarGuardrails(account);
-  const vector = resolveVectorGuardrail(account);
 
   assert.equal(
     scalar.dailyLimitCiphertext.toBase58(),
     account.confidentialGuardrails!.dailyLimitCiphertext!.toBase58(),
   );
-  assert.equal(vector.toBase58(), account.confidentialGuardrails!.guardrailVectorCiphertext!.toBase58());
 });
 
 test("live account parsers recognize ciphertext, decryption, and message approval states", () => {

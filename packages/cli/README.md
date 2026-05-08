@@ -185,20 +185,6 @@ aura confidential guardrails scalar \
   --per-tx-ciphertext <pk> \
   --spent-today-ciphertext <pk>
 
-# Configure vector guardrails (single EUint64Vector ciphertext)
-aura confidential guardrails vector \
-  --agent-id my-agent \
-  --guardrail-ciphertext <pk>
-
-# Propose with vector guardrails — auto-encrypts helper vectors, submits the
-# proposal, then executes the vector FHE graph in a second transaction
-aura confidential propose-vector \
-  --agent-id my-agent \
-  --amount 250 \
-  --chain ethereum \
-  --recipient 0xdeadbeef... \
-  --wait
-
 # Show confidential guardrails and pending state
 aura confidential status --agent-id my-agent
 

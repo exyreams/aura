@@ -70,7 +70,6 @@ function renderConfidential(account: TreasuryAccountRecord): string | undefined 
     ["Daily limit ct", formatPubkey(guardrails.dailyLimitCiphertext)],
     ["Per-tx limit ct", formatPubkey(guardrails.perTxLimitCiphertext)],
     ["Spent today ct", formatPubkey(guardrails.spentTodayCiphertext)],
-    ["Vector guardrail ct", formatPubkey(guardrails.guardrailVectorCiphertext)],
   );
   return table.toString();
 }

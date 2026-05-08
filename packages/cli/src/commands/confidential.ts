@@ -1,5 +1,4 @@
 import { PublicKey, SystemProgram, type TransactionInstruction } from "@solana/web3.js";
-import BN from "bn.js";
 import { type Command } from "commander";
 
 import { buildCliContext } from "../context.js";
@@ -13,7 +12,6 @@ import {
   resolvePendingPolicyOutput,
   resolvePendingRequestAccount,
   resolveScalarGuardrails,
-  resolveVectorGuardrail,
   sendInstructionsWithBudget,
   waitForCiphertextVerified,
   waitForDecryptionReady,
@@ -21,7 +19,6 @@ import {
 import {
   encryptU64,
   encryptU64Batch,
-  encryptU64Vector,
   readU64Ciphertext,
 } from "../ika.js";
 import { renderTreasurySections } from "../treasury-view.js";
@@ -61,33 +58,6 @@ function normalizePublicKeyHex(value: string | undefined): string | null {
     throw new Error("publicKeyHex must contain valid hex bytes");
   }
   return value.toLowerCase();
-}
-
-const U64_MODULUS = 1n << 64n;
-const U64_VECTOR_LANES = 1024;
-const VECTOR_CIPHERTEXT_TIMEOUT_MS = 600_000;
-
-function wrappingNegU64(value: number | bigint): bigint {
-  const amount = BigInt(value);
-  return (U64_MODULUS - (amount % U64_MODULUS)) % U64_MODULUS;
-}
-
-function vectorFlagIndices(): bigint[] {
-  return Array.from({ length: U64_VECTOR_LANES }, (_, index) => {
-    if (index === 0) return 3n;
-    if (index === 1) return 4n;
-    return BigInt(Math.min(index + 3, U64_VECTOR_LANES - 1));
-  });
-}
-
-function parseOptionalPubkeyOption(
-  options: Record<string, unknown>,
-  name: string,
-  label: string,
-): PublicKey | null {
-  return typeof options[name] === "string"
-    ? parsePublicKey(options[name], label)
-    : null;
 }
 
 async function sendPreparedInstruction(options: {
@@ -310,72 +280,6 @@ export function registerConfidentialCommands(program: Command): void {
       printSuccess(ctx.output, `Scalar guardrails configured: ${signature}`);
     });
 
-  guardrails
-    .command("vector")
-    .description("Attach a vector guardrail ciphertext account")
-    .option("--agent-id <id>", "treasury agent ID")
-    .option("--treasury <pda>", "treasury PDA")
-    .option("--guardrail-ciphertext <pubkey>", "guardrail vector ciphertext account")
-    .action(async function confidentialGuardrailsVector() {
-      const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to configure vector guardrails.");
-      }
-
-      const options = this.opts() as Record<string, unknown>;
-      const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
-      });
-      const existing = treasuryState.account.confidentialGuardrails?.guardrailVectorCiphertext;
-      const guardrailVectorCiphertext = parsePublicKey(
-        await promptString(
-          typeof options["guardrailCiphertext"] === "string"
-            ? options["guardrailCiphertext"]
-            : existing?.toBase58(),
-          "Guardrail vector ciphertext",
-        ),
-        "Guardrail vector ciphertext",
-      );
-      const now = Math.floor(Date.now() / 1000);
-
-      if (ctx.dryRun) {
-        const instruction = await ctx.client.configureConfidentialVectorGuardrailsInstruction(
-          {
-            owner: ctx.wallet.publicKey,
-            treasury: treasuryState.treasury,
-            guardrailVectorCiphertext,
-          },
-          now,
-        );
-        emitJson(ctx.output, {
-          action: "confidential.guardrails.vector",
-          treasury: treasuryState.treasury,
-          instruction: serializeInstruction(instruction),
-        });
-        return;
-      }
-
-      const spinner = startSpinner(ctx.output, "Configuring vector guardrails...");
-      const signature = await ctx.client.configureConfidentialVectorGuardrails(
-        ctx.wallet,
-        {
-          owner: ctx.wallet.publicKey,
-          treasury: treasuryState.treasury,
-          guardrailVectorCiphertext,
-        },
-        now,
-      );
-      spinner.succeed("Vector guardrails configured");
-
-      if (ctx.output.json) {
-        emitJson(ctx.output, { treasury: treasuryState.treasury, signature });
-        return;
-      }
-
-      printSuccess(ctx.output, `Vector guardrails configured: ${signature}`);
-    });
-
   confidential
     .command("status")
     .description("Show confidential guardrails and pending confidential state")
@@ -570,270 +474,6 @@ export function registerConfidentialCommands(program: Command): void {
     });
 
   confidential
-    .command("propose-vector")
-    .description("Propose a confidential vector transaction and execute vector FHE")
-    .option("--agent-id <id>", "treasury agent ID")
-    .option("--treasury <pda>", "treasury PDA")
-    .option("--amount <usd>", "amount in USD — auto-encrypted into vector helper ciphertexts", Number)
-    .option("--chain <name|number>", "target chain")
-    .option("--recipient <address>", "recipient address or contract")
-    .option("--tx-type <type>", "transaction type")
-    .option("--protocol-id <id>", "protocol ID", Number)
-    .option("--expected-output <usd>", "expected output in USD", Number)
-    .option("--actual-output <usd>", "actual output in USD", Number)
-    .option("--quote-age <secs>", "quote age in seconds", Number)
-    .option("--counterparty-risk <score>", "counterparty risk score", Number)
-    .option("--spend-delta-ciphertext <pubkey>", "pre-created vector ciphertext for [-amount mod u64, 0, amount]")
-    .option("--comparison-ciphertext <pubkey>", "pre-created vector ciphertext for [amount, amount]")
-    .option("--flag-indices-ciphertext <pubkey>", "pre-created vector ciphertext for assign lanes [3,4,5,...]")
-    .option("--policy-output-ciphertext <pubkey>", "pre-created zero EUint64Vector output ciphertext")
-    .option("--wait", "wait until the vector policy output ciphertext is verified")
-    .action(async function confidentialProposeVector() {
-      const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to submit a confidential vector proposal.");
-      }
-
-      const options = this.opts() as Record<string, unknown>;
-      const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
-      });
-      const guardrailVectorCiphertext = resolveVectorGuardrail(treasuryState.account);
-      const amountUsd = await promptNumber(
-        typeof options["amount"] === "number" ? options["amount"] : undefined,
-        "Amount (USD)",
-        { validate: (value) => { if (value <= 0) throw new Error("Amount must be > 0"); } },
-      );
-      const chain = await promptChain(
-        typeof options["chain"] === "string" || typeof options["chain"] === "number"
-          ? (options["chain"] as string | number)
-          : undefined,
-        "Chain",
-      );
-      const recipient = await promptString(
-        typeof options["recipient"] === "string" ? options["recipient"] : undefined,
-        "Recipient",
-      );
-      const txType = await promptTransactionType(
-        typeof options["txType"] === "string" || typeof options["txType"] === "number"
-          ? (options["txType"] as string | number)
-          : undefined,
-        "Transaction type",
-      );
-      const args = buildProposeConfidentialArgs({
-        amountUsd,
-        chain,
-        txType,
-        recipient,
-        protocolId: typeof options["protocolId"] === "number" ? options["protocolId"] : undefined,
-        expectedOutputUsd:
-          typeof options["expectedOutput"] === "number" ? options["expectedOutput"] : undefined,
-        actualOutputUsd:
-          typeof options["actualOutput"] === "number" ? options["actualOutput"] : undefined,
-        quoteAgeSecs: typeof options["quoteAge"] === "number" ? options["quoteAge"] : undefined,
-        counterpartyRiskScore:
-          typeof options["counterpartyRisk"] === "number"
-            ? options["counterpartyRisk"]
-            : undefined,
-      });
-
-      const suppliedInputs = {
-        spendDeltaVectorCiphertext: parseOptionalPubkeyOption(
-          options,
-          "spendDeltaCiphertext",
-          "Spend delta ciphertext",
-        ),
-        comparisonVectorCiphertext: parseOptionalPubkeyOption(
-          options,
-          "comparisonCiphertext",
-          "Comparison ciphertext",
-        ),
-        flagIndicesVectorCiphertext: parseOptionalPubkeyOption(
-          options,
-          "flagIndicesCiphertext",
-          "Flag indices ciphertext",
-        ),
-        policyOutputVectorCiphertext: parseOptionalPubkeyOption(
-          options,
-          "policyOutputCiphertext",
-          "Policy output ciphertext",
-        ),
-      };
-      const suppliedCount = Object.values(suppliedInputs).filter(Boolean).length;
-      if (suppliedCount > 0 && suppliedCount < 4) {
-        throw new Error(
-          "Vector proposal ciphertext overrides must include spend-delta, comparison, flag-indices, and policy-output accounts together.",
-        );
-      }
-
-      const encryptAccounts = deriveEncryptAccounts(ctx.wallet.publicKey, {
-        auraProgramId: ctx.programId,
-      });
-      const proposalId = new BN(treasuryState.account.nextProposalId.toString());
-      const executeArgs = {
-        proposalId,
-        currentTimestamp: new BN(args.currentTimestamp.toString()).addn(1),
-      };
-
-      if (ctx.dryRun && suppliedCount === 0) {
-        emitJson(ctx.output, {
-          action: "confidential.propose-vector",
-          treasury: treasuryState.treasury,
-          guardrailVectorCiphertext,
-          encryptAccounts,
-          args,
-          executeArgs,
-          note: "dry-run: would create spend-delta, comparison, flag-indices, and zero output EUint64Vector ciphertexts via Ika Encrypt gRPC",
-        });
-        return;
-      }
-
-      const spinner = startSpinner(ctx.output, "Ensuring Encrypt deposit account...");
-      if (!ctx.dryRun) {
-        await ensureEncryptDeposit({
-          connection: ctx.connection,
-          payer: ctx.wallet,
-          auraProgramId: ctx.programId,
-        });
-      }
-
-      let spendDeltaVectorCiphertext = suppliedInputs.spendDeltaVectorCiphertext;
-      let comparisonVectorCiphertext = suppliedInputs.comparisonVectorCiphertext;
-      let flagIndicesVectorCiphertext = suppliedInputs.flagIndicesVectorCiphertext;
-      let policyOutputVectorCiphertext = suppliedInputs.policyOutputVectorCiphertext;
-
-      if (suppliedCount === 0) {
-        spinner.setText("Encrypting vector helper ciphertexts via Ika Encrypt...");
-        const amount = BigInt(amountUsd);
-        [
-          spendDeltaVectorCiphertext,
-          comparisonVectorCiphertext,
-          flagIndicesVectorCiphertext,
-          policyOutputVectorCiphertext,
-        ] = await Promise.all([
-          encryptU64Vector([wrappingNegU64(amount), 0n, amount], ctx.programId),
-          encryptU64Vector([amount, amount], ctx.programId),
-          encryptU64Vector(vectorFlagIndices(), ctx.programId),
-          encryptU64Vector([], ctx.programId),
-        ]);
-      }
-
-      if (
-        !spendDeltaVectorCiphertext ||
-        !comparisonVectorCiphertext ||
-        !flagIndicesVectorCiphertext ||
-        !policyOutputVectorCiphertext
-      ) {
-        throw new Error("Vector helper ciphertext resolution failed.");
-      }
-
-      if (!ctx.dryRun) {
-        spinner.setText("Waiting for vector ciphertexts to be verified on-chain...");
-        await Promise.all([
-          waitForCiphertextVerified(ctx.connection, spendDeltaVectorCiphertext, {
-            timeoutMs: VECTOR_CIPHERTEXT_TIMEOUT_MS,
-          }),
-          waitForCiphertextVerified(ctx.connection, comparisonVectorCiphertext, {
-            timeoutMs: VECTOR_CIPHERTEXT_TIMEOUT_MS,
-          }),
-          waitForCiphertextVerified(ctx.connection, flagIndicesVectorCiphertext, {
-            timeoutMs: VECTOR_CIPHERTEXT_TIMEOUT_MS,
-          }),
-          waitForCiphertextVerified(ctx.connection, policyOutputVectorCiphertext, {
-            timeoutMs: VECTOR_CIPHERTEXT_TIMEOUT_MS,
-          }),
-        ]);
-      }
-
-      const proposeInstruction = await ctx.client.proposeConfidentialVectorTransactionInstruction(
-        {
-          aiAuthority: ctx.wallet.publicKey,
-          treasury: treasuryState.treasury,
-          guardrailVectorCiphertext,
-          spendDeltaVectorCiphertext,
-          comparisonVectorCiphertext,
-          flagIndicesVectorCiphertext,
-          policyResultVectorCiphertext: policyOutputVectorCiphertext,
-          encryptProgram: encryptAccounts.encryptProgram,
-        },
-        args,
-      );
-      const executeInstruction = await ctx.client.executePendingVectorFheInstruction(
-        {
-          aiAuthority: ctx.wallet.publicKey,
-          treasury: treasuryState.treasury,
-          guardrailVectorCiphertext,
-          spendDeltaVectorCiphertext,
-          comparisonVectorCiphertext,
-          flagIndicesVectorCiphertext,
-          policyResultVectorCiphertext: policyOutputVectorCiphertext,
-          encryptProgram: encryptAccounts.encryptProgram,
-          config: encryptAccounts.config,
-          deposit: encryptAccounts.deposit,
-          callerProgram: ctx.programId,
-          cpiAuthority: encryptAccounts.cpiAuthority,
-          networkEncryptionKey: encryptAccounts.networkEncryptionKey,
-          eventAuthority: encryptAccounts.eventAuthority,
-          systemProgram: SystemProgram.programId,
-        },
-        executeArgs,
-      );
-
-      if (ctx.dryRun) {
-        emitJson(ctx.output, {
-          action: "confidential.propose-vector",
-          treasury: treasuryState.treasury,
-          spendDeltaVectorCiphertext,
-          comparisonVectorCiphertext,
-          flagIndicesVectorCiphertext,
-          policyOutputVectorCiphertext,
-          instructions: {
-            propose: serializeInstruction(proposeInstruction),
-            executeVectorFhe: serializeInstruction(executeInstruction),
-          },
-        });
-        return;
-      }
-
-      spinner.setText("Submitting vector confidential proposal...");
-      const signature = await sendPreparedInstruction({
-        ctx,
-        instruction: proposeInstruction,
-      });
-      spinner.setText("Executing vector FHE graph...");
-      const executeSignature = await sendPreparedInstruction({
-        ctx,
-        instruction: executeInstruction,
-      });
-      if (options["wait"] === true) {
-        spinner.setText("Waiting for vector policy output verification...");
-        await waitForCiphertextVerified(ctx.connection, policyOutputVectorCiphertext, {
-          timeoutMs: VECTOR_CIPHERTEXT_TIMEOUT_MS,
-        });
-      }
-      spinner.succeed("Vector confidential proposal submitted");
-
-      if (ctx.output.json) {
-        emitJson(ctx.output, {
-          treasury: treasuryState.treasury,
-          signature,
-          executeSignature,
-          spendDeltaVectorCiphertext,
-          comparisonVectorCiphertext,
-          flagIndicesVectorCiphertext,
-          policyOutputCiphertext: policyOutputVectorCiphertext,
-        });
-        return;
-      }
-
-      printSuccess(
-        ctx.output,
-        `Vector confidential proposal submitted:\n  propose: ${signature}\n  execute FHE: ${executeSignature}\n  output ciphertext: ${policyOutputVectorCiphertext.toBase58()}`,
-      );
-    });
-
-  confidential
     .command("request-decryption")
     .description("Request Encrypt decryption for the pending policy output")
     .option("--agent-id <id>", "treasury agent ID")
@@ -972,8 +612,7 @@ export function registerConfidentialCommands(program: Command): void {
       }
 
       const spinner = startSpinner(ctx.output, "Confirming policy decryption...");
-      const signature = await ctx.client.confirmPolicyDecryption(
-        ctx.wallet,
+      const instruction = await ctx.client.confirmPolicyDecryptionInstruction(
         {
           operator: ctx.wallet.publicKey,
           treasury: treasuryState.treasury,
@@ -981,17 +620,15 @@ export function registerConfidentialCommands(program: Command): void {
         },
         now,
       );
+      const signature = await sendPreparedInstruction({ ctx, instruction });
 
-      // Read scalar decrypted policy outputs for display. Vector outputs encode
-      // state and flags across lanes, so the on-chain decision is clearer.
+      // Read the decrypted scalar violation code for display. The on-chain
+      // treasury remains the source of truth if the read is unavailable.
       let violationCode: bigint | null = null;
       try {
-        const pendingBeforeConfirm = getActivePendingProposal(treasuryState.account);
-        if (pendingBeforeConfirm?.policyOutputFheType !== 35) {
-          spinner.setText("Reading decrypted policy result from Encrypt network...");
-          const policyOutput = resolvePendingPolicyOutput(treasuryState.account);
-          violationCode = await readU64Ciphertext(policyOutput, ctx.wallet.publicKey);
-        }
+        spinner.setText("Reading decrypted policy result from Encrypt network...");
+        const policyOutput = resolvePendingPolicyOutput(treasuryState.account);
+        violationCode = await readU64Ciphertext(policyOutput, ctx.wallet.publicKey);
       } catch {
         // Non-fatal — the on-chain state is the source of truth
       }

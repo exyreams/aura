@@ -31,10 +31,6 @@ export { ENCRYPT_GRPC_URL, IKA_GRPC_URL };
  * FHE type for u64 values — matches `ENCRYPT_FHE_UINT64` in the Rust program.
  */
 const FHE_TYPE_UINT64 = 4;
-/**
- * FHE type for EUint64Vector values — matches `ENCRYPT_FHE_VECTOR_U64`.
- */
-const FHE_TYPE_UINT64_VECTOR = 35;
 const U64_MAX = (1n << 64n) - 1n;
 
 /**
@@ -141,57 +137,6 @@ export async function encryptU64Batch(
       }
       return new PublicKey(id);
     });
-  } finally {
-    client.close();
-  }
-}
-
-/**
- * Encrypts an EUint64Vector input through the Ika Encrypt gRPC service.
- *
- * Arithmetic vectors are exactly 8,192 bytes. Values are written into leading
- * u64 lanes and the remaining lanes are zero-filled. Passing an empty values
- * list creates a verified zero vector, which is useful as a pre-allocated graph
- * output account.
- */
-export async function encryptU64Vector(
-  values: (number | bigint)[],
-  authorized: PublicKey,
-  grpcUrl: string = ENCRYPT_GRPC_URL,
-): Promise<PublicKey> {
-  if (values.length * 8 > 8192) {
-    throw new Error("encryptU64Vector values exceed the 8,192-byte EUint64Vector payload");
-  }
-
-  const client = createEncryptClient(grpcUrl);
-  try {
-    const ciphertextBytes = Buffer.alloc(8192);
-    values.forEach((value, index) => {
-      const bigintValue = BigInt(value);
-      if (bigintValue < 0n || bigintValue > U64_MAX) {
-        throw new Error("encryptU64Vector values must fit in u64");
-      }
-      ciphertextBytes.writeBigUInt64LE(bigintValue, index * 8);
-    });
-
-    const result = await client.createInput({
-      chain: EncryptChain.Solana,
-      inputs: [
-        {
-          ciphertextBytes,
-          fheType: FHE_TYPE_UINT64_VECTOR,
-        },
-      ],
-      proof: Buffer.alloc(0),
-      authorized: authorized.toBuffer(),
-      networkEncryptionPublicKey: ENCRYPT_NETWORK_KEY,
-    });
-
-    const id = result.ciphertextIdentifiers[0];
-    if (!id || id.length !== 32) {
-      throw new Error("Encrypt service returned an invalid vector ciphertext identifier");
-    }
-    return new PublicKey(id);
   } finally {
     client.close();
   }

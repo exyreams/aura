@@ -86,22 +86,6 @@ aura confidential guardrails scalar \
 --spent-today-ciphertext <pubkey>  Use a pre-created ciphertext instead
 ```
 
----
-
-## `aura confidential guardrails vector`
-
-Configures a single `EUint64Vector` ciphertext encoding all three guardrail values.
-After each approved transaction the output vector is promoted to become the new
-guardrail, rotating the encrypted state forward automatically.
-
-```bash
-aura confidential guardrails vector \
-  --agent-id my-agent \
-  --guardrail-ciphertext <pk>
-```
-
----
-
 ## `aura confidential status`
 
 Shows the current confidential guardrails and pending proposal state.
@@ -187,79 +171,6 @@ aura confidential propose \
 --policy-output-keypair <p>  Keypair file for the output ciphertext account
 --wait                       Wait until the output ciphertext is verified on-chain
 ```
-
----
-
-## `aura confidential propose-vector`
-
-Proposes a confidential transaction against vector guardrails. The CLI creates
-the helper `EUint64Vector` ciphertexts off-chain, submits the pending proposal,
-then calls `execute_pending_vector_fhe` in a second transaction so the Encrypt
-CPI receives a fresh BPF heap frame.
-
-```bash
-aura confidential propose-vector \
-  --agent-id my-agent \
-  --amount 250 \
-  --chain ethereum \
-  --recipient 0xdeadbeef... \
-  --wait
-```
-
-```
-  ⠸ Ensuring Encrypt deposit account...
-  ⠸ Encrypting vector helper ciphertexts via Ika Encrypt...
-  ⠸ Waiting for vector ciphertexts to be verified on-chain...
-  ⠸ Submitting vector confidential proposal...
-  ⠸ Executing vector FHE graph...
-  ⠸ Waiting for vector policy output verification...
-  ✓ Vector confidential proposal submitted:
-    propose: 2rZ13uye...
-    execute FHE: 4Q8acM7p...
-    output ciphertext: SysvarC1...
-```
-
-### Pre-created vector ciphertexts
-
-Pass all helper ciphertexts together when another service creates them:
-
-```bash
-aura confidential propose-vector \
-  --agent-id my-agent \
-  --amount 250 \
-  --chain ethereum \
-  --recipient 0xdeadbeef... \
-  --spend-delta-ciphertext <pk> \
-  --comparison-ciphertext <pk> \
-  --flag-indices-ciphertext <pk> \
-  --policy-output-ciphertext <pk>
-```
-
-The policy output must be a pre-allocated verified `EUint64Vector` ciphertext.
-After approval it is promoted into the next vector guardrail state; after denial
-the existing guardrail vector remains active.
-
-### All Flags
-
-```
---agent-id <id>                       Treasury agent ID
---amount <usd>                        Amount in USD — auto-encrypted into vectors
---chain <name|number>                 Target chain
---recipient <address>                 Recipient address or contract
---tx-type <type>                      Transaction type
---protocol-id <id>                    Protocol ID for DeFi whitelisting
---expected-output <usd>               Expected output for slippage check
---actual-output <usd>                 Actual output for slippage check
---quote-age <secs>                    Quote age in seconds
---counterparty-risk <score>           Counterparty risk score 0-100
---spend-delta-ciphertext <pubkey>     Vector for [-amount mod u64, 0, amount]
---comparison-ciphertext <pubkey>      Vector for [amount, amount]
---flag-indices-ciphertext <pubkey>    Vector for assign lanes [3,4,5,...]
---policy-output-ciphertext <pubkey>   Pre-allocated zero EUint64Vector output
---wait                                Wait until the vector output is verified
-```
-
----
 
 ## `aura confidential request-decryption`
 

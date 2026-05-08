@@ -222,14 +222,6 @@ export function resolveScalarGuardrails(account: TreasuryAccountRecord): {
   };
 }
 
-export function resolveVectorGuardrail(account: TreasuryAccountRecord): PublicKey {
-  const ciphertext = account.confidentialGuardrails?.guardrailVectorCiphertext;
-  if (!ciphertext) {
-    throw new Error("Vector confidential guardrails are not configured on this treasury.");
-  }
-  return ciphertext;
-}
-
 export function getActivePendingProposal(account: TreasuryAccountRecord): PendingProposal | null {
   return account.pendingQueue[0] ?? null;
 }

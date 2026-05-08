@@ -1,6 +1,6 @@
 {
   "name": "@aura-protocol/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Aura Protocol CLI for the AURA autonomous treasury program on Solana",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@aura-protocol/sdk-ts": "^0.2.12",
+    "@aura-protocol/sdk-ts": "^0.2.14",
     "@encrypt.xyz/pre-alpha-solana-client": "^0.1.1",
     "@ika.xyz/pre-alpha-solana-client": "^0.1.1",
     "@inquirer/prompts": "8.4.2",
@@ -42,11 +42,11 @@
     "ink": "7.0.2",
     "js-sha3": "0.9.3",
     "ora": "9.4.0",
-    "react": "19.2.5"
+    "react": "19.2.6"
   },
   "devDependencies": {
     "@types/bn.js": "5.2.0",
-    "@types/node": "25.6.0",
+    "@types/node": "25.6.2",
     "@types/react": "19.2.14",
     "tsx": "4.21.0",
     "typescript": "6.0.3"
