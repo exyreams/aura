@@ -174,24 +174,6 @@ await client.configureConfidentialGuardrails(
 
 ---
 
-### `configure_confidential_vector_guardrails`
-
-Attaches a single `EUint64Vector` ciphertext encoding all three guardrail values.
-
-```typescript
-await client.configureConfidentialVectorGuardrails(
-  owner,
-  {
-    owner: owner.publicKey,
-    treasury,
-    guardrailVectorCiphertext: guardrailVectorPDA,
-  },
-  Math.floor(Date.now() / 1000),
-);
-```
-
----
-
 ### `propose_transaction`
 
 ```typescript
@@ -252,35 +234,6 @@ await client.proposeConfidentialTransaction(
     recipientOrContract: "0xdeadbeef...",
   },
   [amountCiphertextKeypair], // extra signers for freshly created ciphertext accounts
-);
-```
-
----
-
-### `propose_confidential_vector_transaction`
-
-Same as scalar but uses a single `EUint64Vector` guardrail ciphertext.
-
-```typescript
-await client.proposeConfidentialVectorTransaction(
-  aiAuthority,
-  {
-    aiAuthority: aiAuthority.publicKey,
-    treasury,
-    guardrailVectorCiphertext,
-    amountVectorCiphertext,
-    policyResultVectorCiphertext,
-    encryptProgram: ENCRYPT_DEVNET_PROGRAM_ID,
-    config: encryptConfigPDA,
-    deposit: encryptDepositPDA,
-    callerProgram: AURA_PROGRAM_ID,
-    cpiAuthority: encryptCpiAuthority,
-    networkEncryptionKey: networkEncryptionKeyPDA,
-    eventAuthority: encryptEventAuthority,
-    systemProgram: SystemProgram.programId,
-  },
-  args,
-  [amountVectorKeypair],
 );
 ```
 

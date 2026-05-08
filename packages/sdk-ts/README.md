@@ -217,17 +217,8 @@ await client.proposeTransaction(aiAuthority, treasury, {
   recipientOrContract: "0xdeadbeef...",
 });
 
-// Confidential scalar proposal (FHE — requires Ika Encrypt network)
+// Confidential proposal (scalar FHE — requires Ika Encrypt network)
 await client.proposeConfidentialTransaction(aiAuthority, accounts, args);
-
-// Confidential vector proposal (two txs — proposal first, then compact FHE graph)
-// `accounts` / `executeAccounts` include the guardrail vector, helper vectors,
-// and a pre-allocated output `EUint64Vector` ciphertext.
-await client.proposeConfidentialVectorTransaction(aiAuthority, accounts, args);
-await client.executePendingVectorFhe(aiAuthority, executeAccounts, {
-  proposalId,
-  currentTimestamp: now.addn(1),
-});
 ```
 
 ### Confidential guardrails (FHE)
@@ -235,9 +226,6 @@ await client.executePendingVectorFhe(aiAuthority, executeAccounts, {
 ```ts
 // Scalar ciphertexts — daily limit, per-tx limit, spent-today as separate accounts
 await client.configureConfidentialGuardrails(owner, accounts, now);
-
-// Vector ciphertext — remaining daily limit, per-tx limit, and spent-today encoded together
-await client.configureConfidentialVectorGuardrails(owner, accounts, now);
 ```
 
 ### Execution lifecycle (operator)

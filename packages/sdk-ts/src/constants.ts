@@ -100,16 +100,9 @@ export type RegisterDwalletArgs = AuraTypeDefs["registerDwalletArgs"];
 /** Arguments for the `propose_transaction` instruction. */
 export type ProposeTransactionArgs = AuraTypeDefs["proposeTransactionArgs"];
 
-/**
- * Arguments shared by `propose_confidential_transaction` and
- * `propose_confidential_vector_transaction`.
- */
+/** Arguments for the `propose_confidential_transaction` instruction. */
 export type ProposeConfidentialTransactionArgs =
   AuraTypeDefs["proposeConfidentialTransactionArgs"];
-
-/** Arguments for the `execute_pending_vector_fhe` instruction. */
-export type ExecutePendingVectorFheArgs =
-  AuraTypeDefs["executePendingVectorFheArgs"];
 
 /** Arguments for the `configure_multisig` instruction. */
 export type ConfigureMultisigArgs = AuraTypeDefs["configureMultisigArgs"];

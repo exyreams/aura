@@ -85,27 +85,9 @@ export const AURA_FEATURE_DOMAINS: AuraFeatureDomain[] = [
         maturity: "external_cpi",
       },
       {
-        name: "configure_confidential_vector_guardrails",
-        label: "Configure vector guardrails",
-        description: "Stores vector encrypted guardrail state in one ciphertext account.",
-        maturity: "external_cpi",
-      },
-      {
         name: "propose_confidential_transaction",
         label: "Propose confidential transaction",
         description: "Submits scalar FHE policy evaluation for a private proposal.",
-        maturity: "external_cpi",
-      },
-      {
-        name: "propose_confidential_vector_transaction",
-        label: "Propose vector transaction",
-        description: "Creates a pending vector proposal with heap-safe helper-vector inputs.",
-        maturity: "external_cpi",
-      },
-      {
-        name: "execute_pending_vector_fhe",
-        label: "Execute vector FHE",
-        description: "Runs the compact vector Encrypt graph in a separate transaction.",
         maturity: "external_cpi",
       },
       {

@@ -84,18 +84,6 @@ export interface ConfigureConfidentialGuardrailsAccounts extends OwnerTreasuryAc
 }
 
 /**
- * Accounts for `configure_confidential_vector_guardrails`.
- *
- * Attaches a single `EUint64Vector` ciphertext that encodes all three
- * guardrail values in one account instead of three separate scalars.
- */
-export interface ConfigureConfidentialVectorGuardrailsAccounts
-  extends OwnerTreasuryAccounts {
-  /** Vector ciphertext encoding `[remaining_daily_limit, per_tx_limit, spent_today]`. */
-  guardrailVectorCiphertext: PublicKey;
-}
-
-/**
  * Accounts for `propose_confidential_transaction` (scalar FHE path).
  *
  * Requires the three scalar guardrail ciphertexts plus the Ika Encrypt
@@ -126,69 +114,6 @@ export interface ProposeConfidentialTransactionAccounts
   /** The Encrypt network's public encryption key account. */
   networkEncryptionKey: PublicKey;
   /** Encrypt program event authority PDA (`[b"__event_authority"]`). */
-  eventAuthority: PublicKey;
-  /** Optional liveness record when policy requires fresh Encrypt evidence. */
-  externalLiveness?: OptionalAccount;
-  /** System program. */
-  systemProgram: PublicKey;
-}
-
-/**
- * Accounts for `propose_confidential_vector_transaction` (vector FHE path).
- *
- * Uses a single `EUint64Vector` guardrail ciphertext instead of three
- * separate scalars. This instruction only creates the pending proposal; call
- * `execute_pending_vector_fhe` next to submit the Encrypt graph CPI.
- */
-export interface ProposeConfidentialVectorTransactionAccounts
-  extends AiAuthorityTreasuryAccounts {
-  /** Vector ciphertext encoding the current guardrail state. */
-  guardrailVectorCiphertext: PublicKey;
-  /** Freshly created vector ciphertext encoding `[-amount mod u64, 0, amount]`. */
-  spendDeltaVectorCiphertext: PublicKey;
-  /** Freshly created vector ciphertext encoding `[amount, amount]` for limit checks. */
-  comparisonVectorCiphertext: PublicKey;
-  /** Vector ciphertext encoding assign target lanes `[3, 4, 5, ...]`. */
-  flagIndicesVectorCiphertext: PublicKey;
-  /** Pre-allocated output vector ciphertext that will hold the policy result. */
-  policyResultVectorCiphertext: PublicKey;
-  /** Ika Encrypt program ID. */
-  encryptProgram: PublicKey;
-  /** Optional liveness record when policy requires fresh Encrypt evidence. */
-  externalLiveness?: OptionalAccount;
-}
-
-/**
- * Accounts for `execute_pending_vector_fhe`.
- *
- * Runs the vector Encrypt CPI for a pending vector proposal in its own
- * transaction so graph execution receives a fresh BPF heap frame.
- */
-export interface ExecutePendingVectorFheAccounts
-  extends AiAuthorityTreasuryAccounts {
-  /** Vector ciphertext encoding the current guardrail state. */
-  guardrailVectorCiphertext: PublicKey;
-  /** Vector ciphertext encoding `[-amount mod u64, 0, amount]`. */
-  spendDeltaVectorCiphertext: PublicKey;
-  /** Vector ciphertext encoding `[amount, amount]` for limit checks. */
-  comparisonVectorCiphertext: PublicKey;
-  /** Vector ciphertext encoding assign target lanes `[3, 4, 5, ...]`. */
-  flagIndicesVectorCiphertext: PublicKey;
-  /** Pre-allocated output vector ciphertext that will hold the policy result. */
-  policyResultVectorCiphertext: PublicKey;
-  /** Ika Encrypt program ID. */
-  encryptProgram: PublicKey;
-  /** Encrypt program global config account. */
-  config: PublicKey;
-  /** Deposit account used to pay for FHE computation. */
-  deposit: PublicKey;
-  /** The AURA program itself, passed as the CPI caller. */
-  callerProgram: PublicKey;
-  /** AURA's Encrypt CPI authority PDA. */
-  cpiAuthority: PublicKey;
-  /** The Encrypt network's public encryption key account. */
-  networkEncryptionKey: PublicKey;
-  /** Encrypt program event authority PDA. */
   eventAuthority: PublicKey;
   /** Optional liveness record when policy requires fresh Encrypt evidence. */
   externalLiveness?: OptionalAccount;

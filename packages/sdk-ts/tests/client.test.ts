@@ -119,13 +119,6 @@ function defaultConfidentialArgs(): ProposeConfidentialTransactionArgs {
   };
 }
 
-function defaultExecutePendingVectorFheArgs() {
-  return {
-    proposalId: new BN(0),
-    currentTimestamp: new BN(101),
-  };
-}
-
 function randomAccounts<K extends string>(keys: K[]): Record<K, PublicKey> {
   return Object.fromEntries(keys.map((k) => [k, Keypair.generate().publicKey])) as Record<
     K,
@@ -577,26 +570,6 @@ test("configureConfidentialGuardrailsInstruction builds and decodes", async () =
   assert.equal(decoded?.name, "configure_confidential_guardrails");
 });
 
-// configureConfidentialVectorGuardrailsInstruction
-
-test("configureConfidentialVectorGuardrailsInstruction builds and decodes", async () => {
-  const client = makeClient();
-  const accounts = {
-    ...randomAccounts([
-      "owner",
-      "treasury",
-      "guardrailVectorCiphertext",
-    ] as const),
-  };
-  const instruction = await client.configureConfidentialVectorGuardrailsInstruction(
-    accounts,
-    new BN(1_700_000_000),
-  );
-  const decoded = client.coder.decode(instruction.data);
-  assert.ok(decoded);
-  assert.equal(decoded?.name, "configure_confidential_vector_guardrails");
-});
-
 // proposeConfidentialTransactionInstruction
 
 test("proposeConfidentialTransactionInstruction builds and decodes", async () => {
@@ -627,72 +600,6 @@ test("proposeConfidentialTransactionInstruction builds and decodes", async () =>
   const decoded = client.coder.decode(instruction.data);
   assert.ok(decoded);
   assert.equal(decoded?.name, "propose_confidential_transaction");
-});
-
-// proposeConfidentialVectorTransactionInstruction
-
-test("proposeConfidentialVectorTransactionInstruction builds and decodes", async () => {
-  const client = makeClient();
-  const accounts = {
-    ...randomAccounts([
-      "aiAuthority",
-      "treasury",
-      "guardrailVectorCiphertext",
-      "spendDeltaVectorCiphertext",
-      "comparisonVectorCiphertext",
-      "flagIndicesVectorCiphertext",
-      "policyResultVectorCiphertext",
-      "encryptProgram",
-    ] as const),
-  };
-  const instruction = await client.proposeConfidentialVectorTransactionInstruction(
-    accounts,
-    defaultConfidentialArgs(),
-  );
-  const decoded = client.coder.decode(instruction.data);
-  assert.ok(decoded);
-  assert.equal(decoded?.name, "propose_confidential_vector_transaction");
-  const outputMeta = instruction.keys.find((meta) =>
-    meta.pubkey.equals(accounts.policyResultVectorCiphertext),
-  );
-  assert.equal(outputMeta?.isSigner, false);
-});
-
-// executePendingVectorFheInstruction
-
-test("executePendingVectorFheInstruction builds and decodes", async () => {
-  const client = makeClient();
-  const accounts = {
-    ...randomAccounts([
-      "aiAuthority",
-      "treasury",
-      "guardrailVectorCiphertext",
-      "spendDeltaVectorCiphertext",
-      "comparisonVectorCiphertext",
-      "flagIndicesVectorCiphertext",
-      "policyResultVectorCiphertext",
-      "encryptProgram",
-      "config",
-      "deposit",
-      "callerProgram",
-      "cpiAuthority",
-      "networkEncryptionKey",
-      "eventAuthority",
-      "systemProgram",
-    ] as const),
-  };
-  const instruction = await client.executePendingVectorFheInstruction(
-    accounts,
-    defaultExecutePendingVectorFheArgs(),
-  );
-  const decoded = client.coder.decode(instruction.data);
-  assert.ok(decoded);
-  assert.equal(decoded?.name, "execute_pending_vector_fhe");
-  const outputMeta = instruction.keys.find((meta) =>
-    meta.pubkey.equals(accounts.policyResultVectorCiphertext),
-  );
-  assert.equal(outputMeta?.isSigner, false);
-  assert.equal(outputMeta?.isWritable, true);
 });
 
 // signer mismatch guards
@@ -743,21 +650,6 @@ test("configureConfidentialGuardrails rejects owner mismatch", async () => {
   );
 });
 
-test("configureConfidentialVectorGuardrails rejects owner mismatch", async () => {
-  const client = makeClient();
-  const signer = Keypair.generate();
-  await assert.rejects(
-    client.configureConfidentialVectorGuardrails(
-      signer,
-      {
-        ...randomAccounts(["owner", "treasury", "guardrailVectorCiphertext"] as const),
-      },
-      new BN(1),
-    ),
-    /owner/,
-  );
-});
-
 test("proposeConfidentialTransaction rejects aiAuthority mismatch", async () => {
   const client = makeClient();
   const signer = Keypair.generate();
@@ -781,30 +673,6 @@ test("proposeConfidentialTransaction rejects aiAuthority mismatch", async () => 
           "networkEncryptionKey",
           "eventAuthority",
           "systemProgram",
-        ] as const),
-      },
-      defaultConfidentialArgs(),
-    ),
-    /aiAuthority/,
-  );
-});
-
-test("proposeConfidentialVectorTransaction rejects aiAuthority mismatch", async () => {
-  const client = makeClient();
-  const signer = Keypair.generate();
-  await assert.rejects(
-    client.proposeConfidentialVectorTransaction(
-      signer,
-      {
-        ...randomAccounts([
-          "aiAuthority",
-          "treasury",
-          "guardrailVectorCiphertext",
-          "spendDeltaVectorCiphertext",
-          "comparisonVectorCiphertext",
-          "flagIndicesVectorCiphertext",
-          "policyResultVectorCiphertext",
-          "encryptProgram",
         ] as const),
       },
       defaultConfidentialArgs(),
