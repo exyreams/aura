@@ -22,8 +22,8 @@ use crate::{
     },
     types::{
         AgentTreasury, ConfigureMultisigArgs, ConfigureSwarmArgs, CreateTreasuryArgs,
-        ExecutePendingVectorFheArgs, ProposeConfidentialTransactionArgs, ProposeTransactionArgs,
-        RegisterDwalletArgs, TreasuryAccount,
+        ProposeConfidentialTransactionArgs, ProposeTransactionArgs, RegisterDwalletArgs,
+        TreasuryAccount,
     },
     SdkError, AURA_DEVNET_PROGRAM_ID,
 };
@@ -279,41 +279,6 @@ impl AuraClient {
         self.send_instructions(owner, vec![instruction], &[])
     }
 
-    /// Builds `configure_confidential_vector_guardrails`.
-    pub fn configure_confidential_vector_guardrails_instruction(
-        &self,
-        owner: Pubkey,
-        treasury: Pubkey,
-        guardrail_vector_ciphertext: Pubkey,
-        now: i64,
-    ) -> Instruction {
-        let accounts = aura_core::accounts::ConfigureConfidentialVectorGuardrails {
-            owner,
-            treasury,
-            guardrail_vector_ciphertext,
-        };
-        self.with_program_id(
-            instructions::confidential::configure_confidential_vector_guardrails(accounts, now),
-        )
-    }
-
-    /// Submits `configure_confidential_vector_guardrails`.
-    pub fn configure_confidential_vector_guardrails(
-        &self,
-        owner: &Keypair,
-        treasury: Pubkey,
-        guardrail_vector_ciphertext: Pubkey,
-        now: i64,
-    ) -> Result<Signature, SdkError> {
-        let instruction = self.configure_confidential_vector_guardrails_instruction(
-            owner.pubkey(),
-            treasury,
-            guardrail_vector_ciphertext,
-            now,
-        );
-        self.send_instructions(owner, vec![instruction], &[])
-    }
-
     /// Builds `propose_transaction`.
     pub fn propose_transaction_instruction(
         &self,
@@ -368,54 +333,6 @@ impl AuraClient {
     ) -> Result<Signature, SdkError> {
         ensure_signer_matches(ai_authority, accounts.ai_authority, "ai_authority")?;
         let instruction = self.propose_confidential_transaction_instruction(accounts, args);
-        self.send_instructions(ai_authority, vec![instruction], extra_signers)
-    }
-
-    /// Builds `propose_confidential_vector_transaction`.
-    pub fn propose_confidential_vector_transaction_instruction(
-        &self,
-        accounts: aura_core::accounts::ProposeConfidentialVectorTransaction,
-        args: ProposeConfidentialTransactionArgs,
-    ) -> Instruction {
-        self.with_program_id(
-            instructions::confidential::propose_confidential_vector_transaction(accounts, args),
-        )
-    }
-
-    /// Submits `propose_confidential_vector_transaction`.
-    pub fn propose_confidential_vector_transaction(
-        &self,
-        ai_authority: &Keypair,
-        accounts: aura_core::accounts::ProposeConfidentialVectorTransaction,
-        args: ProposeConfidentialTransactionArgs,
-        extra_signers: &[&Keypair],
-    ) -> Result<Signature, SdkError> {
-        ensure_signer_matches(ai_authority, accounts.ai_authority, "ai_authority")?;
-        let instruction = self.propose_confidential_vector_transaction_instruction(accounts, args);
-        self.send_instructions(ai_authority, vec![instruction], extra_signers)
-    }
-
-    /// Builds `execute_pending_vector_fhe`.
-    pub fn execute_pending_vector_fhe_instruction(
-        &self,
-        accounts: aura_core::accounts::ExecutePendingVectorFhe,
-        args: ExecutePendingVectorFheArgs,
-    ) -> Instruction {
-        self.with_program_id(instructions::confidential::execute_pending_vector_fhe(
-            accounts, args,
-        ))
-    }
-
-    /// Submits `execute_pending_vector_fhe`.
-    pub fn execute_pending_vector_fhe(
-        &self,
-        ai_authority: &Keypair,
-        accounts: aura_core::accounts::ExecutePendingVectorFhe,
-        args: ExecutePendingVectorFheArgs,
-        extra_signers: &[&Keypair],
-    ) -> Result<Signature, SdkError> {
-        ensure_signer_matches(ai_authority, accounts.ai_authority, "ai_authority")?;
-        let instruction = self.execute_pending_vector_fhe_instruction(accounts, args);
         self.send_instructions(ai_authority, vec![instruction], extra_signers)
     }
 

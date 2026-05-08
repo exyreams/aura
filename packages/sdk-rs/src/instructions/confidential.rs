@@ -16,18 +16,6 @@ pub fn configure_confidential_guardrails(
     }
 }
 
-/// Builds `configure_confidential_vector_guardrails`.
-pub fn configure_confidential_vector_guardrails(
-    accounts: accounts::ConfigureConfidentialVectorGuardrails,
-    now: i64,
-) -> Instruction {
-    Instruction {
-        program_id: aura_core::ID,
-        accounts: accounts.to_account_metas(None),
-        data: aura_core::instruction::ConfigureConfidentialVectorGuardrails { now }.data(),
-    }
-}
-
 /// Builds `propose_confidential_transaction`.
 pub fn propose_confidential_transaction(
     accounts: accounts::ProposeConfidentialTransaction,
@@ -37,30 +25,6 @@ pub fn propose_confidential_transaction(
         program_id: aura_core::ID,
         accounts: accounts.to_account_metas(None),
         data: aura_core::instruction::ProposeConfidentialTransaction { args }.data(),
-    }
-}
-
-/// Builds `propose_confidential_vector_transaction`.
-pub fn propose_confidential_vector_transaction(
-    accounts: accounts::ProposeConfidentialVectorTransaction,
-    args: aura_core::ProposeConfidentialTransactionArgs,
-) -> Instruction {
-    Instruction {
-        program_id: aura_core::ID,
-        accounts: accounts.to_account_metas(None),
-        data: aura_core::instruction::ProposeConfidentialVectorTransaction { args }.data(),
-    }
-}
-
-/// Builds `execute_pending_vector_fhe`.
-pub fn execute_pending_vector_fhe(
-    accounts: accounts::ExecutePendingVectorFhe,
-    args: aura_core::ExecutePendingVectorFheArgs,
-) -> Instruction {
-    Instruction {
-        program_id: aura_core::ID,
-        accounts: accounts.to_account_metas(None),
-        data: aura_core::instruction::ExecutePendingVectorFhe { args }.data(),
     }
 }
 

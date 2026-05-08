@@ -199,30 +199,21 @@ client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
     recipient_or_contract: "0xdeadbeef...".to_string(),
 })?;
 
-// Confidential scalar proposal (FHE — requires Ika Encrypt network)
+// Confidential proposal (scalar FHE — requires Ika Encrypt network)
 client.propose_confidential_transaction(&ai_authority, accounts, args, &[])?;
-
-// Confidential vector proposal (FHE — requires Ika Encrypt network)
-// Accounts include the guardrail vector, helper vectors, and a pre-allocated output vector.
-client.propose_confidential_vector_transaction(&ai_authority, accounts, args, &[])?;
-client.execute_pending_vector_fhe(&ai_authority, execute_accounts, execute_args, &[])?;
 ```
 
 ### Confidential guardrails (FHE)
 
 ```rust,no_run
-// Scalar ciphertexts — daily limit, per-tx limit, spent-today as separate accounts
+// Scalar ciphertexts — daily limit, per-tx limit, spent-today as separate accounts.
+// The policy decrypts only the small violation code; spend state stays encrypted.
 client.configure_confidential_guardrails(
     &owner, treasury,
     daily_limit_ciphertext,
     per_tx_limit_ciphertext,
     spent_today_ciphertext,
     now,
-)?;
-
-// Vector ciphertext — remaining daily limit, per-tx limit, and spent-today encoded together
-client.configure_confidential_vector_guardrails(
-    &owner, treasury, guardrail_vector_ciphertext, now,
 )?;
 ```
 
