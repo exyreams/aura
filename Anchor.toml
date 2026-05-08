@@ -7,10 +7,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-aura_core = "2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya"
+aura_core = "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs"
 
 [programs.localnet]
-aura_core = "2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya"
+aura_core = "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs"
 
 [provider]
 cluster = "devnet"

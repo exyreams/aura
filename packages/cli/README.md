@@ -68,6 +68,7 @@ aura config set --wallet ~/.config/solana/id.json
 ```
 
 Config resolution order (highest wins):
+
 1. CLI flags (`--rpc-url`, `--wallet`, `--program-id`)
 2. Environment variables (`AURA_RPC_URL`, `AURA_WALLET_PATH`, `AURA_PROGRAM_ID`)
 3. Config file (`~/.aura/config.json`)
@@ -358,7 +359,7 @@ AURA_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
 AURA_DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
 AURA_WALLET_PATH="/path/to/keypair.json"
 PAYER_KEYPAIR="/path/to/keypair.json"
-AURA_PROGRAM_ID="2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya"
+AURA_PROGRAM_ID="EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs"
 AURA_DEFAULT_AGENT_ID="my-agent"
 ```
 

@@ -27,11 +27,11 @@ AURA combines confidential treasury policy, dWallet execution, and operational s
 
 AI agents can already reason about trades, treasury movement, and operational tasks, but most wallet systems still treat them like ordinary hot-wallet users. That creates three hard problems:
 
-| Problem | Why it matters |
-|---|---|
-| Direct key access | A prompt injection, model bug, or compromised runtime can drain the treasury. |
-| Public spending policy | Competitors, MEV searchers, and attackers can inspect limits, infer strategy, and route around known controls. |
-| Centralized approval middleware | The agent is no longer autonomous, and the middleware becomes a single point of failure. |
+| Problem                         | Why it matters                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Direct key access               | A prompt injection, model bug, or compromised runtime can drain the treasury.                                  |
+| Public spending policy          | Competitors, MEV searchers, and attackers can inspect limits, infer strategy, and route around known controls. |
+| Centralized approval middleware | The agent is no longer autonomous, and the middleware becomes a single point of failure.                       |
 
 AURA's core idea is to let the agent submit useful actions while the treasury enforces cryptographic and policy boundaries around those actions. Limits can stay encrypted, policy decisions can be audited, and execution can be co-signed by dWallet infrastructure instead of exposing raw treasury keys to the agent.
 
@@ -39,11 +39,12 @@ AURA's core idea is to let the agent submit useful actions while the treasury en
 
 ## Why FHE?
 
-Fully Homomorphic Encryption (FHE) lets you compute over data without decrypting it. AURA uses this to evaluate questions like *"is this $400 transfer within the agent's daily limit?"* without ever revealing what the daily limit is.
+Fully Homomorphic Encryption (FHE) lets you compute over data without decrypting it. AURA uses this to evaluate questions like _"is this $400 transfer within the agent's daily limit?"_ without ever revealing what the daily limit is.
 
 The Ika Encrypt network maintains the FHE keys. When the AI proposes a transaction, a compiled FHE circuit (a "policy graph") runs on-chain over ciphertexts — the daily limit, the per-transaction limit, and the running spent-today counter — and outputs an encrypted violation code. The network then decrypts only that result (0 = approved, 1 = per-tx limit hit, 2 = daily limit hit). Your actual limit values are never exposed.
 
 This means:
+
 - A competing agent scanning the chain learns nothing useful.
 - A compromised validator cannot extract your strategy.
 - The AI agent itself cannot circumvent the limits, because the evaluation is cryptographically enforced.
@@ -296,11 +297,11 @@ Same as scalar, but the guardrail ciphertext is a single `EUint64Vector`. After 
 
 Each agent accrues a reputation score (0–100) based on transaction history. The policy engine applies a multiplier to the daily limit:
 
-| Score | Multiplier |
-|---|---|
-| 80–100 | 150% of base |
-| 50–79 | 100% (no adjustment) |
-| < 50 | 70% of base |
+| Score  | Multiplier           |
+| ------ | -------------------- |
+| 80–100 | 150% of base         |
+| 50–79  | 100% (no adjustment) |
+| < 50   | 70% of base          |
 
 Thresholds and multipliers are configurable per treasury via `PolicyConfig::reputation_policy`.
 
@@ -322,8 +323,8 @@ Multiple agents can share a collective spending pool. Attach a `configure_swarm`
 
 ```
 aura-core (devnet)
-  Program ID:    2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya
-  IDL Metadata:  5VNrRefsMBWZdqyqLRcKcrNG2EMnaYwBbQjhJRM59Bji
+  Program ID:    EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+  IDL Metadata:  FEwkjMC7J1t55i9ASU37jSeD7midnMpkNCQSxPQKNnXb
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:    4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8
@@ -377,6 +378,7 @@ anchor deploy --provider.cluster "https://devnet.helius-rpc.com/?api-key=<YOUR_K
 The `smoke/aura-devnet/` directory contains live devnet smoke binaries for dWallet execution, confidential Encrypt flows, and policy behavior. The policy smoke currently exercises a 12-scenario matrix against the deployed devnet program.
 
 **Prerequisites:**
+
 - Solana CLI configured with a funded devnet wallet (`~/.config/solana/id.json`)
   - Get devnet SOL: `solana airdrop 2 --url devnet`
 - Network access to:
@@ -444,11 +446,11 @@ The live policy scenario matrix covers per-transaction deny/approve, daily-limit
 
 ## Toolchain
 
-| Tool | Version |
-|---|---|
-| Anchor | `1.0.0` |
-| Solana CLI | `3.1.13` |
-| Rust workspace resolver | `2` |
+| Tool                    | Version  |
+| ----------------------- | -------- |
+| Anchor                  | `1.0.0`  |
+| Solana CLI              | `3.1.13` |
+| Rust workspace resolver | `2`      |
 
 All Rust crates enforce `#![forbid(unsafe_code)]`.
 

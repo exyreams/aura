@@ -106,7 +106,7 @@ use instructions::{
     __cpi_client_accounts_veto_config_change, __cpi_client_accounts_write_policy_receipt,
 };
 
-declare_id!("2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya");
+declare_id!("EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs");
 
 #[program]
 pub mod aura_core {

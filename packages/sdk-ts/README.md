@@ -92,9 +92,9 @@ console.log("agentId:", account.agentId);
 import { AuraClient } from "@aura-protocol/sdk-ts";
 
 const client = new AuraClient({
-  connection,               // Connection — required
-  programId,                // PublicKey — optional, defaults to devnet program ID
-  confirmOptions,           // ConfirmOptions — optional
+  connection, // Connection — required
+  programId, // PublicKey — optional, defaults to devnet program ID
+  confirmOptions, // ConfirmOptions — optional
 });
 ```
 
@@ -108,7 +108,10 @@ const account = await client.getTreasuryAccount(treasuryPDA);
 const account = await client.getTreasuryAccountNullable(treasuryPDA);
 
 // Derive the PDA and fetch in one call
-const { treasury, account } = await client.getTreasuryForOwner(owner, "my-agent");
+const { treasury, account } = await client.getTreasuryForOwner(
+  owner,
+  "my-agent",
+);
 ```
 
 ### PDA derivation
@@ -117,7 +120,8 @@ const { treasury, account } = await client.getTreasuryForOwner(owner, "my-agent"
 const [treasuryPDA, bump] = client.deriveTreasuryAddress(owner, "my-agent");
 const [dwalletCpiAuthority] = client.deriveDwalletCpiAuthority();
 const [encryptCpiAuthority] = client.deriveEncryptCpiAuthority();
-const [encryptEventAuthority] = client.deriveEncryptEventAuthority(encryptProgramId);
+const [encryptEventAuthority] =
+  client.deriveEncryptEventAuthority(encryptProgramId);
 ```
 
 ### Sending transactions
@@ -136,6 +140,7 @@ const { treasury, signature } = await client.createTreasury(payer, args);
 ## Instructions
 
 Every instruction has two forms:
+
 - `*Instruction(...)` — returns a `TransactionInstruction` for composing into your own transaction
 - the method without the suffix — builds, signs, and sends in one call
 
@@ -173,12 +178,15 @@ and dWallet balance refreshes.
 
 ```ts
 // Create a new treasury PDA
-const { treasury, instruction } = await client.createTreasuryInstruction({ owner, args });
-const { treasury, signature }   = await client.createTreasury(payer, args);
+const { treasury, instruction } = await client.createTreasuryInstruction({
+  owner,
+  args,
+});
+const { treasury, signature } = await client.createTreasury(payer, args);
 
 // Pause or unpause execution
-await client.pauseExecution(owner, treasury, true,  now);  // pause
-await client.pauseExecution(owner, treasury, false, now);  // unpause
+await client.pauseExecution(owner, treasury, true, now); // pause
+await client.pauseExecution(owner, treasury, false, now); // unpause
 
 // Cancel the current pending transaction
 await client.cancelPending(owner, treasury, now);
@@ -188,11 +196,11 @@ await client.cancelPending(owner, treasury, now);
 
 ```ts
 await client.registerDwallet(owner, treasury, {
-  chain: 2,                    // 0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism
+  chain: 2, // 0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism
   dwalletId: "dwallet-abc",
   address: "0xdeadbeef...",
   balanceUsd: new BN(5_000),
-  dwalletAccount: null,        // set for live Ika signing
+  dwalletAccount: null, // set for live Ika signing
   authorizedUserPubkey: null,
   messageMetadataDigest: null,
   publicKeyHex: null,
@@ -279,37 +287,49 @@ The low-level client exposes the latest policy-control program surface directly.
 Each method has an `*Instruction` builder and a send helper with signer checks.
 
 ```ts
-await client.applyPolicyPreset(owner, { owner: owner.publicKey, treasury }, {
-  presetKind: 1,
-  now: new BN(now),
-});
+await client.applyPolicyPreset(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    presetKind: 1,
+    now: new BN(now),
+  },
+);
 
-await client.configureApprovalLadder(owner, { owner: owner.publicKey, treasury }, {
-  guardianAboveUsd: new BN(5_000),
-  multisigAboveUsd: new BN(25_000),
-  timelockAboveUsd: new BN(50_000),
-  denyAboveUsd: new BN(100_000),
-  riskGuardianBps: 6_000,
-  riskMultisigBps: 8_000,
-  riskTimelockBps: 9_000,
-  timelockSecs: new BN(3_600),
-  now: new BN(now),
-});
+await client.configureApprovalLadder(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    guardianAboveUsd: new BN(5_000),
+    multisigAboveUsd: new BN(25_000),
+    timelockAboveUsd: new BN(50_000),
+    denyAboveUsd: new BN(100_000),
+    riskGuardianBps: 6_000,
+    riskMultisigBps: 8_000,
+    riskTimelockBps: 9_000,
+    timelockSecs: new BN(3_600),
+    now: new BN(now),
+  },
+);
 
-await client.setScopedPause(operator, {
-  operator: operator.publicKey,
-  treasury,
-  operatorRole: null,
-}, {
-  scopeKind: 5,
-  chain: null,
-  txType: null,
-  recipient: null,
-  protocolId: null,
-  paused: true,
-  expiresAt: null,
-  now: new BN(now),
-});
+await client.setScopedPause(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury,
+    operatorRole: null,
+  },
+  {
+    scopeKind: 5,
+    chain: null,
+    txType: null,
+    recipient: null,
+    protocolId: null,
+    paused: true,
+    expiresAt: null,
+    now: new BN(now),
+  },
+);
 ```
 
 Covered policy-control methods:
@@ -324,8 +344,17 @@ Covered policy-control methods:
 ### Advanced controls
 
 ```ts
-await client.proposeAiRotation(owner, { owner: owner.publicKey, treasury }, newAiAuthority, now);
-await client.executeAiRotation(owner, { owner: owner.publicKey, treasury }, now);
+await client.proposeAiRotation(
+  owner,
+  { owner: owner.publicKey, treasury },
+  newAiAuthority,
+  now,
+);
+await client.executeAiRotation(
+  owner,
+  { owner: owner.publicKey, treasury },
+  now,
+);
 
 await client.proposeGuardianRotation(
   guardian,
@@ -335,19 +364,30 @@ await client.proposeGuardianRotation(
   now,
 );
 
-await client.issueSessionKey(authority, {
-  authority: authority.publicKey,
-  treasury,
-  sessionKeyAccount,
-  systemProgram: SystemProgram.programId,
-}, issueArgs);
+await client.issueSessionKey(
+  authority,
+  {
+    authority: authority.publicKey,
+    treasury,
+    sessionKeyAccount,
+    systemProgram: SystemProgram.programId,
+  },
+  issueArgs,
+);
 
-await client.manageAddressList(operator, {
-  operator: operator.publicKey,
-  treasury,
-  operatorRole: null,
-  addressList,
-}, 1, 2, ["0xabc..."], now);
+await client.manageAddressList(
+  operator,
+  {
+    operator: operator.publicKey,
+    treasury,
+    operatorRole: null,
+    addressList,
+  },
+  1,
+  2,
+  ["0xabc..."],
+  now,
+);
 ```
 
 Newer operational and admin methods include AI rotation, guardian rotation,
@@ -375,17 +415,21 @@ import {
   AURA_PROGRAM_ID,
 } from "@aura-protocol/sdk-ts";
 
-const [treasury, bump] = deriveTreasuryAddress(owner, "my-agent", AURA_PROGRAM_ID);
+const [treasury, bump] = deriveTreasuryAddress(
+  owner,
+  "my-agent",
+  AURA_PROGRAM_ID,
+);
 
 // Current dWallet MessageApproval PDA.
 const digest = new Uint8Array(32); // Keccak-256 message digest
 const [approval] = deriveMessageApprovalAddress(
   dwalletProgramId,
-  0,                  // curve code
+  0, // curve code
   publicKeyBytes,
-  5,                  // signature scheme code
+  5, // signature scheme code
   digest,
-  metadataDigest,     // optional 32-byte digest
+  metadataDigest, // optional 32-byte digest
 );
 
 // Policy-control PDAs.
@@ -404,14 +448,14 @@ derivations.
 
 ```ts
 import {
-  AURA_PROGRAM_ID,           // PublicKey — deployed devnet program
+  AURA_PROGRAM_ID, // PublicKey — deployed devnet program
   DWALLET_DEVNET_PROGRAM_ID, // PublicKey — Ika dWallet program
   ENCRYPT_DEVNET_PROGRAM_ID, // PublicKey — Ika Encrypt program
-  DEVNET_RPC_URL,            // string — https://api.devnet.solana.com
-  AURA_IDL,                  // the raw Anchor IDL object
-  AURA_FEATURE_DOMAINS,      // array of feature domains with instruction metadata
+  DEVNET_RPC_URL, // string — https://api.devnet.solana.com
+  AURA_IDL, // the raw Anchor IDL object
+  AURA_FEATURE_DOMAINS, // array of feature domains with instruction metadata
   AURA_INSTRUCTION_FEATURES, // flat array of all instruction features
-  getAuraFeatureDomain,      // helper to lookup a domain by ID
+  getAuraFeatureDomain, // helper to lookup a domain by ID
 } from "@aura-protocol/sdk-ts";
 
 // Type aliases derived from the IDL
@@ -486,10 +530,10 @@ the `BNish` type. The `toBN` helper is also exported if you need it directly:
 ```ts
 import { toBN } from "@aura-protocol/sdk-ts";
 
-toBN(1000)           // number
-toBN(1000n)          // bigint
-toBN("1000")         // decimal string
-toBN(new BN(1000))   // passthrough
+toBN(1000); // number
+toBN(1000n); // bigint
+toBN("1000"); // decimal string
+toBN(new BN(1000)); // passthrough
 ```
 
 ---
@@ -529,7 +573,11 @@ import type {
 All on-chain errors are accessible via `AuraErrorCode`:
 
 ```ts
-import { AuraErrorCode, isAuraError, getAuraErrorCode } from "@aura-protocol/sdk-ts";
+import {
+  AuraErrorCode,
+  isAuraError,
+  getAuraErrorCode,
+} from "@aura-protocol/sdk-ts";
 
 try {
   await client.proposeTransaction(aiAuthority, accounts, args);
@@ -572,11 +620,11 @@ for (const event of events) {
 }
 ```
 
-| Event | When emitted |
-|---|---|
-| `treasuryAuditEvent` | After every state-mutating instruction |
-| `proposalLifecycleEvent` | After every proposal state change |
-| `executionLifecycleEvent` | After `finalize_execution` completes |
+| Event                     | When emitted                           |
+| ------------------------- | -------------------------------------- |
+| `treasuryAuditEvent`      | After every state-mutating instruction |
+| `proposalLifecycleEvent`  | After every proposal state change      |
+| `executionLifecycleEvent` | After `finalize_execution` completes   |
 
 ---
 
@@ -595,8 +643,8 @@ import {
   validateSwarmMembers,
 } from "@aura-protocol/sdk-ts";
 
-validateAgentId("my-agent");                    // throws if empty or > 64 bytes
-validateAmountUsd(100);                         // throws if zero
+validateAgentId("my-agent"); // throws if empty or > 64 bytes
+validateAmountUsd(100); // throws if zero
 validateMultisigThreshold(2, guardians.length); // throws if threshold > count
 ```
 
@@ -709,8 +757,8 @@ npm run test:devnet
 
 ```
 aura-core (devnet)
-  Program ID:   2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya
-  IDL Metadata: 5VNrRefsMBWZdqyqLRcKcrNG2EMnaYwBbQjhJRM59Bji
+  Program ID:   EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+  IDL Metadata: FEwkjMC7J1t55i9ASU37jSeD7midnMpkNCQSxPQKNnXb
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:   4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8

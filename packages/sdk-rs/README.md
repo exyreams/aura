@@ -128,6 +128,7 @@ let signature = client.send_with_default_payer(vec![instruction], &[])?;
 ## Instructions
 
 Every instruction has two forms:
+
 - `*_instruction(...)` — returns a `solana_sdk::instruction::Instruction` for composing into your own transaction
 - the method without the suffix — builds, signs, and sends in one call
 
@@ -466,7 +467,7 @@ use aura_sdk::{AURA_DEVNET_PROGRAM_ID, DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET
 
 ```
 aura-core (devnet)
-  Program ID:   2fHkM5fb8iLt5ojkubAcLpAjgkF1QL1iEXivKZmPw3ya
+  Program ID:   EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:   4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8
