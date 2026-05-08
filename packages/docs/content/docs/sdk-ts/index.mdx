@@ -10,7 +10,7 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
 AURA. It wraps the Anchor IDL, account fetches, PDA derivation, event parsing,
 instruction builders, and the shared program-surface catalog.
 
-Current published package: `@aura-protocol/sdk-ts@0.2.12`.
+Current published package: `@aura-protocol/sdk-ts@0.2.13`.
 
 ## What It Exposes
 
@@ -20,7 +20,7 @@ Current published package: `@aura-protocol/sdk-ts@0.2.12`.
 - Domain instruction builders under `@aura-protocol/sdk-ts/instructions`
 - Program constants for AURA, Encrypt, and dWallet devnet deployments
 - `AURA_FEATURE_DOMAINS` and `AURA_INSTRUCTION_FEATURES` for UI, CLI, and docs discovery
-- 70 current `aura-core` instructions, including `executePendingVectorFhe`
+- 67 current `aura-core` instructions, including the scalar confidential lifecycle
 
 ## Installation
 
@@ -32,8 +32,8 @@ The npm package publishes `README.md` alongside `dist/`. To verify a release
 artifact locally:
 
 ```bash
-npm pack @aura-protocol/sdk-ts@0.2.12 --json
-npm view @aura-protocol/sdk-ts@0.2.12 readmeFilename readme
+npm pack @aura-protocol/sdk-ts@0.2.13 --json
+npm view @aura-protocol/sdk-ts@0.2.13 readmeFilename readme
 ```
 
 ## Quick Start
@@ -128,7 +128,7 @@ import { treasury, governance, execution } from "@aura-protocol/sdk-ts/instructi
 
 <Cards>
   <Card title="AuraClient" description="Full client API — account fetches, PDA derivation, and transaction helpers." href="/docs/sdk-ts/client" />
-  <Card title="Instruction Surface" description="All 13 instruction domains and 70 instructions exposed by the SDK." href="/docs/sdk-ts/instructions" />
-  <Card title="Confidential Flow" description="Scalar/vector guardrails, Encrypt CPI, and policy decryption." href="/docs/sdk-ts/instructions/confidential" />
+  <Card title="Instruction Surface" description="All 13 instruction domains and 67 instructions exposed by the SDK." href="/docs/sdk-ts/instructions" />
+  <Card title="Confidential Flow" description="Scalar guardrails, Encrypt CPI, and policy decryption." href="/docs/sdk-ts/instructions/confidential" />
   <Card title="Governance" description="Multisig overrides, rotations, config changes, and shutdown." href="/docs/sdk-ts/instructions/governance" />
 </Cards>

@@ -1,6 +1,6 @@
 ---
 title: Proposals
-description: Propose public and FHE-encrypted transactions for policy evaluation.
+description: Propose public and scalar FHE-encrypted transactions for policy evaluation.
 icon: FilePlus
 ---
 
@@ -8,32 +8,22 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
 
 ## proposeTransaction
 
-Propose a public (non-encrypted) transaction. The on-chain policy engine
-evaluates all rules immediately and either approves or rejects.
+Propose a public transaction. The on-chain policy engine evaluates all rules
+immediately and either approves or rejects.
 
 ```typescript
-// Build only
 const instruction = await client.proposeTransactionInstruction(
   accounts: ProposeTransactionAccounts,
   args: ProposeTransactionArgs,
 );
 
-// Build + send
-await client.proposeTransaction(
-  aiAuthority: Signer,
-  accounts: ProposeTransactionAccounts,
-  args: ProposeTransactionArgs,
-);
+await client.proposeTransaction(aiAuthority, accounts, args);
 ```
-
-### Accounts
 
 ```typescript
 interface ProposeTransactionAccounts {
-  // Required:
-  aiAuthority: PublicKey; // AI agent signer — must match the signer
-  treasury: PublicKey;    // treasury PDA
-  // Optional policy-control accounts (pass null or omit to use defaults):
+  aiAuthority: PublicKey;
+  treasury: PublicKey;
   sessionKeyAccount?: PublicKey | null;
   swarmPool?: PublicKey | null;
   addressList?: PublicKey | null;
@@ -44,172 +34,35 @@ interface ProposeTransactionAccounts {
 }
 ```
 
-### Arguments
-
-```typescript
-interface ProposeTransactionArgs {
-  amountUsd: BN;                      // transaction amount in USD cents
-  targetChain: number;                // 0–5, see dWallet chain table
-  txType: number;                     // 0=Transfer, 1=Swap, 2=Stake, …
-  protocolId: number | null;          // protocol bitmap bit position
-  currentTimestamp: BN;               // current Unix timestamp (seconds)
-  expectedOutputUsd: BN | null;       // expected output for slippage check
-  actualOutputUsd: BN | null;         // actual output for slippage check
-  quoteAgeSecs: number | null;        // age of price quote in seconds
-  counterpartyRiskScore: number | null; // 0–100
-  recipientOrContract: string;        // recipient address or contract on the chain
-  sanctionsProof: [];                 // reserved — always pass []
-}
-```
-
-### Example
-
-```typescript
-import BN from 'bn.js';
-
-const now = new BN(Math.floor(Date.now() / 1000));
-
-await client.proposeTransaction(
-  aiAuthority,
-  { aiAuthority: aiAuthority.publicKey, treasury },
-  {
-    amountUsd: new BN(250),
-    targetChain: 2,               // Ethereum
-    txType: 0,                    // Transfer
-    protocolId: null,
-    currentTimestamp: now,
-    expectedOutputUsd: null,
-    actualOutputUsd: null,
-    quoteAgeSecs: null,
-    counterpartyRiskScore: 15,
-    recipientOrContract: '0xdeadbeef...',
-    sanctionsProof: [],
-  },
-);
-```
-
----
-
 ## proposeConfidentialTransaction
 
-Propose a confidential transaction using scalar FHE ciphertexts. The policy
-engine evaluates spending limits over encrypted values — amounts are never
-revealed on-chain.
+Propose a confidential transaction using scalar FHE ciphertexts. The amount is
+encrypted off-chain, the Encrypt CPI evaluates the scalar guardrail graph, and
+the pending proposal stores the encrypted policy output ciphertext.
 
 ```typescript
-// Build only
 const instruction = await client.proposeConfidentialTransactionInstruction(
   accounts: ProposeConfidentialTransactionAccounts,
   args: ProposeConfidentialTransactionArgs,
 );
 
-// Build + send
 await client.proposeConfidentialTransaction(
-  aiAuthority: Signer,
-  accounts: ProposeConfidentialTransactionAccounts,
-  args: ProposeConfidentialTransactionArgs,
-  extraSigners?: Signer[],
+  aiAuthority,
+  accounts,
+  args,
+  extraSigners,
 );
 ```
 
-### Accounts
-
 ```typescript
 interface ProposeConfidentialTransactionAccounts {
-  // Required:
   aiAuthority: PublicKey;
   treasury: PublicKey;
   dailyLimitCiphertext: PublicKey;
   perTxLimitCiphertext: PublicKey;
   spentTodayCiphertext: PublicKey;
-  amountCiphertext: PublicKey;        // freshly created — must sign its own creation
-  policyOutputCiphertext: PublicKey;  // output ciphertext account
-  encryptProgram: PublicKey;
-  config: PublicKey;
-  deposit: PublicKey;
-  callerProgram: PublicKey;           // AURA program ID
-  cpiAuthority: PublicKey;            // deriveEncryptCpiAuthorityAddress()
-  networkEncryptionKey: PublicKey;
-  eventAuthority: PublicKey;          // deriveEncryptEventAuthorityAddress()
-  systemProgram: PublicKey;
-  // Optional:
-  externalLiveness?: PublicKey | null;
-}
-```
-
----
-
-## proposeConfidentialVectorTransaction
-
-Persist a confidential vector proposal using the current guardrail vector and
-the helper vectors created off-chain. This instruction does not run the Encrypt
-graph CPI; call `executePendingVectorFhe` immediately after the proposal lands.
-
-```typescript
-// Build only
-const instruction = await client.proposeConfidentialVectorTransactionInstruction(
-  accounts: ProposeConfidentialVectorTransactionAccounts,
-  args: ProposeConfidentialTransactionArgs,
-);
-
-// Build + send
-await client.proposeConfidentialVectorTransaction(
-  aiAuthority: Signer,
-  accounts: ProposeConfidentialVectorTransactionAccounts,
-  args: ProposeConfidentialTransactionArgs,
-  extraSigners?: Signer[],
-);
-```
-
-### Accounts
-
-```typescript
-interface ProposeConfidentialVectorTransactionAccounts {
-  aiAuthority: PublicKey;
-  treasury: PublicKey;
-  guardrailVectorCiphertext: PublicKey;   // [remainingDaily, perTx, spentToday]
-  spendDeltaVectorCiphertext: PublicKey;  // [-amount mod u64, 0, amount]
-  comparisonVectorCiphertext: PublicKey;  // [amount, amount]
-  flagIndicesVectorCiphertext: PublicKey; // [3, 4, 5, ...]
-  policyResultVectorCiphertext: PublicKey; // pre-allocated zero EUint64Vector
-  encryptProgram: PublicKey;
-  externalLiveness?: PublicKey | null;
-}
-```
-
----
-
-## executePendingVectorFhe
-
-Run the compact vector FHE graph for a pending vector proposal. This must be a
-separate transaction so the Encrypt CPI gets a fresh heap frame.
-
-```typescript
-// Build only
-const instruction = await client.executePendingVectorFheInstruction(
-  accounts: ExecutePendingVectorFheAccounts,
-  args: ExecutePendingVectorFheArgs,
-);
-
-// Build + send
-await client.executePendingVectorFhe(
-  aiAuthority: Signer,
-  accounts: ExecutePendingVectorFheAccounts,
-  args: ExecutePendingVectorFheArgs,
-);
-```
-
-### Accounts
-
-```typescript
-interface ExecutePendingVectorFheAccounts {
-  aiAuthority: PublicKey;
-  treasury: PublicKey;
-  guardrailVectorCiphertext: PublicKey;
-  spendDeltaVectorCiphertext: PublicKey;
-  comparisonVectorCiphertext: PublicKey;
-  flagIndicesVectorCiphertext: PublicKey;
-  policyResultVectorCiphertext: PublicKey;
+  amountCiphertext: PublicKey;
+  policyOutputCiphertext: PublicKey;
   encryptProgram: PublicKey;
   config: PublicKey;
   deposit: PublicKey;
@@ -222,29 +75,16 @@ interface ExecutePendingVectorFheAccounts {
 }
 ```
 
-```typescript
-await client.proposeConfidentialVectorTransaction(aiAuthority, vectorAccounts, args);
-
-await client.executePendingVectorFhe(aiAuthority, executeVectorAccounts, {
-  proposalId,
-  currentTimestamp: new BN(Math.floor(Date.now() / 1000) + 1),
-});
-```
-
----
-
 ## Public vs Confidential
 
 | | Public | Confidential |
 |---|---|---|
-| Amount visible on-chain | Yes | No (FHE encrypted) |
-| Policy evaluation | Synchronous, on-chain | Via Ika Encrypt network |
-| Extra accounts needed | No | Yes (ciphertext PDAs) |
-| MEV risk | Higher | Eliminated |
+| Amount visible on-chain | Yes | No, amount is an Encrypt ciphertext |
+| Policy evaluation | Immediate on-chain rules | Scalar FHE graph through Ika Encrypt |
+| Extra accounts needed | No | Ciphertext, Encrypt config, deposit, and CPI authority accounts |
 | Setup required | None | `configureConfidentialGuardrails` first |
-| Vector lifecycle | n/a | `proposeConfidentialVectorTransaction` then `executePendingVectorFhe` |
 
 <Cards>
-  <Card title="Confidential Setup" description="Configure FHE guardrails before confidential proposals." href="/docs/sdk-ts/instructions/confidential" />
-  <Card title="Execution" description="Drive the proposal through to finalization." href="/docs/sdk-ts/instructions/execution" />
+  <Card title="Confidential Setup" description="Configure scalar FHE guardrails before confidential proposals." href="/docs/sdk-ts/instructions/confidential" />
+  <Card title="Execution" description="Drive the proposal through decryption, dWallet signing, and finalization." href="/docs/sdk-ts/instructions/execution" />
 </Cards>

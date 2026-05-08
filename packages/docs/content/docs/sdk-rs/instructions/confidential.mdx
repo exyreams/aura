@@ -1,22 +1,16 @@
 ---
 title: Confidential
-description: Configure FHE-encrypted spending guardrails via the Ika Encrypt network.
+description: Configure scalar FHE-encrypted spending guardrails via the Ika Encrypt network.
 icon: Lock
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 
-Confidential guardrails store spending limits as FHE ciphertexts on-chain.
-Policy evaluation happens over encrypted values — limits are never revealed,
-preventing MEV exploitation.
-
-Vector proposals now use a split lifecycle: store the pending vector proposal
-first, then call `execute_pending_vector_fhe` in a second transaction.
+Confidential guardrails store the daily limit, per-transaction limit, and
+spent-today counter as separate scalar ciphertext accounts. The scalar graph
+updates encrypted state in-place and decrypts only the small violation code.
 
 ## configure_confidential_guardrails
-
-Configure scalar FHE guardrails — three separate ciphertexts for daily limit,
-per-tx limit, and spent-today counter.
 
 ```rust
 client.configure_confidential_guardrails(
@@ -29,68 +23,14 @@ client.configure_confidential_guardrails(
 )?;
 ```
 
----
+## Confidential Policy Shape
 
-## configure_confidential_vector_guardrails
-
-Configure vector FHE guardrails — all limits packed into a single vector
-ciphertext for more efficient evaluation.
-
-```rust
-client.configure_confidential_vector_guardrails(
-    &owner,
-    treasury,
-    guardrail_vector_ciphertext,
-    now,
-)?;
-```
-
----
-
-## propose_confidential_vector_transaction
-
-Create the pending vector proposal without running the Encrypt graph CPI.
-
-```rust
-let propose_ix = aura_sdk::instructions::confidential::propose_confidential_vector_transaction(
-    propose_accounts,
-    args,
-);
-```
-
-The proposal accounts include the current guardrail vector, spend-delta vector,
-comparison vector, flag-indices vector, and a pre-allocated zero
-`EUint64Vector` policy output account.
-
----
-
-## execute_pending_vector_fhe
-
-Run the compact vector FHE graph for the pending proposal.
-
-```rust
-let execute_ix = aura_sdk::instructions::confidential::execute_pending_vector_fhe(
-    execute_accounts,
-    aura_core::ExecutePendingVectorFheArgs {
-        proposal_id,
-        current_timestamp: now + 1,
-    },
-);
-```
-
-Request policy decryption only after this transaction has marked the pending
-proposal as `PolicyComputed`.
-
----
-
-## Scalar vs Vector
-
-| | Scalar | Vector |
-|---|---|---|
-| Ciphertext accounts | 3 (daily, per-tx, spent) | 1 (packed vector) |
-| Update individual limits | Yes | No — replace all |
-| Proposal execution | Single Encrypt CPI | Proposal tx + `execute_pending_vector_fhe` tx |
-| Best for | Frequent limit updates | Stable configurations |
+| Field | Role |
+|---|---|
+| `daily_limit_ciphertext` | Encrypted daily limit |
+| `per_tx_limit_ciphertext` | Encrypted transaction limit |
+| `spent_today_ciphertext` | Encrypted running spend counter |
+| `policy_output_ciphertext` | Encrypted scalar violation code |
 
 <Cards>
   <Card title="Proposals" description="Submit confidential transactions after guardrails are set." href="/docs/sdk-rs/instructions/proposals" />

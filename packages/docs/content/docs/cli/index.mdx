@@ -43,8 +43,8 @@ aura execution finalize --agent-id agent-1
 # Register a dWallet
 aura dwallet register --agent-id agent-1 --chain ethereum --dwallet-id eth-main --address 0x...
 
-# Submit a vector confidential proposal
-aura confidential propose-vector --agent-id agent-1 --amount 250 --chain ethereum --recipient 0x...
+# Submit a scalar confidential proposal
+aura confidential propose --agent-id agent-1 --amount 250 --chain ethereum --recipient 0x...
 
 # Configure multisig
 aura governance multisig --agent-id agent-1 --required 2 --guardians pk1,pk2,pk3
