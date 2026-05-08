@@ -54,7 +54,7 @@
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
-    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.2.14", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-QqW50fIKsA/J2QyIx+FicL7B9ZPZ+SsYbkCuORdteCe/luoToFxayIcCYrmwIeOT+khcKQnqt3u6DBt8q5vKLw=="],
+    "@aura-protocol/sdk-ts": ["@aura-protocol/sdk-ts@0.2.15", "", { "dependencies": { "@coral-xyz/anchor": "0.32.1" }, "peerDependencies": { "@solana/web3.js": ">=1.95.0", "bn.js": ">=5.2.0" } }, "sha512-AhD7yf4OZIZQwCDumW054cw1f4QoxEFrRlm38EPcYaj1uMh9aFjjxo1oG/5lYAydFhzm/lxcExVqs5mu6CLdhw=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 
