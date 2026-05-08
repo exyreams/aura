@@ -21,6 +21,11 @@ export default function TreasuriesPage() {
   const treasuriesQuery = useOwnedTreasuries();
   const treasuries = treasuriesQuery.data ?? [];
 
+  // Log query state for debugging
+  if (treasuriesQuery.error) {
+    console.error("Failed to fetch treasuries:", treasuriesQuery.error);
+  }
+
   // Pagination
   const totalItems = treasuries.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
@@ -137,6 +142,14 @@ export default function TreasuriesPage() {
         </header>
 
         {/* Treasury Table */}
+        {treasuriesQuery.isError && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-sm">
+            <p className="text-red-400 text-sm">
+              Failed to load treasuries: {treasuriesQuery.error instanceof Error ? treasuriesQuery.error.message : 'Unknown error'}
+            </p>
+          </div>
+        )}
+
         <Table<TreasuryEntry>
           columns={columns}
           data={publicKey ? paginatedData : []}
@@ -146,20 +159,20 @@ export default function TreasuriesPage() {
           emptyAction={
             publicKey
               ? {
-                  label: "Create Treasury",
-                  onClick: () => setCreateOpen(true),
-                }
+                label: "Create Treasury",
+                onClick: () => setCreateOpen(true),
+              }
               : undefined
           }
           pagination={
             publicKey && totalItems > 0
               ? {
-                  currentPage,
-                  totalPages,
-                  onPageChange: setCurrentPage,
-                  totalItems,
-                  itemsPerPage: ITEMS_PER_PAGE,
-                }
+                currentPage,
+                totalPages,
+                onPageChange: setCurrentPage,
+                totalItems,
+                itemsPerPage: ITEMS_PER_PAGE,
+              }
               : undefined
           }
         />

@@ -107,14 +107,57 @@ export async function fetchOwnedTreasuries(
   programId?: PublicKey,
 ) {
   const client = createAuraClient(connection, programId);
-  return (await client.program.account.treasuryAccount.all([
-    {
-      memcmp: {
-        offset: TREASURY_OWNER_OFFSET,
-        bytes: owner.toBase58(),
+
+  try {
+    const accounts = await client.program.account.treasuryAccount.all([
+      {
+        memcmp: {
+          offset: TREASURY_OWNER_OFFSET,
+          bytes: owner.toBase58(),
+        },
       },
-    },
-  ])) as TreasuryEntry[];
+    ]);
+
+    // Map to TreasuryEntry format explicitly
+    return accounts.map((entry) => ({
+      publicKey: entry.publicKey,
+      account: entry.account as TreasuryAccountRecord,
+    })) as TreasuryEntry[];
+  } catch (error) {
+    // If deserialization fails (e.g., old account format), try fetching accounts
+    // individually and filter out ones that can't be deserialized
+
+    // Get all program accounts for this owner
+    const accountInfos = await connection.getProgramAccounts(
+      client.programId,
+      {
+        filters: [
+          {
+            memcmp: {
+              offset: TREASURY_OWNER_OFFSET,
+              bytes: owner.toBase58(),
+            },
+          },
+        ],
+      }
+    );
+
+    // Try to deserialize each account individually
+    const validAccounts: TreasuryEntry[] = [];
+    for (const { pubkey, account } of accountInfos) {
+      try {
+        const decoded = client.program.coder.accounts.decode(
+          "treasuryAccount",
+          account.data
+        ) as TreasuryAccountRecord;
+        validAccounts.push({ publicKey: pubkey, account: decoded });
+      } catch (decodeError) {
+        // Silently skip accounts with incompatible format
+      }
+    }
+
+    return validAccounts;
+  }
 }
 
 export async function fetchTreasury(
