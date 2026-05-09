@@ -495,7 +495,7 @@ export function CreateTreasuryModal({
                         type="button"
                         onClick={() => {
                           onClose();
-                          router.push("/dashboard/agents");
+                          router.push("/dashboard/signers");
                         }}
                         className="text-xs text-primary underline-offset-4 hover:underline"
                       >

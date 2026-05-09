@@ -29,7 +29,7 @@ const navLinks = [
   { href: "/dashboard", label: "Overview", exact: true },
   { href: "/dashboard/treasuries", label: "Treasuries" },
   { href: "/dashboard/controls", label: "Controls" },
-  { href: "/dashboard/agents", label: "Agents" },
+  { href: "/dashboard/signers", label: "Signers" },
   { href: "/dashboard/agent", label: "Worker", exact: true },
   { href: "/dashboard/activity", label: "Activity" },
 ];
@@ -170,7 +170,7 @@ export function DashboardNav() {
               />
             ) : (
               <Link
-                href="/dashboard/agents"
+                href="/dashboard/signers"
                 className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-(--hover-bg) px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-(--text-main) transition-colors hover:border-primary"
               >
                 <KeyRound className="h-3.5 w-3.5" />
@@ -349,7 +349,7 @@ export function DashboardNav() {
                   </div>
                 ) : auth.isAuthenticated ? (
                   <Link
-                    href="/dashboard/agents"
+                    href="/dashboard/signers"
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
                   >

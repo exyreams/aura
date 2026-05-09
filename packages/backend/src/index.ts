@@ -17,7 +17,7 @@ import {
   getAgentKeypairById,
   identityForAgent,
   listAgentKeypairs,
-} from "./agents/index.js";
+} from "./signers/index.js";
 import { loadConfig } from "./config.js";
 import { ApiError } from "./errors.js";
 import { toApiError } from "./errors.js";
@@ -342,14 +342,14 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (routeKey === "GET /v1/agents") {
+    if (routeKey === "GET /v1/signers") {
       sendSuccess(response, 200, requestId, {
         agents: listAgentKeypairs(authUser!),
       });
       return;
     }
 
-    const agentDownloadMatch = pathname.match(/^\/v1\/agents\/(\d+)\/download$/);
+    const agentDownloadMatch = pathname.match(/^\/v1\/signers\/(\d+)\/download$/);
     if (request.method === "GET" && agentDownloadMatch?.[1]) {
       const agent = getAgentKeypairById(authUser!, Number(agentDownloadMatch[1]));
       sendDownloadJson(
@@ -361,7 +361,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    const agentDeleteMatch = pathname.match(/^\/v1\/agents\/(\d+)$/);
+    const agentDeleteMatch = pathname.match(/^\/v1\/signers\/(\d+)$/);
     if (request.method === "DELETE" && agentDeleteMatch?.[1]) {
       sendSuccess(
         response,
@@ -387,7 +387,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (routeKey === "POST /v1/agents") {
+    if (routeKey === "POST /v1/signers") {
       const result = createAgentKeypair(authUser!, parseCreateAgentRequest(body));
       // Fire-and-forget devnet airdrop so the agent can pay transaction fees
       if (config.defaultRpcUrl.includes("devnet")) {

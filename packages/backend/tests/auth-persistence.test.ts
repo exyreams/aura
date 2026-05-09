@@ -27,7 +27,7 @@ function signSiwsMessage(keypair: Keypair, message: string) {
 }
 
 const auth = await import("../src/auth/index.js");
-const agents = await import("../src/agents/index.js");
+const agents = await import("../src/signers/index.js");
 const database = await import("../src/db/client.js");
 
 after(() => {

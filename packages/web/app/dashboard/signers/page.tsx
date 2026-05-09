@@ -9,7 +9,7 @@ import {
   AgentRow,
   AgentStatsBar,
   CreateAgentModal,
-} from "@/components/agents";
+} from "@/components/signers";
 import { Alert, Button, Card, Skeleton } from "@/components/global";
 import type { TreasuryEntry } from "@/lib/aura-app";
 import type { AgentKeypair } from "@/lib/hooks";

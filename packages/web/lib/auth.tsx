@@ -223,7 +223,7 @@ export function useAgents() {
   const agentsQuery = useQuery({
     queryKey: ["agents", settings.backendUrl, auth.user?.wallet],
     queryFn: () =>
-      backendRequest<AgentsResponse>(settings.backendUrl, "/v1/agents", {
+      backendRequest<AgentsResponse>(settings.backendUrl, "/v1/signers", {
         method: "GET",
       }),
     enabled: auth.isAuthenticated,
@@ -262,7 +262,7 @@ export function useAgents() {
     mutationFn: (input: { agentId: string; label?: string }) =>
       postBackend<CreateAgentResponse>(
         settings.backendUrl,
-        "/v1/agents",
+        "/v1/signers",
         input,
       ),
     onSuccess: async (result) => {
@@ -275,7 +275,7 @@ export function useAgents() {
     mutationFn: (id: number) =>
       backendRequest<{ deleted: boolean; id: number }>(
         settings.backendUrl,
-        `/v1/agents/${id}`,
+        `/v1/signers/${id}`,
         { method: "DELETE" },
       ),
     onSuccess: async (_result, id) => {
@@ -291,7 +291,7 @@ export function useAgents() {
     async (agent: AgentKeypair) =>
       backendRequest<AgentIdentity>(
         settings.backendUrl,
-        `/v1/agents/${agent.id}/download`,
+        `/v1/signers/${agent.id}/download`,
         { method: "GET" },
       ),
     [settings.backendUrl],

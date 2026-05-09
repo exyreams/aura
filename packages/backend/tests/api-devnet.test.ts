@@ -239,7 +239,7 @@ test("devnet backend HTTP API covers catalog, generic send, and public proposals
     }>(
       baseUrl,
       "POST",
-      "/v1/agents",
+      "/v1/signers",
       { agentId, label: "API devnet agent" },
       cookie,
     )).data;

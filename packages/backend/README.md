@@ -133,10 +133,10 @@ That script restores:
 - `POST /v1/auth/login`
 - `POST /v1/auth/logout`
 - `GET /v1/auth/me`
-- `POST /v1/agents`
-- `GET /v1/agents`
-- `GET /v1/agents/:id/download`
-- `DELETE /v1/agents/:id`
+- `POST /v1/signers`
+- `GET /v1/signers`
+- `GET /v1/signers/:id/download`
+- `DELETE /v1/signers/:id`
 - `GET /v1/features/catalog`
 - `GET /v1/instructions/catalog`
 - `POST /v1/instructions/build`
@@ -163,7 +163,7 @@ Protected routes use the `aura_session` httpOnly cookie. Routes that need the ba
 }
 ```
 
-Create an agent keypair with `POST /v1/agents`. The response includes a public identity JSON object but never returns the secret key. The encrypted secret key stays in SQLite and is decrypted only for the duration of signing.
+Create an agent keypair with `POST /v1/signers`. The response includes a public identity JSON object but never returns the secret key. The encrypted secret key stays in SQLite and is decrypted only for the duration of signing.
 
 All success responses:
 

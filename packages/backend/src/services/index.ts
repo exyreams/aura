@@ -25,7 +25,7 @@ import {
   storeDkgSession,
   withAgentSigner,
   type AgentSignerRecord,
-} from "../agents/index.js";
+} from "../signers/index.js";
 import { loadConfig } from "../config.js";
 import { db } from "../db/client.js";
 import {
