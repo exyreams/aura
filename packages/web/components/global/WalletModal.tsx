@@ -5,7 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { AlertCircle, ExternalLink, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/global/Button";
 
@@ -17,13 +17,15 @@ interface WalletModalProps {
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const { wallets, select, connect, connecting, connected, wallet } =
     useWallet();
-  const [mounted, setMounted] = useState(false);
+  const mountedRef = useRef(false);
+  const [, forceUpdate] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [connectingName, setConnectingName] = useState<string | null>(null);
   const [pendingConnect, setPendingConnect] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    mountedRef.current = true;
+    forceUpdate((n) => n + 1);
   }, []);
 
   // Close when connected
@@ -75,7 +77,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  if (!mounted) return null;
+  if (!mountedRef.current) return null;
 
   const handleWalletClick = (walletName: WalletName) => {
     setErrorMessage(null);

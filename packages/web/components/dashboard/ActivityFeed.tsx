@@ -25,10 +25,7 @@ export function ActivityFeed({
 
       {loading ? (
         <div className="space-y-6">
-          {Array.from(
-            { length: 4 },
-            (_, i) => `loading-${i}-${Date.now()}`,
-          ).map((key) => (
+          {Array.from({ length: 4 }, (_, i) => `loading-${i}`).map((key) => (
             <div key={key} className="space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-full" />
@@ -85,7 +82,7 @@ export function ActivityFeed({
                   </p>
                   <div className="flex justify-between items-center mono text-[10px] text-(--text-muted)">
                     <span>{shortenAddress(item.treasury, 6, 6)}</span>
-                    <span>
+                    <span suppressHydrationWarning>
                       {item.timestamp
                         ? new Date(item.timestamp * 1000).toLocaleTimeString()
                         : "Unknown"}

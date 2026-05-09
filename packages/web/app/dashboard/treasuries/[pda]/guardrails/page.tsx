@@ -119,7 +119,6 @@ export default function ConfidentialGuardrailsPage() {
       perTxLimit: account.policyConfig.perTxLimitUsd.toString(),
       spentToday: account.policyState.spentTodayUsd.toString(),
     });
-
   }, [account]);
 
   const ensureDepositMutation = useMutation({
@@ -253,7 +252,9 @@ export default function ConfidentialGuardrailsPage() {
         <GuardrailsHeader treasury={entry} />
 
         <EncryptionModeSelector
-          active={Boolean(account?.confidentialGuardrails?.dailyLimitCiphertext)}
+          active={Boolean(
+            account?.confidentialGuardrails?.dailyLimitCiphertext,
+          )}
         />
 
         <ScalarConfigForm

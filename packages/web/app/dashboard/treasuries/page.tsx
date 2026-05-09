@@ -145,7 +145,10 @@ export default function TreasuriesPage() {
         {treasuriesQuery.isError && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-sm">
             <p className="text-red-400 text-sm">
-              Failed to load treasuries: {treasuriesQuery.error instanceof Error ? treasuriesQuery.error.message : 'Unknown error'}
+              Failed to load treasuries:{" "}
+              {treasuriesQuery.error instanceof Error
+                ? treasuriesQuery.error.message
+                : "Unknown error"}
             </p>
           </div>
         )}
@@ -159,20 +162,20 @@ export default function TreasuriesPage() {
           emptyAction={
             publicKey
               ? {
-                label: "Create Treasury",
-                onClick: () => setCreateOpen(true),
-              }
+                  label: "Create Treasury",
+                  onClick: () => setCreateOpen(true),
+                }
               : undefined
           }
           pagination={
             publicKey && totalItems > 0
               ? {
-                currentPage,
-                totalPages,
-                onPageChange: setCurrentPage,
-                totalItems,
-                itemsPerPage: ITEMS_PER_PAGE,
-              }
+                  currentPage,
+                  totalPages,
+                  onPageChange: setCurrentPage,
+                  totalItems,
+                  itemsPerPage: ITEMS_PER_PAGE,
+                }
               : undefined
           }
         />

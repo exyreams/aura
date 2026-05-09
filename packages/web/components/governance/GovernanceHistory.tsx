@@ -86,7 +86,10 @@ export function GovernanceHistory({ activity }: GovernanceHistoryProps) {
                       <Badge variant={details.variant} className="text-[8px]">
                         {details.type}
                       </Badge>
-                      <span className="mono text-[10px] text-(--text-muted)">
+                      <span
+                        className="mono text-[10px] text-(--text-muted)"
+                        suppressHydrationWarning
+                      >
                         {timeStr}
                       </span>
                     </div>

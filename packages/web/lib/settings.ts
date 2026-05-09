@@ -37,7 +37,8 @@ const Context = createContext<AppSettingsContextValue | null>(null);
 export const DEFAULT_BACKEND_URL =
   process.env.NEXT_PUBLIC_AURA_BACKEND_URL?.trim() || "/api/backend";
 export const DEFAULT_DOCS_URL =
-  process.env.NEXT_PUBLIC_DOCS_URL?.trim() || "https://docs-auraprotocol.vercel.app";
+  process.env.NEXT_PUBLIC_DOCS_URL?.trim() ||
+  "https://docs-auraprotocol.vercel.app";
 
 export const AppSettingsContext = Object.assign(Context, {
   useValue(): AppSettingsContextValue {

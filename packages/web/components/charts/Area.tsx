@@ -39,13 +39,16 @@ interface AreaProps {
   emptyMessage?: string;
 }
 
+const EMPTY_AREAS: NonNullable<AreaProps["areas"]> = [];
+const EMPTY_LINES: NonNullable<AreaProps["lines"]> = [];
+
 export function Area({
   title,
   description,
   data,
   xAxisKey,
-  areas = [],
-  lines = [],
+  areas = EMPTY_AREAS,
+  lines = EMPTY_LINES,
   height = 300,
   showLegend = true,
   isLoading = false,

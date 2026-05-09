@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 
 export interface TextareaProps
@@ -8,38 +8,42 @@ export interface TextareaProps
   containerClassName?: string;
 }
 
-export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, className, containerClassName, id, ...props }, ref) => {
-    const textareaId =
-      id || `textarea-${label?.toLowerCase().replace(/\s+/g, "-")}`;
+export const Textarea = ({
+  label,
+  error,
+  className,
+  containerClassName,
+  id,
+  ref,
+  ...props
+}: TextareaProps & { ref?: React.Ref<HTMLTextAreaElement> }) => {
+  const textareaId =
+    id || `textarea-${label?.toLowerCase().replace(/\s+/g, "-")}`;
 
-    return (
-      <div className={cn("space-y-2", containerClassName)}>
-        {label && (
-          <label
-            htmlFor={textareaId}
-            className="mono text-[10px] uppercase text-(--text-muted) font-bold"
-          >
-            {label}
-          </label>
+  return (
+    <div className={cn("space-y-2", containerClassName)}>
+      {label && (
+        <label
+          htmlFor={textareaId}
+          className="mono text-[10px] uppercase text-(--text-muted) font-bold"
+        >
+          {label}
+        </label>
+      )}
+      <textarea
+        ref={ref}
+        id={textareaId}
+        className={cn(
+          "bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) resize-y",
+          "focus:border-(--text-muted)",
+          error && "border-red-500/50 bg-red-500/5 focus:border-red-500",
+          className,
         )}
-        <textarea
-          ref={ref}
-          id={textareaId}
-          className={cn(
-            "bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) resize-y",
-            "focus:border-(--text-muted)",
-            error && "border-red-500/50 bg-red-500/5 focus:border-red-500",
-            className,
-          )}
-          {...props}
-        />
-        {error && (
-          <span className="text-[10px] text-red-500 mono">{error}</span>
-        )}
-      </div>
-    );
-  },
-);
+        {...props}
+      />
+      {error && <span className="text-[10px] text-red-500 mono">{error}</span>}
+    </div>
+  );
+};
 
 Textarea.displayName = "Textarea";

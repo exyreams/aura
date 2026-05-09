@@ -472,7 +472,14 @@ function DWalletCard({
   onCopy,
   network,
 }: {
-  dw: { dwalletId: string; chain: number; address: string; authorizedUserPubkey?: { toString(): string } | null; publicKeyHex?: string | null; messageMetadataDigest?: string | null };
+  dw: {
+    dwalletId: string;
+    chain: number;
+    address: string;
+    authorizedUserPubkey?: { toString(): string } | null;
+    publicKeyHex?: string | null;
+    messageMetadataDigest?: string | null;
+  };
   expandedId: string | null;
   setExpandedId: (id: string | null) => void;
   copiedId: string | null;

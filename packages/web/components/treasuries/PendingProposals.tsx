@@ -50,7 +50,9 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const pending = getActivePendingProposal(treasury.account);
   const hasPending = pending && Number(pending.proposalId.toString()) > 0;
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
-  const [lifecycleDismissedId, setLifecycleDismissedId] = useState<string | null>(null);
+  const [lifecycleDismissedId, setLifecycleDismissedId] = useState<
+    string | null
+  >(null);
   const wallet = useWallet();
   const { connection } = useConnection();
   const settings = useAppSettings();
@@ -59,10 +61,12 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const queryClient = useQueryClient();
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
-    await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
-    await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
-    await queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+      queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+    ]);
   };
 
   const messageApprovalAddress = messageApprovalFromPending(pending);
@@ -552,7 +556,10 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
 
       {isConfidential && pending && (
         <ConfidentialLifecycleModal
-          isOpen={lifecycleOpen && lifecycleDismissedId !== pending.proposalId.toString()}
+          isOpen={
+            lifecycleOpen &&
+            lifecycleDismissedId !== pending.proposalId.toString()
+          }
           onClose={() => {
             setLifecycleOpen(false);
             setLifecycleDismissedId(pending.proposalId.toString());

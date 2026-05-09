@@ -130,10 +130,12 @@ export function ConfidentialLifecycleModal({
   const ikaState = messageApprovalStatusQuery.data?.state;
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
-    await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
-    await queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] });
-    await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+      queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+      queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+    ]);
   };
 
   const requestDecryptionMutation = useMutation({
@@ -174,7 +176,8 @@ export function ConfidentialLifecycleModal({
           programId: settings.programId || undefined,
           agentId: selectedAgent.agentId,
           treasury: pda,
-          requestAccount: pending.decryptionRequest?.requestAccount ?? undefined,
+          requestAccount:
+            pending.decryptionRequest?.requestAccount ?? undefined,
         },
         { timeoutMs: LONG_TIMEOUT_MS },
       );

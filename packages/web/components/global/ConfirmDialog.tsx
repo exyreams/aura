@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
@@ -27,21 +27,25 @@ export interface ConfirmDialogProps {
   loading?: boolean;
 }
 
+const EMPTY_ROWS: ConfirmDialogRow[] = [];
+
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
   title,
-  rows = [],
+  rows = EMPTY_ROWS,
   disclaimer,
   cancelLabel = "Cancel",
   confirmLabel = "Confirm",
   loading = false,
 }) => {
-  const [mounted, setMounted] = useState(false);
+  const mountedRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
+    mountedRef.current = true;
+    forceUpdate((n) => n + 1);
     document.body.style.overflow = isOpen ? "hidden" : "unset";
     return () => {
       document.body.style.overflow = "unset";
@@ -52,7 +56,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     if (e.target === e.currentTarget) onClose();
   };
 
-  if (!mounted) return null;
+  if (!mountedRef.current) return null;
 
   return createPortal(
     <AnimatePresence>

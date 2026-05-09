@@ -85,7 +85,10 @@ export function RecentEvents({ activity }: RecentEventsProps) {
                   {event.detail ?? `Proposal #${event.proposalId}`}
                 </p>
 
-                <div className="mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+                <div
+                  className="mono text-[10px] text-(--text-muted) uppercase tracking-widest"
+                  suppressHydrationWarning
+                >
                   {event.timestamp
                     ? new Date(event.timestamp * 1000).toLocaleString()
                     : "Unknown time"}

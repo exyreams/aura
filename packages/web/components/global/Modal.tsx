@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +24,12 @@ export const Modal: React.FC<ModalProps> = ({
   footer,
   className,
 }) => {
-  const [mounted, setMounted] = useState(false);
+  const mountedRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
+    mountedRef.current = true;
+    forceUpdate((n) => n + 1);
     if (isOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -44,7 +46,7 @@ export const Modal: React.FC<ModalProps> = ({
     }
   };
 
-  if (!mounted) return null;
+  if (!mountedRef.current) return null;
 
   const modalContent = (
     <AnimatePresence>

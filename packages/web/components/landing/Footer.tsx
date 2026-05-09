@@ -245,8 +245,7 @@ export function Footer() {
           </div>
           <div className="flex items-center gap-6">
             <span className="font-mono text-[9px] uppercase text-(--text-muted)">
-              Program:{" "}
-              <span className="text-(--text-main)">EaRoLV...bhHs</span>
+              Program: <span className="text-(--text-main)">EaRoLV...bhHs</span>
             </span>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />

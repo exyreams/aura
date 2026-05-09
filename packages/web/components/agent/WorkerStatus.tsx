@@ -53,7 +53,10 @@ export function WorkerStatus({ activeJob }: WorkerStatusProps) {
                 <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1">
                   Last Run
                 </span>
-                <div className="text-sm font-bold text-(--text-main)">
+                <div
+                  className="text-sm font-bold text-(--text-main)"
+                  suppressHydrationWarning
+                >
                   {activeJob.lastRunAt
                     ? new Date(activeJob.lastRunAt).toLocaleString()
                     : "Never"}

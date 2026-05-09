@@ -4,13 +4,13 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { Plus, RefreshCw, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Alert, Button, Card, Skeleton } from "@/components/global";
 import {
   AgentEmptyState,
   AgentRow,
   AgentStatsBar,
   CreateAgentModal,
 } from "@/components/signers";
-import { Alert, Button, Card, Skeleton } from "@/components/global";
 import type { TreasuryEntry } from "@/lib/aura-app";
 import type { AgentKeypair } from "@/lib/hooks";
 import { useAgents, useOwnedTreasuries } from "@/lib/hooks";

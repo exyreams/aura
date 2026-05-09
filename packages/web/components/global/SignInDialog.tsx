@@ -3,7 +3,7 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { KeyRound, ShieldCheck, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/global/Button";
 import { useAuth } from "@/lib/hooks";
@@ -14,10 +14,12 @@ export function SignInDialog() {
   const auth = useAuth();
   const walletAddress = wallet.publicKey?.toBase58() ?? "";
   const [dismissed, setDismissed] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mountedRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
+    mountedRef.current = true;
+    forceUpdate((n) => n + 1);
   }, []);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function SignInDialog() {
     if (e.target === e.currentTarget) setDismissed(true);
   };
 
-  if (!mounted) return null;
+  if (!mountedRef.current) return null;
 
   return createPortal(
     <AnimatePresence>

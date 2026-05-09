@@ -128,19 +128,16 @@ export async function fetchOwnedTreasuries(
     // individually and filter out ones that can't be deserialized
 
     // Get all program accounts for this owner
-    const accountInfos = await connection.getProgramAccounts(
-      client.programId,
-      {
-        filters: [
-          {
-            memcmp: {
-              offset: TREASURY_OWNER_OFFSET,
-              bytes: owner.toBase58(),
-            },
+    const accountInfos = await connection.getProgramAccounts(client.programId, {
+      filters: [
+        {
+          memcmp: {
+            offset: TREASURY_OWNER_OFFSET,
+            bytes: owner.toBase58(),
           },
-        ],
-      }
-    );
+        },
+      ],
+    });
 
     // Try to deserialize each account individually
     const validAccounts: TreasuryEntry[] = [];
@@ -148,7 +145,7 @@ export async function fetchOwnedTreasuries(
       try {
         const decoded = client.program.coder.accounts.decode(
           "treasuryAccount",
-          account.data
+          account.data,
         ) as TreasuryAccountRecord;
         validAccounts.push({ publicKey: pubkey, account: decoded });
       } catch (decodeError) {
