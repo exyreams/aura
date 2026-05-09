@@ -1,5 +1,5 @@
 import { CheckCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Reveal } from "@/components/landing/Reveal";
 
 const codeLines = [
@@ -21,10 +21,11 @@ export function Technology() {
   const [visibleLines, setVisibleLines] = useState<string[]>(() =>
     codeLines.slice(0, 5),
   );
-  const [lineIdx, setLineIdx] = useState(5);
+  const lineIdxRef = useRef(5);
 
   useEffect(() => {
     const interval = setInterval(() => {
+      const lineIdx = lineIdxRef.current;
       setVisibleLines((prev) => {
         const nextLines = [...prev, codeLines[lineIdx]];
         if (nextLines.length > 5) {
@@ -32,10 +33,10 @@ export function Technology() {
         }
         return nextLines;
       });
-      setLineIdx((prev) => (prev + 1) % codeLines.length);
+      lineIdxRef.current = (lineIdx + 1) % codeLines.length;
     }, 800);
     return () => clearInterval(interval);
-  }, [lineIdx]);
+  }, []);
 
   return (
     <section
@@ -111,9 +112,9 @@ export function Technology() {
                 Policy Val Secure
               </span>
               <div className="flex gap-1.5 md:gap-2">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-primary opacity-20"></div>
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-primary opacity-40"></div>
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-primary"></div>
+                <div className="size-1.5 md:w-2 md:h-2 rounded-full bg-primary opacity-20"></div>
+                <div className="size-1.5 md:w-2 md:h-2 rounded-full bg-primary opacity-40"></div>
+                <div className="size-1.5 md:w-2 md:h-2 rounded-full bg-primary"></div>
               </div>
             </div>
             <div className="space-y-3 md:space-y-4 font-mono text-[10px] md:text-[11px]">
@@ -129,7 +130,7 @@ export function Technology() {
               </div>
               <div className="flex justify-center py-4 md:py-6">
                 <div className="relative">
-                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-primary shadow-[0_0_15px_var(--primary)] rounded-full animate-pulse"></div>
+                  <div className="size-2.5 md:w-3 md:h-3 bg-primary shadow-[0_0_15px_var(--primary)] rounded-full animate-pulse"></div>
                   <div className="absolute inset-0 bg-primary blur-xl opacity-20"></div>
                 </div>
               </div>

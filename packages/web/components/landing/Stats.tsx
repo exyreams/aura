@@ -37,7 +37,7 @@ export function Stats() {
                 key={stat.label}
                 className="bg-white/2 border border-border p-8 transition-all duration-300 hover:bg-white/5 hover:border-primary group"
               >
-                <div className="size-12 rounded-full bg-zinc-500/10 flex items-center justify-center border border-slate-500/20 mb-6 transition-colors group-hover:bg-(--primary)/10 group-hover:border-(--primary)/30">
+                <div className="size-12 rounded-full bg-zinc-500/10 flex items-center justify-center border border-zinc-500/20 mb-6 transition-colors group-hover:bg-(--primary)/10 group-hover:border-(--primary)/30">
                   <Icon className="size-6 text-zinc-400 group-hover:text-primary" />
                 </div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-(--text-muted) mb-3">

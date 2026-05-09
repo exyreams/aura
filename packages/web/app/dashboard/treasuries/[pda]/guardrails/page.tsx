@@ -164,6 +164,10 @@ export default function ConfidentialGuardrailsPage() {
         perTxLimitCiphertext: result.perTxLimitCiphertext,
         spentTodayCiphertext: result.spentTodayCiphertext,
       });
+      // Ciphertexts generated client-side — no on-chain state to invalidate yet
+      void queryClient.invalidateQueries({
+        queryKey: ["ciphertext-existence"],
+      });
     },
   });
 
@@ -243,7 +247,7 @@ export default function ConfidentialGuardrailsPage() {
           }}
         />
         <div
-          className="absolute top-[10%] right-[5%] w-[800px] h-[800px] rounded-full pointer-events-none"
+          className="absolute top-[10%] right-[5%] size-[800px] rounded-full pointer-events-none"
           style={{
             background:
               "radial-gradient(circle, rgba(107, 114, 128, 0.04) 0%, transparent 70%)",

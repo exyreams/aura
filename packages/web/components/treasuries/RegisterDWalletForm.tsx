@@ -471,6 +471,12 @@ export const RegisterDWalletForm = ({
         messageMetadataDigest: "",
         publicKeyHex: result.publicKeyHex,
       });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["treasury", treasury.publicKey.toBase58()],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+      ]);
     },
   });
 
@@ -504,7 +510,12 @@ export const RegisterDWalletForm = ({
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
-      await invalidate();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["treasury", treasury.publicKey.toBase58()],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+      ]);
       onClose();
     },
   });

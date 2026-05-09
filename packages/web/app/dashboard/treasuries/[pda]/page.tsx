@@ -32,14 +32,14 @@ export default function TreasuryDetailsPage() {
         }}
       />
       <div
-        className="absolute top-[10%] right-[5%] w-[800px] h-[800px] rounded-full pointer-events-none"
+        className="absolute top-[10%] right-[5%] size-[800px] rounded-full pointer-events-none"
         style={{
           background:
             "radial-gradient(circle, rgba(107, 114, 128, 0.04) 0%, transparent 70%)",
         }}
       />
       <div
-        className="absolute bottom-[20%] left-[5%] w-[800px] h-[800px] rounded-full pointer-events-none"
+        className="absolute bottom-[20%] left-[5%] size-[800px] rounded-full pointer-events-none"
         style={{
           background:
             "radial-gradient(circle, rgba(107, 114, 128, 0.04) 0%, transparent 70%)",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -207,6 +207,7 @@ export default function ProgramInstructionPage() {
   const { connection } = useConnection();
   const instructionCatalogQuery = useInstructionCatalog();
   const backendInfoQuery = useBackendInfo();
+  const queryClient = useQueryClient();
   const instructionMap = useMemo(
     () => buildInstructionMap(instructionCatalogQuery.data),
     [instructionCatalogQuery.data],
@@ -289,6 +290,8 @@ export default function ProgramInstructionPage() {
     },
     onSuccess: (result) => {
       setBuildResult(result);
+      // Instruction builder — no treasury state to invalidate
+      void queryClient.invalidateQueries({ queryKey: ["instruction-catalog"] });
     },
     onError: (error) => {
       setFormError(error instanceof Error ? error.message : String(error));
@@ -324,6 +327,8 @@ export default function ProgramInstructionPage() {
     onSuccess: ({ result, txSignature }) => {
       setBuildResult(result);
       setSignature(txSignature);
+      // Instruction sent — no treasury cache to invalidate
+      void queryClient.invalidateQueries({ queryKey: ["instruction-catalog"] });
     },
     onError: (error) => {
       setFormError(error instanceof Error ? error.message : String(error));
@@ -351,6 +356,8 @@ export default function ProgramInstructionPage() {
     onSuccess: (result) => {
       setBuildResult(result);
       setSignature(result.signature);
+      // Instruction sent — no treasury cache to invalidate
+      void queryClient.invalidateQueries({ queryKey: ["instruction-catalog"] });
     },
     onError: (error) => {
       setFormError(error instanceof Error ? error.message : String(error));

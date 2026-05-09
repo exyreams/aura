@@ -27,7 +27,7 @@ export const GlowOrbs = () => {
     <>
       <div
         ref={orb1Ref}
-        className="fixed w-[600px] h-[600px] rounded-full pointer-events-none z-0 transition-transform duration-1000 ease-out"
+        className="fixed size-[600px] rounded-full pointer-events-none z-0 transition-transform duration-1000 ease-out"
         style={{
           top: "-10%",
           right: "-10%",
@@ -37,7 +37,7 @@ export const GlowOrbs = () => {
       />
       <div
         ref={orb2Ref}
-        className="fixed w-[600px] h-[600px] rounded-full pointer-events-none z-0 transition-transform duration-1000 ease-out"
+        className="fixed size-[600px] rounded-full pointer-events-none z-0 transition-transform duration-1000 ease-out"
         style={{
           bottom: "-10%",
           left: "-10%",

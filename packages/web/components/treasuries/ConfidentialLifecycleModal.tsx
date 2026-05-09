@@ -157,7 +157,14 @@ export function ConfidentialLifecycleModal({
         { timeoutMs: LONG_TIMEOUT_MS },
       );
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
+    },
   });
 
   const confirmDecryptionMutation = useMutation({
@@ -182,7 +189,14 @@ export function ConfidentialLifecycleModal({
         { timeoutMs: LONG_TIMEOUT_MS },
       );
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
+    },
   });
 
   const executeMutation = useMutation({
@@ -201,7 +215,14 @@ export function ConfidentialLifecycleModal({
         waitSigned: false,
       });
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
+    },
   });
 
   const finalizeMutation = useMutation({
@@ -220,7 +241,12 @@ export function ConfidentialLifecycleModal({
       );
     },
     onSuccess: async () => {
-      await invalidate();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
       onClose();
     },
   });
@@ -235,7 +261,12 @@ export function ConfidentialLifecycleModal({
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
-      await invalidate();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
       onClose();
     },
   });
@@ -424,7 +455,7 @@ export function ConfidentialLifecycleModal({
               className="text-[9px] px-2 py-0.5"
             >
               {messageApprovalStatusQuery.isFetching && (
-                <Loader2 className="w-2.5 h-2.5 animate-spin inline mr-1" />
+                <Loader2 className="size-2.5 animate-spin inline mr-1" />
               )}
               {ikaState ?? "..."}
             </StatusPill>

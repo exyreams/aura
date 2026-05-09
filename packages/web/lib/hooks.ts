@@ -230,6 +230,7 @@ const localFeatureCatalog: FeatureCatalogResponse = {
   },
 };
 
+// @internal — kept for potential future use; not currently consumed by any component
 export function useFeatureCatalog() {
   const settings = useAppSettings();
 

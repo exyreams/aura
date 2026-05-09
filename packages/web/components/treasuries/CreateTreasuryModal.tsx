@@ -525,7 +525,7 @@ export function CreateTreasuryModal({
                         disabled={createMutation.isPending}
                         className="inline-flex items-center gap-1 rounded-sm border border-border bg-(--hover-bg) px-2 py-0.5 mono text-[9px] uppercase tracking-widest text-(--text-muted) transition-colors hover:border-danger/50 hover:text-danger disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <Eraser className="h-2.5 w-2.5" />
+                        <Eraser className="size-2.5" />
                         Clear
                       </button>
                     </div>

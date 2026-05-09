@@ -28,7 +28,7 @@ export default function LandingPage() {
 
       {/* Glow Orbs */}
       <div
-        className="fixed w-[600px] h-[600px] rounded-full pointer-events-none z-0"
+        className="fixed size-[600px] rounded-full pointer-events-none z-0"
         style={{
           top: "-10%",
           right: "-10%",
@@ -37,7 +37,7 @@ export default function LandingPage() {
         }}
       />
       <div
-        className="fixed w-[600px] h-[600px] rounded-full pointer-events-none z-0"
+        className="fixed size-[600px] rounded-full pointer-events-none z-0"
         style={{
           bottom: "-10%",
           left: "-10%",

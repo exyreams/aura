@@ -35,7 +35,7 @@ export function AgentStatsBar({ total, selected }: AgentStatsBarProps) {
         <div className="mt-0.5 flex items-center gap-1.5">
           <div
             className={cn(
-              "h-1.5 w-1.5 rounded-full shrink-0",
+              "size-1.5 rounded-full shrink-0",
               selected ? "bg-success" : "bg-(--text-muted)",
             )}
           />

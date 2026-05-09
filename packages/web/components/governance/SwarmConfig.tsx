@@ -130,7 +130,7 @@ export function SwarmConfig({
                         key={agent}
                         className="text-[10px] text-(--text-main) opacity-80 flex items-center gap-2"
                       >
-                        <div className="w-1 h-1 rounded-full bg-zinc-500" />{" "}
+                        <div className="size-1 rounded-full bg-zinc-500" />{" "}
                         {agent}
                       </li>
                     ))}

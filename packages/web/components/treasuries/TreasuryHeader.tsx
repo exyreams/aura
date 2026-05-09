@@ -174,7 +174,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
           {/* Active signing agent banner */}
           {selectedAgent ? (
             <div className="inline-flex items-center gap-2 mb-3 rounded-sm border border-primary/30 bg-primary/5 px-2.5 py-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <div className="size-1.5 rounded-full bg-primary" />
               <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Signing agent
               </span>
@@ -184,7 +184,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
             </div>
           ) : (
             <div className="inline-flex items-center gap-2 mb-3 rounded-sm border border-warning/30 bg-warning/5 px-2.5 py-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+              <div className="size-1.5 rounded-full bg-warning" />
               <span className="font-mono text-[10px] uppercase tracking-widest text-(--warning-text)">
                 No agent selected
               </span>

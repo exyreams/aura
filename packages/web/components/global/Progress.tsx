@@ -50,7 +50,7 @@ export const Progress: React.FC<ProgressProps> = ({
           initial={animate ? { width: 0 } : { width: `${percentage}%` }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="h-full bg-linear-to-r from-slate-700 to-slate-400"
+          className="h-full bg-linear-to-r from-zinc-700 to-zinc-400"
         />
       </div>
     </div>

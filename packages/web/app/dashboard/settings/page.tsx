@@ -201,7 +201,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <Badge variant="active" className="gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shadow-[0_0_8px_var(--success)]" />
+                <div className="size-1.5 rounded-full bg-success animate-pulse shadow-[0_0_8px_var(--success)]" />
                 Synced
               </Badge>
             </div>

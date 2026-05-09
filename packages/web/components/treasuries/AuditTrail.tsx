@@ -163,7 +163,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
           return (
             <div key={event.signature} className="relative pl-6 pb-6 last:pb-0">
               {/* Timeline dot */}
-              <div className="absolute left-[-4px] top-1 w-[7px] h-[7px] bg-primary rounded-full z-10" />
+              <div className="absolute left-[-4px] top-1 size-[7px] bg-primary rounded-full z-10" />
 
               <div className="flex justify-between items-start mb-1">
                 <span className="mono text-[11px] font-bold text-(--text-main)">

@@ -205,7 +205,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                               }}
                             />
                           ) : (
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary opacity-0 group-hover:opacity-100" />
+                            <div className="size-1.5 rounded-full bg-primary opacity-0 group-hover:opacity-100" />
                           )}
                         </motion.button>
                       );

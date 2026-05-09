@@ -2,7 +2,7 @@
 
 import { Badge, Card, StatusPill } from "@/components/global";
 import type { ParsedActivity } from "@/lib/aura-app";
-import { shortenAddress } from "@/lib/utils";
+import { formatTimeAgo, shortenAddress } from "@/lib/utils";
 
 interface GovernanceHistoryProps {
   activity: ParsedActivity[];
@@ -67,16 +67,7 @@ export function GovernanceHistory({ activity }: GovernanceHistoryProps) {
             };
 
             const details = getEventDetails();
-            const timestamp = event.timestamp ?? Math.floor(Date.now() / 1000);
-            const timeAgo = Math.floor(
-              (Date.now() - timestamp * 1000) / 1000 / 60,
-            );
-            const timeStr =
-              timeAgo < 60
-                ? `${timeAgo}m ago`
-                : timeAgo < 1440
-                  ? `${Math.floor(timeAgo / 60)}h ago`
-                  : `${Math.floor(timeAgo / 1440)}d ago`;
+            const timeStr = formatTimeAgo(event.timestamp);
 
             return (
               <div key={event.signature} className="history-item">

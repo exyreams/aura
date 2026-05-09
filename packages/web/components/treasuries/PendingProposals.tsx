@@ -152,7 +152,14 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
         waitSigned: false,
       });
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+      ]);
+    },
   });
 
   const finalizeMutation = useMutation({
@@ -174,7 +181,14 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
         },
       );
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+      ]);
+    },
   });
 
   const cancelMutation = useMutation({
@@ -186,7 +200,14 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       );
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
+      ]);
+    },
   });
 
   if (!hasPending) {

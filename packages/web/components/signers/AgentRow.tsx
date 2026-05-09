@@ -217,7 +217,7 @@ export function AgentRow({
                 )}
               >
                 {isLowBalance && (
-                  <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+                  <AlertTriangle className="size-2.5 shrink-0" />
                 )}
                 {solBalance.toFixed(3)} SOL
               </span>

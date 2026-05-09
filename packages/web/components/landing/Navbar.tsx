@@ -249,7 +249,7 @@ export function Navbar() {
                     size="small"
                     onClick={() => setWalletMenuOpen(!walletMenuOpen)}
                     icon={
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      <div className="size-1.5 rounded-full bg-primary animate-pulse" />
                     }
                     iconPosition="left"
                   >
@@ -272,7 +272,7 @@ export function Navbar() {
                             Connected
                           </p>
                           <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                            <div className="size-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                             <p className="text-[10px] font-mono text-(--text-main) truncate">
                               {walletAddress}
                             </p>
@@ -405,7 +405,7 @@ export function Navbar() {
                 // App navigation for connected users
                 <>
                   <div className="flex items-center gap-2 px-3 py-2.5 bg-(--card-bg) border border-border rounded-md">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <div className="size-1.5 rounded-full bg-primary animate-pulse" />
                     <span className="font-mono text-xs text-(--text-main) truncate">
                       {walletAddress}
                     </span>
