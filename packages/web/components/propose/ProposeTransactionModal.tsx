@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, Lock, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
@@ -73,13 +73,17 @@ export function ProposeTransactionModal({
   );
   const [showPreview, setShowPreview] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
+  const proposedRef = useRef(false);
 
   useEffect(() => {
-    if (isOpen && !proposeMutation.isSuccess) {
+    if (isOpen && !proposedRef.current) {
       setSignature(null);
       setShowPreview(false);
     }
-  }, [isOpen, proposeMutation.isSuccess]);
+    if (!isOpen) {
+      proposedRef.current = false;
+    }
+  }, [isOpen]);
 
   const preview = useMemo(
     () => ({
@@ -213,6 +217,7 @@ export function ProposeTransactionModal({
       };
     },
     onSuccess: async (result) => {
+      proposedRef.current = true;
       if (mode === "public") {
         setSignature(result.signature);
       }

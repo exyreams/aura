@@ -13,6 +13,7 @@ import {
 } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "motion/react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ThemeProvider } from "@/components/theme";
 import { FaviconSwitcher } from "@/components/theme/FaviconSwitcher";
@@ -171,10 +172,12 @@ function SolanaProviders({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
-      <FaviconSwitcher />
-      <AppSettingsProvider>
-        <SolanaProviders>{children}</SolanaProviders>
-      </AppSettingsProvider>
+      <MotionConfig reducedMotion="user">
+        <FaviconSwitcher />
+        <AppSettingsProvider>
+          <SolanaProviders>{children}</SolanaProviders>
+        </AppSettingsProvider>
+      </MotionConfig>
     </ThemeProvider>
   );
 }
