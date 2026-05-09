@@ -2,6 +2,8 @@
 
 Production documentation for AURA packages, built with Next.js and Fumadocs.
 
+**Live:** https://docs-auraprotocol.vercel.app
+
 The docs cover:
 
 - TypeScript SDK (`@aura-protocol/sdk-ts`)

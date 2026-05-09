@@ -12,6 +12,12 @@ This package is the browser-facing operator UI. It handles:
 - backend-assisted confidential execution controls
 - backend-assisted agent controls
 
+## Deployed
+
+- **Dashboard:** https://auraa-protocol.vercel.app
+- **Docs:** https://docs-auraprotocol.vercel.app
+- **Backend:** https://aura-backend-production-eb86.up.railway.app
+
 ## Runtime Dependency
 
 The confidential lifecycle and agent pages depend on `packages/backend`.

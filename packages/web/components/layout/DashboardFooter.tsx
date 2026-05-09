@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 export function DashboardFooter() {
   const { resolvedTheme } = useTheme();
@@ -43,18 +44,22 @@ export function DashboardFooter() {
             >
               Network Stats
             </Link>
-            <Link
-              href="/docs"
+            <a
+              href={DEFAULT_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
               className="hover:text-(--text-main) transition-colors"
             >
               Documentation
-            </Link>
-            <Link
-              href="/docs/api"
+            </a>
+            <a
+              href={`${DEFAULT_DOCS_URL}/docs/sdk-ts`}
+              target="_blank"
+              rel="noreferrer"
               className="hover:text-(--text-main) transition-colors"
             >
               API Docs
-            </Link>
+            </a>
             <Link
               href="/support"
               className="hover:text-(--text-main) transition-colors"

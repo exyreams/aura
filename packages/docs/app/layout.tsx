@@ -10,7 +10,7 @@ const inter = Inter({
 const siteUrl =
   process.env.NEXT_PUBLIC_DOCS_URL ??
   process.env.NEXT_PUBLIC_SITE_URL ??
-  "https://docs.aura.dev";
+  "https://docs-auraprotocol.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
