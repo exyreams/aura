@@ -26,7 +26,7 @@ export function ProposeOverride({
   return (
     <Card className="p-10" hover={false}>
       <div className="mb-10">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Propose Override
         </h2>
         <p className="text-sm text-(--text-muted)">
@@ -83,7 +83,7 @@ export function ProposeOverride({
                     <div className="text-[10px] mono text-warning mb-1">
                       ACTIVE-OVERRIDE
                     </div>
-                    <h3 className="font-bold text-(--text-main) text-sm">
+                    <h3 className="font-semibold text-(--text-main) text-sm">
                       {activeOverride.newDailyLimitUsd.toString()} cents limit
                       increase
                     </h3>
@@ -101,7 +101,10 @@ export function ProposeOverride({
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-(--text-muted)">Expires</span>
-                    <span className="text-(--text-muted) mono" suppressHydrationWarning>
+                    <span
+                      className="text-(--text-muted) mono"
+                      suppressHydrationWarning
+                    >
                       {new Date(
                         Number(activeOverride.expiration.toString()) * 1000,
                       ).toLocaleString()}

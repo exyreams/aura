@@ -21,7 +21,7 @@ export function Ecosystem() {
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
             Interoperability
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-(--text-main)">
+          <h2 className="text-3xl md:text-4xl font-semibold text-(--text-main)">
             Native Multi-Chain Settlement
           </h2>
           <p className="text-(--text-muted) mt-4 text-sm md:text-base">
@@ -36,11 +36,12 @@ export function Ecosystem() {
               key={chain.name}
               className="bg-(--bg) px-4 py-8 md:py-12 flex flex-col items-center justify-center gap-3 md:gap-4 transition-all duration-300 hover:bg-gray-500/5 group"
             >
-              <div className="w-8 h-8 md:w-10 md:h-10 relative grayscale opacity-60 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100">
+              <div className="size-8 md:w-10 md:h-10 relative grayscale opacity-60 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100">
                 <Image
                   src={chain.icon}
                   alt={`${chain.name} logo`}
                   fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-contain"
                 />
               </div>

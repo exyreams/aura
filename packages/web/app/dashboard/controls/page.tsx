@@ -107,31 +107,33 @@ function normalizeCatalog(
     return undefined;
   }
 
-  const domains = catalog.domains
-    .map((domain) => {
-      const currentDomain = currentDomainById.get(domain.id);
-      const instructions = domain.instructions
-        .filter((instruction) => currentInstructionNames.has(instruction.name))
-        .map((instruction) => {
-          const current = currentInstructionByName.get(instruction.name);
-          return current
-            ? {
-                ...instruction,
-                label: current.label,
-                description: current.description,
-                maturity: current.maturity,
-              }
-            : instruction;
-        });
+  const domains = catalog.domains.flatMap((domain) => {
+    const currentDomain = currentDomainById.get(domain.id);
+    const instructions = domain.instructions.flatMap((instruction) => {
+      if (!currentInstructionNames.has(instruction.name)) return [];
+      const current = currentInstructionByName.get(instruction.name);
+      return [
+        current
+          ? {
+              ...instruction,
+              label: current.label,
+              description: current.description,
+              maturity: current.maturity,
+            }
+          : instruction,
+      ];
+    });
 
-      return {
+    if (instructions.length === 0) return [];
+    return [
+      {
         ...domain,
         label: currentDomain?.label ?? domain.label,
         description: currentDomain?.description ?? domain.description,
         instructions,
-      };
-    })
-    .filter((domain) => domain.instructions.length > 0);
+      },
+    ];
+  });
 
   return {
     ...catalog,
@@ -164,17 +166,15 @@ export default function FeatureSurfacePage() {
       return [];
     }
 
-    return catalog.domains
-      .map((domain) => ({
-        ...domain,
-        instructions:
-          maturityFilter === "all"
-            ? domain.instructions
-            : domain.instructions.filter(
-                (instruction) => instruction.maturity === maturityFilter,
-              ),
-      }))
-      .filter((domain) => domain.instructions.length > 0);
+    return catalog.domains.flatMap((domain) => {
+      const instructions =
+        maturityFilter === "all"
+          ? domain.instructions
+          : domain.instructions.filter(
+              (instruction) => instruction.maturity === maturityFilter,
+            );
+      return instructions.length > 0 ? [{ ...domain, instructions }] : [];
+    });
   }, [catalog, maturityFilter]);
 
   const listedInstructionCount = useMemo(
@@ -203,7 +203,7 @@ export default function FeatureSurfacePage() {
           <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
             Control Surface
           </span>
-          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-(--text-main) mb-2">
+          <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-(--text-main) mb-2">
             Policy, execution, and treasury controls.
           </h1>
           <p className="text-(--text-muted) font-light max-w-2xl">
@@ -285,7 +285,7 @@ export default function FeatureSurfacePage() {
                 Builder Sync
               </p>
               <div className="flex items-center gap-2 text-(--text-main)">
-                <CheckCircle2 className="w-5 h-5 text-primary" />
+                <CheckCircle2 className="size-5 text-primary" />
                 <span className="font-mono text-sm">
                   {expectedInstructionCount > 0
                     ? `${listedInstructionCount}/${expectedInstructionCount} listed`
@@ -330,12 +330,12 @@ export default function FeatureSurfacePage() {
           return (
             <Card key={domain.id} className="p-0 overflow-hidden" hover={false}>
               <div className="p-6 border-b border-border flex gap-4">
-                <div className="h-10 w-10 rounded-sm border border-border bg-(--hover-bg) flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5 text-(--text-main)" />
+                <div className="size-10 rounded-sm border border-border bg-(--hover-bg) flex items-center justify-center shrink-0">
+                  <Icon className="size-5 text-(--text-main)" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-3 mb-2">
-                    <h2 className="text-lg font-bold text-(--text-main)">
+                    <h2 className="text-lg font-semibold text-(--text-main)">
                       {domain.label}
                     </h2>
                     <span className="mono text-[10px] text-(--text-muted)">
@@ -377,9 +377,9 @@ export default function FeatureSurfacePage() {
                       </span>
                       <span
                         aria-hidden="true"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border text-(--text-muted)"
+                        className="inline-flex size-9 items-center justify-center rounded-sm border border-border text-(--text-muted)"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="size-3.5" />
                       </span>
                     </div>
                   </Link>

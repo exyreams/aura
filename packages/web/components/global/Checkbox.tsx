@@ -20,7 +20,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   disabled = false,
   className,
 }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCheckedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!disabled) {
       onChange?.(e.target.checked);
     }
@@ -38,10 +38,10 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         <input
           type="checkbox"
           checked={checked}
-          onChange={handleChange}
+          onChange={handleCheckedChange}
           disabled={disabled}
           className={cn(
-            "peer appearance-none w-5 h-5 border border-border rounded-sm bg-(--card-bg) transition-all",
+            "peer appearance-none size-5 border border-border rounded-sm bg-(--card-bg) transition-all",
             !disabled &&
               "checked:bg-primary checked:border-primary cursor-pointer",
             disabled && "cursor-not-allowed",
@@ -56,7 +56,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="absolute pointer-events-none"
             >
-              <Check className="w-3 h-3 text-(--bg)" />
+              <Check className="size-3 text-(--bg)" />
             </motion.div>
           )}
         </AnimatePresence>

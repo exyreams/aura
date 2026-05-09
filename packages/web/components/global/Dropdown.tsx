@@ -79,7 +79,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
         >
-          <ChevronDown className="w-4 h-4 text-(--text-muted)" />
+          <ChevronDown className="size-4 text-(--text-muted)" />
         </motion.div>
       </button>
 
@@ -115,7 +115,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     </Badge>
                   )}
                   {option.value === value && (
-                    <Check className="w-4 h-4 shrink-0" />
+                    <Check className="size-4 shrink-0" />
                   )}
                 </button>
               ))}

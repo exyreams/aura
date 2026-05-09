@@ -59,7 +59,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                 animate={{ rotate: isOpen ? 180 : 0 }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
               >
-                <ChevronDown className="w-4 h-4 text-(--text-muted)" />
+                <ChevronDown className="size-4 text-(--text-muted)" />
               </motion.div>
             </button>
             <AnimatePresence initial={false}>

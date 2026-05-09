@@ -49,7 +49,7 @@ export function CreateTreasuryModal({
   const { connection } = useConnection();
   const client = useAuraClient();
   const settings = useAppSettings();
-  const router = useRouter();
+  const { push } = useRouter();
   const queryClient = useQueryClient();
 
   const {
@@ -238,7 +238,7 @@ export function CreateTreasuryModal({
               className="flex-1"
               onClick={() => {
                 onClose();
-                router.push(`/dashboard/treasuries/${successData?.treasury}`);
+                push(`/dashboard/treasuries/${successData?.treasury}`);
               }}
             >
               Open Treasury
@@ -294,7 +294,7 @@ export function CreateTreasuryModal({
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <div className="flex flex-col items-center text-center mb-6">
-// Fix: scale-from-zero — use scale: 0.95 instead of scale: 0
+                {/* // Fix: scale-from-zero, use scale: 0.95 instead of scale: 0 */}
                 <motion.div
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -305,14 +305,14 @@ export function CreateTreasuryModal({
                     stiffness: 200,
                     damping: 15,
                   }}
-                  className="flex h-14 w-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
+                  className="flex size-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
                 >
                   <motion.div
                     initial={{ scale: 0.95 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
                   >
-                    <Check className="h-6 w-6 text-success" strokeWidth={2.5} />
+                    <Check className="size-6 text-success" strokeWidth={2.5} />
                   </motion.div>
                 </motion.div>
                 <motion.div
@@ -320,7 +320,7 @@ export function CreateTreasuryModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
                 >
-                  <h3 className="text-lg font-bold text-(--text-main) tracking-tight">
+                  <h3 className="text-lg font-semibold text-(--text-main) tracking-tight">
                     Treasury created on-chain
                   </h3>
                   <p className="mt-1 text-xs text-(--text-muted)">
@@ -355,9 +355,9 @@ export function CreateTreasuryModal({
                       aria-label="Copy PDA"
                     >
                       {copiedPDA ? (
-                        <Check className="h-3.5 w-3.5 text-success" />
+                        <Check className="size-3.5 text-success" />
                       ) : (
-                        <Copy className="h-3.5 w-3.5" />
+                        <Copy className="size-3.5" />
                       )}
                     </button>
                   </div>
@@ -380,9 +380,9 @@ export function CreateTreasuryModal({
                         aria-label="Copy signature"
                       >
                         {copiedTx ? (
-                          <Check className="h-3.5 w-3.5 text-success" />
+                          <Check className="size-3.5 text-success" />
                         ) : (
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="size-3.5" />
                         )}
                       </button>
                       <button
@@ -396,7 +396,7 @@ export function CreateTreasuryModal({
                         className="text-(--text-muted) hover:text-(--text-main) transition-colors"
                         aria-label="View on explorer"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="size-3.5" />
                       </button>
                     </div>
                   </div>
@@ -412,11 +412,11 @@ export function CreateTreasuryModal({
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
               <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
                   <Vault className="h-4.5 w-4.5 text-(--text-main)" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-(--text-main) tracking-tight">
+                  <h3 className="text-base font-semibold text-(--text-main) tracking-tight">
                     New Treasury
                   </h3>
                   <p className="text-xs text-(--text-muted)">
@@ -454,10 +454,10 @@ export function CreateTreasuryModal({
                       }}
                       placeholder="e.g. trading-bot-1"
                       disabled={createMutation.isPending}
-                      className="bg-(--input-bg) border border-border rounded-sm px-3 py-3 text-sm outline-none w-full transition-colors text-(--text-main) focus:border-(--text-muted) placeholder:text-(--text-muted) disabled:opacity-50"
+                      className="bg-(--input-bg) border border-border rounded-sm p-3 text-sm outline-none w-full transition-colors text-(--text-main) focus:border-(--text-muted) placeholder:text-(--text-muted) disabled:opacity-50"
                     />
                     <p className="text-[11px] text-(--text-muted)">
-                      Unique name — used as the on-chain PDA seed. Any
+                      Unique name, used as the on-chain PDA seed. Any
                       characters, up to 64 bytes.
                     </p>
                     {validationErrors.treasuryName && (
@@ -496,7 +496,7 @@ export function CreateTreasuryModal({
                         type="button"
                         onClick={() => {
                           onClose();
-                          router.push("/dashboard/signers");
+                          push("/dashboard/signers");
                         }}
                         className="text-xs text-primary underline-offset-4 hover:underline"
                       >

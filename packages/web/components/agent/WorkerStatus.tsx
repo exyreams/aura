@@ -22,7 +22,7 @@ export function WorkerStatus({ activeJob }: WorkerStatusProps) {
   return (
     <Card hover={false} className="space-y-8">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Worker Status
         </h2>
         <p className="text-sm text-(--text-muted)">
@@ -40,7 +40,7 @@ export function WorkerStatus({ activeJob }: WorkerStatusProps) {
                 </span>
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${activeJob.running ? "bg-success animate-pulse" : "bg-danger"}`}
+                    className={`size-2 rounded-full ${activeJob.running ? "bg-success animate-pulse" : "bg-danger"}`}
                   />
                   <span
                     className={`text-sm font-bold ${activeJob.running ? "text-success" : "text-danger"}`}

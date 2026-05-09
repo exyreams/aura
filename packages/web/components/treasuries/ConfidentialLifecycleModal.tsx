@@ -52,13 +52,13 @@ function StepIndicator({
     <div className="flex items-center gap-3">
       <div className="shrink-0">
         {state === "done" ? (
-          <CheckCircle2 className="w-5 h-5 text-active" />
+          <CheckCircle2 className="size-5 text-active" />
         ) : state === "active" ? (
-          <div className="w-5 h-5 rounded-full border-2 border-active flex items-center justify-center">
+          <div className="size-5 rounded-full border-2 border-active flex items-center justify-center">
             <span className="text-[9px] font-bold text-active">{number}</span>
           </div>
         ) : (
-          <Circle className="w-5 h-5 text-(--text-muted)" />
+          <Circle className="size-5 text-(--text-muted)" />
         )}
       </div>
       <span
@@ -328,7 +328,7 @@ export function ConfidentialLifecycleModal({
       <div className="mb-6 p-4 bg-(--card-content) border border-border rounded-sm">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-(--text-muted)" />
+            <Lock className="size-3.5 text-(--text-muted)" />
             <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
               Confidential Proposal
             </span>
@@ -454,7 +454,7 @@ export function ConfidentialLifecycleModal({
       {isExpired && (
         <div className="mb-4 rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-4 h-4 text-(--warning-text) shrink-0 mt-0.5" />
+            <AlertTriangle className="size-4 text-(--warning-text) shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-(--warning-text) mb-1">
                 Proposal has expired

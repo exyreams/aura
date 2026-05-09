@@ -29,7 +29,7 @@ export const SpendingProgress = ({ treasury }: SpendingProgressProps) => {
   return (
     <Card className="lg:col-span-6 h-full flex flex-col" hover={false}>
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Spending Progress
         </h2>
         <p className="text-[12px] text-(--text-muted)">

@@ -71,7 +71,7 @@ export default function TreasuryDetailsPage() {
       <div className="relative min-h-screen">
         {bg}
         <div className="relative max-w-[1600px] mx-auto z-10 text-center py-12">
-          <h2 className="text-xl font-bold text-(--text-main) mb-2">
+          <h2 className="text-xl font-semibold text-(--text-main) mb-2">
             Treasury Not Found
           </h2>
           <p className="text-(--text-muted)">

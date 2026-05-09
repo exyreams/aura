@@ -319,7 +319,7 @@ export function ProposeTransactionModal({
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <div className="flex flex-col items-center text-center mb-6">
-// Fix: scale-from-zero in ProposeTransactionModal
+                {/* // Fix: scale-from-zero in ProposeTransactionModal */}
                 <motion.div
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -330,14 +330,14 @@ export function ProposeTransactionModal({
                     stiffness: 200,
                     damping: 15,
                   }}
-                  className="flex h-14 w-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
+                  className="flex size-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
                 >
                   <motion.div
                     initial={{ scale: 0.95 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
                   >
-                    <Check className="h-6 w-6 text-success" strokeWidth={2.5} />
+                    <Check className="size-6 text-success" strokeWidth={2.5} />
                   </motion.div>
                 </motion.div>
                 <motion.div
@@ -345,7 +345,7 @@ export function ProposeTransactionModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
                 >
-                  <h3 className="text-lg font-bold text-(--text-main) tracking-tight">
+                  <h3 className="text-lg font-semibold text-(--text-main) tracking-tight">
                     Proposal submitted
                   </h3>
                   <p className="mt-1 text-xs text-(--text-muted)">
@@ -389,7 +389,7 @@ export function ProposeTransactionModal({
                         className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
                         aria-label="View on explorer"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="size-3.5" />
                       </button>
                     </div>
                   </div>
@@ -425,14 +425,14 @@ export function ProposeTransactionModal({
                 {mode === "confidential" &&
                   (confidentialReady === null ? (
                     <div className="flex items-center gap-3 rounded-sm border border-border bg-(--card-content) px-4 py-3">
-                      <Loader2 className="h-4 w-4 animate-spin text-(--text-muted) shrink-0" />
+                      <Loader2 className="size-4 animate-spin text-(--text-muted) shrink-0" />
                       <p className="text-xs text-(--text-muted) font-mono">
                         Checking confidential guardrails setup…
                       </p>
                     </div>
                   ) : confidentialReady === false ? (
                     <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4 flex gap-3">
-                      <ShieldAlert className="h-4 w-4 text-(--warning-text) shrink-0 mt-0.5" />
+                      <ShieldAlert className="size-4 text-(--warning-text) shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-(--warning-text) mb-1">
                           Confidential guardrails not configured
@@ -446,13 +446,13 @@ export function ProposeTransactionModal({
                           onClick={onClose}
                           className="inline-flex items-center gap-1.5 mono text-[10px] uppercase tracking-widest text-(--warning-text) hover:underline"
                         >
-                          <Lock className="h-3 w-3" />
+                          <Lock className="size-3" />
                           Configure Guardrails
                         </Link>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-sm border border-white/8 bg-white/4 p-4 text-sm text-slate-300">
+                    <div className="rounded-sm border border-white/8 bg-white/4 p-4 text-sm text-zinc-300">
                       Submit through the backend signer, then use the{" "}
                       <span className="font-mono text-white">Lifecycle</span>{" "}
                       button in Pending Proposals to complete decryption and

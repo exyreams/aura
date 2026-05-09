@@ -27,9 +27,10 @@ export function MultisigConfig({
   setMultisigForm,
   multisigMutation,
 }: MultisigConfigProps) {
-  const guardiansList = multisigForm.guardians
-    .split(",")
-    .flatMap((g) => { const t = g.trim(); return t ? [t] : []; });
+  const guardiansList = multisigForm.guardians.split(",").flatMap((g) => {
+    const t = g.trim();
+    return t ? [t] : [];
+  });
 
   const removeGuardian = (index: number) => {
     const updated = guardiansList.filter((_, i) => i !== index);
@@ -60,7 +61,7 @@ export function MultisigConfig({
       <div className="flex flex-col lg:flex-row justify-between gap-12">
         <div className="flex-1 space-y-8">
           <div>
-            <h2 className="text-xl font-bold text-(--text-main) mb-1">
+            <h2 className="text-xl font-semibold text-(--text-main) mb-1">
               Emergency Multisig
             </h2>
             <p className="text-sm text-(--text-muted)">
@@ -101,7 +102,7 @@ export function MultisigConfig({
                 ) : (
                   guardiansList.map((address) => (
                     <div
-                      key={address || `empty-${Math.random()}`}
+                      key={address || `empty-${guardiansList.indexOf(address)}`}
                       className="flex gap-2"
                     >
                       <Input
@@ -122,7 +123,7 @@ export function MultisigConfig({
                         }
                         className="text-(--text-muted) hover:text-red-500 p-2 transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="size-4" />
                       </button>
                     </div>
                   ))
@@ -133,7 +134,7 @@ export function MultisigConfig({
                 onClick={addGuardian}
                 className="text-[10px] mono text-(--text-muted) hover:text-(--text-main) flex items-center gap-2 transition-colors tracking-widest font-bold"
               >
-                <Plus className="w-3 h-3" /> ADD GUARDIAN
+                <Plus className="size-3" /> ADD GUARDIAN
               </button>
             </div>
           </div>

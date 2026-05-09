@@ -96,7 +96,10 @@ export default function TreasuriesPage() {
       header: "Created",
       align: "right",
       render: (item) => (
-        <span className="text-[11px] text-(--text-muted)" suppressHydrationWarning>
+        <span
+          className="text-[11px] text-(--text-muted)"
+          suppressHydrationWarning
+        >
           {new Date(
             Number(item.account.createdAt.toString()) * 1000,
           ).toLocaleDateString("en-US", {
@@ -123,7 +126,7 @@ export default function TreasuriesPage() {
             <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
               TREASURIES
             </span>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-(--text-main) mb-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-(--text-main) mb-2">
               My Treasuries
             </h1>
             <p className="text-(--text-muted) font-light max-w-xl text-sm sm:text-base">
@@ -133,7 +136,7 @@ export default function TreasuriesPage() {
           <Button
             variant="primary"
             size="medium"
-            icon={<Plus className="w-4 h-4" />}
+            icon={<Plus className="size-4" />}
             onClick={() => setCreateOpen(true)}
             className="shrink-0"
           >

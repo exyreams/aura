@@ -15,7 +15,7 @@ export function CompactThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-8 h-8 rounded-sm border border-border bg-(--card-bg)" />
+      <div className="size-8 rounded-sm border border-border bg-(--card-bg)" />
     );
   }
 
@@ -30,13 +30,13 @@ export function CompactThemeToggle() {
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "relative w-8 h-8 rounded-sm border border-border bg-(--card-bg) hover:bg-(--hover-bg) transition-colors flex items-center justify-center",
+        "relative size-8 rounded-sm border border-border bg-(--card-bg) hover:bg-(--hover-bg) transition-colors flex items-center justify-center",
       )}
     >
       {isDark ? (
-        <Moon className="w-3.5 h-3.5 text-(--text-main)" />
+        <Moon className="size-3.5 text-(--text-main)" />
       ) : (
-        <Sun className="w-3.5 h-3.5 text-(--text-main)" />
+        <Sun className="size-3.5 text-(--text-main)" />
       )}
     </button>
   );

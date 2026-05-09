@@ -31,7 +31,7 @@ export default function ActivityLogPage() {
         <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
           ACTIVITY LOG
         </span>
-        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-(--text-main) mb-2">
+        <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-(--text-main) mb-2">
           Recent Activity
         </h1>
         <p className="text-(--text-muted) font-light max-w-xl">
@@ -99,9 +99,9 @@ export default function ActivityLogPage() {
           </div>
         ) : !publicKey ? (
           <div className="text-center py-16">
-            <div className="w-16 h-16 bg-(--card-content) rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
+            <div className="size-16 bg-(--card-content) rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
               <svg
-                className="w-8 h-8 text-(--text-muted)"
+                className="size-8 text-(--text-muted)"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -116,7 +116,7 @@ export default function ActivityLogPage() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-(--text-main) mb-2">
+            <h3 className="text-lg font-semibold text-(--text-main) mb-2">
               Wallet not connected
             </h3>
             <p className="text-(--text-muted) text-sm">
@@ -125,9 +125,9 @@ export default function ActivityLogPage() {
           </div>
         ) : filteredActivity.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-16 h-16 bg-(--card-content) rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
+            <div className="size-16 bg-(--card-content) rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
               <svg
-                className="w-8 h-8 text-(--text-muted)"
+                className="size-8 text-(--text-muted)"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -142,7 +142,7 @@ export default function ActivityLogPage() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-(--text-main) mb-2">
+            <h3 className="text-lg font-semibold text-(--text-main) mb-2">
               No activity found
             </h3>
             <p className="text-(--text-muted) text-sm">

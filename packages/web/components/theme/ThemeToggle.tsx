@@ -17,7 +17,7 @@ export const ThemeToggle = () => {
   if (!mounted) {
     return (
       <Button variant="ghost" size="small" className="w-[34px]! px-0!">
-        <span className="w-4 h-4" />
+        <span className="size-4" />
       </Button>
     );
   }
@@ -41,7 +41,7 @@ export const ThemeToggle = () => {
         }}
         transition={{ duration: 0.2 }}
       >
-        <Moon className="w-4 h-4" />
+        <Moon className="size-4" />
       </motion.span>
       <motion.span
         className="absolute"
@@ -52,7 +52,7 @@ export const ThemeToggle = () => {
         }}
         transition={{ duration: 0.2 }}
       >
-        <Sun className="w-4 h-4" />
+        <Sun className="size-4" />
       </motion.span>
     </Button>
   );

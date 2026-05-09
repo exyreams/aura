@@ -11,11 +11,11 @@ export function Steps() {
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
             Execution Flow
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-(--text-main)">
+          <h2 className="text-3xl md:text-4xl font-semibold text-(--text-main)">
             How AURA Works
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            From policy definition to multi-party execution—every step is
+            From policy definition to multi-party execution, every step is
             cryptographically verified and auditable.
           </p>
         </div>
@@ -25,11 +25,11 @@ export function Steps() {
             <div className="text-4xl md:text-5xl font-bold text-(--text-main)/5 font-mono mb-4 md:mb-6">
               01
             </div>
-            <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-(--text-main)">
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-(--text-main)">
               Define Policy
             </h3>
             <p className="text-(--text-muted) text-xs md:text-sm leading-relaxed">
-              Set your treasury guardrails—spending limits, asset whitelists,
+              Set your treasury guardrails: spending limits, asset whitelists,
               and risk scores. AURA encrypts these into ciphertexts.
             </p>
           </div>
@@ -37,7 +37,7 @@ export function Steps() {
             <div className="text-4xl md:text-5xl font-bold text-(--text-main)/5 font-mono mb-4 md:mb-6">
               02
             </div>
-            <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-(--text-main)">
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-(--text-main)">
               Agent Proposals
             </h3>
             <p className="text-(--text-muted) text-xs md:text-sm leading-relaxed">
@@ -49,7 +49,7 @@ export function Steps() {
             <div className="text-4xl md:text-5xl font-bold text-(--text-main)/5 font-mono mb-4 md:mb-6">
               03
             </div>
-            <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-(--text-main)">
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-(--text-main)">
               MPC Execution
             </h3>
             <p className="text-(--text-muted) text-xs md:text-sm leading-relaxed">

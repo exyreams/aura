@@ -73,7 +73,7 @@ export const Alert: React.FC<AlertProps> = ({
         className,
       )}
     >
-      <IconComponent className={cn("w-5 h-5 shrink-0", config.text)} />
+      <IconComponent className={cn("size-5 shrink-0", config.text)} />
       <span className={cn("text-xs flex-1 min-w-0 break-words", config.text)}>
         {message}
       </span>
@@ -87,9 +87,8 @@ export const Alert: React.FC<AlertProps> = ({
         )}
         whileTap={{ scale: 0.88 }}
         transition={{ type: "spring", stiffness: 500, damping: 20 }}
-        style={{ willChange: "transform" }}
       >
-        <X className="w-4 h-4" />
+        <X className="size-4" />
       </motion.button>
     </motion.div>
   );

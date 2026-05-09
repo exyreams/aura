@@ -18,29 +18,35 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const { wallets, select, connect, connecting, connected, wallet } =
     useWallet();
   const mountedRef = useRef(false);
+  const pendingConnectRef = useRef(false);
+  const onCloseRef = useRef(onClose);
   const [, forceUpdate] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [connectingName, setConnectingName] = useState<string | null>(null);
-  const [pendingConnect, setPendingConnect] = useState(false);
 
   useEffect(() => {
     mountedRef.current = true;
     forceUpdate((n) => n + 1);
   }, []);
 
+  // Keep onCloseRef in sync with the latest onClose prop
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   // Close when connected
   useEffect(() => {
     if (connected) {
       setConnectingName(null);
-      setPendingConnect(false);
+      pendingConnectRef.current = false;
       onClose();
     }
   }, [connected, onClose]);
 
   // Once wallet is selected and we have a pending connect, fire connect()
   useEffect(() => {
-    if (!pendingConnect || !wallet) return;
-    setPendingConnect(false);
+    if (!pendingConnectRef.current || !wallet) return;
+    pendingConnectRef.current = false;
     connect().catch((error) => {
       setConnectingName(null);
       const msg = error instanceof Error ? error.message : "";
@@ -52,7 +58,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         setErrorMessage(msg || "Failed to connect wallet.");
       }
     });
-  }, [pendingConnect, wallet, connect]);
+  }, [wallet, connect]);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -71,11 +77,11 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
   // Escape key to close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     if (isOpen) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!mountedRef.current) return null;
 
@@ -83,8 +89,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     setErrorMessage(null);
     setConnectingName(walletName as string);
     select(walletName);
-    // useEffect above will fire connect() once wallet state updates
-    setPendingConnect(true);
+    pendingConnectRef.current = true;
   };
 
   const installedWallets = wallets.filter((w) => w.readyState === "Installed");
@@ -119,7 +124,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <h2 className="font-bold text-(--text-main) text-base">
+                <h2 className="font-semibold text-(--text-main) text-base">
                   Connect Wallet
                 </h2>
                 <p className="text-xs text-(--text-muted) mt-0.5">
@@ -129,10 +134,10 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-(--hover-bg) text-(--text-muted) hover:text-(--text-main) transition-colors"
+                className="size-7 flex items-center justify-center rounded-full bg-(--hover-bg) text-(--text-muted) hover:text-(--text-main) transition-colors"
                 aria-label="Close"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="size-3.5" />
               </button>
             </div>
 
@@ -147,7 +152,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-3 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400"
                 >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <AlertCircle className="size-3.5 shrink-0" />
                   {errorMessage}
                 </motion.div>
               )}
@@ -177,7 +182,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                             width={32}
                             height={32}
                             unoptimized
-                            className="w-8 h-8 rounded-lg shrink-0"
+                            className="size-8 rounded-lg shrink-0"
                           />
                           <div className="flex-1 text-left">
                             <p className="text-sm font-medium text-(--text-main) group-hover:text-primary">
@@ -191,7 +196,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                           </div>
                           {isConnecting ? (
                             <motion.div
-                              className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent"
+                              className="size-4 rounded-full border-2 border-primary border-t-transparent"
                               animate={{ rotate: 360 }}
                               transition={{
                                 duration: 0.7,
@@ -230,7 +235,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                           width={32}
                           height={32}
                           unoptimized
-                          className="w-8 h-8 rounded-lg shrink-0 opacity-50 group-hover:opacity-100"
+                          className="size-8 rounded-lg shrink-0 opacity-50 group-hover:opacity-100"
                         />
                         <div className="flex-1 text-left">
                           <p className="text-sm font-medium text-(--text-main) group-hover:text-primary">
@@ -240,7 +245,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                             Not installed
                           </p>
                         </div>
-                        <ExternalLink className="w-3.5 h-3.5 text-(--text-muted) group-hover:text-primary" />
+                        <ExternalLink className="size-3.5 text-(--text-muted) group-hover:text-primary" />
                       </motion.a>
                     ))}
                   </div>

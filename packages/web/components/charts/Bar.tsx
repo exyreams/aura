@@ -73,9 +73,9 @@ export function Bar({
   return (
     <div className="bg-(--card-bg) border border-border rounded p-4 md:p-6 transition-colors outline-none **:outline-none">
       <div className="mb-6">
-        <h3 className="text-xl font-bold mb-1">{title}</h3>
+        <h3 className="text-xl font-semibold mb-1">{title}</h3>
         {description && (
-          <p className="text-[12px] text-slate-500">{description}</p>
+          <p className="text-[12px] text-zinc-500">{description}</p>
         )}
       </div>
 
@@ -88,9 +88,9 @@ export function Bar({
           className="flex flex-col items-center justify-center text-center p-6 bg-(--card-content) border border-border rounded"
           style={{ height }}
         >
-          <div className="w-12 h-12 bg-(--card-bg) rounded-full flex items-center justify-center mb-4 opacity-50">
+          <div className="size-12 bg-(--card-bg) rounded-full flex items-center justify-center mb-4 opacity-50">
             <svg
-              className="w-6 h-6 text-(--text-muted)"
+              className="size-6 text-(--text-muted)"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

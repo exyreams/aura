@@ -60,9 +60,9 @@ export function Area({
     <div className="bg-(--card-bg) border border-border rounded p-4 md:p-6 hover:border-primary transition-colors outline-none **:outline-none">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
         <div>
-          <h3 className="text-xl font-bold mb-1">{title}</h3>
+          <h3 className="text-xl font-semibold mb-1">{title}</h3>
           {description && (
-            <p className="text-[12px] text-slate-500">{description}</p>
+            <p className="text-[12px] text-zinc-500">{description}</p>
           )}
         </div>
         {showLegend &&
@@ -73,10 +73,10 @@ export function Area({
               {lines.map((line) => (
                 <div key={line.dataKey} className="flex items-center gap-2">
                   <div
-                    className="w-2 h-2 rounded-full"
+                    className="size-2 rounded-full"
                     style={{ backgroundColor: line.color }}
                   />
-                  <span className="mono text-[10px] uppercase text-slate-400">
+                  <span className="mono text-[10px] uppercase text-zinc-400">
                     {line.label}
                   </span>
                 </div>
@@ -84,10 +84,10 @@ export function Area({
               {areas.map((area) => (
                 <div key={area.dataKey} className="flex items-center gap-2">
                   <div
-                    className="w-2 h-2 rounded-full"
+                    className="size-2 rounded-full"
                     style={{ backgroundColor: area.color }}
                   />
-                  <span className="mono text-[10px] uppercase text-slate-400">
+                  <span className="mono text-[10px] uppercase text-zinc-400">
                     {area.label}
                   </span>
                 </div>
@@ -105,9 +105,9 @@ export function Area({
           className="flex flex-col items-center justify-center text-center p-6 bg-(--card-content) border border-border rounded"
           style={{ height }}
         >
-          <div className="w-12 h-12 bg-(--card-bg) rounded-full flex items-center justify-center mb-4 opacity-50">
+          <div className="size-12 bg-(--card-bg) rounded-full flex items-center justify-center mb-4 opacity-50">
             <svg
-              className="w-6 h-6 text-(--text-muted)"
+              className="size-6 text-(--text-muted)"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

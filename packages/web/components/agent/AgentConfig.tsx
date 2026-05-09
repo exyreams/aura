@@ -117,7 +117,9 @@ export function AgentConfig({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["agent-status"] }),
         queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
-        queryClient.invalidateQueries({ queryKey: ["treasury", form.treasury] }),
+        queryClient.invalidateQueries({
+          queryKey: ["treasury", form.treasury],
+        }),
       ]);
     },
   });
@@ -142,7 +144,7 @@ export function AgentConfig({
   return (
     <Card className="space-y-8" hover={false}>
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Agent Configuration
         </h2>
         <p className="text-sm text-(--text-muted)">
@@ -342,7 +344,7 @@ export function AgentConfig({
           <Button
             variant="primary"
             size="small"
-            icon={<Play className="w-3 h-3" />}
+            icon={<Play className="size-3" />}
             disabled={
               startMutation.isPending ||
               !form.treasury ||
@@ -358,7 +360,7 @@ export function AgentConfig({
           <Button
             variant="secondary"
             size="small"
-            icon={<Zap className="w-3 h-3" />}
+            icon={<Zap className="size-3" />}
             disabled={
               runOnceMutation.isPending ||
               !form.treasury ||
@@ -374,7 +376,7 @@ export function AgentConfig({
           <Button
             variant="danger"
             size="small"
-            icon={<Square className="w-3 h-3" />}
+            icon={<Square className="size-3" />}
             disabled={
               stopMutation.isPending || !form.treasury || !selectedAgent
             }

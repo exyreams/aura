@@ -51,25 +51,25 @@ export function StatsGrid({
         subtitle={
           isConnected ? "Owned by connected wallet" : "Connect a wallet"
         }
-        icon={<Box className="w-4 h-4" />}
+        icon={<Box className="size-4" />}
       />
       <StatCard
         title="Total Transactions"
         value={formatNumber(totalTransactions)}
         subtitle="From treasury account counters"
-        icon={<TrendingUp className="w-4 h-4" />}
+        icon={<TrendingUp className="size-4" />}
       />
       <StatCard
         title="Total Volume"
         value={formatCurrency(totalVolume)}
         subtitle="Aggregated reputation volume"
-        icon={<BarChart3 className="w-4 h-4" />}
+        icon={<BarChart3 className="size-4" />}
       />
       <StatCard
         title="Active Agents"
         value={formatNumber(activeAgents)}
         subtitle={`${formatCurrency(totalSpentToday)} spent today of ${formatCurrency(totalDailyLimit)}`}
-        icon={<Activity className="w-4 h-4" />}
+        icon={<Activity className="size-4" />}
       />
     </section>
   );

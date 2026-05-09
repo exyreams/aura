@@ -74,9 +74,10 @@ export default function GovernanceConfigurationPage() {
         requiredSignatures: Number(multisigForm.required),
         guardians: multisigForm.guardians
           .split(",")
-          .map((value: string) => value.trim())
-          .filter(Boolean)
-          .map((value: string) => new PublicKey(value)),
+          .flatMap((value: string) => {
+            const t = value.trim();
+            return t ? [new PublicKey(t)] : [];
+          }),
       });
       const instruction = await client.configureMultisigInstruction(
         { owner: wallet.publicKey, treasury: entry.publicKey },
@@ -96,10 +97,10 @@ export default function GovernanceConfigurationPage() {
       }
       const args = buildConfigureSwarmArgs({
         swarmId: swarmForm.swarmId,
-        memberAgents: swarmForm.members
-          .split(",")
-          .map((value: string) => value.trim())
-          .filter(Boolean),
+        memberAgents: swarmForm.members.split(",").flatMap((value: string) => {
+          const t = value.trim();
+          return t ? [t] : [];
+        }),
         sharedPoolLimitUsd: Number(swarmForm.poolLimit),
       });
       const instruction = await client.configureSwarmInstruction(

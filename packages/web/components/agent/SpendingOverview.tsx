@@ -36,7 +36,7 @@ export function SpendingOverview({ data }: SpendingOverviewProps) {
         ) : (
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-slate-600 rounded-sm" />
+              <div className="size-3 bg-zinc-600 rounded-sm" />
               <span className="mono text-[10px] text-(--text-muted) uppercase">
                 Aggregate Spending
               </span>

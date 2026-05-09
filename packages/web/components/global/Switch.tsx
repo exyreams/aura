@@ -96,15 +96,12 @@ export function Switch({
         initial={false}
         animate={{ x: checked ? onX : offX }}
         transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+        className="absolute rounded-sm bg-white pointer-events-none"
         style={{
-          position: "absolute",
           top: dim.padding,
           width: dim.thumb,
           height: dim.thumb,
-          borderRadius: 2,
-          background: "#ffffff",
           boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-          pointerEvents: "none",
         }}
       />
     </button>

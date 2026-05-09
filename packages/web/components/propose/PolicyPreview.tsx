@@ -31,7 +31,7 @@ export function PolicyPreview({ preview }: PolicyPreviewProps) {
       hover={false}
     >
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Policy Evaluation Preview
         </h2>
         <p className="text-sm text-(--text-muted)">
@@ -51,9 +51,9 @@ export function PolicyPreview({ preview }: PolicyPreviewProps) {
               }`}
             >
               {check.pass ? (
-                <CheckCircle2 className="w-4 h-4 text-success" />
+                <CheckCircle2 className="size-4 text-success" />
               ) : (
-                <XCircle className="w-4 h-4 text-danger" />
+                <XCircle className="size-4 text-danger" />
               )}
               <span className="text-xs text-(--text-main) opacity-80">
                 {check.label}

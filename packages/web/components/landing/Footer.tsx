@@ -109,7 +109,7 @@ export function Footer() {
               Secured by FHE and multi-chain dWallets.
             </p>
             <div className="flex items-center gap-2 pt-1">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <div className="size-2 rounded-full bg-primary animate-pulse" />
               <span className="font-mono text-[9px] uppercase text-(--text-muted)">
                 Devnet Live
               </span>
@@ -193,7 +193,7 @@ export function Footer() {
                   rel="noreferrer"
                   className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
                 >
-                  <TwitterXIcon className="w-4 h-4 shrink-0" />
+                  <TwitterXIcon className="size-4 shrink-0" />
                   Twitter / X
                 </a>
               </li>
@@ -204,7 +204,7 @@ export function Footer() {
                   rel="noreferrer"
                   className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
                 >
-                  <DiscordIcon className="w-4 h-4 shrink-0" />
+                  <DiscordIcon className="size-4 shrink-0" />
                   Discord
                 </a>
               </li>
@@ -215,7 +215,7 @@ export function Footer() {
                   rel="noreferrer"
                   className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
                 >
-                  <GitHubIcon className="w-4 h-4 shrink-0" />
+                  <GitHubIcon className="size-4 shrink-0" />
                   GitHub
                 </a>
               </li>
@@ -224,7 +224,7 @@ export function Footer() {
                   href="mailto:hello@aura-protocol.com"
                   className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
                 >
-                  <Mail className="w-4 h-4 shrink-0" />
+                  <Mail className="size-4 shrink-0" />
                   hello@aura-protocol.com
                 </a>
               </li>
@@ -245,10 +245,10 @@ export function Footer() {
           </div>
           <div className="flex items-center gap-6">
             <span className="font-mono text-[9px] uppercase text-(--text-muted)">
-              Program: <span className="text-(--text-main)">EaRoLV...bhHs</span>
+              Program: <span className="text-(--text-main)">EaRoLV…bhHs</span>
             </span>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <div className="size-2 rounded-full bg-primary animate-pulse" />
               <span className="font-mono text-[9px] uppercase text-(--text-muted)">
                 Encrypt Net Active
               </span>

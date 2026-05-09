@@ -13,9 +13,9 @@ export interface AvatarProps {
 }
 
 const sizeClasses = {
-  small: "w-6 h-6 text-[9px]",
-  medium: "w-8 h-8 text-[10px]",
-  large: "w-10 h-10 text-xs",
+  small: "size-6 text-[9px]",
+  medium: "size-8 text-[10px]",
+  large: "size-10 text-xs",
 };
 
 const sizePixels = {
@@ -87,7 +87,7 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
   const remaining = avatars.length - max;
 
   // Cycle through different background colors for visual variety
-  const bgColors = ["bg-slate-700", "bg-slate-600", "bg-slate-800"];
+  const bgColors = ["bg-zinc-700", "bg-zinc-600", "bg-zinc-800"];
 
   return (
     <div className={cn("flex items-center", className)}>
@@ -115,9 +115,9 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
             className={cn(
               "rounded-full border-2 border-(--bg) flex items-center justify-center text-(--text-muted) font-bold mono cursor-pointer select-none relative",
               bgColors[index % bgColors.length],
-              size === "small" && "w-6 h-6 text-[9px]",
-              size === "medium" && "w-8 h-8 text-[10px]",
-              size === "large" && "w-10 h-10 text-xs",
+              size === "small" && "size-6 text-[9px]",
+              size === "medium" && "size-8 text-[10px]",
+              size === "large" && "size-10 text-xs",
               index > 0 && "-ml-3",
               "hover:z-50",
               // Dynamic z-index classes
@@ -139,10 +139,10 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
           whileHover={{ scale: 1.15 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
           className={cn(
-            "rounded-full bg-slate-800 border-2 border-(--bg) flex items-center justify-center text-slate-500 font-bold mono -ml-3 cursor-pointer select-none relative hover:z-50 z-0",
-            size === "small" && "w-6 h-6 text-[9px]",
-            size === "medium" && "w-8 h-8 text-[10px]",
-            size === "large" && "w-10 h-10 text-xs",
+            "rounded-full bg-zinc-800 border-2 border-(--bg) flex items-center justify-center text-zinc-500 font-bold mono -ml-3 cursor-pointer select-none relative hover:z-50 z-0",
+            size === "small" && "size-6 text-[9px]",
+            size === "medium" && "size-8 text-[10px]",
+            size === "large" && "size-10 text-xs",
           )}
         >
           +{remaining}
@@ -165,14 +165,14 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
 }) => {
   return (
     <div className={cn("relative", className)}>
-      <div className="w-10 h-10 bg-(--card-bg) border border-border rounded-sm flex items-center justify-center text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors cursor-pointer">
+      <div className="size-10 bg-(--card-bg) border border-border rounded-sm flex items-center justify-center text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors cursor-pointer">
         {icon}
       </div>
       {count > 0 && (
         <motion.span
           initial={{ scale: 0.95 }}
           animate={{ scale: 1 }}
-          className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center text-[9px] text-(--bg) font-bold border-2 border-(--bg)"
+          className="absolute -top-1 -right-1 size-4 bg-primary rounded-full flex items-center justify-center text-[9px] text-(--bg) font-bold border-2 border-(--bg)"
         >
           {count}
         </motion.span>

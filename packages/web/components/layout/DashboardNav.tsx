@@ -161,7 +161,7 @@ export function DashboardNav() {
                 options={agents.map((agent) => ({
                   value: agent.agentId,
                   label: agent.label || agent.agentId,
-                  icon: <Bot className="h-3 w-3" />,
+                  icon: <Bot className="size-3" />,
                 }))}
                 value={selectedAgentId}
                 onChange={setSelectedAgentId}
@@ -173,7 +173,7 @@ export function DashboardNav() {
                 href="/dashboard/signers"
                 className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-(--hover-bg) px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-(--text-main) transition-colors hover:border-primary"
               >
-                <KeyRound className="h-3.5 w-3.5" />
+                <KeyRound className="size-3.5" />
                 Create Agent
               </Link>
             )
@@ -186,7 +186,7 @@ export function DashboardNav() {
                 onClick={() => setWalletMenuOpen(!walletMenuOpen)}
                 className="flex items-center gap-2 px-3 py-1.5 bg-(--hover-bg) border border-border rounded-md hover:border-primary transition-all duration-200"
               >
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <div className="size-2 rounded-full bg-primary animate-pulse" />
                 <span className="font-mono text-[10px] text-(--text-main)">
                   {shortAddress}
                 </span>
@@ -219,9 +219,9 @@ export function DashboardNav() {
                       className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                     >
                       {copied ? (
-                        <Check className="w-3.5 h-3.5 text-primary" />
+                        <Check className="size-3.5 text-primary" />
                       ) : (
-                        <Copy className="w-3.5 h-3.5" />
+                        <Copy className="size-3.5" />
                       )}
                       <span>{copied ? "Copied!" : "Copy Address"}</span>
                     </button>
@@ -231,7 +231,7 @@ export function DashboardNav() {
                       onClick={handleViewExplorer}
                       className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="size-3.5" />
                       <span>View on Explorer</span>
                     </button>
 
@@ -242,7 +242,7 @@ export function DashboardNav() {
                       className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                       onClick={() => setWalletMenuOpen(false)}
                     >
-                      <Settings className="w-3.5 h-3.5" />
+                      <Settings className="size-3.5" />
                       <span>Settings</span>
                     </Link>
 
@@ -253,7 +253,7 @@ export function DashboardNav() {
                       onClick={() => void handleDisconnect()}
                       className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-danger hover:bg-(--hover-bg) rounded-md transition-colors"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
+                      <LogOut className="size-3.5" />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -265,7 +265,7 @@ export function DashboardNav() {
               variant="primary"
               size="small"
               className="font-mono! text-[10px]! uppercase! tracking-widest!"
-              icon={<Wallet className="w-3 h-3" />}
+              icon={<Wallet className="size-3" />}
               onClick={() => setWalletModalOpen(true)}
             >
               Connect Wallet
@@ -284,9 +284,9 @@ export function DashboardNav() {
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
+              <X className="size-6" />
             ) : (
-              <Menu className="w-6 h-6" />
+              <Menu className="size-6" />
             )}
           </button>
         </div>
@@ -325,7 +325,7 @@ export function DashboardNav() {
             {isConnected ? (
               <>
                 <div className="flex items-center gap-2 px-4 py-3 bg-(--card-content) border border-border rounded-md">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <div className="size-2 rounded-full bg-primary animate-pulse" />
                   <span className="font-mono text-xs text-(--text-main)">
                     {shortAddress}
                   </span>
@@ -340,7 +340,7 @@ export function DashboardNav() {
                       options={agents.map((agent) => ({
                         value: agent.agentId,
                         label: agent.label || agent.agentId,
-                        icon: <Bot className="h-3 w-3" />,
+                        icon: <Bot className="size-3" />,
                       }))}
                       value={selectedAgentId}
                       onChange={setSelectedAgentId}
@@ -353,7 +353,7 @@ export function DashboardNav() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
                   >
-                    <Bot className="w-4 h-4 text-(--text-main)" />
+                    <Bot className="size-4 text-(--text-main)" />
                     <span className="text-sm text-(--text-main)">
                       Create Agent
                     </span>
@@ -366,9 +366,9 @@ export function DashboardNav() {
                   className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
                 >
                   {copied ? (
-                    <Check className="w-4 h-4 text-primary" />
+                    <Check className="size-4 text-primary" />
                   ) : (
-                    <Copy className="w-4 h-4 text-(--text-main)" />
+                    <Copy className="size-4 text-(--text-main)" />
                   )}
                   <span className="text-sm text-(--text-main)">
                     {copied ? "Copied!" : "Copy Address"}
@@ -380,7 +380,7 @@ export function DashboardNav() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
                 >
-                  <Settings className="w-4 h-4 text-(--text-main)" />
+                  <Settings className="size-4 text-(--text-main)" />
                   <span className="text-sm text-(--text-main)">Settings</span>
                 </Link>
 
@@ -392,7 +392,7 @@ export function DashboardNav() {
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-(--card-content) border border-border rounded-md hover:border-primary transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4 text-(--text-main)" />
+                  <ExternalLink className="size-4 text-(--text-main)" />
                   <span className="text-sm text-(--text-main)">
                     View on Explorer
                   </span>
@@ -401,7 +401,7 @@ export function DashboardNav() {
                 <Button
                   variant="secondary"
                   className="font-mono! text-sm! uppercase! tracking-widest! w-full!"
-                  icon={<LogOut className="w-4 h-4" />}
+                  icon={<LogOut className="size-4" />}
                   onClick={() => {
                     void handleDisconnect();
                     setMobileMenuOpen(false);
@@ -414,7 +414,7 @@ export function DashboardNav() {
               <Button
                 variant="primary"
                 className="font-mono! text-sm! uppercase! tracking-widest! w-full!"
-                icon={<Wallet className="w-4 h-4" />}
+                icon={<Wallet className="size-4" />}
                 onClick={() => {
                   setWalletModalOpen(true);
                   setMobileMenuOpen(false);

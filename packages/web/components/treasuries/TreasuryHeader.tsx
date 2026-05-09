@@ -41,7 +41,7 @@ interface TreasuryHeaderProps {
 }
 
 export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
-  const router = useRouter();
+  const { push } = useRouter();
   const wallet = useWallet();
   const { connection } = useConnection();
   const client = useAuraClient();
@@ -138,12 +138,12 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       {
         label: "Configure Confidential Guardrails",
         icon: <Shield size={16} />,
-        onClick: () => router.push(`/dashboard/treasuries/${pda}/guardrails`),
+        onClick: () => push(`/dashboard/treasuries/${pda}/guardrails`),
       },
       {
         label: "Governance Configuration",
         icon: <Users size={16} />,
-        onClick: () => router.push(`/dashboard/treasuries/${pda}/governance`),
+        onClick: () => push(`/dashboard/treasuries/${pda}/governance`),
       },
       {
         label: "View on Explorer",
@@ -157,7 +157,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
         disabled: !activePending || cancelMutation.isPending,
       },
     ],
-    [activePending, cancelMutation, pda, router, handleOpenExplorer],
+    [activePending, cancelMutation, pda, push, handleOpenExplorer],
   );
 
   const handleActionClick = (action: ActionOption) => {
@@ -194,7 +194,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
             Treasury Detail
           </span>
           <div className="flex items-center gap-4 mb-2">
-            <h1 className="text-4xl font-bold tracking-tight text-(--text-main)">
+            <h1 className="text-4xl font-semibold tracking-tight text-(--text-main)">
               {treasury.account.agentId}
             </h1>
             <StatusPill

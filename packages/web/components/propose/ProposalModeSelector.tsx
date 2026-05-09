@@ -31,12 +31,12 @@ export function ProposalModeSelector({
         >
           <div
             className={cn(
-              "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-1",
+              "size-5 rounded-full border flex items-center justify-center shrink-0 mt-1",
               mode === "public" ? "border-(--text-main)" : "border-border",
             )}
           >
             {mode === "public" && (
-              <div className="w-2 h-2 rounded-full bg-(--text-main)" />
+              <div className="size-2 rounded-full bg-(--text-main)" />
             )}
           </div>
           <div>
@@ -62,14 +62,14 @@ export function ProposalModeSelector({
         >
           <div
             className={cn(
-              "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-1",
+              "size-5 rounded-full border flex items-center justify-center shrink-0 mt-1",
               mode === "confidential"
                 ? "border-(--text-main)"
                 : "border-border",
             )}
           >
             {mode === "confidential" && (
-              <div className="w-2 h-2 rounded-full bg-(--text-main)" />
+              <div className="size-2 rounded-full bg-(--text-main)" />
             )}
           </div>
           <div>

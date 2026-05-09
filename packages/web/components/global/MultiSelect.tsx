@@ -116,7 +116,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                     onClick={() => handleRemove(option.value)}
                     className="text-(--text-muted) hover:text-(--text-main) transition-colors"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="size-3" />
                   </button>
                 </motion.span>
               ))}
@@ -156,7 +156,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
           >
-            <ChevronDown className="w-4 h-4 text-(--text-muted)" />
+            <ChevronDown className="size-4 text-(--text-muted)" />
           </motion.div>
         </button>
       </div>

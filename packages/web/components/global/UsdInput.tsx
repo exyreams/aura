@@ -57,7 +57,7 @@ export const UsdInput = ({
     setDisplayValue(centsToDisplay(valueCents));
   }, [valueCents]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     setDisplayValue(raw);
 
@@ -114,7 +114,7 @@ export const UsdInput = ({
           min="0"
           step="0.01"
           value={displayValue}
-          onChange={handleChange}
+          onChange={handleAmountChange}
           onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled}

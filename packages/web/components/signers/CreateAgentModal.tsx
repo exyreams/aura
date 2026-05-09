@@ -158,10 +158,10 @@ export function CreateAgentModal({ open, onClose }: CreateAgentModalProps) {
     >
       {/* Icon + heading */}
       <div className="flex flex-col items-center text-center mb-7">
-        <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-border bg-(--hover-bg) mb-4">
-          <KeyRound className="h-5 w-5 text-(--text-main)" />
+        <div className="flex size-12 items-center justify-center rounded-sm border border-border bg-(--hover-bg) mb-4">
+          <KeyRound className="size-5 text-(--text-main)" />
         </div>
-        <h3 className="text-lg font-bold text-(--text-main) tracking-tight">
+        <h3 className="text-lg font-semibold text-(--text-main) tracking-tight">
           New Signer Agent
         </h3>
         <p className="mt-1.5 text-xs text-(--text-muted) leading-5 max-w-[260px]">

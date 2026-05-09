@@ -52,7 +52,7 @@ export function Hero() {
           <Badge variant="active">Alpha Release 0.1</Badge>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter leading-[0.9] mb-8 text-(--text-main)">
+        <h1 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[0.9] mb-8 text-(--text-main)">
           Autonomous
           <br />
           Universal
@@ -72,7 +72,7 @@ export function Hero() {
           <Button
             variant="primary"
             className="rounded-none! font-mono! text-xs! uppercase! tracking-widest! px-10! py-4!"
-            icon={<ArrowRight className="w-4 h-4" />}
+            icon={<ArrowRight className="size-4" />}
             iconPosition="right"
           >
             Deploy Guardrail
@@ -81,7 +81,7 @@ export function Hero() {
             <Button
               variant="secondary"
               className="rounded-none! font-mono! text-xs! uppercase! tracking-widest! px-10! py-4!"
-              icon={<BookOpen className="w-4 h-4" />}
+              icon={<BookOpen className="size-4" />}
               iconPosition="left"
             >
               Documentation

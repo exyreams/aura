@@ -78,7 +78,7 @@ export function Sparkline({
       ) : isEmpty ? (
         <>
           <div className="flex justify-between items-start mb-4">
-            <span className="mono text-[10px] uppercase text-slate-500">
+            <span className="mono text-[10px] uppercase text-zinc-500">
               {title}
             </span>
           </div>
@@ -97,7 +97,7 @@ export function Sparkline({
       ) : (
         <>
           <div className="flex justify-between items-start mb-4">
-            <span className="mono text-[10px] uppercase text-slate-500">
+            <span className="mono text-[10px] uppercase text-zinc-500">
               {title}
             </span>
             {change && (

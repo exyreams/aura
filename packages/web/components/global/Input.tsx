@@ -69,14 +69,14 @@ export const Input = ({
             <button
               type="button"
               onClick={onDecrement}
-              className="flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-(--card-bg) text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex size-7 items-center justify-center rounded-sm border border-border bg-(--card-bg) text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Minus size={12} />
             </button>
             <button
               type="button"
               onClick={onIncrement}
-              className="flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-(--card-bg) text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex size-7 items-center justify-center rounded-sm border border-border bg-(--card-bg) text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Plus size={12} />
             </button>

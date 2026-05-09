@@ -73,8 +73,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
           {auth.walletAddress ? (
             <>
               <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">
-                  <KeyRound className="h-5 w-5 text-primary" />
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-primary/30 bg-primary/10">
+                  <KeyRound className="size-5 text-primary" />
                 </div>
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--text-muted)">
@@ -93,7 +93,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               <Button
                 type="button"
                 variant="primary"
-                icon={<KeyRound className="h-4 w-4" />}
+                icon={<KeyRound className="size-4" />}
                 loading={auth.isSigningIn}
                 onClick={() => void auth.login()}
                 className="w-full sm:w-auto"
@@ -104,8 +104,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
           ) : (
             <>
               <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
-                  <Wallet className="h-5 w-5 text-(--text-main)" />
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
+                  <Wallet className="size-5 text-(--text-main)" />
                 </div>
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--text-muted)">
@@ -123,7 +123,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               <Button
                 type="button"
                 variant="primary"
-                icon={<Wallet className="h-4 w-4" />}
+                icon={<Wallet className="size-4" />}
                 onClick={() => setWalletModalOpen(true)}
                 className="w-full sm:w-auto"
               >

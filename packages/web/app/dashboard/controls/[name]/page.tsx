@@ -46,6 +46,31 @@ function getRouteName(value: string | string[] | undefined) {
   );
 }
 
+function buildInstructionMap(
+  catalog: InstructionCatalogResponse | undefined,
+): Map<
+  string,
+  {
+    domain: InstructionCatalogResponse["domains"][number];
+    instruction: InstructionCatalogResponse["domains"][number]["instructions"][number];
+  }
+> {
+  const map = new Map<
+    string,
+    {
+      domain: InstructionCatalogResponse["domains"][number];
+      instruction: InstructionCatalogResponse["domains"][number]["instructions"][number];
+    }
+  >();
+  if (!catalog) return map;
+  for (const domain of catalog.domains) {
+    for (const instruction of domain.instructions) {
+      map.set(instruction.name, { domain, instruction });
+    }
+  }
+  return map;
+}
+
 function findInstruction(
   catalog: InstructionCatalogResponse | undefined,
   name: string,
@@ -53,6 +78,7 @@ function findInstruction(
   if (!catalog) {
     return null;
   }
+  // Build a flat lookup to avoid nested find-in-loop
   for (const domain of catalog.domains) {
     const instruction = domain.instructions.find(
       (entry) => entry.name === name,
@@ -181,9 +207,13 @@ export default function ProgramInstructionPage() {
   const { connection } = useConnection();
   const instructionCatalogQuery = useInstructionCatalog();
   const backendInfoQuery = useBackendInfo();
+  const instructionMap = useMemo(
+    () => buildInstructionMap(instructionCatalogQuery.data),
+    [instructionCatalogQuery.data],
+  );
   const found = useMemo(
-    () => findInstruction(instructionCatalogQuery.data, instructionName),
-    [instructionCatalogQuery.data, instructionName],
+    () => instructionMap.get(instructionName) ?? null,
+    [instructionMap, instructionName],
   );
   const schema = found?.instruction.schema ?? null;
   const walletAddress = wallet.publicKey?.toBase58();
@@ -347,7 +377,7 @@ export default function ProgramInstructionPage() {
           href="/dashboard/controls"
           className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="size-3.5" />
           Controls
         </Link>
         <Alert
@@ -370,7 +400,7 @@ export default function ProgramInstructionPage() {
         href="/dashboard/controls"
         className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="size-3.5" />
         Controls
       </Link>
 
@@ -379,7 +409,7 @@ export default function ProgramInstructionPage() {
           <span className="mono mb-2 block text-[10px] uppercase tracking-[0.3em] text-(--text-muted)">
             {found.domain.label}
           </span>
-          <h1 className="mb-2 text-3xl font-bold tracking-tight text-(--text-main) lg:text-4xl">
+          <h1 className="mb-2 text-3xl font-semibold tracking-tight text-(--text-main) lg:text-4xl">
             {instruction.label}
           </h1>
           <p className="max-w-3xl text-sm leading-relaxed text-(--text-muted)">
@@ -415,11 +445,11 @@ export default function ProgramInstructionPage() {
         <Card className="p-0" hover={false}>
           <div className="border-b border-border p-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
-                <FileCode2 className="h-5 w-5 text-(--text-main)" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
+                <FileCode2 className="size-5 text-(--text-main)" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-(--text-main)">
+                <h2 className="text-lg font-semibold text-(--text-main)">
                   Instruction Builder
                 </h2>
                 <code className="text-xs text-(--text-muted)">
@@ -507,9 +537,9 @@ export default function ProgramInstructionPage() {
                 variant="secondary"
                 icon={
                   buildMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Play className="h-4 w-4" />
+                    <Play className="size-4" />
                   )
                 }
                 loading={buildMutation.isPending}
@@ -522,9 +552,9 @@ export default function ProgramInstructionPage() {
                 variant="primary"
                 icon={
                   walletSendMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Wallet className="h-4 w-4" />
+                    <Wallet className="size-4" />
                   )
                 }
                 loading={walletSendMutation.isPending}
@@ -538,9 +568,9 @@ export default function ProgramInstructionPage() {
                 variant="secondary"
                 icon={
                   backendSendMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Send className="size-4" />
                   )
                 }
                 loading={backendSendMutation.isPending}
@@ -556,8 +586,8 @@ export default function ProgramInstructionPage() {
         <aside className="space-y-5">
           <Card className="p-6" hover={false}>
             <div className="mb-4 flex items-center gap-3">
-              <ShieldAlert className="h-5 w-5 text-(--text-main)" />
-              <h2 className="text-sm font-bold text-(--text-main)">
+              <ShieldAlert className="size-5 text-(--text-main)" />
+              <h2 className="text-sm font-semibold text-(--text-main)">
                 Execution Context
               </h2>
             </div>
@@ -588,8 +618,8 @@ export default function ProgramInstructionPage() {
           <Card className="p-6" hover={false}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-(--text-main)" />
-                <h2 className="text-sm font-bold text-(--text-main)">
+                <CheckCircle2 className="size-5 text-(--text-main)" />
+                <h2 className="text-sm font-semibold text-(--text-main)">
                   Built Instruction
                 </h2>
               </div>
@@ -600,7 +630,7 @@ export default function ProgramInstructionPage() {
                 className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-sm border border-border text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label="Copy built instruction"
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="size-4" />
               </button>
             </div>
             {buildResult ? (

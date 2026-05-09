@@ -51,7 +51,7 @@ export function Features() {
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
             Feature Surface
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-(--text-main)">
+          <h2 className="text-3xl md:text-4xl font-semibold text-(--text-main)">
             Built for real operators, not mock treasury demos
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
@@ -68,8 +68,8 @@ export function Features() {
                 key={feature.title}
                 className="bg-(--bg) border border-border p-6 md:p-8 transition-all duration-300 hover:bg-white/5 hover:border-primary group"
               >
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-(--primary)/10 flex items-center justify-center mb-4 md:mb-6 transition-colors group-hover:bg-(--primary)/20">
-                  <Icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                <div className="size-10 md:w-12 md:h-12 rounded-full bg-(--primary)/10 flex items-center justify-center mb-4 md:mb-6 transition-colors group-hover:bg-(--primary)/20">
+                  <Icon className="size-5 md:w-6 md:h-6 text-primary" />
                 </div>
                 <h3 className="text-base md:text-lg font-semibold text-(--text-main) mb-2 md:mb-3">
                   {feature.title}

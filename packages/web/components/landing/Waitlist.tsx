@@ -6,9 +6,9 @@ export function Waitlist() {
     <section className="border-t border-border mb-20 z-10 px-6 py-[80px] md:py-[100px] md:px-[4vw]">
       <Reveal className="max-w-3xl mx-auto">
         <div className="p-8 md:p-12 border border-border bg-white/2 relative overflow-hidden">
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-(--primary)/5 blur-[100px] pointer-events-none"></div>
+          <div className="absolute -right-20 -top-20 size-64 bg-(--primary)/5 blur-[100px] pointer-events-none"></div>
           <div className="relative z-10 text-center">
-            <h2 className="text-2xl md:text-4xl font-bold mb-3 md:mb-4 text-(--text-main)">
+            <h2 className="text-2xl md:text-4xl font-semibold mb-3 md:mb-4 text-(--text-main)">
               Ready to secure the agentic future?
             </h2>
             <p className="text-sm md:text-base text-(--text-muted) mb-6 md:mb-8">

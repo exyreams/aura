@@ -62,7 +62,7 @@ export function FAQ() {
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
             Common Questions
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-(--text-main)">
+          <h2 className="text-3xl md:text-4xl font-semibold text-(--text-main)">
             Frequently Asked Questions
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">

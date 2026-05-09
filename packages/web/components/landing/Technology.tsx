@@ -18,7 +18,7 @@ const codeLines = [
 ];
 
 export function Technology() {
-  const [visibleLines, setVisibleLines] = useState<string[]>(
+  const [visibleLines, setVisibleLines] = useState<string[]>(() =>
     codeLines.slice(0, 5),
   );
   const [lineIdx, setLineIdx] = useState(5);
@@ -50,7 +50,7 @@ export function Technology() {
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
             Core Architecture
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6 md:mb-8 leading-tight text-(--text-main)">
+          <h2 className="text-3xl md:text-5xl font-semibold mb-6 md:mb-8 leading-tight text-(--text-main)">
             Privacy-Preserving
             <br />
             Policy Evaluation
@@ -60,13 +60,13 @@ export function Technology() {
             <strong className="text-primary">
               Fully Homomorphic Encryption (FHE)
             </strong>{" "}
-            via Ika's Encrypt network. Your agent's risk parameters—max
-            drawdown, daily volume, allowed assets—are stored as encrypted
+            via Ika's Encrypt network. Your agent's risk parameters: max
+            drawdown, daily volume, allowed assets, are stored as encrypted
             noise.
           </p>
           <ul className="space-y-4 md:space-y-6">
             <li className="flex gap-3 md:gap-4">
-              <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0 mt-0.5" />
+              <CheckCircle className="size-5 md:w-6 md:h-6 text-primary shrink-0 mt-0.5" />
               <div>
                 <span className="block font-bold text-(--text-main) text-sm md:text-base">
                   Unreadable Constraints
@@ -78,7 +78,7 @@ export function Technology() {
               </div>
             </li>
             <li className="flex gap-3 md:gap-4">
-              <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0 mt-0.5" />
+              <CheckCircle className="size-5 md:w-6 md:h-6 text-primary shrink-0 mt-0.5" />
               <div>
                 <span className="block font-bold text-(--text-main) text-sm md:text-base">
                   Ika dWallet Integration
@@ -90,7 +90,7 @@ export function Technology() {
               </div>
             </li>
             <li className="flex gap-3 md:gap-4">
-              <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0 mt-0.5" />
+              <CheckCircle className="size-5 md:w-6 md:h-6 text-primary shrink-0 mt-0.5" />
               <div>
                 <span className="block font-bold text-(--text-main) text-sm md:text-base">
                   MEV Immunity

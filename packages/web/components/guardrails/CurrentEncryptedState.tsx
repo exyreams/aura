@@ -59,9 +59,9 @@ function AddressRow({ label, address, network, isLast }: AddressRowProps) {
               aria-label="Copy address"
             >
               {copied ? (
-                <Check className="w-3 h-3 text-active" />
+                <Check className="size-3 text-active" />
               ) : (
-                <Copy className="w-3 h-3" />
+                <Copy className="size-3" />
               )}
             </button>
           </Tooltip>
@@ -72,7 +72,7 @@ function AddressRow({ label, address, network, isLast }: AddressRowProps) {
               className="p-1 rounded text-(--text-muted) hover:text-(--text-main) hover:bg-white/8 transition-colors cursor-pointer"
               aria-label="View on explorer"
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="size-3" />
             </button>
           </Tooltip>
         </div>
@@ -107,7 +107,7 @@ export function CurrentEncryptedState({ account }: CurrentEncryptedStateProps) {
   return (
     <section className="mb-12">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Current On-Chain State
         </h2>
         <p className="text-sm text-(--text-muted)">

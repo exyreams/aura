@@ -201,7 +201,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
               0 PENDING
             </span>
           </div>
-          <h2 className="text-xl font-bold text-(--text-main) mb-1">
+          <h2 className="text-xl font-semibold text-(--text-main) mb-1">
             Pending Proposals
           </h2>
           <p className="text-[12px] text-(--text-muted)">
@@ -372,7 +372,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
             {isTerminal ? "0 PENDING" : "1 ACTIVE"}
           </span>
         </div>
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Pending Proposals
         </h2>
         <p className="text-[12px] text-(--text-muted)">
@@ -423,10 +423,10 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
           </thead>
           <tbody>
             <tr className="border-b border-border hover:bg-(--hover-bg) transition-colors">
-              <td className="px-4 py-4 font-mono text-sm text-(--text-main)">
+              <td className="p-4 font-mono text-sm text-(--text-main)">
                 PROP-{pending.proposalId.toString().padStart(4, "0")}
               </td>
-              <td className="px-4 py-4 font-mono text-sm text-(--text-main)">
+              <td className="p-4 font-mono text-sm text-(--text-main)">
                 <div className="flex flex-col gap-1">
                   <span>{txType}</span>
                   {isConfidential && (
@@ -439,16 +439,16 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                   )}
                 </div>
               </td>
-              <td className="px-4 py-4 font-mono text-sm text-(--text-main)">
+              <td className="p-4 font-mono text-sm text-(--text-main)">
                 {chain}
               </td>
-              <td className="px-4 py-4 font-mono text-sm text-(--text-main)">
+              <td className="p-4 font-mono text-sm text-(--text-main)">
                 {formatCurrency(amountUsd)}
               </td>
-              <td className="px-4 py-4 font-mono text-sm text-(--text-muted)">
+              <td className="p-4 font-mono text-sm text-(--text-muted)">
                 {shortenAddress(pending.recipientOrContract, 6, 4)}
               </td>
-              <td className="px-4 py-4">
+              <td className="p-4">
                 <div className="flex flex-col gap-1.5">
                   <StatusPill
                     variant={statusVariant}
@@ -472,7 +472,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                   )}
                 </div>
               </td>
-              <td className="px-4 py-4 text-right">
+              <td className="p-4 text-right">
                 <div className="flex items-center justify-end gap-2">
                   {isConfidential && (
                     <Button
@@ -531,7 +531,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       </div>
 
       {/* Lifecycle step hint */}
-      <div className="mt-4 px-4 py-3 bg-(--card-content) border border-border rounded-sm">
+      <div className="mt-4 p-4 bg-(--card-content) border border-border rounded-sm">
         <p className="text-[11px] font-mono text-(--text-muted)">
           {isConfidential
             ? "Scalar FHE proposal — click Lifecycle to manage the decryption and execution steps."

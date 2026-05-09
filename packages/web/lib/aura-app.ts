@@ -189,6 +189,7 @@ export async function fetchRecentActivity(
   const sigsPerTreasury = Math.max(2, Math.ceil(limit / treasuries.length));
   const signatureSet = new Set<string>();
 
+  // Sequential by design — rate-limit RPC calls
   for (const treasury of treasuries) {
     try {
       const sigs = await connection.getSignaturesForAddress(treasury, {
@@ -212,6 +213,7 @@ export async function fetchRecentActivity(
   // reliably triggers 429 on the public devnet endpoint. Sequential fetches
   // with a short pause stay well within the rate limit.
   const events: ParsedActivity[] = [];
+  // Sequential by design — rate-limit RPC calls
   for (const sig of signatures) {
     let tx: Awaited<ReturnType<typeof connection.getTransaction>> = null;
     try {

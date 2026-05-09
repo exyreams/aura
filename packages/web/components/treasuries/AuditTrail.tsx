@@ -16,7 +16,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
     return (
       <div>
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-(--text-main) mb-1">
+          <h2 className="text-xl font-semibold text-(--text-main) mb-1">
             Audit Trail
           </h2>
           <p className="text-[12px] text-(--text-muted)">
@@ -24,7 +24,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
           </p>
         </div>
         <div className="p-8 text-center">
-          <p className="text-sm text-(--text-muted)">Loading audit events...</p>
+          <p className="text-sm text-(--text-muted)">Loading audit events…</p>
         </div>
       </div>
     );
@@ -34,7 +34,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
     return (
       <div>
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-(--text-main) mb-1">
+          <h2 className="text-xl font-semibold text-(--text-main) mb-1">
             Audit Trail
           </h2>
           <p className="text-[12px] text-(--text-muted)">
@@ -142,7 +142,7 @@ export const AuditTrail = ({ pda }: AuditTrailProps) => {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Audit Trail
         </h2>
         <p className="text-[12px] text-(--text-muted)">

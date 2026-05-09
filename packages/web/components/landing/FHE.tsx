@@ -61,7 +61,7 @@ export const LandingFHE = () => {
           <span className="mono text-xs uppercase tracking-widest text-primary mb-4 block">
             Core Architecture
           </span>
-          <h2 className="text-5xl font-bold mb-8 leading-tight text-white">
+          <h2 className="text-5xl font-semibold mb-8 leading-tight text-white">
             Privacy-Preserving
             <br />
             Policy Evaluation
@@ -71,8 +71,8 @@ export const LandingFHE = () => {
             <strong className="text-(--secondary)">
               Fully Homomorphic Encryption (FHE)
             </strong>{" "}
-            via Ika's Encrypt network. Your agent's risk parameters—max
-            drawdown, daily volume, allowed assets—are stored as encrypted
+            via Ika's Encrypt network. Your agent's risk parameters: max
+            drawdown, daily volume, allowed assets, are stored as encrypted
             noise.
           </p>
 
@@ -117,15 +117,15 @@ export const LandingFHE = () => {
         </div>
 
         <div className="opacity-0 translate-y-[30px] animate-[fadeInUp_1s_ease-out_0.2s_forwards]">
-          <div className="bg-black border border-[#334155] rounded p-8 relative overflow-hidden">
+          <div className="bg-zinc-950 border border-[#334155] rounded p-8 relative overflow-hidden">
             <div className="flex justify-between items-center mb-8">
               <span className="mono text-[10px] text-primary">
                 POLICY_VAL_SECURE
               </span>
               <div className="flex gap-2">
-                <div className="w-2 h-2 rounded-full bg-(--primary)/20" />
-                <div className="w-2 h-2 rounded-full bg-(--primary)/40" />
-                <div className="w-2 h-2 rounded-full bg-primary" />
+                <div className="size-2 rounded-full bg-(--primary)/20" />
+                <div className="size-2 rounded-full bg-(--primary)/40" />
+                <div className="size-2 rounded-full bg-primary" />
               </div>
             </div>
 
@@ -144,7 +144,7 @@ export const LandingFHE = () => {
 
               <div className="flex justify-center py-6">
                 <div className="relative">
-                  <div className="w-3 h-3 bg-primary shadow-[0_0_15px_var(--primary)] rounded-full animate-pulse" />
+                  <div className="size-3 bg-primary shadow-[0_0_15px_var(--primary)] rounded-full animate-pulse" />
                   <div className="absolute inset-0 bg-primary blur-xl opacity-20" />
                 </div>
               </div>

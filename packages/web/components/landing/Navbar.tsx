@@ -291,7 +291,7 @@ export function Navbar() {
                               onClick={() => setWalletMenuOpen(false)}
                               className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                             >
-                              <Icon className="w-3.5 h-3.5 text-(--text-muted)" />
+                              <Icon className="size-3.5 text-(--text-muted)" />
                               <span>{label}</span>
                             </Link>
                           ))}
@@ -305,9 +305,9 @@ export function Navbar() {
                             className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                           >
                             {copied ? (
-                              <Check className="w-3.5 h-3.5 text-primary" />
+                              <Check className="size-3.5 text-primary" />
                             ) : (
-                              <Copy className="w-3.5 h-3.5 text-(--text-muted)" />
+                              <Copy className="size-3.5 text-(--text-muted)" />
                             )}
                             <span>{copied ? "Copied!" : "Copy Address"}</span>
                           </button>
@@ -316,7 +316,7 @@ export function Navbar() {
                             onClick={handleViewExplorer}
                             className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
                           >
-                            <ExternalLink className="w-3.5 h-3.5 text-(--text-muted)" />
+                            <ExternalLink className="size-3.5 text-(--text-muted)" />
                             <span>View on Explorer</span>
                           </button>
                           <div className="my-1 border-t border-border" />
@@ -325,7 +325,7 @@ export function Navbar() {
                             onClick={handleDisconnect}
                             className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-danger hover:bg-danger/10 rounded-md transition-colors"
                           >
-                            <LogOut className="w-3.5 h-3.5" />
+                            <LogOut className="size-3.5" />
                             <span>Disconnect</span>
                           </button>
                         </div>
@@ -339,7 +339,7 @@ export function Navbar() {
                 variant="primary"
                 size="small"
                 className="font-mono! text-[10px]! uppercase! tracking-widest!"
-                icon={<Wallet className="w-3 h-3" />}
+                icon={<Wallet className="size-3" />}
                 onClick={() => setWalletModalOpen(true)}
               >
                 Connect Wallet
@@ -355,7 +355,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-(--text-main) w-6 h-6 relative"
+              className="text-(--text-main) size-6 relative"
               aria-label="Toggle menu"
             >
               <AnimatePresence mode="wait" initial={false}>
@@ -368,7 +368,7 @@ export function Navbar() {
                     exit={{ rotate: 90, opacity: 0 }}
                     transition={{ duration: 0.12 }}
                   >
-                    <X className="w-6 h-6" />
+                    <X className="size-6" />
                   </motion.span>
                 ) : (
                   <motion.span
@@ -379,7 +379,7 @@ export function Navbar() {
                     exit={{ rotate: -90, opacity: 0 }}
                     transition={{ duration: 0.12 }}
                   >
-                    <Menu className="w-6 h-6" />
+                    <Menu className="size-6" />
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -422,7 +422,7 @@ export function Navbar() {
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) text-(--text-muted) hover:text-(--text-main) transition-colors"
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
+                        <Icon className="size-4 shrink-0" />
                         <span className="font-mono text-sm uppercase tracking-widest">
                           {label}
                         </span>
@@ -453,9 +453,9 @@ export function Navbar() {
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) transition-colors"
                     >
                       {copied ? (
-                        <Check className="w-4 h-4 text-primary" />
+                        <Check className="size-4 text-primary" />
                       ) : (
-                        <Copy className="w-4 h-4 text-(--text-muted)" />
+                        <Copy className="size-4 text-(--text-muted)" />
                       )}
                       <span className="text-sm text-(--text-main)">
                         {copied ? "Copied!" : "Copy Address"}
@@ -469,7 +469,7 @@ export function Navbar() {
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) transition-colors"
                     >
-                      <ExternalLink className="w-4 h-4 text-(--text-muted)" />
+                      <ExternalLink className="size-4 text-(--text-muted)" />
                       <span className="text-sm text-(--text-main)">
                         View on Explorer
                       </span>
@@ -482,7 +482,7 @@ export function Navbar() {
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) transition-colors"
                     >
-                      <LogOut className="w-4 h-4 text-danger" />
+                      <LogOut className="size-4 text-danger" />
                       <span className="text-sm text-danger">Disconnect</span>
                     </button>
                   </div>
@@ -527,7 +527,7 @@ export function Navbar() {
                   <Button
                     variant="primary"
                     className="font-mono! text-sm! uppercase! tracking-widest! w-full!"
-                    icon={<Wallet className="w-4 h-4" />}
+                    icon={<Wallet className="size-4" />}
                     onClick={() => {
                       setWalletModalOpen(true);
                       setMobileMenuOpen(false);

@@ -18,7 +18,7 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   return (
     <Card className="h-full" hover={false}>
-      <h2 className="text-xl font-bold text-(--text-main) mb-1">
+      <h2 className="text-xl font-semibold text-(--text-main) mb-1">
         Recent Activity
       </h2>
       <p className="text-[12px] text-(--text-muted) mb-8">

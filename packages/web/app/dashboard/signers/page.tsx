@@ -106,7 +106,7 @@ export default function AgentsPage() {
             <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
               Agent Vault
             </span>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-(--text-main) mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-(--text-main) mb-1.5">
               Signer Agents
             </h1>
             <p className="text-(--text-muted) font-light text-sm leading-relaxed">
@@ -120,7 +120,7 @@ export default function AgentsPage() {
               size="medium"
               icon={
                 <RefreshCw
-                  className={cn("h-3.5 w-3.5", refreshing && "animate-spin")}
+                  className={cn("size-3.5", refreshing && "animate-spin")}
                 />
               }
               onClick={() => void handleRefresh()}
@@ -132,7 +132,7 @@ export default function AgentsPage() {
             <Button
               variant="primary"
               size="medium"
-              icon={<Plus className="h-4 w-4" />}
+              icon={<Plus className="size-4" />}
               onClick={() => setCreateOpen(true)}
               className="flex-1 sm:flex-none"
             >
@@ -153,13 +153,13 @@ export default function AgentsPage() {
 
         {/* Callout */}
         <div className="flex items-start gap-2.5 rounded border border-border bg-(--card-bg) px-3 py-2.5 mb-5 sm:mb-6">
-          <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--text-muted)" />
+          <Zap className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)" />
           <p className="text-[11px] leading-5 text-(--text-muted)">
             The agent's public key is the{" "}
             <code className="mono text-[10px] text-(--text-main)">
               ai_authority
             </code>{" "}
-            when creating a treasury. Pure signer — no funds held here. Only
+            when creating a treasury. Pure signer, no funds held here. Only
             needs ~0.01 SOL for confidential (FHE) transaction fees.
           </p>
         </div>

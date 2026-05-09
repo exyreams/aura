@@ -33,12 +33,12 @@ function CopyButton({ text }: { text: string }) {
         type="button"
         onClick={handleCopy}
         aria-label="Copy public key"
-        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-border text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main)"
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm border border-border text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main)"
       >
         {copied ? (
-          <Check className="h-3 w-3 text-success" />
+          <Check className="size-3 text-success" />
         ) : (
-          <Copy className="h-3 w-3" />
+          <Copy className="size-3" />
         )}
       </button>
     </Tooltip>
@@ -68,7 +68,7 @@ function IconButton({
         disabled={loading}
         aria-label={label}
         className={cn(
-          "inline-flex h-8 w-8 items-center justify-center rounded-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+          "inline-flex size-8 items-center justify-center rounded-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
           danger
             ? "border-border text-(--text-muted) hover:border-danger/50 hover:bg-(--danger-bg) hover:text-danger"
             : "border-border text-(--text-muted) hover:border-primary/50 hover:bg-(--hover-bg) hover:text-(--text-main)",
@@ -137,13 +137,13 @@ export function AgentRow({
           >
             <ChevronDown
               className={cn(
-                "h-4 w-4 shrink-0 text-(--text-muted) transition-transform duration-200",
+                "size-4 shrink-0 text-(--text-muted) transition-transform duration-200",
                 expanded && "rotate-180",
               )}
             />
             <div
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border",
+                "flex size-8 shrink-0 items-center justify-center rounded-sm border",
                 selected
                   ? "border-primary/30 bg-primary/10"
                   : "border-border bg-(--hover-bg)",
@@ -151,7 +151,7 @@ export function AgentRow({
             >
               <KeyRound
                 className={cn(
-                  "h-3.5 w-3.5",
+                  "size-3.5",
                   selected ? "text-primary" : "text-(--text-muted)",
                 )}
               />
@@ -173,10 +173,10 @@ export function AgentRow({
                 <button
                   type="button"
                   onClick={(e) => handleActionClick(e, onSelect)}
-                  className="inline-flex items-center justify-center h-8 w-8 rounded-sm border border-border bg-(--hover-bg) text-(--text-muted) transition-colors hover:border-primary/50 hover:text-(--text-main)"
+                  className="inline-flex items-center justify-center size-8 rounded-sm border border-border bg-(--hover-bg) text-(--text-muted) transition-colors hover:border-primary/50 hover:text-(--text-main)"
                   aria-label="Set as active signer"
                 >
-                  <MousePointerClick className="h-3.5 w-3.5" />
+                  <MousePointerClick className="size-3.5" />
                 </button>
               </Tooltip>
             )}
@@ -184,7 +184,7 @@ export function AgentRow({
               label="Export keypair"
               onClick={(e) => handleActionClick(e, onDownload)}
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="size-3.5" />
             </IconButton>
             <IconButton
               label="Delete agent"
@@ -192,7 +192,7 @@ export function AgentRow({
               loading={deleting}
               danger
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="size-3.5" />
             </IconButton>
           </div>
         </div>

@@ -1,4 +1,15 @@
-import { Bar } from "@/components/charts/Bar";
+"use client";
+
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/global/Skeleton";
+
+const Bar = dynamic(
+  () => import("@/components/charts/Bar").then((m) => m.Bar),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[300px] w-full" />,
+  },
+);
 
 interface Treasury {
   agentId: string;

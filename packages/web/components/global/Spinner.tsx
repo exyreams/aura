@@ -9,10 +9,10 @@ export interface SpinnerProps {
 }
 
 const sizeClasses = {
-  xs: "w-3.5 h-3.5",
-  small: "w-6 h-6",
-  medium: "w-10 h-10",
-  large: "w-14 h-14",
+  xs: "size-3.5",
+  small: "size-6",
+  medium: "size-10",
+  large: "size-14",
 };
 
 const strokeWidths = {

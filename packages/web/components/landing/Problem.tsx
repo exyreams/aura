@@ -75,7 +75,7 @@ export function Problem() {
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
             The Dilemma
           </span>
-          <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-(--text-main)">
+          <h2 className="text-4xl md:text-6xl font-semibold tracking-tight text-(--text-main)">
             The Agentic Trust Gap
           </h2>
         </div>

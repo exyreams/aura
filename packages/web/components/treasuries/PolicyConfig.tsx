@@ -85,9 +85,9 @@ function AddressField({
               className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
             >
               {copiedField === fieldKey ? (
-                <Check className="w-3 h-3 text-active" />
+                <Check className="size-3 text-active" />
               ) : (
-                <Copy className="w-3 h-3" />
+                <Copy className="size-3" />
               )}
             </button>
           </Tooltip>
@@ -102,7 +102,7 @@ function AddressField({
               }
               className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="size-3" />
             </button>
           </Tooltip>
         </div>
@@ -512,7 +512,7 @@ function DWalletCard({
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center shrink-0 p-1">
+            <div className="size-8 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center shrink-0 p-1">
               {chainIcon ? (
                 <Image
                   src={chainIcon}
@@ -559,7 +559,7 @@ function DWalletCard({
               <div className="flex items-center gap-3 mt-1 flex-wrap">
                 {liveBalance.isLoading && (
                   <span className="text-[10px] text-(--text-muted) font-mono animate-pulse">
-                    fetching balance...
+                    fetching balance…
                   </span>
                 )}
                 {liveBalance.data && (
@@ -741,7 +741,9 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">Config</h2>
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
+          Config
+        </h2>
         <p className="text-[12px] text-(--text-muted)">
           Policy limits, governance settings, and registered dWallets.
         </p>

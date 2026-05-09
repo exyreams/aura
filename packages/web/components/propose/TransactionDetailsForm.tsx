@@ -29,7 +29,7 @@ export function TransactionDetailsForm({
   return (
     <div className="space-y-8">
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Transaction Details
         </h2>
         <p className="text-sm text-(--text-muted)">

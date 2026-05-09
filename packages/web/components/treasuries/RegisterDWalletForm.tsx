@@ -91,14 +91,14 @@ function CreateContent({
             className="px-10"
           >
             {createMutation.isPending
-              ? "Creating dWallet via Ika DKG..."
+              ? "Creating dWallet via Ika DKG…"
               : selectedAgent
                 ? "Create dWallet"
                 : "Select Agent First"}
           </Button>
           {createMutation.isPending && (
             <p className="text-[11px] text-(--text-muted) font-mono animate-pulse">
-              Waiting for Ika network DKG response...
+              Waiting for Ika network DKG response…
             </p>
           )}
         </div>
@@ -201,7 +201,7 @@ function ManualContent({
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-(--text-muted)">
             <svg
-              className="w-4 h-4 fill-current"
+              className="size-4 fill-current"
               viewBox="0 0 20 20"
               aria-hidden="true"
             >
@@ -312,7 +312,7 @@ function CurrentContent({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center">
+                <div className="size-7 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center">
                   <span className="text-xs font-bold">{chainLabel[0]}</span>
                 </div>
                 <span className="text-sm font-semibold text-(--text-main)">
@@ -458,7 +458,7 @@ export const RegisterDWalletForm = ({
         },
       );
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       // Auto-fill the form with the values returned by the backend
       setCreateResult(result);
       setForm({

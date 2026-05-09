@@ -51,7 +51,7 @@ export default function SettingsPage() {
       label: "Network",
       content: (
         <Card className="space-y-6" hover={false}>
-          <h2 className="text-lg font-bold text-(--text-main) mb-6">
+          <h2 className="text-lg font-semibold text-(--text-main) mb-6">
             Network Connectivity
           </h2>
           <div className="space-y-6">
@@ -95,7 +95,7 @@ export default function SettingsPage() {
       label: "Credentials",
       content: (
         <Card className="space-y-6" hover={false}>
-          <h2 className="text-lg font-bold text-(--text-main) mb-6">
+          <h2 className="text-lg font-semibold text-(--text-main) mb-6">
             Backend & Agent Settings
           </h2>
           <div className="space-y-6">
@@ -126,7 +126,7 @@ export default function SettingsPage() {
       label: "Display",
       content: (
         <Card className="space-y-6" hover={false}>
-          <h2 className="text-lg font-bold text-(--text-main) mb-6">
+          <h2 className="text-lg font-semibold text-(--text-main) mb-6">
             Display Preferences
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -193,7 +193,7 @@ export default function SettingsPage() {
           <Card hover={false}>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-lg font-bold text-(--text-main)">
+                <h2 className="text-lg font-semibold text-(--text-main)">
                   Current Summary
                 </h2>
                 <p className="text-xs text-(--text-muted) mt-1">
@@ -275,7 +275,7 @@ export default function SettingsPage() {
         <Button
           variant="secondary"
           className="w-full md:w-auto font-mono! text-[10px]! uppercase! tracking-widest!"
-          icon={<RotateCcw className="w-4 h-4" />}
+          icon={<RotateCcw className="size-4" />}
           onClick={handleReset}
         >
           Reset to Defaults
@@ -285,7 +285,7 @@ export default function SettingsPage() {
           className="w-full md:w-auto px-12 font-mono! text-[10px]! uppercase! tracking-widest!"
           onClick={handleSave}
           loading={isSaving}
-          icon={!isSaving && <Save className="w-4 h-4" />}
+          icon={!isSaving && <Save className="size-4" />}
         >
           Save Changes
         </Button>
@@ -300,7 +300,7 @@ export default function SettingsPage() {
             : "translate-y-20 opacity-0 pointer-events-none",
         )}
       >
-        <CheckCircle2 className="w-5 h-5" />
+        <CheckCircle2 className="size-5" />
         <span className="mono text-xs font-bold uppercase tracking-wider">
           Settings successfully updated
         </span>

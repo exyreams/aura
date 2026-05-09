@@ -146,15 +146,15 @@ export function Table<T>({
             style={{ height: `${emptyHeight}px` }}
           >
             <div className="text-center space-y-4 px-6">
-              <div className="w-16 h-16 bg-(--card-bg) rounded-full flex items-center justify-center mx-auto border border-border">
+              <div className="size-16 bg-(--card-bg) rounded-full flex items-center justify-center mx-auto border border-border">
                 {isNoWallet ? (
-                  <Wallet className="text-(--text-muted) w-8 h-8" />
+                  <Wallet className="text-(--text-muted) size-8" />
                 ) : isEmpty ? (
-                  <Archive className="text-(--text-muted) w-8 h-8" />
+                  <Archive className="text-(--text-muted) size-8" />
                 ) : null}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-(--text-main) mb-2">
+                <h3 className="text-lg font-semibold text-(--text-main) mb-2">
                   {isNoWallet
                     ? "Wallet not connected"
                     : isEmpty

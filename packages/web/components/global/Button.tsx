@@ -84,7 +84,6 @@ export const Button = ({
       )}
       whileTap={isDisabled ? undefined : { scale: 0.98 }}
       transition={{ type: "spring", stiffness: 500, damping: 20 }}
-      style={{ willChange: "transform" }}
       {...props}
     >
       {loading ? (

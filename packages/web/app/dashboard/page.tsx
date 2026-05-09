@@ -62,15 +62,19 @@ export default function DashboardPage() {
   const paginatedData = treasuries.slice(startIndex, endIndex);
 
   // Transform data for SpendingChart - ensure we have valid data
-  const chartData = treasuries
-    .filter((entry) => entry.account?.agentId) // Only include entries with agentId
-    .map((entry) => ({
-      agentId: entry.account.agentId,
-      dailyLimit:
-        Number(entry.account.policyConfig.dailyLimitUsd.toString()) / 100,
-      spentToday:
-        Number(entry.account.policyState.spentTodayUsd.toString()) / 100,
-    }));
+  const chartData = treasuries.flatMap((entry) =>
+    entry.account?.agentId
+      ? [
+          {
+            agentId: entry.account.agentId,
+            dailyLimit:
+              Number(entry.account.policyConfig.dailyLimitUsd.toString()) / 100,
+            spentToday:
+              Number(entry.account.policyState.spentTodayUsd.toString()) / 100,
+          },
+        ]
+      : [],
+  );
 
   const columns: TableColumn<TreasuryEntry>[] = [
     {
@@ -147,7 +151,7 @@ export default function DashboardPage() {
             <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
               Dashboard Overview
             </span>
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-(--text-main) mb-2">
+            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-(--text-main) mb-2">
               Connected treasury activity at a glance.
             </h1>
             <p className="text-(--text-muted) font-light max-w-xl">
@@ -158,7 +162,7 @@ export default function DashboardPage() {
           <Button
             variant="primary"
             size="medium"
-            icon={<Plus className="w-4 h-4" />}
+            icon={<Plus className="size-4" />}
             onClick={() => setCreateOpen(true)}
           >
             Create Treasury
@@ -183,7 +187,7 @@ export default function DashboardPage() {
             <Card className="h-full p-0" hover={false}>
               <div className="flex items-center justify-between mb-8 px-8 pt-8">
                 <div>
-                  <h2 className="text-xl font-bold text-(--text-main)">
+                  <h2 className="text-xl font-semibold text-(--text-main)">
                     Treasury List
                   </h2>
                   <p className="text-[12px] text-(--text-muted)">
@@ -194,7 +198,7 @@ export default function DashboardPage() {
                 <Link href="/dashboard/treasuries">
                   <Button variant="secondary" size="small">
                     View All
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="size-4" />
                   </Button>
                 </Link>
               </div>

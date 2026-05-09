@@ -342,10 +342,10 @@ export function useDWalletLiveBalance(address: string | null | undefined) {
 
       const tokens: TokenBalance[] = await Promise.all(
         tokenAccounts.value
-          .filter((ta) => {
+          .flatMap((ta) => {
             const uiAmount =
               ta.account.data.parsed?.info?.tokenAmount?.uiAmount;
-            return uiAmount && uiAmount > 0;
+            return uiAmount && uiAmount > 0 ? [ta] : [];
           })
           .map(async (ta) => {
             const info = ta.account.data.parsed?.info;

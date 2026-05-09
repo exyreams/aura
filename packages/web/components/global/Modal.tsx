@@ -58,8 +58,8 @@ export const Modal: React.FC<ModalProps> = ({
           transition={{ duration: 0.2 }}
           className="fixed inset-0 bg-black/60 backdrop-blur-md z-9999 flex items-center justify-center p-4"
           style={{
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
           }}
           onClick={handleBackdropClick}
         >
@@ -76,7 +76,7 @@ export const Modal: React.FC<ModalProps> = ({
           >
             {title && (
               <div className="flex justify-between items-center p-6 border-b border-border shrink-0">
-                <h3 className="text-lg font-bold text-(--text-main) tracking-tight">
+                <h3 className="text-lg font-semibold text-(--text-main) tracking-tight">
                   {title}
                 </h3>
                 <button
@@ -84,7 +84,7 @@ export const Modal: React.FC<ModalProps> = ({
                   onClick={onClose}
                   className="text-(--text-muted) hover:text-(--text-main) transition-colors hover:bg-(--hover-bg) rounded-sm p-1.5"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="size-5" />
                 </button>
               </div>
             )}

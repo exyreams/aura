@@ -35,7 +35,7 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
             className="flex items-center gap-2 mono text-[11px]"
           >
             <div
-              className="w-2 h-2 rounded-full"
+              className="size-2 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
             <span style={{ color: "var(--text-main)" }}>

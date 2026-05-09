@@ -84,7 +84,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 pb-5">
-              <h3 className="text-xl font-bold text-(--text-main) tracking-tight">
+              <h3 className="text-xl font-semibold text-(--text-main) tracking-tight">
                 {title}
               </h3>
               <button
@@ -92,7 +92,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 onClick={onClose}
                 className="text-(--text-muted) hover:text-(--text-main) transition-colors hover:bg-(--hover-bg) rounded-sm p-1 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="size-5" />
               </button>
             </div>
 

@@ -13,7 +13,7 @@ import { Waitlist } from "@/components/landing/Waitlist";
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen font-sans bg-(--bg) text-(--text-main) overflow-x-hidden selection:bg-slate-400 selection:text-(--bg) cursor-default">
+    <div className="relative min-h-screen font-sans bg-(--bg) text-(--text-main) overflow-x-hidden selection:bg-zinc-400 selection:text-(--bg) cursor-default">
       {/* Grid Background */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div

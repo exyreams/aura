@@ -35,7 +35,7 @@ export function SwarmConfig({
       <div className="flex flex-col lg:flex-row justify-between gap-12">
         <div className="flex-1 space-y-8">
           <div>
-            <h2 className="text-xl font-bold text-(--text-main) mb-1">
+            <h2 className="text-xl font-semibold text-(--text-main) mb-1">
               Agent Swarm Configuration
             </h2>
             <p className="text-sm text-(--text-muted)">
@@ -130,7 +130,7 @@ export function SwarmConfig({
                         key={agent}
                         className="text-[10px] text-(--text-main) opacity-80 flex items-center gap-2"
                       >
-                        <div className="w-1 h-1 rounded-full bg-slate-500" />{" "}
+                        <div className="w-1 h-1 rounded-full bg-zinc-500" />{" "}
                         {agent}
                       </li>
                     ))}

@@ -78,7 +78,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
                   {content}
                   {/* Arrow */}
                   <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-                    <div className="w-2 h-2 bg-(--card-bg) border-r border-b border-border rotate-45" />
+                    <div className="size-2 bg-(--card-bg) border-r border-b border-border rotate-45" />
                   </div>
                 </motion.div>
               </div>

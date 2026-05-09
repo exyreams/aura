@@ -73,14 +73,14 @@ export function SignInDialog() {
             {/* Header */}
             <div className="flex items-center justify-between p-6 pb-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-(--border) bg-(--hover-bg)">
-                  <ShieldCheck className="h-4 w-4 text-(--primary)" />
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-sm border border-(--border) bg-(--hover-bg)">
+                  <ShieldCheck className="size-4 text-(--primary)" />
                 </div>
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--text-muted)">
                     Wallet Verification
                   </p>
-                  <h3 className="text-lg font-bold text-(--text-main) tracking-tight leading-tight">
+                  <h3 className="text-lg font-semibold text-(--text-main) tracking-tight leading-tight">
                     Sign in to AURA
                   </h3>
                 </div>
@@ -90,14 +90,14 @@ export function SignInDialog() {
                 onClick={() => setDismissed(true)}
                 className="text-(--text-muted) hover:text-(--text-main) transition-colors hover:bg-(--hover-bg) rounded-sm p-1 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="size-5" />
               </button>
             </div>
 
             {/* Description */}
             <p className="px-6 pb-5 text-sm leading-relaxed text-(--text-muted)">
               Sign a message to verify wallet ownership. The backend will set a
-              secure session cookie — no bearer token is stored in the browser.
+              secure session cookie, no bearer token is stored in the browser.
             </p>
 
             {/* Wallet row */}
@@ -135,7 +135,7 @@ export function SignInDialog() {
               <Button
                 type="button"
                 variant="primary"
-                icon={<KeyRound className="h-4 w-4" />}
+                icon={<KeyRound className="size-4" />}
                 loading={auth.isSigningIn}
                 disabled={!wallet.publicKey || auth.isSigningIn}
                 onClick={() => void auth.login()}

@@ -15,7 +15,7 @@ export function GovernanceHistory({ activity }: GovernanceHistoryProps) {
   return (
     <Card className="p-8 md:p-10" hover={false}>
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-(--text-main) mb-1">
+        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
           Governance Events
         </h2>
         <p className="text-sm text-(--text-muted)">
