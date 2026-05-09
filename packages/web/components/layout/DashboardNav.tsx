@@ -30,7 +30,6 @@ const navLinks = [
   { href: "/dashboard/treasuries", label: "Treasuries" },
   { href: "/dashboard/controls", label: "Controls" },
   { href: "/dashboard/signers", label: "Signers" },
-  { href: "/dashboard/agent", label: "Worker", exact: true },
   { href: "/dashboard/activity", label: "Activity" },
 ];
 
@@ -73,7 +72,7 @@ export function DashboardNav() {
   }, [walletMenuOpen]);
 
   const logoSrc =
-    resolvedTheme === "dark"
+    !mounted || resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
 

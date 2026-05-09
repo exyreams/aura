@@ -16,18 +16,35 @@ export function SignInDialog() {
   const [dismissed, setDismissed] = useState(false);
   const mountedRef = useRef(false);
   const [, forceUpdate] = useState(0);
+  // Track if user has already attempted sign-in this session — prevents
+  // the modal from reopening if the backend is unreachable on deployed env
+  const hasAttemptedSignIn = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
     forceUpdate((n) => n + 1);
   }, []);
 
+  // Reset dismissed and attempt tracker when wallet changes (new connection)
   // biome-ignore lint/correctness/useExhaustiveDependencies: walletAddress is an intentional trigger — reset dismissed state on wallet change
   useEffect(() => {
     setDismissed(false);
+    hasAttemptedSignIn.current = false;
   }, [walletAddress]);
 
-  const isOpen = auth.needsSignIn && !dismissed && !auth.isAuthenticated;
+  // Once authenticated, clear dismissed so the modal can show again if needed
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      setDismissed(false);
+      hasAttemptedSignIn.current = false;
+    }
+  }, [auth.isAuthenticated]);
+
+  const isOpen =
+    auth.needsSignIn &&
+    !dismissed &&
+    !auth.isAuthenticated &&
+    !hasAttemptedSignIn.current;
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "unset";
@@ -50,7 +67,7 @@ export function SignInDialog() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          className="fixed inset-0 z-9999 flex items-center justify-center p-4"
           style={{
             background: "rgba(0,0,0,0.8)",
             backdropFilter: "blur(8px)",
@@ -69,8 +86,8 @@ export function SignInDialog() {
             {/* Header */}
             <div className="flex items-center justify-between p-6 pb-5">
               <div className="flex items-center gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-sm border border-(--border) bg-(--hover-bg)">
-                  <ShieldCheck className="size-4 text-(--primary)" />
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
+                  <ShieldCheck className="size-4 text-primary" />
                 </div>
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-(--text-muted)">
@@ -134,7 +151,10 @@ export function SignInDialog() {
                 icon={<KeyRound className="size-4" />}
                 loading={auth.isSigningIn}
                 disabled={!wallet.publicKey || auth.isSigningIn}
-                onClick={() => void auth.login()}
+                onClick={() => {
+                  hasAttemptedSignIn.current = true;
+                  void auth.login();
+                }}
                 className="flex-1"
               >
                 Sign In

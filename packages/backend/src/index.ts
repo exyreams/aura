@@ -36,19 +36,13 @@ import {
   getBackendInfo,
   getFeatureCatalog,
   getInstructionCatalog,
-  listAgentJobs,
   requestPolicyDecryptionService,
-  runAgentOnce,
   sendGenericProgramInstruction,
-  startAgentJob,
-  stopAgentJob,
-  stopAllAgentJobs,
   submitConfidentialProposal,
   submitPublicProposal,
 } from "./services/index.js";
 import type { ApiErrorResponse, ApiSuccessResponse } from "./types.js";
 import {
-  parseAgentJobConfig,
   parseAuthLoginRequest,
   parseConfirmDecryptionRequest,
   parseConfidentialProposalRequest,
@@ -61,7 +55,6 @@ import {
   parseProgramInstructionRequest,
   parsePublicProposalRequest,
   parseRequestDecryptionRequest,
-  parseStopAgentRequest,
 } from "./middleware/validation.js";
 
 const config = loadConfig();
@@ -372,13 +365,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (routeKey === "GET /v1/agent/status") {
-      sendSuccess(response, 200, requestId, { jobs: listAgentJobs(serviceContext!) });
-      return;
-    }
-
-    ensureJsonRequest(request);
-    const body = await readJson(request);
+    ensureJsonRequest(request);    const body = await readJson(request);
 
     if (routeKey === "POST /v1/auth/login") {
       const result = await loginWithWallet(parseAuthLoginRequest(body));
@@ -539,36 +526,6 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (routeKey === "POST /v1/agent/start") {
-      sendSuccess(
-        response,
-        200,
-        requestId,
-        await startAgentJob(serviceContext!, parseAgentJobConfig(body)),
-      );
-      return;
-    }
-
-    if (routeKey === "POST /v1/agent/run-once") {
-      sendSuccess(
-        response,
-        200,
-        requestId,
-        await runAgentOnce(serviceContext!, parseAgentJobConfig(body)),
-      );
-      return;
-    }
-
-    if (routeKey === "POST /v1/agent/stop") {
-      sendSuccess(
-        response,
-        200,
-        requestId,
-        await stopAgentJob(serviceContext!, parseStopAgentRequest(body)),
-      );
-      return;
-    }
-
     throw new ApiError(404, "NOT_FOUND", `Route ${routeKey} was not found.`);
   } catch (error) {
     routeLogger.error("request.failed", { error });
@@ -594,7 +551,6 @@ server.listen(config.port, config.host, () => {
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     logger.info("server.shutting_down", { signal });
-    stopAllAgentJobs();
     server.close(() => {
       logger.info("server.stopped", { signal });
       process.exit(0);

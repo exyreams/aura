@@ -82,7 +82,7 @@ export function Navbar() {
   }, [walletMenuOpen]);
 
   const logoSrc =
-    resolvedTheme === "dark"
+    !mounted || resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
 
@@ -186,7 +186,7 @@ export function Navbar() {
     <>
       {/* Option A — vignette gradient behind the pill zone, fades in on scroll */}
       <div
-        className="fixed top-0 left-0 w-full h-40 pointer-events-none z-[99] transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        className="fixed top-0 left-0 w-full h-40 pointer-events-none z-99 transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={{
           opacity: scrolled ? 1 : 0,
           background: isDark

@@ -5,6 +5,7 @@ import { m, type Variants } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 // SVG icons not available in lucide-react v1.x
@@ -70,9 +71,14 @@ const itemVariants: Variants = {
 
 export function Footer() {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const logoSrc =
-    resolvedTheme === "dark"
+    !mounted || resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
   const docsUrl = DEFAULT_DOCS_URL;
