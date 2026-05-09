@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/global/Badge";
@@ -75,17 +75,17 @@ export const Dropdown: React.FC<DropdownProps> = ({
           )}
           {selectedOption?.label || placeholder}
         </span>
-        <motion.div
+        <m.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
         >
           <ChevronDown className="size-4 text-(--text-muted)" />
-        </motion.div>
+        </m.div>
       </button>
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -120,7 +120,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 </button>
               ))}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

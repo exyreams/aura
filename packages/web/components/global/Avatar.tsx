@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import Image from "next/image";
 import type React from "react";
 import { cn } from "@/lib/utils";
@@ -106,7 +106,7 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
         const zIndex = displayAvatars.length - index;
 
         return (
-          <motion.div
+          <m.div
             key={avatarKey}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -129,11 +129,11 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
             )}
           >
             {initials}
-          </motion.div>
+          </m.div>
         );
       })}
       {remaining > 0 && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           whileHover={{ scale: 1.15 }}
@@ -146,7 +146,7 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
           )}
         >
           +{remaining}
-        </motion.div>
+        </m.div>
       )}
     </div>
   );
@@ -169,13 +169,13 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
         {icon}
       </div>
       {count > 0 && (
-        <motion.span
+        <m.span
           initial={{ scale: 0.95 }}
           animate={{ scale: 1 }}
           className="absolute -top-1 -right-1 size-4 bg-primary rounded-full flex items-center justify-center text-[9px] text-(--bg) font-bold border-2 border-(--bg)"
         >
           {count}
-        </motion.span>
+        </m.span>
       )}
     </div>
   );

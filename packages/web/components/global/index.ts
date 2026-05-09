@@ -14,7 +14,7 @@ export {
   NotificationBadge,
   type NotificationBadgeProps,
 } from "./Avatar";
-export { Badge, type BadgeProps, type BadgeVariant, StatusPill } from "./Badge";
+export { Badge, type BadgeProps, StatusPill } from "./Badge";
 export {
   Button,
   type ButtonProps,

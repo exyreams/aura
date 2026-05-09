@@ -3,19 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 export function DashboardFooter() {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark"
+    resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
 
@@ -32,6 +26,7 @@ export function DashboardFooter() {
               width={60}
               height={15}
               className="h-[15px] w-auto"
+              suppressHydrationWarning
             />
           </div>
 

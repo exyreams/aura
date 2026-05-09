@@ -7,7 +7,7 @@ import {
   Info,
   X,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +61,7 @@ export const Alert: React.FC<AlertProps> = ({
   const IconComponent = config.icon;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
@@ -77,7 +77,7 @@ export const Alert: React.FC<AlertProps> = ({
       <span className={cn("text-xs flex-1 min-w-0 break-words", config.text)}>
         {message}
       </span>
-      <motion.button
+      <m.button
         type="button"
         onClick={onClose}
         className={cn(
@@ -89,7 +89,7 @@ export const Alert: React.FC<AlertProps> = ({
         transition={{ type: "spring", stiffness: 500, damping: 20 }}
       >
         <X className="size-4" />
-      </motion.button>
-    </motion.div>
+      </m.button>
+    </m.div>
   );
 };

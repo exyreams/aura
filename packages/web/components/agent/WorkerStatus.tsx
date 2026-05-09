@@ -49,7 +49,7 @@ export function WorkerStatus({ activeJob }: WorkerStatusProps) {
                   </span>
                 </div>
               </div>
-              <div>
+              <div suppressHydrationWarning>
                 <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1">
                   Last Run
                 </span>

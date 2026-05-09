@@ -3,7 +3,7 @@
 import type { WalletName } from "@solana/wallet-adapter-base";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { AlertCircle, ExternalLink, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -15,7 +15,7 @@ interface WalletModalProps {
 }
 
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
-  const { wallets, select, connect, connecting, connected, wallet } =
+  const { wallets, select, connect, connecting, wallet } =
     useWallet();
   const mountedRef = useRef(false);
   const pendingConnectRef = useRef(false);
@@ -34,30 +34,27 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     onCloseRef.current = onClose;
   });
 
-  // Close when connected
-  useEffect(() => {
-    if (connected) {
-      setConnectingName(null);
-      pendingConnectRef.current = false;
-      onClose();
-    }
-  }, [connected, onClose]);
-
   // Once wallet is selected and we have a pending connect, fire connect()
   useEffect(() => {
     if (!pendingConnectRef.current || !wallet) return;
     pendingConnectRef.current = false;
-    connect().catch((error) => {
-      setConnectingName(null);
-      const msg = error instanceof Error ? error.message : "";
-      if (
-        !msg.toLowerCase().includes("user rejected") &&
-        !msg.toLowerCase().includes("cancelled") &&
-        !msg.toLowerCase().includes("wallet not selected")
-      ) {
-        setErrorMessage(msg || "Failed to connect wallet.");
-      }
-    });
+    connect()
+      .then(() => {
+        setConnectingName(null);
+        pendingConnectRef.current = false;
+        onCloseRef.current();
+      })
+      .catch((error) => {
+        setConnectingName(null);
+        const msg = error instanceof Error ? error.message : "";
+        if (
+          !msg.toLowerCase().includes("user rejected") &&
+          !msg.toLowerCase().includes("cancelled") &&
+          !msg.toLowerCase().includes("wallet not selected")
+        ) {
+          setErrorMessage(msg || "Failed to connect wallet.");
+        }
+      });
   }, [wallet, connect]);
 
   // Lock body scroll while open
@@ -100,7 +97,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
       {isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
           {/* Backdrop */}
-          <motion.div
+          <m.div
             key="backdrop"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -111,7 +108,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
           />
 
           {/* Modal — pops from center on all screen sizes */}
-          <motion.div
+          <m.div
             key="modal"
             className="relative w-full sm:max-w-sm bg-(--input-bg) border border-border rounded-xl shadow-2xl overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}
@@ -147,14 +144,14 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
             {/* Wallet list */}
             <div className="px-4 py-3 max-h-[55vh] overflow-y-auto">
               {errorMessage && (
-                <motion.div
+                <m.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-3 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400"
                 >
                   <AlertCircle className="size-3.5 shrink-0" />
                   {errorMessage}
-                </motion.div>
+                </m.div>
               )}
 
               {/* Installed */}
@@ -168,7 +165,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                       const isConnecting =
                         connectingName === wallet.adapter.name;
                       return (
-                        <motion.button
+                        <m.button
                           type="button"
                           key={wallet.adapter.name}
                           onClick={() => handleWalletClick(wallet.adapter.name)}
@@ -195,7 +192,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                             </p>
                           </div>
                           {isConnecting ? (
-                            <motion.div
+                            <m.div
                               className="size-4 rounded-full border-2 border-primary border-t-transparent"
                               animate={{ rotate: 360 }}
                               transition={{
@@ -207,7 +204,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                           ) : (
                             <div className="size-1.5 rounded-full bg-primary opacity-0 group-hover:opacity-100" />
                           )}
-                        </motion.button>
+                        </m.button>
                       );
                     })}
                   </div>
@@ -222,7 +219,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   </p>
                   <div className="space-y-1.5">
                     {otherWallets.map((wallet) => (
-                      <motion.a
+                      <m.a
                         key={wallet.adapter.name}
                         href={wallet.adapter.url}
                         target="_blank"
@@ -246,7 +243,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                           </p>
                         </div>
                         <ExternalLink className="size-3.5 text-(--text-muted) group-hover:text-primary" />
-                      </motion.a>
+                      </m.a>
                     ))}
                   </div>
                 </div>
@@ -287,7 +284,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 </span>
               </p>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>

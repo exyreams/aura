@@ -52,7 +52,8 @@ export const UsdInput = ({
     centsToDisplay(valueCents),
   );
 
-  // Sync display when external cents value changes (e.g. form reset)
+  // Intentional: sync display value when parent resets valueCents (e.g. form reset)
+  // This is a controlled input pattern, not derived state.
   useEffect(() => {
     setDisplayValue(centsToDisplay(valueCents));
   }, [valueCents]);
@@ -70,7 +71,7 @@ export const UsdInput = ({
     }
   };
 
-  const handleBlur = () => {
+  const handleAmountBlur = () => {
     // On blur, clean up the display but don't force decimal places
     const dollars = Number.parseFloat(displayValue);
     if (Number.isFinite(dollars) && dollars >= 0) {
@@ -115,7 +116,7 @@ export const UsdInput = ({
           step="0.01"
           value={displayValue}
           onChange={handleAmountChange}
-          onBlur={handleBlur}
+          onBlur={handleAmountBlur}
           placeholder={placeholder}
           disabled={disabled}
           required={required}

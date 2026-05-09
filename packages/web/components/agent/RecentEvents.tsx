@@ -65,6 +65,7 @@ export function RecentEvents({ activity }: RecentEventsProps) {
               <div
                 key={event.signature}
                 className="relative pl-6 pb-6 last:pb-0"
+                suppressHydrationWarning
               >
                 {/* Timeline dot */}
                 <div className="absolute left-[-4px] top-1.5 size-[8px] bg-primary rounded-full z-10" />

@@ -13,7 +13,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
@@ -260,7 +260,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
 
             <AnimatePresence>
               {isDropdownOpen && (
-                <motion.div
+                <m.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
@@ -286,7 +286,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
                       </button>
                     ))}
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

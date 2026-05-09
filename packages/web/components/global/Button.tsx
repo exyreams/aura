@@ -1,6 +1,6 @@
 "use client";
 
-import { type HTMLMotionProps, motion } from "motion/react";
+import { type HTMLMotionProps, m } from "motion/react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
@@ -67,7 +67,7 @@ export const Button = ({
   const isDisabled = disabled || loading || isDisabledVariant;
 
   return (
-    <motion.button
+    <m.button
       ref={ref}
       disabled={isDisabled}
       className={cn(
@@ -98,7 +98,7 @@ export const Button = ({
           {icon && iconPosition === "right" && <span>{icon}</span>}
         </>
       )}
-    </motion.button>
+    </m.button>
   );
 };
 

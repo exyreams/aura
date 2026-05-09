@@ -2,18 +2,20 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function CompactThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mountedRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
+    mountedRef.current = true;
+    forceUpdate((n) => n + 1);
   }, []);
 
-  if (!mounted) {
+  if (!mountedRef.current) {
     return (
       <div className="size-8 rounded-sm border border-border bg-(--card-bg)" />
     );

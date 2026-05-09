@@ -2,7 +2,7 @@
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import { KeyRound, ShieldCheck, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/global/Button";
@@ -21,10 +21,6 @@ export function SignInDialog() {
     mountedRef.current = true;
     forceUpdate((n) => n + 1);
   }, []);
-
-  useEffect(() => {
-    if (auth.isAuthenticated) setDismissed(false);
-  }, [auth.isAuthenticated]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: walletAddress is an intentional trigger — reset dismissed state on wallet change
   useEffect(() => {
@@ -49,7 +45,7 @@ export function SignInDialog() {
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -62,7 +58,7 @@ export function SignInDialog() {
           }}
           onClick={handleBackdrop}
         >
-          <motion.div
+          <m.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -144,8 +140,8 @@ export function SignInDialog() {
                 Sign In
               </Button>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>,
     document.body,

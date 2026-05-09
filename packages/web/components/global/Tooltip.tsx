@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -63,7 +63,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
                   transform: "translate(-50%, calc(-100% - 8px))",
                 }}
               >
-                <motion.div
+                <m.div
                   variants={tooltipVariants}
                   initial="hidden"
                   animate="visible"
@@ -80,7 +80,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
                   <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
                     <div className="size-2 bg-(--card-bg) border-r border-b border-border rotate-45" />
                   </div>
-                </motion.div>
+                </m.div>
               </div>
             )}
           </AnimatePresence>,

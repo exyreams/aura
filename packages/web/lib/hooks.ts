@@ -231,7 +231,7 @@ const localFeatureCatalog: FeatureCatalogResponse = {
 };
 
 // @internal — kept for potential future use; not currently consumed by any component
-export function useFeatureCatalog() {
+function useFeatureCatalog() {
   const settings = useAppSettings();
 
   return useQuery({
@@ -342,12 +342,11 @@ export function useDWalletLiveBalance(address: string | null | undefined) {
       );
 
       const tokens: TokenBalance[] = await Promise.all(
-        tokenAccounts.value
-          .flatMap((ta) => {
-            const uiAmount =
-              ta.account.data.parsed?.info?.tokenAmount?.uiAmount;
-            return uiAmount && uiAmount > 0 ? [ta] : [];
-          })
+        tokenAccounts.value.reduce<typeof tokenAccounts.value>((acc, ta) => {
+          const uiAmount = ta.account.data.parsed?.info?.tokenAmount?.uiAmount;
+          if (uiAmount && uiAmount > 0) acc.push(ta);
+          return acc;
+        }, [])
           .map(async (ta) => {
             const info = ta.account.data.parsed?.info;
             const tokenAmount = info?.tokenAmount;

@@ -15,7 +15,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -82,7 +82,7 @@ export function Navbar() {
   }, [walletMenuOpen]);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark"
+    resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
 
@@ -204,6 +204,7 @@ export function Navbar() {
               width={80}
               height={20}
               className="h-5 w-auto"
+              suppressHydrationWarning
             />
           </Link>
 
@@ -258,7 +259,7 @@ export function Navbar() {
 
                   <AnimatePresence>
                     {walletMenuOpen && (
-                      <motion.div
+                      <m.div
                         initial={{ opacity: 0, scale: 0.96, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: -4 }}
@@ -329,7 +330,7 @@ export function Navbar() {
                             <span>Disconnect</span>
                           </button>
                         </div>
-                      </motion.div>
+                      </m.div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -360,7 +361,7 @@ export function Navbar() {
             >
               <AnimatePresence mode="wait" initial={false}>
                 {mobileMenuOpen ? (
-                  <motion.span
+                  <m.span
                     key="close"
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ rotate: -90, opacity: 0 }}
@@ -369,9 +370,9 @@ export function Navbar() {
                     transition={{ duration: 0.12 }}
                   >
                     <X className="size-6" />
-                  </motion.span>
+                  </m.span>
                 ) : (
-                  <motion.span
+                  <m.span
                     key="menu"
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ rotate: 90, opacity: 0 }}
@@ -380,7 +381,7 @@ export function Navbar() {
                     transition={{ duration: 0.12 }}
                   >
                     <Menu className="size-6" />
-                  </motion.span>
+                  </m.span>
                 )}
               </AnimatePresence>
             </button>
@@ -391,7 +392,7 @@ export function Navbar() {
       {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div
+          <m.div
             key="mobile-menu"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -494,7 +495,7 @@ export function Navbar() {
                     ...LANDING_LINKS,
                     { label: "Docs", href: docsUrl, external: true },
                   ].map((link, i) => (
-                    <motion.div
+                    <m.div
                       key={link.href}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -519,7 +520,7 @@ export function Navbar() {
                           {link.label}
                         </Link>
                       )}
-                    </motion.div>
+                    </m.div>
                   ))}
 
                   <div className="border-t border-border my-2" />
@@ -538,7 +539,7 @@ export function Navbar() {
                 </>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 

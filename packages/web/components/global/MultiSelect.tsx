@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -102,7 +102,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <AnimatePresence>
               {selectedOptions.map((option) => (
-                <motion.span
+                <m.span
                   key={option.value}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -118,7 +118,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   >
                     <X className="size-3" />
                   </button>
-                </motion.span>
+                </m.span>
               ))}
             </AnimatePresence>
           </div>
@@ -152,19 +152,19 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
           }}
           className="shrink-0"
         >
-          <motion.div
+          <m.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
           >
             <ChevronDown className="size-4 text-(--text-muted)" />
-          </motion.div>
+          </m.div>
         </button>
       </div>
 
       {/* Dropdown Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -200,7 +200,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                 </div>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +46,7 @@ export const Progress: React.FC<ProgressProps> = ({
           sizeClasses[size],
         )}
       >
-        <motion.div
+        <m.div
           initial={animate ? { width: 0 } : { width: `${percentage}%` }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}

@@ -73,7 +73,7 @@ export function DashboardNav() {
   }, [walletMenuOpen]);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark"
+    resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
 
@@ -128,6 +128,7 @@ export function DashboardNav() {
             width={70}
             height={18}
             className="h-[18px] w-auto"
+            suppressHydrationWarning
           />
         </Link>
 

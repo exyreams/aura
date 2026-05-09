@@ -1,11 +1,10 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import { motion, type Variants } from "motion/react";
+import { m, type Variants } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 // SVG icons not available in lucide-react v1.x
@@ -71,14 +70,9 @@ const itemVariants: Variants = {
 
 export function Footer() {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const logoSrc =
-    !mounted || resolvedTheme === "dark"
+    resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
   const docsUrl = DEFAULT_DOCS_URL;
@@ -86,7 +80,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border py-16 px-6 md:px-[4vw]">
       <div className="max-w-7xl mx-auto">
-        <motion.div
+        <m.div
           className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12"
           variants={containerVariants}
           initial="hidden"
@@ -94,7 +88,7 @@ export function Footer() {
           viewport={{ once: true, margin: "-60px" }}
         >
           {/* Brand */}
-          <motion.div className="space-y-4" variants={itemVariants}>
+          <m.div className="space-y-4" variants={itemVariants}>
             <div className="flex items-center">
               <Image
                 src={logoSrc}
@@ -102,6 +96,7 @@ export function Footer() {
                 width={80}
                 height={20}
                 className="h-5 w-auto"
+                suppressHydrationWarning
               />
             </div>
             <p className="text-sm text-(--text-muted) leading-relaxed">
@@ -114,10 +109,10 @@ export function Footer() {
                 Devnet Live
               </span>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Product */}
-          <motion.div variants={itemVariants}>
+          <m.div variants={itemVariants}>
             <h4 className="font-mono text-[10px] uppercase tracking-widest text-(--text-main) mb-4">
               Product
             </h4>
@@ -133,10 +128,10 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-          </motion.div>
+          </m.div>
 
           {/* Resources */}
-          <motion.div variants={itemVariants}>
+          <m.div variants={itemVariants}>
             <h4 className="font-mono text-[10px] uppercase tracking-widest text-(--text-main) mb-4">
               Resources
             </h4>
@@ -178,10 +173,10 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </motion.div>
+          </m.div>
 
           {/* Community */}
-          <motion.div variants={itemVariants}>
+          <m.div variants={itemVariants}>
             <h4 className="font-mono text-[10px] uppercase tracking-widest text-(--text-main) mb-4">
               Community
             </h4>
@@ -229,11 +224,11 @@ export function Footer() {
                 </a>
               </li>
             </ul>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
 
         {/* Bottom Bar */}
-        <motion.div
+        <m.div
           className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -254,7 +249,7 @@ export function Footer() {
               </span>
             </div>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </footer>
   );

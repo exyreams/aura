@@ -62,7 +62,7 @@ export function Slider({
   const percentage =
     range > 0 ? Math.min(100, Math.max(0, ((value - min) / range) * 100)) : 0;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = Number(e.target.value);
     if (!isControlled) setInternal(next);
     onValueChange?.(next);
@@ -119,7 +119,7 @@ export function Slider({
           value={value}
           required={required}
           disabled={disabled}
-          onChange={handleChange}
+          onChange={handleValueChange}
           onMouseUp={handleCommit}
           onKeyUp={handleCommit}
           onTouchEnd={handleCommit}

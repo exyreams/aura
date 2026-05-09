@@ -75,19 +75,8 @@ function findInstruction(
   catalog: InstructionCatalogResponse | undefined,
   name: string,
 ) {
-  if (!catalog) {
-    return null;
-  }
-  // Build a flat lookup to avoid nested find-in-loop
-  for (const domain of catalog.domains) {
-    const instruction = domain.instructions.find(
-      (entry) => entry.name === name,
-    );
-    if (instruction) {
-      return { domain, instruction };
-    }
-  }
-  return null;
+  if (!catalog) return null;
+  return buildInstructionMap(catalog).get(name) ?? null;
 }
 
 function buildArgsSample(schema: ProgramInstructionSchema) {

@@ -34,7 +34,7 @@ export function Ecosystem() {
           {chains.map((chain) => (
             <div
               key={chain.name}
-              className="bg-(--bg) px-4 py-8 md:py-12 flex flex-col items-center justify-center gap-3 md:gap-4 transition-all duration-300 hover:bg-gray-500/5 group"
+              className="bg-(--bg) px-4 py-8 md:py-12 flex flex-col items-center justify-center gap-3 md:gap-4 transition-all duration-300 hover:bg-zinc-500/5 group"
             >
               <div className="size-8 md:w-10 md:h-10 relative grayscale opacity-60 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100">
                 <Image

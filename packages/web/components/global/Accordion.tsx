@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -55,16 +55,16 @@ export const Accordion: React.FC<AccordionProps> = ({
               <span className="text-sm font-semibold text-(--text-main)">
                 {item.title}
               </span>
-              <motion.div
+              <m.div
                 animate={{ rotate: isOpen ? 180 : 0 }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
               >
                 <ChevronDown className="size-4 text-(--text-muted)" />
-              </motion.div>
+              </m.div>
             </button>
             <AnimatePresence initial={false}>
               {isOpen && (
-                <motion.div
+                <m.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -77,7 +77,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   >
                     {item.content}
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

@@ -21,10 +21,6 @@ export function formatNumber(value: number) {
   return numberFormatter.format(value);
 }
 
-export function formatPercent(value: number) {
-  return `${value.toFixed(1)}%`;
-}
-
 export function shortenAddress(value: string, start = 4, end = 4) {
   if (value.length <= start + end + 3) {
     return value;

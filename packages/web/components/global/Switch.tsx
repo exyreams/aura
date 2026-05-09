@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import {
   type ButtonHTMLAttributes,
   type ReactNode,
@@ -91,7 +91,7 @@ export function Switch({
       )}
       {...props}
     >
-      <motion.span
+      <m.span
         aria-hidden
         initial={false}
         animate={{ x: checked ? onX : offX }}

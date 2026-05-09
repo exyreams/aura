@@ -3,7 +3,7 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, Lock, ShieldAlert } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/global/Alert";
@@ -311,7 +311,7 @@ export function ProposeTransactionModal({
       <div className="overflow-hidden">
         <AnimatePresence mode="wait" initial={false}>
           {succeeded ? (
-            <motion.div
+            <m.div
               key="success"
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -320,7 +320,7 @@ export function ProposeTransactionModal({
             >
               <div className="flex flex-col items-center text-center mb-6">
                 {/* // Fix: scale-from-zero in ProposeTransactionModal */}
-                <motion.div
+                <m.div
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{
@@ -332,15 +332,15 @@ export function ProposeTransactionModal({
                   }}
                   className="flex size-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
                 >
-                  <motion.div
+                  <m.div
                     initial={{ scale: 0.95 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
                   >
                     <Check className="size-6 text-success" strokeWidth={2.5} />
-                  </motion.div>
-                </motion.div>
-                <motion.div
+                  </m.div>
+                </m.div>
+                <m.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
@@ -361,9 +361,9 @@ export function ProposeTransactionModal({
                       </>
                     )}
                   </p>
-                </motion.div>
+                </m.div>
               </div>
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.3 }}
@@ -402,10 +402,10 @@ export function ProposeTransactionModal({
                     {shortenAddress(pda, 8, 8)}
                   </code>
                 </div>
-              </motion.div>
-            </motion.div>
+              </m.div>
+            </m.div>
           ) : (
-            <motion.div
+            <m.div
               key="form"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -471,7 +471,7 @@ export function ProposeTransactionModal({
               </form>
 
               {showPreview && <PolicyPreview preview={preview} />}
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

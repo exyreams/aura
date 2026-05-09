@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,7 @@ export const Tabs: React.FC<TabsProps> = ({
             >
               {tab.label}
               {isActive && (
-                <motion.div
+                <m.div
                   layoutId={layoutId}
                   className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary"
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -63,7 +63,7 @@ export const Tabs: React.FC<TabsProps> = ({
         })}
       </div>
       <AnimatePresence mode="wait">
-        <motion.div
+        <m.div
           key={activeTab}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -72,7 +72,7 @@ export const Tabs: React.FC<TabsProps> = ({
           className="mt-6"
         >
           {activeTabContent}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
     </div>
   );

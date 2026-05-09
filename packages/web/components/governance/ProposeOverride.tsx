@@ -99,7 +99,7 @@ export function ProposeOverride({
                       {activeOverride.signaturesCollected.length} signatures
                     </span>
                   </div>
-                  <div className="flex justify-between text-xs">
+                  <div className="flex justify-between text-xs" suppressHydrationWarning>
                     <span className="text-(--text-muted)">Expires</span>
                     <span
                       className="text-(--text-muted) mono"

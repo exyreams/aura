@@ -10,7 +10,7 @@ import {
   MousePointerClick,
   Trash2,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useState } from "react";
 import { StatusPill, Tooltip } from "@/components/global";
 import type { TreasuryEntry } from "@/lib/aura-app";
@@ -229,7 +229,7 @@ export function AgentRow({
       {/* Expandable details */}
       <AnimatePresence initial={false}>
         {isExpanded && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -249,7 +249,7 @@ export function AgentRow({
               </div>
 
               {/* Meta row */}
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" suppressHydrationWarning>
                 <span className="font-mono text-[9px] text-(--text-muted)">
                   Created{" "}
                   <span className="text-(--text-main)" suppressHydrationWarning>
@@ -291,7 +291,7 @@ export function AgentRow({
                 </div>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

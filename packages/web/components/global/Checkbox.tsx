@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +49,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         />
         <AnimatePresence>
           {checked && (
-            <motion.div
+            <m.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -57,7 +57,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
               className="absolute pointer-events-none"
             >
               <Check className="size-3 text-(--bg)" />
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
