@@ -249,7 +249,10 @@ export function AgentRow({
               </div>
 
               {/* Meta row */}
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" suppressHydrationWarning>
+              <div
+                className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1"
+                suppressHydrationWarning
+              >
                 <span className="font-mono text-[9px] text-(--text-muted)">
                   Created{" "}
                   <span className="text-(--text-main)" suppressHydrationWarning>

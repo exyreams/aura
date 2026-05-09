@@ -190,7 +190,10 @@ export default function ActivityLogPage() {
                           ? `Policy Violation: ${item.violation}`
                           : item.detail || "Treasury event"}
                       </p>
-                      <div className="flex items-center gap-4 mono text-[10px] text-(--text-muted)" suppressHydrationWarning>
+                      <div
+                        className="flex items-center gap-4 mono text-[10px] text-(--text-muted)"
+                        suppressHydrationWarning
+                      >
                         <span>
                           Treasury: {shortenAddress(item.treasury, 6, 6)}
                         </span>

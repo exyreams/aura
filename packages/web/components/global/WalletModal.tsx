@@ -15,8 +15,7 @@ interface WalletModalProps {
 }
 
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
-  const { wallets, select, connect, connecting, wallet } =
-    useWallet();
+  const { wallets, select, connect, connecting, wallet } = useWallet();
   const mountedRef = useRef(false);
   const pendingConnectRef = useRef(false);
   const onCloseRef = useRef(onClose);

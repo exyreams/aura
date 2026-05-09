@@ -82,7 +82,10 @@ export function ActivityFeed({
                       ? `Violation: ${item.violation}`
                       : item.detail || "Treasury event"}
                   </p>
-                  <div className="flex justify-between items-center mono text-[10px] text-(--text-muted)" suppressHydrationWarning>
+                  <div
+                    className="flex justify-between items-center mono text-[10px] text-(--text-muted)"
+                    suppressHydrationWarning
+                  >
                     <span>{shortenAddress(item.treasury, 6, 6)}</span>
                     <span suppressHydrationWarning>
                       {item.timestamp

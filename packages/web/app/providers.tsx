@@ -13,7 +13,7 @@ import {
 } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
+import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ThemeProvider } from "@/components/theme";
 import { FaviconSwitcher } from "@/components/theme/FaviconSwitcher";
