@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, BookOpen } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
@@ -47,9 +48,8 @@ export function Hero() {
       </div>
 
       <div className="max-w-4xl relative z-10">
-        {/* Badge */}
         <div className="mb-6">
-          <Badge variant="active">Alpha Release 0.1</Badge>
+          <Badge variant="active">Pre-Alpha · Devnet</Badge>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[0.9] mb-8 text-(--text-main)">
@@ -57,30 +57,30 @@ export function Hero() {
           <br />
           Universal
           <br />
-          <span className="bg-linear-to-r from-(--text-main) via-(--text-muted) to-(--primary) bg-clip-text text-transparent">
+          <span className="bg-linear-to-r from-(--text-main) via-(--text-muted) to-primary bg-clip-text text-transparent">
             Resource Agent
           </span>
         </h1>
 
         <p className="text-lg md:text-xl text-(--text-muted) max-w-2xl leading-[1.6] font-light mb-10">
-          Encrypted guardrails for AI agent treasuries on Solana. Manage wealth
-          autonomously without exposing strategy or trusting centralized
-          gatekeepers.
+          Encrypted guardrails for AI agent treasuries on Solana. Spending
+          limits stay as FHE ciphertexts — unreadable on-chain, evaluated by
+          Ika's Encrypt network, executed via dWallet co-signing.
         </p>
 
         <div className="flex flex-wrap gap-4">
-          <Button
-            variant="primary"
-            className="rounded-none! font-mono! text-xs! uppercase! tracking-widest! px-10! py-4!"
-            icon={<ArrowRight className="size-4" />}
-            iconPosition="right"
-          >
-            Deploy Guardrail
-          </Button>
+          <Link href="/dashboard">
+            <Button
+              variant="primary"
+              icon={<ArrowRight className="size-4" />}
+              iconPosition="right"
+            >
+              Open Dashboard
+            </Button>
+          </Link>
           <a href={DEFAULT_DOCS_URL} target="_blank" rel="noreferrer">
             <Button
               variant="secondary"
-              className="rounded-none! font-mono! text-xs! uppercase! tracking-widest! px-10! py-4!"
               icon={<BookOpen className="size-4" />}
               iconPosition="left"
             >

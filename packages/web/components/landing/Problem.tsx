@@ -11,27 +11,27 @@ interface ProblemRow extends Record<string, unknown> {
 export function Problem() {
   const data: ProblemRow[] = [
     {
-      approach: "Direct Key Access",
+      approach: "Raw Key Access",
       compromise:
-        "One logic bug or prompt injection leads to total treasury drainage. No safety net.",
+        "One prompt injection or model bug drains the treasury. The agent holds the keys — there is no safety net.",
       status: "CRITICAL RISK",
     },
     {
-      approach: "Public On-Chain Limits",
+      approach: "Public Spending Limits",
       compromise:
-        "MEV bots read your spending patterns and front-run every trade before it executes.",
+        "Limits visible on-chain let MEV bots read your strategy, front-run trades, and route around known thresholds.",
       status: "EXPOSED",
     },
     {
-      approach: "Centralized Approval",
+      approach: "Centralized Approval Server",
       compromise:
-        "A single server decides if the agent can spend. Not decentralized, not autonomous.",
+        "A single off-chain server decides every spend. It becomes the bottleneck, the honeypot, and the single point of failure.",
       status: "FRAGILE",
     },
     {
-      approach: "AURA FHE Protocol",
+      approach: "AURA — FHE + dWallet",
       compromise:
-        "Limits are encrypted ciphertexts. Math happens over secrets. Impossible to read or front-run.",
+        "Limits are encrypted ciphertexts. Policy runs over secrets via Ika Encrypt. Execution is co-signed by dWallet — no raw key, no readable limits, no central gatekeeper.",
       status: "AUTONOMOUS",
       isAura: true,
     },
@@ -42,23 +42,23 @@ export function Problem() {
       key: "approach",
       header: "Approach",
       render: (item: ProblemRow) => (
-        <span className="font-bold text-base text-(--text-main)">
+        <span className={`font-bold text-base ${item.isAura ? "text-primary" : "text-(--text-main)"}`}>
           {item.approach}
         </span>
       ),
     },
     {
       key: "compromise",
-      header: "The Compromise",
+      header: "The Reality",
       render: (item: ProblemRow) => (
-        <span className="text-sm text-(--text-main)">{item.compromise}</span>
+        <span className="text-sm text-(--text-muted)">{item.compromise}</span>
       ),
     },
     {
       key: "status",
       header: "Status",
       render: (item: ProblemRow) => (
-        <span className="font-mono text-xs text-(--text-muted)">
+        <span className={`font-mono text-xs ${item.isAura ? "text-primary font-bold" : "text-(--text-muted)"}`}>
           {item.status}
         </span>
       ),
@@ -78,6 +78,10 @@ export function Problem() {
           <h2 className="text-4xl md:text-6xl font-semibold tracking-tight text-(--text-main)">
             The Agentic Trust Gap
           </h2>
+          <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
+            Every existing approach forces a tradeoff between autonomy, security,
+            and privacy. AURA eliminates all three.
+          </p>
         </div>
 
         <Table

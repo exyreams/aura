@@ -15,8 +15,8 @@ export function Steps() {
             How AURA Works
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            From policy definition to multi-party execution, every step is
-            cryptographically verified and auditable.
+            From encrypted policy setup to multi-chain execution — every step
+            is cryptographically enforced on Solana.
           </p>
         </div>
 
@@ -26,11 +26,12 @@ export function Steps() {
               01
             </div>
             <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-(--text-main)">
-              Define Policy
+              Encrypt Your Policy
             </h3>
             <p className="text-(--text-muted) text-xs md:text-sm leading-relaxed">
-              Set your treasury guardrails: spending limits, asset whitelists,
-              and risk scores. AURA encrypts these into ciphertexts.
+              Set daily limits, per-transaction caps, and spend counters. AURA
+              encrypts these into FHE ciphertexts stored on-chain — no one can
+              read the actual values, including validators.
             </p>
           </div>
           <div className="bg-white/2 border border-border p-6 md:p-10 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-[#d1d5db]/5 hover:border-primary hover:-translate-y-1.5">
@@ -38,11 +39,13 @@ export function Steps() {
               02
             </div>
             <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-(--text-main)">
-              Agent Proposals
+              Agent Proposes, FHE Decides
             </h3>
             <p className="text-(--text-muted) text-xs md:text-sm leading-relaxed">
-              Your AI agent proposes trades via the AURA SDK. The proposal is
-              sent to the Ika Encrypt network for validation.
+              Your AI agent submits a transaction proposal. Ika's Encrypt
+              network runs the policy graph over the encrypted values and
+              returns an encrypted violation code — approved or denied, without
+              revealing the limits.
             </p>
           </div>
           <div className="bg-white/2 border border-border p-6 md:p-10 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-[#d1d5db]/5 hover:border-primary hover:-translate-y-1.5">
@@ -50,11 +53,12 @@ export function Steps() {
               03
             </div>
             <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-(--text-main)">
-              MPC Execution
+              dWallet Co-Signs, Chain Settles
             </h3>
             <p className="text-(--text-muted) text-xs md:text-sm leading-relaxed">
-              If the FHE evaluation passes, the dWallet multi-party computation
-              generates a signature for native chain execution.
+              Approved proposals are co-signed by an Ika dWallet record. The
+              agent never holds a raw private key — execution happens natively
+              on Ethereum, Bitcoin, Solana, and more.
             </p>
           </div>
         </div>

@@ -1,16 +1,11 @@
 "use client";
 
 import { AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
@@ -147,19 +142,11 @@ function SolanaProviders({ children }: { children: ReactNode }) {
       }),
   );
   const settings = AppSettingsContext.useValue();
-  const network =
-    settings.network === "mainnet-beta"
-      ? WalletAdapterNetwork.Mainnet
-      : WalletAdapterNetwork.Devnet;
-  const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })],
-    [network],
-  );
 
   return (
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={settings.endpoint}>
-        <WalletProvider wallets={wallets} autoConnect={true}>
+        <WalletProvider wallets={[]} autoConnect={true}>
           <WalletModalProvider>
             <AuthProvider>{children}</AuthProvider>
           </WalletModalProvider>

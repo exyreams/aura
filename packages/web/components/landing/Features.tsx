@@ -4,40 +4,40 @@ import { Reveal } from "@/components/landing/Reveal";
 export function Features() {
   const features = [
     {
-      icon: Shield,
-      title: "11-Rule Policy Engine",
-      detail:
-        "Comprehensive evaluation including velocity limits, time windows, protocol whitelists, slippage protection, and reputation scaling.",
-    },
-    {
       icon: Lock,
       title: "FHE Encrypted Limits",
       detail:
-        "Daily limits, per-transaction caps, and spending counters stored as FHE ciphertexts, preventing MEV exploitation.",
+        "Daily limits, per-transaction caps, and running spend counters stored as FHE scalar ciphertexts on-chain via Ika's Encrypt network. No validator, observer, or MEV bot can read the actual values.",
     },
     {
       icon: Zap,
-      title: "Multi-Chain Execution",
+      title: "dWallet Multi-Chain Execution",
       detail:
-        "Native support for Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism via Ika dWallet co-signing.",
+        "Approved proposals are co-signed by Ika dWallet records. Native execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism — no bridges, no raw key exposure.",
+    },
+    {
+      icon: Shield,
+      title: "17-Rule Policy Engine",
+      detail:
+        "Public rules evaluated locally before any FHE call: per-tx and daily limits, velocity, time windows, slippage, protocol allowlists, counterparty risk, reputation scaling, approval ladders, budget envelopes, swarm pool, and scoped pauses.",
     },
     {
       icon: Users,
       title: "Agent Swarms",
       detail:
-        "Shared spending pools across multiple agents with unified policy enforcement and aggregate spending tracking.",
+        "Multiple agents share a single treasury with a unified spending pool. Aggregate spend is tracked across all members — one agent can't exceed the collective cap.",
     },
     {
       icon: FileCheck,
-      title: "Audit Trail",
+      title: "Governance and Safety",
       detail:
-        "Append-only audit log of all treasury operations with cryptographic signatures and timestamp verification.",
+        "Emergency multisig override, guardian co-signing, AI authority rotation, dangerous-config timelocks, session keys, and scoped pauses for break-glass scenarios.",
     },
     {
       icon: Globe,
-      title: "Emergency Governance",
+      title: "Audit and Observability",
       detail:
-        "Guardian multisig override for break-glass scenarios with threshold signatures from designated responders.",
+        "Append-only audit trail, policy receipts, decision history, activity logs, health scoring, snapshots, and invariant reports — full operational visibility without exposing strategy.",
     },
   ];
 
@@ -55,8 +55,8 @@ export function Features() {
             Built for real operators, not mock treasury demos
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            Production-ready infrastructure for autonomous treasury management
-            with cryptographic guarantees.
+            Every component is production-grade and deployed on Solana devnet.
+            Cryptographic guarantees, not configuration flags.
           </p>
         </div>
 
@@ -68,8 +68,8 @@ export function Features() {
                 key={feature.title}
                 className="bg-(--bg) border border-border p-6 md:p-8 transition-all duration-300 hover:bg-white/5 hover:border-primary group"
               >
-                <div className="size-10 md:w-12 md:h-12 rounded-full bg-(--primary)/10 flex items-center justify-center mb-4 md:mb-6 transition-colors group-hover:bg-(--primary)/20">
-                  <Icon className="size-5 md:w-6 md:h-6 text-primary" />
+                <div className="size-10 md:size-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 md:mb-6 transition-colors group-hover:bg-primary/20">
+                  <Icon className="size-5 md:size-6 text-primary" />
                 </div>
                 <h3 className="text-base md:text-lg font-semibold text-(--text-main) mb-2 md:mb-3">
                   {feature.title}

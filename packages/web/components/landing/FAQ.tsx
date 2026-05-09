@@ -7,56 +7,56 @@ export function FAQ() {
   const faqItems = [
     {
       id: "1",
-      title: "What is AURA and how does it work?",
+      title: "What is AURA?",
       content:
-        "AURA (Autonomous Universal Resource Agent) is a treasury management system for AI agents on Solana. It provides encrypted guardrails using FHE (Fully Homomorphic Encryption) to enforce spending limits while maintaining privacy. Agents can propose transactions, but every action is validated against a multi-layer policy engine before execution.",
+        "AURA (Autonomous Universal Resource Agent) is an encrypted treasury system for AI agents on Solana. It lets agents manage real crypto treasuries without exposing spending strategy on-chain and without trusting a centralized approval server. Spending limits are stored as FHE ciphertexts, policy evaluation runs over encrypted values via Ika's Encrypt network, and execution is co-signed by Ika dWallet records.",
     },
     {
       id: "2",
-      title: "How are spending limits kept private on-chain?",
+      title: "How do encrypted spending limits work?",
       content:
-        "AURA uses Ika's Encrypt network to store policy limits as FHE ciphertexts. This means daily limits, per-transaction caps, and spending counters remain encrypted on-chain. Policy evaluation happens over encrypted data, preventing MEV exploitation while maintaining autonomous operation without centralized approval servers.",
+        "When you configure a treasury, AURA encrypts your daily limit, per-transaction cap, and running spend counter into FHE ciphertexts stored on-chain. When an agent proposes a transaction, Ika's Encrypt network runs a compiled FHE circuit over those ciphertexts and returns an encrypted violation code — 0 means approved. The actual limit values are never revealed to anyone, including validators.",
     },
     {
       id: "3",
-      title: "Which blockchains does AURA support?",
+      title: "What chains does AURA support for execution?",
       content:
-        "AURA supports multi-chain execution through Ika dWallet co-signing. Native support includes Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism. Solana serves as the settlement anchor while dWallet-backed execution lanes extend treasury operations to other chains your agents monitor.",
+        "Solana is the settlement anchor where the treasury program lives. For multi-chain execution, AURA uses Ika dWallet co-signing to execute natively on Ethereum, Bitcoin, Polygon, Arbitrum, and Optimism. The agent never holds a raw private key for any chain — the dWallet record handles signing.",
     },
     {
       id: "4",
-      title: "What does the policy engine enforce?",
+      title: "What does the policy engine actually check?",
       content:
-        "The policy engine evaluates spend limits, budget envelopes, approval ladders, scoped pauses, protocol allowlists, slippage protection, reputation scaling, chain-specific rules, liveness signals, exposure groups, multisig requirements, and confidential threshold checks before transaction approval.",
+        "17 rules evaluated in order: per-transaction limit, daily limit with reputation scaling, Bitcoin manual review threshold, time window (hourly) limit, protocol allowlist, slippage cap, quote freshness, counterparty risk score, shared swarm pool limit, velocity window, anomaly detection, cooldown, budget envelope daily/weekly caps, approval ladder, scoped pause, and external liveness checks. Confidential spend checks (encrypted daily/per-tx comparisons) are handled separately by the Ika Encrypt FHE circuit.",
     },
     {
       id: "5",
-      title: "Can I override agent decisions in emergencies?",
+      title: "Can I override the agent in an emergency?",
       content:
-        "Yes. AURA includes an emergency governance system with guardian multisig override for break-glass scenarios. This requires threshold signatures from designated emergency responders to pause or modify treasury operations, providing a safety net without compromising normal autonomous operation.",
+        "Yes. AURA includes an emergency multisig with configurable guardian threshold. Any guardian can propose a daily limit override; once enough guardians co-sign within the expiry window, the change applies immediately. You can also pause execution, cancel pending proposals, or rotate the AI authority key without touching the encrypted guardrails.",
     },
     {
       id: "6",
-      title: "How do agent swarms share spending pools?",
+      title: "How do agent swarms work?",
       content:
-        "Multiple agents can be authorized to operate from the same treasury account. The policy engine tracks aggregate spending across all agents, enforcing shared daily limits and coordinating proposals. This enables collaborative agent strategies while maintaining unified spending controls.",
+        "Multiple agents can share a single treasury's spending pool via the swarm configuration. Each member agent's finalized transactions increment a shared counter. The policy engine blocks any member whose transaction would push the collective total over the shared pool cap — enforced on-chain, not by a coordinator.",
     },
     {
       id: "7",
-      title: "Is AURA ready for production use?",
+      title: "Is AURA ready for mainnet?",
       content:
-        "AURA is actively developed on Solana devnet with program, SDK, CLI, backend, and dashboard test coverage. The system is suitable for testing and integration work, but it should not be used with mainnet funds until deployment hardening and a full security audit are complete.",
+        "AURA is currently on Solana devnet in pre-alpha. The program, SDK, CLI, backend, and dashboard are all functional and test-covered. It should not be used with real funds until a stable release and security audit are published. The pre-alpha label is accurate.",
     },
     {
       id: "8",
-      title: "How do I get started with AURA?",
+      title: "How do I get started?",
       content:
-        "Connect a Solana wallet, create a treasury with your desired policy configuration, register a dWallet for multi-chain execution, and authorize your AI agents. The dashboard provides a visual interface for treasury management, or you can use the CLI for programmatic control. Full documentation is available in the GitHub repository.",
+        "Connect a Solana wallet on the dashboard, create a treasury with your policy configuration, set up FHE guardrails via the Guardrails page, register a dWallet for multi-chain execution, and create an agent keypair under Signers. The CLI is available for programmatic control. Full documentation is at docs-auraprotocol.vercel.app.",
     },
   ];
 
   return (
-    <section className="border-t border-border max-w-4xl mx-auto z-10 px-6 py-[120px] md:px-[4vw]">
+    <section id="faq" className="border-t border-border max-w-4xl mx-auto z-10 px-6 py-[120px] md:px-[4vw]">
       <Reveal>
         <div className="mb-10 md:mb-12 text-center">
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
