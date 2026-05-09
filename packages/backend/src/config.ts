@@ -67,8 +67,12 @@ export function loadConfig(): BackendConfig {
       : "info";
 
   return {
-    host: process.env.AURA_BACKEND_HOST?.trim() || "127.0.0.1",
-    port: parseNumber(process.env.AURA_BACKEND_PORT, 8787, "AURA_BACKEND_PORT"),
+    host: process.env.AURA_BACKEND_HOST?.trim() || "0.0.0.0",
+    port: parseNumber(
+      process.env.AURA_BACKEND_PORT ?? process.env.PORT,
+      8787,
+      "AURA_BACKEND_PORT",
+    ),
     defaultRpcUrl: process.env.AURA_DEFAULT_RPC_URL?.trim() || DEVNET_RPC_URL,
     defaultProgramId: process.env.AURA_DEFAULT_PROGRAM_ID?.trim()
       ? new PublicKey(process.env.AURA_DEFAULT_PROGRAM_ID.trim())

@@ -66,7 +66,7 @@ bun run build
 
 ## Docker
 
-The image uses a multi-stage Bun build and keeps runtime `node_modules` because `better-sqlite3` ships a native binding. Mount `/app/data` as persistent storage so the SQLite database survives deploys.
+The image uses a two-stage Node 20 build. The runtime stage reinstalls production dependencies with `npm ci` so `better-sqlite3`'s native addon is compiled against Node's ABI. Mount `/app/data` as persistent storage so the SQLite database survives deploys.
 
 Build and run with Compose:
 
@@ -104,7 +104,67 @@ docker run --rm \
 
 ## Railway Deployment
 
-Set `AURA_BACKEND_HOST=0.0.0.0` so Railway's proxy can reach the service. Use a persistent volume for `AURA_DATABASE_PATH`; without one, generated agent keypairs and DKG sessions are lost on redeploy.
+**Live service:** `https://aura-backend-production-eb86.up.railway.app`
+
+### Prerequisites
+
+```bash
+npm install -g @railway/cli
+railway login
+```
+
+### First-time setup
+
+```bash
+cd packages/backend
+
+# Initialize and link to the existing project
+railway init
+
+# Link the service
+railway service
+
+# Set all required environment variables in one command
+railway variables set \
+  AURA_ENCRYPTION_KEY=<64 hex chars> \
+  AURA_JWT_SECRET=<64 hex chars> \
+  AURA_BACKEND_HOST=0.0.0.0 \
+  AURA_COOKIE_SECURE=true \
+  AURA_DATABASE_PATH=/app/data/aura.db \
+  "AURA_ALLOWED_ORIGINS=https://your-frontend-domain.com"
+
+# Generate secrets with:
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Add a persistent volume for SQLite (run once)
+railway volume add --mount-path /app/data
+
+# Deploy
+railway up --detach
+```
+
+### Redeploying after changes
+
+```bash
+cd packages/backend
+railway up --detach
+```
+
+Watch logs after deploy:
+
+```bash
+railway logs          # runtime logs
+railway logs --build  # build logs from last deploy
+```
+
+### Notes
+
+- The Dockerfile uses a two-stage Node 20 build. `better-sqlite3` is compiled against Node's ABI in the runtime stage so the native addon works correctly.
+- `package-lock.json` must not be in `.dockerignore` — it is required by `npm ci` during the build.
+- `AURA_BACKEND_HOST` must be `0.0.0.0` so Railway's proxy can reach the service. The default `127.0.0.1` will cause the healthcheck to fail.
+- The volume at `/app/data` persists the SQLite database across deploys. Without it, all agent keypairs and sessions are lost on every redeploy.
+- `AURA_ALLOWED_ORIGINS` must include your frontend domain. Credentialed CORS cannot use `*`.
+- Railway injects a `PORT` env var — the backend falls back to it if `AURA_BACKEND_PORT` is not set.
 
 ## Generated Vendor Files
 
@@ -194,8 +254,14 @@ Operational behavior:
 
 ## Frontend Integration
 
-Set the web app backend URL to:
+Local development:
 
 ```
 http://127.0.0.1:8787
+```
+
+Production (Railway):
+
+```
+https://aura-backend-production-eb86.up.railway.app
 ```

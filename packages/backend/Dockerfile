@@ -1,25 +1,33 @@
-FROM oven/bun:1 AS build
+# Stage 1: Build TypeScript
+FROM node:20-slim AS build
 
 WORKDIR /app
 
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
 
 COPY . .
-RUN bun run build
+RUN npm run build
 
-FROM oven/bun:1 AS runtime
+# Stage 2: Production runtime — reinstall prod deps so better-sqlite3 native
+# addon is compiled against Node's ABI
+FROM node:20-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/node_modules ./node_modules
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --legacy-peer-deps
+
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/scripts ./scripts
 
-RUN mkdir -p /app/data && chown -R bun:bun /app/data
+RUN mkdir -p /app/data
 
-USER bun
 EXPOSE 8787
 
-CMD ["bun", "dist/index.js"]
+CMD ["node", "dist/index.js"]
