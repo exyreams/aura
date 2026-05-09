@@ -10,8 +10,10 @@ interface ActivityFeedProps {
   loading?: boolean;
 }
 
+const EMPTY_ACTIVITY: ParsedActivity[] = [];
+
 export function ActivityFeed({
-  activity = [],
+  activity = EMPTY_ACTIVITY,
   loading = false,
 }: ActivityFeedProps) {
   return (

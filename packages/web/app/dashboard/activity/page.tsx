@@ -195,7 +195,7 @@ export default function ActivityLogPage() {
                           Treasury: {shortenAddress(item.treasury, 6, 6)}
                         </span>
                         <span>•</span>
-                        <span>
+                        <span suppressHydrationWarning>
                           {item.timestamp
                             ? new Date(item.timestamp * 1000).toLocaleString(
                                 "en-US",

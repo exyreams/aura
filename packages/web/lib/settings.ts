@@ -5,7 +5,7 @@ import {
   createContext,
   type Dispatch,
   type SetStateAction,
-  useContext,
+  use,
   useEffect,
   useMemo,
   useRef,
@@ -42,7 +42,7 @@ export const DEFAULT_DOCS_URL =
 
 export const AppSettingsContext = Object.assign(Context, {
   useValue(): AppSettingsContextValue {
-    const value = useContext(Context);
+    const value = use(Context);
     if (!value) {
       throw new Error("AppSettingsContext is missing");
     }

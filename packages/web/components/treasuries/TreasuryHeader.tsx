@@ -81,9 +81,11 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
-      await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
-      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
     },
   });
 
@@ -99,9 +101,11 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
-      await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
-      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
+        queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+      ]);
     },
   });
 

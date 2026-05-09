@@ -114,11 +114,11 @@ export function AgentConfig({
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["agent-status"] });
-      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["treasury", form.treasury],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["agent-status"] }),
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["treasury", form.treasury] }),
+      ]);
     },
   });
 

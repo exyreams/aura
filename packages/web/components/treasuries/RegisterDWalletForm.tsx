@@ -432,10 +432,12 @@ export const RegisterDWalletForm = ({
   }, [isOpen]);
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["treasury", treasury.publicKey.toBase58()],
-    });
-    await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["treasury", treasury.publicKey.toBase58()],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+    ]);
   };
 
   // Step 1: Create dWallet via backend (DKG + transfer ownership)

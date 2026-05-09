@@ -170,7 +170,7 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
       </div>
       {count > 0 && (
         <motion.span
-          initial={{ scale: 0 }}
+          initial={{ scale: 0.95 }}
           animate={{ scale: 1 }}
           className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center text-[9px] text-(--bg) font-bold border-2 border-(--bg)"
         >

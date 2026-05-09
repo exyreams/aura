@@ -20,9 +20,11 @@ export interface MultiSelectProps {
   className?: string;
 }
 
+const EMPTY_VALUE: string[] = [];
+
 export const MultiSelect: React.FC<MultiSelectProps> = ({
   options,
-  value = [],
+  value = EMPTY_VALUE,
   onChange,
   placeholder = "Search and select...",
   className,

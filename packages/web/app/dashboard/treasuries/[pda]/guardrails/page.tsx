@@ -138,6 +138,9 @@ export default function ConfidentialGuardrailsPage() {
         agentId: selectedAgent.agentId,
       });
     },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
+    },
   });
 
   const encryptScalarMutation = useMutation({

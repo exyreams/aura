@@ -6,8 +6,8 @@ import bs58 from "bs58";
 import {
   createContext,
   type ReactNode,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const value = useContext(AuthContext);
+  const value = use(AuthContext);
   if (!value) {
     throw new Error("AuthProvider is missing.");
   }

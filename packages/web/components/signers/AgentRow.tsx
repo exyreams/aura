@@ -103,8 +103,9 @@ export function AgentRow({
   onDelete,
   deleting,
 }: AgentRowProps) {
-  const [expanded, setExpanded] = useState(selected);
+  const [expanded, setExpanded] = useState(false);
   const isLowBalance = solBalance !== null && solBalance < 0.005;
+  const isExpanded = expanded || selected;
 
   const handleToggle = () => {
     setExpanded(!expanded);
@@ -132,7 +133,7 @@ export function AgentRow({
             type="button"
             onClick={handleToggle}
             className="flex items-center gap-3 min-w-0 flex-1 text-left"
-            aria-expanded={expanded}
+            aria-expanded={isExpanded}
           >
             <ChevronDown
               className={cn(
@@ -227,7 +228,7 @@ export function AgentRow({
 
       {/* Expandable details */}
       <AnimatePresence initial={false}>
-        {expanded && (
+        {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}

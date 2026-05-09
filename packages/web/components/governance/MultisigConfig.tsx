@@ -29,8 +29,7 @@ export function MultisigConfig({
 }: MultisigConfigProps) {
   const guardiansList = multisigForm.guardians
     .split(",")
-    .map((g) => g.trim())
-    .filter(Boolean);
+    .flatMap((g) => { const t = g.trim(); return t ? [t] : []; });
 
   const removeGuardian = (index: number) => {
     const updated = guardiansList.filter((_, i) => i !== index);

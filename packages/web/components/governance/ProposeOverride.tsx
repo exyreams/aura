@@ -101,7 +101,7 @@ export function ProposeOverride({
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-(--text-muted)">Expires</span>
-                    <span className="text-(--text-muted) mono">
+                    <span className="text-(--text-muted) mono" suppressHydrationWarning>
                       {new Date(
                         Number(activeOverride.expiration.toString()) * 1000,
                       ).toLocaleString()}

@@ -96,7 +96,7 @@ export default function TreasuriesPage() {
       header: "Created",
       align: "right",
       render: (item) => (
-        <span className="text-[11px] text-(--text-muted)">
+        <span className="text-[11px] text-(--text-muted)" suppressHydrationWarning>
           {new Date(
             Number(item.account.createdAt.toString()) * 1000,
           ).toLocaleDateString("en-US", {

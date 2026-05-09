@@ -294,8 +294,9 @@ export function CreateTreasuryModal({
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <div className="flex flex-col items-center text-center mb-6">
+// Fix: scale-from-zero — use scale: 0.95 instead of scale: 0
                 <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{
                     delay: 0.1,
@@ -307,7 +308,7 @@ export function CreateTreasuryModal({
                   className="flex h-14 w-14 items-center justify-center rounded-full border border-success/30 bg-success/10 mb-4"
                 >
                   <motion.div
-                    initial={{ scale: 0 }}
+                    initial={{ scale: 0.95 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
                   >
