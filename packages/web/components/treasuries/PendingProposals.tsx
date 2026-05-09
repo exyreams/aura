@@ -50,6 +50,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const pending = getActivePendingProposal(treasury.account);
   const hasPending = pending && Number(pending.proposalId.toString()) > 0;
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  const [lifecycleDismissedId, setLifecycleDismissedId] = useState<string | null>(null);
   const wallet = useWallet();
   const { connection } = useConnection();
   const settings = useAppSettings();
@@ -473,7 +474,10 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                     <Button
                       variant="secondary"
                       size="small"
-                      onClick={() => setLifecycleOpen(true)}
+                      onClick={() => {
+                        setLifecycleDismissedId(null);
+                        setLifecycleOpen(true);
+                      }}
                     >
                       Lifecycle
                     </Button>
@@ -548,8 +552,11 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
 
       {isConfidential && pending && (
         <ConfidentialLifecycleModal
-          isOpen={lifecycleOpen}
-          onClose={() => setLifecycleOpen(false)}
+          isOpen={lifecycleOpen && lifecycleDismissedId !== pending.proposalId.toString()}
+          onClose={() => {
+            setLifecycleOpen(false);
+            setLifecycleDismissedId(pending.proposalId.toString());
+          }}
           pending={pending}
           pda={pda}
         />

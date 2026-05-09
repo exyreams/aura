@@ -216,7 +216,10 @@ export function ConfidentialLifecycleModal({
         },
       );
     },
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await invalidate();
+      onClose();
+    },
   });
 
   const cancelMutation = useMutation({

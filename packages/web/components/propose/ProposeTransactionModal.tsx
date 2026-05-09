@@ -75,11 +75,11 @@ export function ProposeTransactionModal({
   const [signature, setSignature] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !proposeMutation.isSuccess) {
       setSignature(null);
       setShowPreview(false);
     }
-  }, [isOpen]);
+  }, [isOpen, proposeMutation.isSuccess]);
 
   const preview = useMemo(
     () => ({
