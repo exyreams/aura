@@ -53,7 +53,9 @@ function parseCookies(header: string | string[] | undefined) {
 
 function sessionCookie(value: string, maxAgeSecs: number) {
   const config = loadConfig();
-  const sameSite = "Strict";
+  // Cross-origin (Vercel → Railway): must use SameSite=None; Secure
+  // Local HTTP: SameSite=Strict is fine (no cross-origin)
+  const sameSite = config.cookieSecure ? "None" : "Strict";
   const parts = [
     `${config.cookieName}=${encodeURIComponent(value)}`,
     "HttpOnly",
