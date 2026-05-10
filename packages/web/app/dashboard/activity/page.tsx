@@ -1,10 +1,18 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
+import { AnimatePresence, m } from "motion/react";
+import { useMemo, useState } from "react";
+import { Badge, type BadgeVariant } from "@/components/global/Badge";
+import { Button } from "@/components/global/Button";
+import { Dropdown } from "@/components/global/Dropdown";
+import { Skeleton } from "@/components/global/Skeleton";
+import { Tabs } from "@/components/global/Tabs";
+import { Tooltip } from "@/components/global/Tooltip";
 import {
   Activity,
-  AlertTriangle,
-  CheckCircle2,
+  TriangleAlert as AlertTriangle,
+  Checkcircle as CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -23,18 +31,10 @@ import {
   ShieldAlert,
   ShieldCheck,
   SquareArrowOutUpRight,
-  UnlockKeyhole,
-  XCircle,
+  LockKeyholeOpen as UnlockKeyhole,
+  Xcircle as XCircle,
   Zap,
-} from "lucide-react";
-import { AnimatePresence, m } from "motion/react";
-import { useMemo, useState } from "react";
-import { Badge, type BadgeVariant } from "@/components/global/Badge";
-import { Button } from "@/components/global/Button";
-import { Dropdown } from "@/components/global/Dropdown";
-import { Skeleton } from "@/components/global/Skeleton";
-import { Tabs } from "@/components/global/Tabs";
-import { Tooltip } from "@/components/global/Tooltip";
+} from "@/components/icons";
 import {
   CHAINS,
   type ParsedActivity,
@@ -49,7 +49,7 @@ import {
 } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-// Types 
+// Types
 
 export type StepStatus = "done" | "pending" | "failed" | "skipped";
 
@@ -263,137 +263,137 @@ const AUDIT_KIND_CONFIG: Record<
 > = {
   treasury_created: {
     label: "Treasury Created",
-    icon: <Shield size={14} />,
+    icon: <Shield size={14} animateOnHover />,
     variant: "active",
   },
   dwallet_registered: {
     label: "dWallet Registered",
-    icon: <Lock size={14} />,
+    icon: <Lock size={14} animateOnHover />,
     variant: "active",
   },
   confidential_guardrails_configured: {
     label: "FHE Guardrails Configured",
-    icon: <KeyRound size={14} />,
+    icon: <KeyRound size={14} animateOnHover />,
     variant: "active",
   },
   execution_paused: {
     label: "Execution Paused",
-    icon: <AlertTriangle size={14} />,
+    icon: <AlertTriangle size={14} animateOnHover />,
     variant: "paused",
   },
   execution_resumed: {
     label: "Execution Resumed",
-    icon: <CheckCircle2 size={14} />,
+    icon: <CheckCircle2 size={14} animateOnHover />,
     variant: "active",
   },
   multisig_attached: {
     label: "Multisig Attached",
-    icon: <Shield size={14} />,
+    icon: <Shield size={14} animateOnHover />,
     variant: "default",
   },
   swarm_attached: {
     label: "Swarm Attached",
-    icon: <Zap size={14} />,
+    icon: <Zap size={14} animateOnHover />,
     variant: "default",
   },
   override_executed: {
     label: "Override Executed",
-    icon: <Settings size={14} />,
+    icon: <Settings size={14} animateOnHover />,
     variant: "paused",
   },
   ai_authority_rotation_proposed: {
     label: "AI Rotation Proposed",
-    icon: <RefreshCw size={14} />,
+    icon: <RefreshCw size={14} animateOnHover />,
     variant: "paused",
   },
   ai_authority_rotated: {
     label: "AI Authority Rotated",
-    icon: <RefreshCw size={14} />,
+    icon: <RefreshCw size={14} animateOnHover />,
     variant: "active",
   },
   config_change_proposed: {
     label: "Config Change Proposed",
-    icon: <Settings size={14} />,
+    icon: <Settings size={14} animateOnHover />,
     variant: "paused",
   },
   config_change_executed: {
     label: "Config Change Executed",
-    icon: <Settings size={14} />,
+    icon: <Settings size={14} animateOnHover />,
     variant: "active",
   },
   config_change_vetoed: {
     label: "Config Change Vetoed",
-    icon: <XCircle size={14} />,
+    icon: <XCircle size={14} animateOnHover />,
     variant: "error",
   },
   circuit_breaker_tripped: {
     label: "Circuit Breaker Tripped",
-    icon: <AlertTriangle size={14} />,
+    icon: <AlertTriangle size={14} animateOnHover />,
     variant: "error",
   },
   circuit_breaker_reset: {
     label: "Circuit Breaker Reset",
-    icon: <CheckCircle2 size={14} />,
+    icon: <CheckCircle2 size={14} animateOnHover />,
     variant: "active",
   },
   session_key_issued: {
     label: "Session Key Issued",
-    icon: <KeyRound size={14} />,
+    icon: <KeyRound size={14} animateOnHover />,
     variant: "default",
   },
   session_key_revoked: {
     label: "Session Key Revoked",
-    icon: <XCircle size={14} />,
+    icon: <XCircle size={14} animateOnHover />,
     variant: "paused",
   },
   dead_mans_switch_triggered: {
     label: "Dead Man's Switch Triggered",
-    icon: <AlertTriangle size={14} />,
+    icon: <AlertTriangle size={14} animateOnHover />,
     variant: "error",
   },
   agent_state_transitioned: {
     label: "Agent State Transitioned",
-    icon: <Activity size={14} />,
+    icon: <Activity size={14} animateOnHover />,
     variant: "default",
   },
   guardian_added: {
     label: "Guardian Added",
-    icon: <Shield size={14} />,
+    icon: <Shield size={14} animateOnHover />,
     variant: "active",
   },
   guardian_removed: {
     label: "Guardian Removed",
-    icon: <Shield size={14} />,
+    icon: <Shield size={14} animateOnHover />,
     variant: "paused",
   },
   emergency_shutdown: {
     label: "Emergency Shutdown",
-    icon: <AlertTriangle size={14} />,
+    icon: <AlertTriangle size={14} animateOnHover />,
     variant: "error",
   },
   fee_collected: {
     label: "Fee Collected",
-    icon: <CheckCircle2 size={14} />,
+    icon: <CheckCircle2 size={14} animateOnHover />,
     variant: "default",
   },
   snapshot_taken: {
     label: "Snapshot Taken",
-    icon: <FileText size={14} />,
+    icon: <FileText size={14} animateOnHover />,
     variant: "default",
   },
   swarm_pool_joined: {
     label: "Swarm Pool Joined",
-    icon: <Zap size={14} />,
+    icon: <Zap size={14} animateOnHover />,
     variant: "active",
   },
   balance_refreshed: {
     label: "Balance Refreshed",
-    icon: <RefreshCw size={14} />,
+    icon: <RefreshCw size={14} animateOnHover />,
     variant: "default",
   },
 };
 
-// Helpers 
+// Helpers
 
 function explorerTxUrl(sig: string) {
   return `https://explorer.solana.com/tx/${sig}?cluster=${NETWORK}`;
@@ -543,7 +543,7 @@ function mapToProposalEntries(
       description: createdDetail,
       status: "done",
       timestamp: fmtTime(first.timestamp),
-      icon: <Send size={13} />,
+      icon: <Send size={13} animateOnHover />,
       meta: {
         ...(chain ? { Chain: chain } : {}),
         ...(first.proposalDigest
@@ -576,7 +576,7 @@ function mapToProposalEntries(
         ? `Denied at rule: ${failedRule} — ${VIOLATION_DESCRIPTIONS[failedRule] ?? ""}`
         : "All 26 public rules passed — velocity, slippage, oracle quote freshness, protocol bitmap, time windows, anomaly detection",
       status: failedRule ? "failed" : "done",
-      icon: <ScanSearch size={13} />,
+      icon: <ScanSearch size={13} animateOnHover />,
       meta: precheckMeta,
       // Pass violation info for badge rendering
       violationRule: failedRule,
@@ -600,7 +600,7 @@ function mapToProposalEntries(
           "Encrypted amount evaluated against encrypted limits via Ika Encrypt — violation code ciphertext produced",
         status: "done",
         timestamp: fmtTime(decryptAudit?.timestamp),
-        icon: <KeyRound size={13} />,
+        icon: <KeyRound size={13} animateOnHover />,
       });
       steps.push({
         id: "decrypt",
@@ -608,7 +608,7 @@ function mapToProposalEntries(
         description:
           "Policy output ciphertext decrypted — violation code resolved on-chain",
         status: "done",
-        icon: <UnlockKeyhole size={13} />,
+        icon: <UnlockKeyhole size={13} animateOnHover />,
         meta: {
           "Violation code":
             last.violation === 0 || last.violation === undefined
@@ -644,7 +644,7 @@ function mapToProposalEntries(
           : "approve_message CPI submitted — Ika 2PC-MPC network co-signed the chain message",
       status: sigStatus,
       timestamp: fmtTime(sigAudit?.timestamp),
-      icon: <PenLine size={13} />,
+      icon: <PenLine size={13} animateOnHover />,
       meta: execEvent?.messageApprovalAccount
         ? {
             "Message approval PDA": execEvent.messageApprovalAccount,
@@ -690,9 +690,9 @@ function mapToProposalEntries(
       timestamp: fmtTime(finalAudit?.timestamp ?? last.timestamp),
       icon:
         outcome === "approved" ? (
-          <CheckCircle2 size={13} />
+          <CheckCircle2 size={13} animateOnHover />
         ) : (
-          <XCircle size={13} />
+          <XCircle size={13} animateOnHover />
         ),
       meta: {
         "Final status": statusLabel(last.status ?? 0),
@@ -766,7 +766,7 @@ function mapToProposalEntries(
             description: detail || rawKind,
             status: "done",
             timestamp: fmtTime(ev.timestamp),
-            icon: cfg?.icon ?? <Activity size={13} />,
+            icon: cfg?.icon ?? <Activity size={13} animateOnHover />,
             meta: stepMeta,
           },
         ],
@@ -844,9 +844,9 @@ function HashAction({ value, metaKey }: { value: string; metaKey: string }) {
           className="text-(--text-muted) hover:text-primary transition-colors cursor-pointer"
         >
           {copied ? (
-            <CheckCircle2 size={11} className="text-success" />
+            <CheckCircle2 size={11} className="text-success" animateOnHover />
           ) : (
-            <Copy size={11} />
+            <Copy size={11} animateOnHover />
           )}
         </button>
       </Tooltip>
@@ -860,7 +860,7 @@ function HashAction({ value, metaKey }: { value: string; metaKey: string }) {
               onClick={(e) => e.stopPropagation()}
               className="text-(--text-muted) hover:text-primary transition-colors"
             >
-              <SquareArrowOutUpRight size={11} />
+              <SquareArrowOutUpRight size={11} animateOnHover />
             </a>
           </span>
         </Tooltip>
@@ -885,15 +885,15 @@ function CopyButton({ value }: { value: string }) {
       className="text-(--text-muted) hover:text-primary transition-colors shrink-0"
     >
       {copied ? (
-        <CheckCircle2 size={11} className="text-success" />
+        <CheckCircle2 size={11} className="text-success" animateOnHover />
       ) : (
-        <Copy size={11} />
+        <Copy size={11} animateOnHover />
       )}
     </button>
   );
 }
 
-// StepRow 
+// StepRow
 
 function StepRow({
   step,
@@ -926,7 +926,7 @@ function StepRow({
           className={cn(
             "w-full flex items-start justify-between gap-2 mb-0.5 rounded-sm px-2 py-1 -mx-2 transition-colors text-left",
             hasMeta
-              ? "cursor-pointer hover:bg-[var(--accordion-hover)]"
+              ? "cursor-pointer hover:bg-(--accordion-hover)"
               : "cursor-default",
           )}
           onClick={() => hasMeta && setOpen((o) => !o)}
@@ -1064,17 +1064,17 @@ function ProposalRow({
 
   const outcomeIcon =
     entry.outcome === "approved" ? (
-      <ShieldCheck size={18} className={iconColorClass} />
+      <ShieldCheck size={18} className={iconColorClass} animateOnHover />
     ) : entry.outcome === "denied" ? (
-      <ShieldAlert size={18} className={iconColorClass} />
+      <ShieldAlert size={18} className={iconColorClass} animateOnHover />
     ) : entry.outcome === "cancelled" ? (
-      <XCircle size={18} className="text-(--text-muted)" />
+      <XCircle size={18} className="text-(--text-muted)" animateOnHover />
     ) : isProposal ? (
-      <FileText size={18} className={iconColorClass} />
+      <FileText size={18} className={iconColorClass} animateOnHover />
     ) : cfg?.icon ? (
       <span className={cn("text-(--text-muted)")}>{cfg.icon}</span>
     ) : (
-      <Activity size={18} className="text-(--text-muted)" />
+      <Activity size={18} className="text-(--text-muted)" animateOnHover />
     );
 
   return (
@@ -1089,7 +1089,7 @@ function ProposalRow({
         {/* Header */}
         <button
           type="button"
-          className="w-full flex items-start justify-between gap-2 sm:gap-3 mb-1.5 cursor-pointer rounded-sm px-2 sm:px-3 py-2 -mx-2 sm:-mx-3 transition-colors text-left hover:bg-[var(--accordion-hover)]"
+          className="w-full flex items-start justify-between gap-2 sm:gap-3 mb-1.5 cursor-pointer rounded-sm px-2 sm:px-3 py-2 -mx-2 sm:-mx-3 transition-colors text-left hover:bg-(--accordion-hover)"
           onClick={() => setExpanded((e) => !e)}
         >
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
@@ -1153,7 +1153,7 @@ function ProposalRow({
                 onClick={(e) => e.stopPropagation()}
                 className="text-(--text-muted) hover:text-primary transition-colors"
               >
-                <SquareArrowOutUpRight size={10} />
+                <SquareArrowOutUpRight size={10} animateOnHover />
               </a>
             </span>
           </Tooltip>
@@ -1245,7 +1245,7 @@ function ProposalRow({
   );
 }
 
-// Timeline 
+// Timeline
 
 function Timeline({
   items,
@@ -1288,7 +1288,10 @@ function Timeline({
   if (items.length === 0) {
     return (
       <div className="text-center py-16">
-        <FileText className="size-10 text-(--text-muted) mx-auto mb-3" />
+        <FileText
+          className="size-10 text-(--text-muted) mx-auto mb-3"
+          animateOnHover
+        />
         <p className="text-(--text-muted) text-sm">
           No events found for this filter.
         </p>
@@ -1360,7 +1363,7 @@ function Pagination({
   );
 }
 
-// Page 
+// Page
 
 export default function ActivityLogPage() {
   const { publicKey } = useWallet();
@@ -1459,7 +1462,10 @@ export default function ActivityLogPage() {
     if (!publicKey)
       return (
         <div className="text-center py-16">
-          <XCircle className="size-10 text-(--text-muted) mx-auto mb-3" />
+          <XCircle
+            className="size-10 text-(--text-muted) mx-auto mb-3"
+            animateOnHover
+          />
           <p className="text-(--text-muted) text-sm">
             Connect your wallet to view activity.
           </p>
@@ -1468,7 +1474,10 @@ export default function ActivityLogPage() {
     if (treasuries.length === 0 && !isLoading)
       return (
         <div className="text-center py-16">
-          <Activity className="size-10 text-(--text-muted) mx-auto mb-3" />
+          <Activity
+            className="size-10 text-(--text-muted) mx-auto mb-3"
+            animateOnHover
+          />
           <p className="text-(--text-muted) text-sm">
             Create a treasury to start seeing activity.
           </p>
