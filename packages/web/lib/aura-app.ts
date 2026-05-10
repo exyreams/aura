@@ -62,17 +62,78 @@ export const PROPOSAL_STATUSES = [
 
 export const VIOLATIONS = [
   "none",
-  "per-tx limit",
-  "daily limit",
-  "bitcoin manual review",
-  "time window",
-  "velocity limit",
-  "protocol not allowed",
-  "slippage exceeded",
-  "quote stale",
-  "counterparty risk",
-  "shared pool limit",
+  "per_transaction_limit",
+  "daily_limit",
+  "bitcoin_manual_review",
+  "time_window_limit",
+  "velocity_limit",
+  "protocol_not_allowed",
+  "slippage_exceeded",
+  "quote_stale",
+  "counterparty_risk",
+  "shared_pool_limit",
+  "weekly_limit",
+  "monthly_limit",
+  "recipient_daily_limit",
+  "recipient_per_transaction_limit",
+  "anomaly_detected",
+  "cooldown_not_elapsed",
+  "budget_envelope_daily_limit",
+  "budget_envelope_weekly_limit",
+  "approval_ladder_denied",
+  "execution_scope_paused",
+  "external_dependency_stale",
+  "policy_attestation_missing",
+  "empty_batch",
+  "batch_too_large",
+  "exposure_group_limit_exceeded",
+  "pending_execution_timelock_active",
 ] as const;
+
+// Human-readable descriptions for each violation code (matches ViolationCode enum order)
+export const VIOLATION_DESCRIPTIONS: Record<string, string> = {
+  none: "Transaction was approved — no rule failed",
+  per_transaction_limit: "Amount exceeded the per-transaction USD cap",
+  daily_limit: "Projected daily spend would exceed the effective daily limit",
+  bitcoin_manual_review:
+    "Bitcoin transaction exceeded the manual review threshold",
+  time_window_limit:
+    "Projected hourly spend would exceed the active daytime/nighttime limit",
+  velocity_limit:
+    "Recent-amounts velocity window sum would exceed the velocity cap",
+  protocol_not_allowed: "Protocol ID is not set in the allowed_protocol_bitmap",
+  slippage_exceeded: "Computed slippage exceeded max_slippage_bps",
+  quote_stale: "Quote age exceeded max_quote_age_secs — price data is too old",
+  counterparty_risk: "Counterparty risk score exceeded the configured maximum",
+  shared_pool_limit:
+    "Projected swarm pool spend would exceed the shared pool cap",
+  weekly_limit: "Projected 7-day spend would exceed the weekly limit",
+  monthly_limit: "Projected 30-day spend would exceed the monthly limit",
+  recipient_daily_limit: "Recipient-specific daily exposure would be exceeded",
+  recipient_per_transaction_limit:
+    "Recipient-specific per-transaction exposure would be exceeded",
+  anomaly_detected:
+    "Statistical anomaly detection flagged the amount as an outlier",
+  cooldown_not_elapsed:
+    "Minimum delay between large transactions has not elapsed",
+  budget_envelope_daily_limit:
+    "A scoped budget envelope daily cap would be exceeded",
+  budget_envelope_weekly_limit:
+    "A scoped budget envelope weekly cap would be exceeded",
+  approval_ladder_denied:
+    "Approval ladder denied the transaction based on amount or risk score",
+  execution_scope_paused:
+    "A scoped pause is active for this chain or transaction type",
+  external_dependency_stale:
+    "Required external dependency liveness signal is stale",
+  policy_attestation_missing: "Policy attestation is missing or has expired",
+  empty_batch: "Batch proposal contained no items",
+  batch_too_large: "Batch proposal exceeded the maximum item count",
+  exposure_group_limit_exceeded:
+    "Cross-treasury exposure group cap would be exceeded",
+  pending_execution_timelock_active:
+    "Pending execution timelock is still active",
+};
 
 export interface TreasuryEntry {
   publicKey: PublicKey;
@@ -83,15 +144,22 @@ export type PendingProposalRecord =
   TreasuryAccountRecord["pendingQueue"][number];
 
 export interface ParsedActivity {
+  /** Raw Solana transaction signature (base58). For events within a tx, appended with `:index`. */
   signature: string;
+  /** The raw tx signature without the event index suffix — used for Explorer links. */
+  txSignature: string;
   treasury: string;
   proposalId?: string;
-  kind: "proposal" | "audit";
+  proposalDigest?: string;
+  kind: "proposal" | "audit" | "execution";
   status?: number;
   approved?: boolean;
   violation?: number;
   detail?: string;
   timestamp?: number;
+  // Execution-specific fields (from ExecutionLifecycleEvent)
+  messageApprovalAccount?: string;
+  decryptionRequestAccount?: string;
 }
 
 export function createAuraClient(
@@ -123,7 +191,7 @@ export async function fetchOwnedTreasuries(
       publicKey: entry.publicKey,
       account: entry.account as TreasuryAccountRecord,
     })) as TreasuryEntry[];
-  } catch (error) {
+  } catch (_error) {
     // If deserialization fails (e.g., old account format), try fetching accounts
     // individually and filter out ones that can't be deserialized
 
@@ -148,7 +216,7 @@ export async function fetchOwnedTreasuries(
           account.data,
         ) as TreasuryAccountRecord;
         validAccounts.push({ publicKey: pubkey, account: decoded });
-      } catch (decodeError) {
+      } catch (_decodeError) {
         // Silently skip accounts with incompatible format
       }
     }
@@ -234,18 +302,49 @@ export async function fetchRecentActivity(
         const data = event.data as {
           treasury: PublicKey;
           proposalId: BN;
+          proposalDigest: string;
           status: number;
           approved: boolean;
           violation: number;
         };
         events.push({
           signature: `${sig}:${eventIdx}`,
+          txSignature: sig,
           treasury: data.treasury.toBase58(),
           proposalId: data.proposalId.toString(),
+          proposalDigest: data.proposalDigest,
           kind: "proposal",
           status: data.status,
           approved: data.approved,
           violation: data.violation,
+          timestamp: tx?.blockTime ?? undefined,
+        });
+      }
+      if (event.name === "executionLifecycleEvent") {
+        const data = event.data as {
+          treasury: PublicKey;
+          proposalId: BN;
+          proposalDigest: string;
+          finalStatus: number;
+          approved: boolean;
+          violation: number;
+          messageApprovalId: string | null;
+          messageApprovalAccount: string | null;
+          decryptionRequestId: string | null;
+          decryptionRequestAccount: string | null;
+        };
+        events.push({
+          signature: `${sig}:${eventIdx}`,
+          txSignature: sig,
+          treasury: data.treasury.toBase58(),
+          proposalId: data.proposalId.toString(),
+          proposalDigest: data.proposalDigest,
+          kind: "execution",
+          status: data.finalStatus,
+          approved: data.approved,
+          violation: data.violation,
+          messageApprovalAccount: data.messageApprovalAccount ?? undefined,
+          decryptionRequestAccount: data.decryptionRequestAccount ?? undefined,
           timestamp: tx?.blockTime ?? undefined,
         });
       }
@@ -258,6 +357,7 @@ export async function fetchRecentActivity(
         };
         events.push({
           signature: `${sig}:${eventIdx}`,
+          txSignature: sig,
           treasury: data.treasury.toBase58(),
           kind: "audit",
           detail: `${data.kind}: ${data.detail}`,

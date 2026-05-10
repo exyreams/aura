@@ -82,10 +82,6 @@ const SLIDES = [
   },
 ];
 
-// ─── Streaming background ──────────────────────────────────────────────────────
-
-// ─── Slide components ──────────────────────────────────────────────────────────
-
 const CHAINS = [
   { name: "Solana", logo: "/assets/solana.svg" },
   { name: "Bitcoin", logo: "/assets/bitcoin.svg" },
@@ -373,7 +369,7 @@ function SlideWhyNow() {
 
       {/* Mobile: 4 stat cards stacked. Desktop: bento with charts */}
       <div className="flex-1 min-h-0">
-        {/* ── Mobile layout ── */}
+        {/* Mobile layout */}
         <div className="flex flex-col gap-2 md:hidden h-full">
           {[
             {
@@ -423,7 +419,7 @@ function SlideWhyNow() {
           ))}
         </div>
 
-        {/* ── Desktop layout — bento with charts ── */}
+        {/* Desktop layout — bento with charts */}
         <div className="hidden md:grid md:grid-cols-3 md:grid-rows-2 gap-3 h-full">
           {/* Area chart — DeFi activity — row 1, cols 1-2 */}
           <div className="col-span-2 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col hover:border-primary transition-colors">
@@ -1302,7 +1298,7 @@ function SlideMarket() {
 
       {/* Mobile: simple stacked layout. Desktop: full bento */}
       <div className="flex-1 min-h-0">
-        {/* ── Mobile layout ── */}
+        {/* Mobile layout */}
         <div className="flex flex-col gap-2 md:hidden h-full">
           {/* TAM */}
           <div className="relative overflow-hidden border border-primary bg-(--card-bg) rounded p-4 flex flex-col gap-1 hover:border-primary transition-colors">
@@ -1364,7 +1360,7 @@ function SlideMarket() {
           </div>
         </div>
 
-        {/* ── Desktop layout — full bento ── */}
+        {/* Desktop layout — full bento */}
         <div className="hidden md:grid md:grid-cols-4 md:grid-rows-3 gap-3 h-full">
           {/* TAM — hero 2×2 */}
           <div className="col-span-2 row-span-2 relative overflow-hidden border border-primary bg-(--card-bg) rounded p-6 flex flex-col justify-center hover:border-primary transition-colors">
@@ -2019,7 +2015,7 @@ export default function PitchPage() {
       </div>
 
       <div className="relative z-10 flex flex-col h-screen">
-        {/* ── Top nav strip — hidden on mobile ── */}
+        {/* Top nav strip — hidden on mobile */}
         <div className="hidden md:block fixed top-0 left-0 right-0 z-50 px-3 pt-3">
           <div className="flex overflow-x-auto scrollbar-none backdrop-blur-md rounded-xl border border-border bg-(--card-bg)/90 px-2 py-1.5 gap-0.5">
             {SLIDES.map((s, i) => (
@@ -2041,7 +2037,7 @@ export default function PitchPage() {
           </div>
         </div>
 
-        {/* ── Slide content ── */}
+        {/* Slide content */}
         <div className="fixed inset-0 pt-4 pb-16 px-4 md:pt-14 md:pb-14 md:px-12">
           <div className="h-full max-w-6xl mx-auto w-full">
             {mounted ? (
@@ -2065,7 +2061,7 @@ export default function PitchPage() {
           </div>
         </div>
 
-        {/* ── Bottom nav ── */}
+        {/* Bottom nav */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3 md:px-6 md:pb-4">
           <div className="flex items-center gap-2 md:gap-4 bg-(--card-bg)/90 backdrop-blur-md rounded-xl border border-border px-3 py-2 md:bg-transparent md:backdrop-blur-none md:rounded-none md:border-0 md:px-0 md:py-0">
             {/* Prev */}

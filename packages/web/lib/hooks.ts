@@ -76,7 +76,7 @@ export function useTreasury(treasury: string | undefined) {
   });
 }
 
-export function useRecentActivity(treasuries: TreasuryEntry[]) {
+export function useRecentActivity(treasuries: TreasuryEntry[], limit = 30) {
   const { connection } = useConnection();
   const settings = useAppSettings();
 
@@ -86,12 +86,14 @@ export function useRecentActivity(treasuries: TreasuryEntry[]) {
       treasuries.map((entry) => entry.publicKey.toBase58()).join(","),
       settings.endpoint,
       settings.programId,
+      limit,
     ],
     queryFn: () =>
       fetchRecentActivity(
         connection,
         treasuries.map((entry) => entry.publicKey),
         settings.resolvedProgramId,
+        limit,
       ),
     enabled: treasuries.length > 0,
   });
@@ -231,6 +233,7 @@ const localFeatureCatalog: FeatureCatalogResponse = {
 };
 
 // @internal — kept for potential future use; not currently consumed by any component
+// biome-ignore lint/correctness/noUnusedVariables: intentionally kept for future use
 function useFeatureCatalog() {
   const settings = useAppSettings();
 
