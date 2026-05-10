@@ -1,7 +1,6 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Check, Copy, SquareArrowOutUpRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
@@ -11,6 +10,7 @@ import { Badge, StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Table, type TableColumn } from "@/components/global/Table";
 import { Tooltip } from "@/components/global/Tooltip";
+import { Check, Copy, SquareArrowOutUpRight } from "@/components/icons";
 import { ChevronRight } from "@/components/icons/ChevronRight";
 import { CreateTreasuryModal } from "@/components/treasuries/CreateTreasuryModal";
 import type { TreasuryEntry } from "@/lib/hooks";
@@ -39,9 +39,9 @@ function SignerCell({ address }: { address: string }) {
           className="text-(--text-muted) hover:text-primary transition-colors"
         >
           {copied ? (
-            <Check className="size-2.5 text-success" />
+            <Check className="size-2.5 text-success" animateOnHover />
           ) : (
-            <Copy className="size-2.5" />
+            <Copy className="size-2.5" animateOnHover />
           )}
         </button>
       </Tooltip>
@@ -53,7 +53,7 @@ function SignerCell({ address }: { address: string }) {
           onClick={(e) => e.stopPropagation()}
           className="text-(--text-muted) hover:text-primary transition-colors"
         >
-          <SquareArrowOutUpRight className="size-2.5" />
+          <SquareArrowOutUpRight className="size-2.5" animateOnHover />
         </a>
       </Tooltip>
     </span>

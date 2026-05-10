@@ -1,6 +1,6 @@
-import { Activity, DollarSign, Shield, TrendingUp } from "lucide-react";
 import { Card } from "@/components/global/Card";
 import { Progress } from "@/components/global/Progress";
+import { Activity, DollarSign, Shield, TrendingUp } from "@/components/icons";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 interface StatCardProps {
@@ -74,19 +74,19 @@ export function StatsGrid({
         subtitle={
           isConnected ? "Owned by connected wallet" : "Connect a wallet"
         }
-        icon={<Shield className="size-4" />}
+        icon={<Shield className="size-4" animateOnHover />}
       />
       <StatCard
         title="Transactions"
         value={formatNumber(totalTransactions)}
         subtitle="Lifetime across all treasuries"
-        icon={<Activity className="size-4" />}
+        icon={<Activity className="size-4" animateOnHover />}
       />
       <StatCard
         title="Total Volume"
         value={formatCurrency(totalVolume / 100)}
         subtitle="Aggregated reputation volume"
-        icon={<TrendingUp className="size-4" />}
+        icon={<TrendingUp className="size-4" animateOnHover />}
       />
       <StatCard
         title="Daily Spend"
@@ -96,7 +96,7 @@ export function StatsGrid({
             ? `${spendPct.toFixed(0)}% of ${formatCurrency(totalDailyLimit)} limit`
             : "No limit configured"
         }
-        icon={<DollarSign className="size-4" />}
+        icon={<DollarSign className="size-4" animateOnHover />}
         progress={
           totalDailyLimit > 0
             ? { value: totalSpentToday, max: totalDailyLimit }

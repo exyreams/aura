@@ -5,6 +5,18 @@ export {
   type ActivityProps,
 } from "./Activity";
 export {
+  Archive,
+  ArchiveIcon,
+  type ArchiveIconProps,
+  type ArchiveProps,
+} from "./Archive";
+export {
+  Check,
+  CheckIcon,
+  type CheckIconProps,
+  type CheckProps,
+} from "./Check";
+export {
   Checkcircle,
   CheckcircleIcon,
   type CheckcircleIconProps,
@@ -35,6 +47,12 @@ export {
   type ClockProps,
 } from "./Clock";
 export { Copy, CopyIcon, type CopyIconProps, type CopyProps } from "./Copy";
+export {
+  DollarSign,
+  DollarSignIcon,
+  type DollarSignIconProps,
+  type DollarSignProps,
+} from "./DollarSign";
 export {
   FileText,
   FileTextIcon,
@@ -110,11 +128,23 @@ export {
   type SquareArrowOutUpRightProps,
 } from "./SquareArrowOutUpRight";
 export {
+  TrendingUp,
+  TrendingUpIcon,
+  type TrendingUpIconProps,
+  type TrendingUpProps,
+} from "./TrendingUp";
+export {
   TriangleAlert,
   TriangleAlertIcon,
   type TriangleAlertIconProps,
   type TriangleAlertProps,
 } from "./TriangleAlert";
+export {
+  Wallet,
+  WalletIcon,
+  type WalletIconProps,
+  type WalletProps,
+} from "./Wallet";
 export {
   Xcircle,
   XcircleIcon,

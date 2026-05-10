@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/global/Badge";
 import { Skeleton } from "@/components/global/Skeleton";
+import { ChevronRight } from "@/components/icons";
 import type { ParsedActivity } from "@/lib/hooks";
 import { formatTimeAgo, shortenAddress } from "@/lib/utils";
 
@@ -125,7 +125,7 @@ export function ActivityFeed({
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md mono text-[10px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors"
             >
               View full activity log
-              <ChevronRight className="size-2.5" />
+              <ChevronRight className="size-2.5" animateOnHover />
             </Link>
           </div>
         </div>

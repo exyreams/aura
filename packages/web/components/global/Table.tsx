@@ -1,5 +1,5 @@
-import { Archive, Wallet } from "lucide-react";
 import type React from "react";
+import { Archive, Wallet } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "./Button";
 import { Skeleton } from "./Skeleton";
@@ -148,9 +148,15 @@ export function Table<T>({
             <div className="text-center space-y-4 px-6">
               <div className="size-16 bg-(--card-bg) rounded-full flex items-center justify-center mx-auto border border-border">
                 {isNoWallet ? (
-                  <Wallet className="text-(--text-muted) size-8" />
+                  <Wallet
+                    className="text-(--text-muted) size-8"
+                    animateOnHover
+                  />
                 ) : isEmpty ? (
-                  <Archive className="text-(--text-muted) size-8" />
+                  <Archive
+                    className="text-(--text-muted) size-8"
+                    animateOnHover
+                  />
                 ) : null}
               </div>
               <div>
