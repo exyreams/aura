@@ -62,7 +62,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <button
         type="button"
         onClick={handleToggle}
-        className="bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) flex items-center justify-between text-left focus:border-(--text-muted)"
+        className="bg-(--card-bg) border border-border rounded-sm px-3 py-2 font-mono text-[10px] uppercase tracking-widest outline-none w-full transition-colors text-(--text-main) flex items-center justify-between text-left hover:border-primary focus:border-primary"
       >
         <span
           className={cn(
@@ -79,43 +79,44 @@ export const Dropdown: React.FC<DropdownProps> = ({
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
         >
-          <ChevronDown className="size-4 text-(--text-muted)" />
+          <ChevronDown className="size-3.5 text-(--text-muted)" />
         </m.div>
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <m.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute top-full left-0 w-full mt-2 bg-(--bg) border border-border rounded-sm shadow-2xl z-50 overflow-hidden"
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            style={{ transformOrigin: "top left" }}
+            className="absolute top-full left-0 w-full mt-1.5 bg-(--card-bg) border border-border rounded-lg shadow-2xl z-50 overflow-hidden"
           >
-            <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
+            <div className="p-1.5 space-y-0.5 max-h-60 overflow-y-auto slim-scrollbar">
               {options.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option.value)}
                   className={cn(
-                    "w-full text-left px-3 py-2 text-xs rounded-sm flex items-center gap-2",
+                    "w-full text-left px-2.5 py-2 font-mono text-[10px] uppercase tracking-widest rounded-md flex items-center gap-2 transition-colors",
                     option.value === value
-                      ? "bg-primary text-(--bg) font-semibold"
-                      : "text-(--text-main) hover:bg-(--hover-bg)",
+                      ? "bg-(--hover-bg) text-(--text-main) font-bold"
+                      : "text-(--text-muted) hover:bg-(--hover-bg) hover:text-(--text-main)",
                   )}
                 >
                   {option.icon && (
-                    <span className="shrink-0 text-base">{option.icon}</span>
+                    <span className="shrink-0">{option.icon}</span>
                   )}
                   <span className="flex-1">{option.label}</span>
                   {option.badge && (
-                    <Badge variant="on-primary" className="shrink-0">
+                    <Badge variant="default" className="shrink-0 text-[9px]">
                       {option.badge}
                     </Badge>
                   )}
                   {option.value === value && (
-                    <Check className="size-4 shrink-0" />
+                    <Check className="size-3 shrink-0 text-primary" />
                   )}
                 </button>
               ))}
