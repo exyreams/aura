@@ -25,7 +25,7 @@ import Image from "next/image";
 import { useTheme } from "next-themes";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { Avatar, Badge, Button, Progress, Tooltip } from "@/components/global";
+import { Avatar, Badge, Progress, Tooltip } from "@/components/global";
 import { Table, type TableColumn } from "@/components/global/Table";
 import { CompactThemeToggle } from "@/components/theme/CompactThemeToggle";
 
@@ -133,12 +133,12 @@ function SlideTitle() {
       : "/light-logo-wordmark.svg";
 
   return (
-    <div className="flex flex-col h-full gap-8">
-      {/* Two-column layout */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+    <div className="flex flex-col h-full gap-4 md:gap-8">
+      {/* Two-column layout — stacks on mobile */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-start md:items-center min-h-0">
         {/* Left — logo + tagline + chain badges */}
-        <div className="flex flex-col gap-6">
-          <Badge variant="default" className="w-fit">
+        <div className="flex flex-col gap-3 md:gap-6">
+          <Badge variant="default" className="w-fit text-[9px] md:text-[10px]">
             Colosseum Frontier 2026
           </Badge>
 
@@ -148,30 +148,30 @@ function SlideTitle() {
               alt="AURA"
               width={300}
               height={78}
-              className="w-auto h-14 md:h-20"
+              className="w-auto h-8 md:h-14 lg:h-20"
               suppressHydrationWarning
             />
           </div>
 
-          <p className="text-lg md:text-xl text-(--text-muted) font-light leading-relaxed max-w-sm">
+          <p className="text-sm md:text-lg xl:text-xl text-(--text-muted) font-light leading-relaxed max-w-sm">
             Your AI agent moves funds on Bitcoin, Ethereum, and Solana — from
             one Solana program — without holding raw keys. Spending limits stay
             encrypted. Nobody can game them.
           </p>
 
-          {/* Chain badges with logos */}
-          <div className="flex flex-wrap gap-2">
+          {/* Chain badges */}
+          <div className="flex flex-wrap gap-1.5 md:gap-2">
             {CHAINS.map((c) => (
               <span
                 key={c.name}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-border bg-(--card-bg) rounded-sm font-mono text-[10px] text-(--text-muted) uppercase tracking-wide"
+                className="inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-0.5 md:py-1 border border-border bg-(--card-bg) rounded-sm font-mono text-[9px] md:text-[10px] text-(--text-muted) uppercase tracking-wide"
               >
                 <Image
                   src={c.logo}
                   alt={c.name}
                   width={12}
                   height={12}
-                  className="w-3 h-3 object-contain"
+                  className="w-2.5 h-2.5 md:w-3 md:h-3 object-contain"
                 />
                 {c.name}
               </span>
@@ -180,19 +180,19 @@ function SlideTitle() {
         </div>
 
         {/* Right — stat block */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-4">
           {STATS.map((s) => (
             <div
               key={s.label}
-              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 flex flex-col gap-1 hover:border-primary transition-colors"
+              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-5 flex flex-col gap-0.5 md:gap-1 hover:border-primary transition-colors"
             >
               <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
                 {s.icon}
               </div>
-              <span className="font-mono font-extrabold text-3xl text-(--text-main) leading-none">
+              <span className="font-mono font-extrabold text-xl md:text-3xl text-(--text-main) leading-none">
                 {s.value}
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <span className="font-mono text-[9px] md:text-[10px] uppercase tracking-widest text-(--text-muted)">
                 {s.label}
               </span>
             </div>
@@ -201,11 +201,11 @@ function SlideTitle() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border pt-4 flex items-center justify-between flex-wrap gap-2">
-        <span className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+      <div className="border-t border-border pt-3 md:pt-4 flex items-center justify-between flex-wrap gap-2 shrink-0">
+        <span className="font-mono text-[9px] md:text-[10px] text-(--text-muted) uppercase tracking-widest">
           aura-protocol / devnet live
         </span>
-        <span className="font-mono text-[10px] text-primary break-all">
+        <span className="font-mono text-[9px] md:text-[10px] text-primary break-all">
           EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
         </span>
       </div>
@@ -216,90 +216,92 @@ function SlideTitle() {
 function SlideProblem() {
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-5">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           The Problem
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           AI agents are moving real money.
           <br />
           <span className="text-(--text-muted) font-light">
             The guardrails don&apos;t exist yet.
           </span>
         </h2>
-        <p className="font-mono text-xs text-(--text-muted) mt-2">
+        <p className="font-mono text-[10px] md:text-xs text-(--text-muted) mt-1.5 md:mt-2">
           four failure modes. one solution.
         </p>
       </div>
       {/* 2×2 grid */}
-      <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4 min-h-0">
+      <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-2 md:gap-4 min-h-0">
         {/* Raw key exposure */}
-        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 flex flex-col gap-3 hover:border-primary transition-colors">
+        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-5 flex flex-col gap-1.5 md:gap-3 hover:border-primary transition-colors">
           <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <Key size={100} strokeWidth={0.75} />
+            <Key size={80} strokeWidth={0.75} />
           </div>
           <div className="text-primary">
-            <Key size={18} />
+            <Key size={14} className="md:hidden" />
+            <Key size={18} className="hidden md:block" />
           </div>
-          <div className="font-mono font-bold text-xs uppercase tracking-wide text-(--text-main)">
+          <div className="font-mono font-bold text-[10px] md:text-xs uppercase tracking-wide text-(--text-main)">
             Raw key exposure
           </div>
-          <p className="font-mono text-xs text-(--text-muted) leading-relaxed">
+          <p className="font-mono text-[9px] md:text-xs text-(--text-muted) leading-relaxed">
             Giving an AI agent a private key means it can drain everything. No
             limits, no audit trail, no recovery.
           </p>
         </div>
 
         {/* Strategy on-chain */}
-        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 flex flex-col gap-3 hover:border-primary transition-colors">
+        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-5 flex flex-col gap-1.5 md:gap-3 hover:border-primary transition-colors">
           <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <BookOpen size={100} strokeWidth={0.75} />
+            <BookOpen size={80} strokeWidth={0.75} />
           </div>
           <div className="text-primary">
-            <BookOpen size={18} />
+            <BookOpen size={14} className="md:hidden" />
+            <BookOpen size={18} className="hidden md:block" />
           </div>
-          <div className="font-mono font-bold text-xs uppercase tracking-wide text-(--text-main)">
+          <div className="font-mono font-bold text-[10px] md:text-xs uppercase tracking-wide text-(--text-main)">
             Strategy on-chain
           </div>
-          <p className="font-mono text-xs text-(--text-muted) leading-relaxed">
+          <p className="font-mono text-[9px] md:text-xs text-(--text-muted) leading-relaxed">
             Public spending limits are public attack surface. Adversaries read
             your daily cap and probe exactly up to it.
           </p>
         </div>
 
         {/* Single-chain prison */}
-        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 flex flex-col gap-3 hover:border-primary transition-colors">
+        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-5 flex flex-col gap-1.5 md:gap-3 hover:border-primary transition-colors">
           <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <Globe size={100} strokeWidth={0.75} />
+            <Globe size={80} strokeWidth={0.75} />
           </div>
           <div className="text-primary">
-            <Globe size={18} />
+            <Globe size={14} className="md:hidden" />
+            <Globe size={18} className="hidden md:block" />
           </div>
-          <div className="font-mono font-bold text-xs uppercase tracking-wide text-(--text-main)">
+          <div className="font-mono font-bold text-[10px] md:text-xs uppercase tracking-wide text-(--text-main)">
             Single-chain prison
           </div>
-          <p className="font-mono text-xs text-(--text-muted) leading-relaxed">
+          <p className="font-mono text-[9px] md:text-xs text-(--text-muted) leading-relaxed">
             Most agent wallets are Solana-only. Real portfolios span Bitcoin,
-            Ethereum, Arbitrum — agents can&apos;t reach them without bridges or
-            custodians.
+            Ethereum, Arbitrum — agents can&apos;t reach them without bridges.
           </p>
         </div>
 
         {/* No kill switch */}
-        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 flex flex-col gap-3 hover:border-primary transition-colors">
+        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-5 flex flex-col gap-1.5 md:gap-3 hover:border-primary transition-colors">
           <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <AlertTriangle size={100} strokeWidth={0.75} />
+            <AlertTriangle size={80} strokeWidth={0.75} />
           </div>
           <div className="text-primary">
-            <AlertTriangle size={18} />
+            <AlertTriangle size={14} className="md:hidden" />
+            <AlertTriangle size={18} className="hidden md:block" />
           </div>
-          <div className="font-mono font-bold text-xs uppercase tracking-wide text-(--text-main)">
+          <div className="font-mono font-bold text-[10px] md:text-xs uppercase tracking-wide text-(--text-main)">
             No kill switch
           </div>
-          <p className="font-mono text-xs text-(--text-muted) leading-relaxed">
+          <p className="font-mono text-[9px] md:text-xs text-(--text-muted) leading-relaxed">
             When an agent misbehaves there&apos;s no circuit breaker, no
-            guardian override, no emergency shutdown. The status quo is raw keys
-            and zero limits.
+            guardian override, no emergency shutdown.
           </p>
         </div>
       </div>
@@ -353,135 +355,196 @@ function SlideWhyNow() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-5">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Why Now
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Three things just became true
           <br />
           <span className="text-(--text-muted) font-light">
             at the same time.
           </span>
         </h2>
-        <p className="font-mono text-xs text-(--text-muted) mt-2">
+        <p className="font-mono text-[10px] md:text-xs text-(--text-muted) mt-1.5 md:mt-2">
           agent adoption exploded. ika went live. the window is open.
         </p>
       </div>
 
-      <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-3 min-h-0">
-        {/* Area chart — DeFi activity — row 1, cols 1-2 */}
-        <div className="col-span-2 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col hover:border-primary transition-colors">
-          <div className="flex items-start justify-between mb-2 shrink-0">
-            <div>
-              <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
-                AI agents — DeFi activity
+      {/* Mobile: 4 stat cards stacked. Desktop: bento with charts */}
+      <div className="flex-1 min-h-0">
+        {/* ── Mobile layout ── */}
+        <div className="flex flex-col gap-2 md:hidden h-full">
+          {[
+            {
+              label: "AI agents — DeFi activity",
+              value: "19%",
+              sub: "↑ from 2% in 2023 · DWF Ventures Apr 2026",
+              icon: <TrendingUp size={60} strokeWidth={0.75} />,
+            },
+            {
+              label: "On-chain AI agents",
+              value: "123K+",
+              sub: "+3,600% since Jan 2026 · Agentscan / KuCoin",
+              icon: <Zap size={60} strokeWidth={0.75} />,
+            },
+            {
+              label: "dWallet network",
+              value: "Ika mainnet",
+              sub: "Zero-trust threshold signing on Solana is live.",
+              icon: <Network size={60} strokeWidth={0.75} />,
+            },
+            {
+              label: "McKinsey projection",
+              value: "$3–5T",
+              sub: "Agent commerce by 2030 — more than crypto market cap.",
+              icon: <Clock size={60} strokeWidth={0.75} />,
+            },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 flex items-center gap-3 hover:border-primary transition-colors"
+            >
+              <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
+                {s.icon}
               </div>
-              <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none mt-0.5">
-                19%
-              </div>
-            </div>
-            <span className="font-mono text-[10px] text-success">
-              ↑ from 2% in 2023
-            </span>
-          </div>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={activityData}
-                margin={{ top: 2, right: 2, bottom: 0, left: 0 }}
-              >
-                <defs>
-                  <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#9ca3b0" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#9ca3b0" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <RechartTooltip
-                  {...tip}
-                  formatter={(v) => [`${v ?? 0}%`, "Activity"]}
-                />
-                <RArea
-                  type="monotone"
-                  dataKey="v"
-                  stroke="#9ca3b0"
-                  strokeWidth={2}
-                  fill="url(#actGrad)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Ika mainnet — row 1, col 3 */}
-        <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-1.5 hover:border-primary transition-colors">
-          <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <Network size={80} strokeWidth={0.75} />
-          </div>
-          <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
-            dWallet network
-          </div>
-          <div className="text-lg font-extrabold text-(--text-main) font-mono leading-none">
-            Ika mainnet
-          </div>
-          <p className="text-(--text-muted) text-[10px] leading-relaxed">
-            Zero-trust threshold signing on Solana is live. AURA couldn&apos;t
-            exist without it.
-          </p>
-        </div>
-
-        {/* McKinsey $3–5T — row 2, col 1 */}
-        <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-1.5 hover:border-primary transition-colors">
-          <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <Clock size={80} strokeWidth={0.75} />
-          </div>
-          <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
-            McKinsey projection
-          </div>
-          <div className="text-lg font-extrabold text-(--text-main) font-mono leading-none">
-            $3–5T
-          </div>
-          <p className="text-(--text-muted) text-[10px] leading-relaxed">
-            Agent commerce by 2030 — more than the entire current crypto market
-            cap.
-          </p>
-        </div>
-
-        {/* Line chart — agent count — row 2, cols 2-3 */}
-        <div className="col-span-2 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col hover:border-primary transition-colors">
-          <div className="flex items-start justify-between mb-2 shrink-0">
-            <div>
-              <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
-                On-chain AI agents deployed
-              </div>
-              <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none mt-0.5">
-                123K+
+              <div className="min-w-0">
+                <div className="font-mono text-[9px] text-(--text-muted) uppercase tracking-widest mb-0.5">
+                  {s.label}
+                </div>
+                <div className="font-mono font-extrabold text-xl text-(--text-main) leading-none">
+                  {s.value}
+                </div>
+                <div className="font-mono text-[9px] text-success mt-0.5">
+                  {s.sub}
+                </div>
               </div>
             </div>
-            <span className="font-mono text-[10px] text-success">
-              +3,600% since Jan 2026
-            </span>
+          ))}
+        </div>
+
+        {/* ── Desktop layout — bento with charts ── */}
+        <div className="hidden md:grid md:grid-cols-3 md:grid-rows-2 gap-3 h-full">
+          {/* Area chart — DeFi activity — row 1, cols 1-2 */}
+          <div className="col-span-2 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col hover:border-primary transition-colors">
+            <div className="flex items-start justify-between mb-2 shrink-0">
+              <div>
+                <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+                  AI agents — DeFi activity
+                </div>
+                <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none mt-0.5">
+                  19%
+                </div>
+              </div>
+              <span className="font-mono text-[10px] text-success">
+                ↑ from 2% in 2023
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={activityData}
+                  margin={{ top: 2, right: 2, bottom: 0, left: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="#9ca3b0"
+                        stopOpacity={0.35}
+                      />
+                      <stop offset="100%" stopColor="#9ca3b0" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <RechartTooltip
+                    {...tip}
+                    formatter={(v) => [`${v ?? 0}%`, "Activity"]}
+                  />
+                  <RArea
+                    type="monotone"
+                    dataKey="v"
+                    stroke="#9ca3b0"
+                    strokeWidth={2}
+                    fill="url(#actGrad)"
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={agentData}
-                margin={{ top: 2, right: 2, bottom: 0, left: 0 }}
-              >
-                <RechartTooltip
-                  {...tip}
-                  formatter={(v) => [Number(v ?? 0).toLocaleString(), "Agents"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke="#9ca3b0"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+
+          {/* Ika mainnet */}
+          <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-1.5 hover:border-primary transition-colors">
+            <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
+              <Network size={60} strokeWidth={0.75} />
+            </div>
+            <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+              dWallet network
+            </div>
+            <div className="text-lg font-extrabold text-(--text-main) font-mono leading-none">
+              Ika mainnet
+            </div>
+            <p className="text-(--text-muted) text-[10px] leading-relaxed">
+              Zero-trust threshold signing on Solana is live. AURA couldn&apos;t
+              exist without it.
+            </p>
+          </div>
+
+          {/* McKinsey */}
+          <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-1.5 hover:border-primary transition-colors">
+            <div className="absolute -bottom-3 -right-3 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
+              <Clock size={60} strokeWidth={0.75} />
+            </div>
+            <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+              McKinsey projection
+            </div>
+            <div className="text-lg font-extrabold text-(--text-main) font-mono leading-none">
+              $3–5T
+            </div>
+            <p className="text-(--text-muted) text-[10px] leading-relaxed">
+              Agent commerce by 2030 — more than the entire current crypto
+              market cap.
+            </p>
+          </div>
+
+          {/* Line chart — agent count */}
+          <div className="col-span-2 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col hover:border-primary transition-colors">
+            <div className="flex items-start justify-between mb-2 shrink-0">
+              <div>
+                <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+                  On-chain AI agents deployed
+                </div>
+                <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none mt-0.5">
+                  123K+
+                </div>
+              </div>
+              <span className="font-mono text-[10px] text-success">
+                +3,600% since Jan 2026
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={agentData}
+                  margin={{ top: 2, right: 2, bottom: 0, left: 0 }}
+                >
+                  <RechartTooltip
+                    {...tip}
+                    formatter={(v) => [
+                      Number(v ?? 0).toLocaleString(),
+                      "Agents",
+                    ]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="v"
+                    stroke="#9ca3b0"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>
@@ -516,11 +579,11 @@ function SlideSolution() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           The Solution
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Encrypted guardrails.
           <br />
           <span className="text-(--text-muted) font-light">
@@ -529,35 +592,35 @@ function SlideSolution() {
             Any chain.
           </span>
         </h2>
-        <p className="font-mono text-xs text-(--text-muted) mt-2">
+        <p className="font-mono text-[10px] md:text-xs text-(--text-muted) mt-1.5 md:mt-2">
           three pillars. each solves one of the four problems.
         </p>
       </div>
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
         {pillars.map((item) => (
           <div
             key={item.num}
-            className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-6 flex flex-col hover:border-primary transition-colors"
+            className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-6 flex flex-row md:flex-col gap-3 md:gap-0 hover:border-primary transition-colors"
           >
-            {/* Ghost icon — smaller, tighter to corner */}
-            <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.05] pointer-events-none select-none">
+            <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.05] pointer-events-none select-none hidden md:block">
               {item.icon}
             </div>
-
-            {/* Number — more prominent */}
-            <div className="font-mono text-primary text-sm font-bold mb-4">
+            {/* Mobile: number badge on left */}
+            <div className="font-mono text-primary text-sm font-bold md:mb-4 shrink-0 md:shrink">
               {item.num}
             </div>
-
-            <div className="font-bold text-(--text-main) text-sm uppercase tracking-wide font-mono mb-3">
-              {item.title}
-            </div>
-            <p className="text-(--text-muted) text-sm leading-relaxed flex-1">
-              {item.body}
-            </p>
-
-            <div className="mt-5">
-              <Badge variant="active">{item.tag}</Badge>
+            <div className="flex flex-col gap-1 md:gap-0 flex-1 min-w-0">
+              <div className="font-bold text-(--text-main) text-[10px] md:text-sm uppercase tracking-wide font-mono md:mb-3">
+                {item.title}
+              </div>
+              <p className="text-(--text-muted) text-[9px] md:text-sm leading-relaxed md:flex-1 line-clamp-3 md:line-clamp-none">
+                {item.body}
+              </p>
+              <div className="mt-2 md:mt-5">
+                <Badge variant="active" className="text-[8px] md:text-[10px]">
+                  {item.tag}
+                </Badge>
+              </div>
             </div>
           </div>
         ))}
@@ -678,46 +741,47 @@ function SlideHowItWorks() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           How It Works
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Six steps from proposal
           <br />
           <span className="text-(--text-muted) font-light">
             to multi-chain execution.
           </span>
         </h2>
-        <p className="font-mono text-xs text-(--text-muted) mt-2">
+        <p className="font-mono text-[10px] md:text-xs text-(--text-muted) mt-1.5 md:mt-2">
           step 3 is the key insight — the amount never appears in plaintext.
         </p>
       </div>
-      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3 min-h-0">
+      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 min-h-0">
         {steps.map((s) => (
           <div
             key={s.step}
-            className={`relative overflow-hidden rounded p-5 flex flex-col gap-2 transition-colors border ${
+            className={`relative overflow-hidden rounded p-3 md:p-5 flex flex-col gap-1.5 md:gap-2 transition-colors border ${
               s.highlight
                 ? "border-primary bg-(--card-bg)"
                 : "border-border bg-(--card-bg) hover:border-primary"
             }`}
           >
-            {/* Ghost icon */}
-            <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.05] pointer-events-none select-none">
+            {/* Ghost icon — hidden on mobile to save space */}
+            <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.05] pointer-events-none select-none hidden md:block">
               {s.icon}
             </div>
             {/* Step number + icon row */}
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] text-primary font-bold">
+              <span className="font-mono text-[9px] md:text-[10px] text-primary font-bold">
                 {s.step}
               </span>
-              {s.fg}
+              <span className="md:block">{s.fg}</span>
             </div>
-            <div className="font-bold text-(--text-main) text-xs uppercase tracking-wide font-mono">
+            <div className="font-bold text-(--text-main) text-[10px] md:text-xs uppercase tracking-wide font-mono">
               {s.title}
             </div>
-            <p className="text-(--text-muted) text-xs leading-relaxed">
+            {/* On mobile: clamp to 3 lines to prevent overflow */}
+            <p className="text-(--text-muted) text-[9px] md:text-xs leading-relaxed line-clamp-4 md:line-clamp-none">
               {s.detail}
             </p>
           </div>
@@ -864,26 +928,53 @@ function SlidePolicyEngine() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-4">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Policy Engine
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           27 violation codes.
           <br />
           <span className="text-(--text-muted) font-light">
             Evaluated in microseconds, on-chain.
           </span>
         </h2>
-        <p className="font-mono text-xs text-(--text-muted) mt-2">
+        <p className="font-mono text-[10px] md:text-xs text-(--text-muted) mt-1.5 md:mt-2">
           hover any badge to see what it enforces.
         </p>
       </div>
       <div className="flex-1 flex flex-col justify-between min-h-0 overflow-hidden">
-        {/* Grouped badge cloud */}
-        <div className="flex flex-col gap-2.5 overflow-hidden min-h-0">
+        {/* Mobile: summary + stat cards only */}
+        <div className="flex flex-col gap-2 md:hidden">
+          <div className="border border-border bg-(--card-bg) rounded p-3">
+            <div className="font-mono text-[9px] text-(--text-muted) mb-2">
+              27 violation codes across 6 categories:
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {[
+                "spend limits",
+                "time & velocity",
+                "protocol & counterparty",
+                "recipient exposure",
+                "budget envelopes",
+                "governance & safety",
+              ].map((c) => (
+                <Badge
+                  key={c}
+                  variant="default"
+                  className="text-[8px] px-1.5 py-0.5"
+                >
+                  {c}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop: full badge cloud */}
+        <div className="hidden md:flex flex-col gap-2.5 overflow-hidden min-h-0">
           {categories.map((cat) => (
-            <div key={cat.label} className="flex items-start gap-3">
+            <div key={cat.label} className="flex items-start gap-1.5">
               <span className="font-mono text-[9px] text-(--text-muted) uppercase tracking-widest w-28 shrink-0 pt-1">
                 {cat.label}
               </span>
@@ -904,7 +995,7 @@ function SlidePolicyEngine() {
         </div>
 
         {/* Bottom stat cards */}
-        <div className="grid grid-cols-3 gap-3 shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 shrink-0">
           {[
             {
               value: "25",
@@ -927,12 +1018,12 @@ function SlidePolicyEngine() {
           ].map((m) => (
             <div
               key={m.label}
-              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-1 hover:border-primary transition-colors"
+              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-4 flex flex-col gap-1 hover:border-primary transition-colors"
             >
               <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.05] pointer-events-none select-none">
                 {m.icon}
               </div>
-              <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
+              <div className="font-mono font-extrabold text-xl md:text-2xl text-(--text-main) leading-none">
                 {m.value}
               </div>
               <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-(--text-main)">
@@ -997,28 +1088,28 @@ function SlideMultiChain() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Multi-Chain Execution
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           One treasury.
           <br />
           <span className="text-(--text-muted) font-light">
             Six chains. No bridges.
           </span>
         </h2>
-        <p className="font-mono text-xs text-(--text-muted) mt-2">
+        <p className="font-mono text-[10px] md:text-xs text-(--text-muted) mt-1.5 md:mt-2">
           one dwallet per chain. 2pc-mpc dkg. the agent never touches a private
           key.
         </p>
       </div>
       <div className="flex-1 flex flex-col justify-center min-h-0">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 mb-4">
           {chains.map((c) => (
             <div
               key={c.name}
-              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex items-center gap-3 hover:border-primary transition-colors"
+              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-4 flex items-center gap-3 hover:border-primary transition-colors"
             >
               <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
                 {c.ghost}
@@ -1031,7 +1122,7 @@ function SlideMultiChain() {
                 className="w-7 h-7 object-contain shrink-0"
               />
               <div className="min-w-0">
-                <div className="font-bold text-(--text-main) text-sm leading-none mb-1">
+                <div className="font-bold text-(--text-main) text-xs md:text-sm leading-none mb-1">
                   {c.name}
                 </div>
                 <div className="font-mono text-[10px] text-(--text-muted)">
@@ -1044,14 +1135,14 @@ function SlideMultiChain() {
             </div>
           ))}
         </div>
-        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 hover:border-primary transition-colors">
+        <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 md:p-5 hover:border-primary transition-colors">
           <div className="absolute -bottom-4 -right-4 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
             <Network size={120} strokeWidth={0.75} />
           </div>
           <div className="font-mono text-xs text-primary mb-2 uppercase tracking-widest">
             How it works
           </div>
-          <p className="text-(--text-muted) text-sm leading-relaxed">
+          <p className="text-(--text-muted) text-[10px] md:text-sm leading-relaxed">
             Each treasury registers one dWallet per chain. The dWallet holds key
             material via Ika&apos;s 2PC-MPC DKG — no single party ever has the
             full key. When a proposal is approved,{" "}
@@ -1119,11 +1210,11 @@ function SlideTraction() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Traction
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Working product.
           <br />
           <span className="text-(--text-muted) font-light">
@@ -1131,11 +1222,11 @@ function SlideTraction() {
           </span>
         </h2>
       </div>
-      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3 content-center">
+      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 content-center">
         {items.map((item) => (
           <div
             key={item.label}
-            className={`relative overflow-hidden rounded p-5 flex flex-col gap-2 transition-colors border ${
+            className={`relative overflow-hidden rounded p-3 md:p-5 flex flex-col gap-2 transition-colors border ${
               item.highlight
                 ? "border-primary bg-(--card-bg)"
                 : "border-border bg-(--card-bg) hover:border-primary"
@@ -1144,13 +1235,13 @@ function SlideTraction() {
             <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
               {item.icon}
             </div>
-            <div className="font-mono text-[10px] text-(--text-muted) uppercase tracking-widest">
+            <div className="font-mono text-[9px] md:text-[10px] text-(--text-muted) uppercase tracking-widest">
               {item.label}
             </div>
-            <div className="font-mono font-bold text-(--text-main) text-base leading-snug">
+            <div className="font-mono font-bold text-(--text-main) text-sm md:text-base leading-snug">
               {item.value}
             </div>
-            <p className="font-mono text-[10px] text-(--text-muted) leading-relaxed break-all">
+            <p className="font-mono text-[9px] md:text-[10px] text-(--text-muted) leading-relaxed break-all">
               {item.sub}
             </p>
           </div>
@@ -1196,11 +1287,11 @@ function SlideMarket() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-5">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Market
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Every AI agent
           <br />
           <span className="text-(--text-muted) font-light">
@@ -1209,89 +1300,152 @@ function SlideMarket() {
         </h2>
       </div>
 
-      {/* 4-col × 3-row bento — fully self-contained */}
-      <div className="flex-1 grid grid-cols-4 grid-rows-3 gap-3 min-h-0">
-        {/* TAM — hero 2×2 */}
-        <div className="col-span-2 row-span-2 relative overflow-hidden border border-primary bg-(--card-bg) rounded p-6 flex flex-col justify-center hover:border-primary transition-colors">
-          <div className="absolute -bottom-8 -right-8 text-(--text-main) opacity-[0.06] pointer-events-none select-none">
-            <Clock size={200} strokeWidth={0.5} />
-          </div>
-          <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-3">
-            TAM
-          </div>
-          <div className="font-mono font-extrabold text-7xl text-(--text-main) leading-none mb-4">
-            $3–5T
-          </div>
-          <div className="font-mono text-xs text-(--text-muted) leading-relaxed max-w-xs">
-            AI agent commerce by 2030 — McKinsey.
-            <br />
-            More than the entire current crypto market cap.
-          </div>
-        </div>
-
-        {/* SAM */}
-        <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col justify-between hover:border-primary transition-colors">
-          <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <TrendingUp size={60} strokeWidth={0.75} />
-          </div>
-          <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
-            SAM
-          </div>
-          <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
-            $13.5B
-          </div>
-          <div className="font-mono text-[9px] text-(--text-muted)">
-            AI agent token market cap peak
-          </div>
-        </div>
-
-        {/* SOM */}
-        <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col justify-between hover:border-primary transition-colors">
-          <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
-            <Zap size={60} strokeWidth={0.75} />
-          </div>
-          <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
-            SOM
-          </div>
-          <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
-            19%
-          </div>
-          <div className="font-mono text-[9px] text-(--text-muted)">
-            of DeFi activity today
-          </div>
-        </div>
-
-        {/* Row 2 right — 2 user type cells */}
-        {users.slice(0, 2).map((u) => (
-          <div
-            key={u.label}
-            className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-2 hover:border-primary transition-colors"
-          >
-            <span className="text-primary">{u.icon}</span>
-            <div className="font-mono text-[9px] font-bold text-(--text-main) uppercase tracking-wide leading-tight">
-              {u.label}
+      {/* Mobile: simple stacked layout. Desktop: full bento */}
+      <div className="flex-1 min-h-0">
+        {/* ── Mobile layout ── */}
+        <div className="flex flex-col gap-2 md:hidden h-full">
+          {/* TAM */}
+          <div className="relative overflow-hidden border border-primary bg-(--card-bg) rounded p-4 flex flex-col gap-1 hover:border-primary transition-colors">
+            <div className="absolute -bottom-4 -right-4 text-(--text-main) opacity-[0.06] pointer-events-none select-none">
+              <Clock size={100} strokeWidth={0.5} />
             </div>
-            <p className="font-mono text-[9px] text-(--text-muted) leading-relaxed">
-              {u.desc}
-            </p>
-          </div>
-        ))}
-
-        {/* Row 3 — all 4 cols */}
-        {users.slice(2, 6).map((u) => (
-          <div
-            key={u.label}
-            className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col gap-2 hover:border-primary transition-colors"
-          >
-            <span className="text-primary">{u.icon}</span>
-            <div className="font-mono text-[9px] font-bold text-(--text-main) uppercase tracking-wide leading-tight">
-              {u.label}
+            <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
+              TAM
             </div>
-            <p className="font-mono text-[9px] text-(--text-muted) leading-relaxed">
-              {u.desc}
-            </p>
+            <div className="font-mono font-extrabold text-4xl text-(--text-main) leading-none">
+              $3–5T
+            </div>
+            <div className="font-mono text-[9px] text-(--text-muted)">
+              AI agent commerce by 2030 — McKinsey
+            </div>
           </div>
-        ))}
+          {/* SAM + SOM side by side */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 flex flex-col gap-1 hover:border-primary transition-colors">
+              <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
+                SAM
+              </div>
+              <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
+                $13.5B
+              </div>
+              <div className="font-mono text-[9px] text-(--text-muted)">
+                AI agent token market cap peak
+              </div>
+            </div>
+            <div className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 flex flex-col gap-1 hover:border-primary transition-colors">
+              <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
+                SOM
+              </div>
+              <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
+                19%
+              </div>
+              <div className="font-mono text-[9px] text-(--text-muted)">
+                of DeFi activity today
+              </div>
+            </div>
+          </div>
+          {/* Who needs AURA — compact badges */}
+          <div className="border border-border bg-(--card-bg) rounded p-3">
+            <div className="font-mono text-[9px] text-primary uppercase tracking-widest mb-2">
+              Who needs AURA
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {users.map((u) => (
+                <Badge
+                  key={u.label}
+                  variant="default"
+                  className="text-[8px] px-1.5 py-0.5 flex items-center gap-1"
+                >
+                  <span className="text-primary">{u.icon}</span>
+                  {u.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Desktop layout — full bento ── */}
+        <div className="hidden md:grid md:grid-cols-4 md:grid-rows-3 gap-3 h-full">
+          {/* TAM — hero 2×2 */}
+          <div className="col-span-2 row-span-2 relative overflow-hidden border border-primary bg-(--card-bg) rounded p-6 flex flex-col justify-center hover:border-primary transition-colors">
+            <div className="absolute -bottom-8 -right-8 text-(--text-main) opacity-[0.06] pointer-events-none select-none">
+              <Clock size={200} strokeWidth={0.5} />
+            </div>
+            <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-3">
+              TAM
+            </div>
+            <div className="font-mono font-extrabold text-6xl text-(--text-main) leading-none mb-4">
+              $3–5T
+            </div>
+            <div className="font-mono text-xs text-(--text-muted) leading-relaxed max-w-xs">
+              AI agent commerce by 2030 — McKinsey.
+              <br />
+              More than the entire current crypto market cap.
+            </div>
+          </div>
+
+          {/* SAM */}
+          <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col justify-between hover:border-primary transition-colors">
+            <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
+              <TrendingUp size={60} strokeWidth={0.75} />
+            </div>
+            <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
+              SAM
+            </div>
+            <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
+              $13.5B
+            </div>
+            <div className="font-mono text-[9px] text-(--text-muted)">
+              AI agent token market cap peak
+            </div>
+          </div>
+
+          {/* SOM */}
+          <div className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 flex flex-col justify-between hover:border-primary transition-colors">
+            <div className="absolute -bottom-2 -right-2 text-(--text-main) opacity-[0.04] pointer-events-none select-none">
+              <Zap size={60} strokeWidth={0.75} />
+            </div>
+            <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
+              SOM
+            </div>
+            <div className="font-mono font-extrabold text-2xl text-(--text-main) leading-none">
+              19%
+            </div>
+            <div className="font-mono text-[9px] text-(--text-muted)">
+              of DeFi activity today
+            </div>
+          </div>
+
+          {/* User type cards — rows 2-3, right side */}
+          {users.slice(0, 2).map((u) => (
+            <div
+              key={u.label}
+              className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 flex flex-col gap-2 hover:border-primary transition-colors"
+            >
+              <span className="text-primary">{u.icon}</span>
+              <div className="font-mono text-[9px] font-bold text-(--text-main) uppercase tracking-wide leading-tight">
+                {u.label}
+              </div>
+              <p className="font-mono text-[9px] text-(--text-muted) leading-relaxed">
+                {u.desc}
+              </p>
+            </div>
+          ))}
+          {users.slice(2, 6).map((u) => (
+            <div
+              key={u.label}
+              className="col-span-1 row-span-1 relative overflow-hidden border border-border bg-(--card-bg) rounded p-3 flex flex-col gap-2 hover:border-primary transition-colors"
+            >
+              <span className="text-primary">{u.icon}</span>
+              <div className="font-mono text-[9px] font-bold text-(--text-main) uppercase tracking-wide leading-tight">
+                {u.label}
+              </div>
+              <p className="font-mono text-[9px] text-(--text-muted) leading-relaxed">
+                {u.desc}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1418,11 +1572,11 @@ function SlideCompetition() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Competition
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Nobody else combines
           <br />
           <span className="text-(--text-muted) font-light">
@@ -1431,8 +1585,56 @@ function SlideCompetition() {
         </h2>
       </div>
       <div className="flex-1 flex flex-col justify-center min-h-0">
-        <Table columns={columns} data={data} keyExtractor={(r) => r.name} />
-        <p className="font-mono text-[10px] text-(--text-muted) mt-4">
+        {/* Mobile: card list */}
+        <div className="flex flex-col gap-2 md:hidden">
+          {data.map((r) => (
+            <div
+              key={r.name}
+              className={`border rounded p-3 flex items-center gap-3 ${r.highlight ? "border-primary bg-(--card-bg)" : "border-border bg-(--card-bg)"}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`font-mono text-xs font-bold ${r.highlight ? "text-primary" : "text-(--text-muted)"}`}
+                >
+                  {r.name}
+                </div>
+                <div className="font-mono text-[9px] text-(--text-muted) mt-0.5">
+                  {r.multichain}
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <span
+                  className={`font-mono text-[10px] ${r.fhe === "✓" ? "text-success" : "text-(--text-muted)"}`}
+                >
+                  {r.fhe}
+                </span>
+                <span
+                  className={`font-mono text-[10px] ${r.noKey === "✓" ? "text-success" : "text-(--text-muted)"}`}
+                >
+                  {r.noKey}
+                </span>
+                <span
+                  className={`font-mono text-[10px] ${r.highlight ? "text-primary font-bold" : "text-(--text-muted)"}`}
+                >
+                  {r.publicRules}
+                </span>
+              </div>
+            </div>
+          ))}
+          <div className="flex gap-4 font-mono text-[8px] text-(--text-muted) px-1">
+            <span>FHE · No key · Rules</span>
+          </div>
+        </div>
+
+        {/* Desktop: full table */}
+        <div
+          className="hidden md:block overflow-x-auto -mx-2 px-2"
+          data-no-swipe
+        >
+          <Table columns={columns} data={data} keyExtractor={(r) => r.name} />
+        </div>
+
+        <p className="font-mono text-[9px] md:text-[10px] text-(--text-muted) mt-4">
           The real competitor is &quot;doing nothing&quot; — agents running with
           raw keys and zero limits. That&apos;s the status quo we&apos;re
           replacing.
@@ -1487,11 +1689,11 @@ function SlideTeam() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           Team
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Built by people who
           <br />
           <span className="text-(--text-muted) font-light">
@@ -1501,11 +1703,11 @@ function SlideTeam() {
       </div>
       <div className="flex-1 flex flex-col justify-between min-h-0">
         {/* Team cards */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
           {team.map((m) => (
             <div
               key={m.handle}
-              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-5 flex flex-col gap-3 hover:border-primary transition-colors"
+              className="relative overflow-hidden border border-border bg-(--card-bg) rounded p-4 md:p-5 flex flex-col gap-3 hover:border-primary transition-colors"
             >
               {/* Avatar + handle hero */}
               <div className="flex items-center gap-4">
@@ -1514,7 +1716,7 @@ function SlideTeam() {
                   href={m.github}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono font-bold text-xl text-(--text-main) hover:text-primary transition-colors"
+                  className="font-mono font-bold text-base md:text-xl text-(--text-main) hover:text-primary transition-colors"
                 >
                   {m.handle}
                 </a>
@@ -1526,7 +1728,7 @@ function SlideTeam() {
               </div>
 
               {/* Detail */}
-              <p className="font-mono text-[10px] text-(--text-muted) leading-relaxed">
+              <p className="font-mono text-[9px] md:text-[10px] text-(--text-muted) leading-relaxed">
                 {m.detail}
               </p>
             </div>
@@ -1534,7 +1736,7 @@ function SlideTeam() {
         </div>
 
         {/* Shipped grid */}
-        <div className="border border-border bg-(--card-bg) rounded p-4 hover:border-primary transition-colors">
+        <div className="border border-border bg-(--card-bg) rounded p-3 md:p-4 hover:border-primary transition-colors">
           <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-3">
             What we&apos;ve shipped
           </div>
@@ -1543,7 +1745,7 @@ function SlideTeam() {
               <Badge
                 key={item}
                 variant="active"
-                className="text-[9px] px-2 py-1"
+                className="text-[8px] md:text-[9px] px-2 py-1"
               >
                 {item}
               </Badge>
@@ -1585,11 +1787,11 @@ function SlideAsk() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
+      <div className="mb-4 md:mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary mb-2 md:mb-3">
           The Ask
         </div>
-        <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           Win Frontier.
           <br />
           <span className="text-(--text-muted) font-light">
@@ -1599,11 +1801,11 @@ function SlideAsk() {
       </div>
       <div className="flex-1 flex flex-col justify-between min-h-0">
         {/* Three-phase cards */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
           {next.map((n) => (
             <div
               key={n.phase}
-              className={`relative overflow-hidden rounded p-5 flex flex-col gap-2 transition-colors border ${
+              className={`relative overflow-hidden rounded p-4 md:p-5 flex flex-col gap-2 transition-colors border ${
                 n.highlight
                   ? "border-primary bg-(--card-bg)"
                   : "border-border bg-(--card-bg) hover:border-primary"
@@ -1615,7 +1817,7 @@ function SlideAsk() {
               <div className="font-mono text-[9px] text-primary uppercase tracking-widest">
                 {n.phase}
               </div>
-              <div className="font-mono font-extrabold text-xl text-(--text-main) leading-none">
+              <div className="font-mono font-extrabold text-lg md:text-xl text-(--text-main) leading-none">
                 {n.title}
               </div>
               <p className="font-mono text-[10px] text-(--text-muted) leading-relaxed">
@@ -1626,11 +1828,11 @@ function SlideAsk() {
         </div>
 
         {/* Hardest question prep */}
-        <div className="border border-border bg-(--card-bg) rounded p-5 hover:border-primary transition-colors">
+        <div className="border border-border bg-(--card-bg) rounded p-3 md:p-5 hover:border-primary transition-colors">
           <div className="font-mono text-[10px] text-primary mb-3 uppercase tracking-widest">
             Hardest question you&apos;ll ask
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
             {[
               {
                 q: "Why Solana and not EVM?",
@@ -1751,6 +1953,40 @@ export default function PitchPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Touch swipe navigation — skip if touch started inside a scrollable element
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let suppress = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      // Suppress swipe if touch started inside a no-swipe zone
+      suppress = !!(e.target as Element)?.closest("[data-no-swipe]");
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (suppress) return;
+      const deltaX = startX - e.changedTouches[0].clientX;
+      const deltaY = Math.abs(startY - e.changedTouches[0].clientY);
+      // Only trigger if horizontal movement dominates (not a vertical scroll)
+      if (Math.abs(deltaX) < 50 || deltaY > Math.abs(deltaX)) return;
+      if (deltaX > 0) {
+        setCurrent((c) => Math.min(SLIDES.length - 1, c + 1));
+        setDirection(1);
+      } else {
+        setCurrent((c) => Math.max(0, c - 1));
+        setDirection(-1);
+      }
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []);
+
   const SlideComponent = SLIDE_COMPONENTS[SLIDES[current].id];
 
   const variants = {
@@ -1783,28 +2019,30 @@ export default function PitchPage() {
       </div>
 
       <div className="relative z-10 flex flex-col h-screen">
-        {/* Slide nav strip — fixed, floating, fully rounded */}
-        <div className="fixed top-0 left-0 right-0 z-50 px-3 pt-3">
-          <div className="flex overflow-x-auto px-4 gap-1 py-2 scrollbar-none backdrop-blur-md rounded-xl border border-border bg-(--card-bg)/85">
+        {/* ── Top nav strip — hidden on mobile ── */}
+        <div className="hidden md:block fixed top-0 left-0 right-0 z-50 px-3 pt-3">
+          <div className="flex overflow-x-auto scrollbar-none backdrop-blur-md rounded-xl border border-border bg-(--card-bg)/90 px-2 py-1.5 gap-0.5">
             {SLIDES.map((s, i) => (
               <button
                 type="button"
                 key={s.id}
                 onClick={() => goTo(i)}
-                className={`font-mono text-[0.6rem] uppercase tracking-widest px-3 py-1 whitespace-nowrap transition-colors rounded-sm ${
+                className={`font-mono text-[0.55rem] md:text-[0.6rem] uppercase tracking-widest px-2.5 md:px-3 py-1.5 whitespace-nowrap transition-colors rounded-lg shrink-0 ${
                   i === current
-                    ? "bg-primary text-(--bg)"
-                    : "text-(--text-muted) hover:text-(--text-main)"
+                    ? "bg-primary text-(--bg) font-bold"
+                    : "text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg)"
                 }`}
               >
-                {s.label}
+                {/* On mobile show only the number, on md+ show full label */}
+                <span className="md:hidden">{s.label.split(" / ")[0]}</span>
+                <span className="hidden md:inline">{s.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Slide content — only render after mount to avoid hash flash */}
-        <div className="fixed inset-0 pt-16 pb-14 px-6 md:px-12">
+        {/* ── Slide content ── */}
+        <div className="fixed inset-0 pt-4 pb-16 px-4 md:pt-14 md:pb-14 md:px-12">
           <div className="h-full max-w-6xl mx-auto w-full">
             {mounted ? (
               <AnimatePresence mode="wait" custom={direction}>
@@ -1816,7 +2054,7 @@ export default function PitchPage() {
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                  className="h-full py-6"
+                  className="h-full py-3 md:py-6 overflow-y-auto scrollbar-none"
                 >
                   <SlideComponent />
                 </m.div>
@@ -1827,22 +2065,22 @@ export default function PitchPage() {
           </div>
         </div>
 
-        {/* Bottom nav — bare, no background, floats over content */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-2">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="small"
+        {/* ── Bottom nav ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3 md:px-6 md:pb-4">
+          <div className="flex items-center gap-2 md:gap-4 bg-(--card-bg)/90 backdrop-blur-md rounded-xl border border-border px-3 py-2 md:bg-transparent md:backdrop-blur-none md:rounded-none md:border-0 md:px-0 md:py-0">
+            {/* Prev */}
+            <button
+              type="button"
               onClick={prev}
               disabled={current === 0}
-              icon={<ChevronLeft size={12} />}
-              iconPosition="left"
-              className="min-h-0 py-1 px-2 text-[10px]"
+              className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) disabled:opacity-30 disabled:cursor-not-allowed transition-colors px-2 py-1.5 rounded-lg hover:bg-(--hover-bg) md:hover:bg-transparent shrink-0"
             >
-              Prev
-            </Button>
+              <ChevronLeft size={13} />
+              <span className="hidden sm:inline">Prev</span>
+            </button>
 
-            <div className="flex-1">
+            {/* Progress */}
+            <div className="flex-1 min-w-0">
               <Progress
                 value={current + 1}
                 max={SLIDES.length}
@@ -1852,17 +2090,21 @@ export default function PitchPage() {
               />
             </div>
 
-            <Button
-              variant="ghost"
-              size="small"
+            {/* Slide counter — visible on mobile */}
+            <span className="font-mono text-[10px] text-(--text-muted) shrink-0 md:hidden">
+              {current + 1}/{SLIDES.length}
+            </span>
+
+            {/* Next */}
+            <button
+              type="button"
               onClick={next}
               disabled={current === SLIDES.length - 1}
-              icon={<ChevronRight size={12} />}
-              iconPosition="right"
-              className="min-h-0 py-1 px-2 text-[10px]"
+              className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) disabled:opacity-30 disabled:cursor-not-allowed transition-colors px-2 py-1.5 rounded-lg hover:bg-(--hover-bg) md:hover:bg-transparent shrink-0"
             >
-              Next
-            </Button>
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight size={13} />
+            </button>
 
             <div className="w-px h-4 bg-border shrink-0" />
 
