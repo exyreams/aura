@@ -1,9 +1,11 @@
-import { StatusPill } from "@/components/global/Badge";
-import { Button } from "@/components/global/Button";
-import { Card } from "@/components/global/Card";
+"use client";
+
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/global/Badge";
 import { Skeleton } from "@/components/global/Skeleton";
 import type { ParsedActivity } from "@/lib/hooks";
-import { shortenAddress } from "@/lib/utils";
+import { formatTimeAgo, shortenAddress } from "@/lib/utils";
 
 interface ActivityFeedProps {
   activity?: ParsedActivity[];
@@ -12,101 +14,122 @@ interface ActivityFeedProps {
 
 const EMPTY_ACTIVITY: ParsedActivity[] = [];
 
+function kindLabel(item: ParsedActivity): string {
+  if (item.kind === "proposal") return `Proposal #${item.proposalId ?? "?"}`;
+  if (item.kind === "execution") return "Execution";
+  const raw = item.detail?.split(":")[0]?.trim() ?? "audit";
+  return raw.replace(/_/g, " ");
+}
+
+function outcomeVariant(
+  item: ParsedActivity,
+): "active" | "error" | "paused" | "default" {
+  if (item.kind !== "proposal") return "default";
+  if (item.approved === true) return "active";
+  if (item.approved === false) return "error";
+  if (item.status === 5 || item.status === 6) return "paused";
+  return "default";
+}
+
+function outcomeLabel(item: ParsedActivity): string {
+  if (item.kind !== "proposal") return "event";
+  if (item.approved === true) return "approved";
+  if (item.approved === false) return "denied";
+  if (item.status === 5 || item.status === 6) return "cancelled";
+  return "pending";
+}
+
+function detailText(item: ParsedActivity): string {
+  return (
+    item.detail?.split(":").slice(1).join(":").trim() ||
+    shortenAddress(item.treasury, 5, 4)
+  );
+}
+
 export function ActivityFeed({
   activity = EMPTY_ACTIVITY,
   loading = false,
 }: ActivityFeedProps) {
   return (
-    <Card className="h-full" hover={false}>
-      <h2 className="text-xl font-semibold text-(--text-main) mb-1">
-        Recent Activity
-      </h2>
-      <p className="text-[12px] text-(--text-muted) mb-8">
-        Parsed from recent program events emitted by treasury transactions.
-      </p>
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <span className="mono text-[10px] uppercase tracking-[0.2em] text-(--text-muted) block mb-1">
+            Recent Activity
+          </span>
+          <h2 className="text-base font-semibold text-(--text-main)">
+            Event Feed
+          </h2>
+        </div>
+      </div>
 
+      {/* Items */}
       {loading ? (
-        <div className="space-y-6">
-          {Array.from({ length: 4 }, (_, i) => `loading-${i}`).map((key) => (
-            <div key={key} className="space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-24" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
+            <div key={k} className="flex gap-3 py-2">
+              <Skeleton className="size-[6px] rounded-full mt-1.5 shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-2.5 w-48" />
+              </div>
             </div>
           ))}
         </div>
       ) : activity.length === 0 ? (
-        <p className="text-sm text-(--text-muted)">
-          No recent events found for the current wallet.
+        <p className="text-sm text-(--text-muted) py-4">
+          No recent events for this wallet.
         </p>
       ) : (
-        <>
-          <div className="space-y-0">
-            {activity.slice(0, 4).map((item) => {
-              const isProposal = item.kind === "proposal";
-              const status = isProposal
-                ? item.status === 3
-                  ? "active"
-                  : item.status === 4
-                    ? "paused"
-                    : "default"
-                : "default";
+        <div>
+          {activity.slice(0, 4).map((item, i) => (
+            <Link
+              key={`${item.signature}-${item.kind}-${item.detail ?? item.proposalId}`}
+              href={`/dashboard/activity`}
+              className="flex gap-3 py-2.5 -mx-2 px-2 rounded-sm hover:bg-(--hover-bg) transition-colors group"
+            >
+              {/* dot */}
+              <div className="flex flex-col items-center shrink-0">
+                <div className="size-[7px] rounded-full bg-primary mt-[5px]" />
+                {i < Math.min(activity.length, 4) - 1 && (
+                  <div className="w-px flex-1 bg-border mt-1" />
+                )}
+              </div>
 
-              return (
-                <div
-                  key={`${item.signature}-${item.kind}-${item.detail ?? item.proposalId}`}
-                  className="relative pl-6 pb-6 last:pb-0"
-                >
-                  {/* Timeline dot */}
-                  <div className="absolute left-[-4px] top-1 size-[7px] bg-primary rounded-full" />
-
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="mono text-[11px] font-bold text-(--text-main)">
-                      {isProposal
-                        ? `PROPOSAL #${item.proposalId ?? "?"}`
-                        : item.detail?.toUpperCase() || "AUDIT EVENT"}
-                    </span>
-                    <StatusPill
-                      variant={status}
-                      className="text-[10px] px-2 py-0.5"
-                    >
-                      {status === "active"
-                        ? "Approved"
-                        : status === "paused"
-                          ? "Denied"
-                          : "Pending"}
-                    </StatusPill>
-                  </div>
-                  <p className="text-[12px] text-(--text-muted) mb-2">
-                    {isProposal && item.violation
-                      ? `Violation: ${item.violation}`
-                      : item.detail || "Treasury event"}
-                  </p>
-                  <div
-                    className="flex justify-between items-center mono text-[10px] text-(--text-muted)"
-                    suppressHydrationWarning
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <span className="mono text-[10px] font-bold text-(--text-main) uppercase tracking-wide truncate group-hover:text-primary transition-colors">
+                    {kindLabel(item)}
+                  </span>
+                  <Badge
+                    variant={outcomeVariant(item)}
+                    className="text-[9px] px-1.5 py-0.5 shrink-0"
                   >
-                    <span>{shortenAddress(item.treasury, 6, 6)}</span>
-                    <span suppressHydrationWarning>
-                      {item.timestamp
-                        ? new Date(item.timestamp * 1000).toLocaleTimeString()
-                        : "Unknown"}
-                    </span>
-                  </div>
+                    {outcomeLabel(item)}
+                  </Badge>
                 </div>
-              );
-            })}
-          </div>
+                <p className="mono text-[10px] text-(--text-muted) truncate">
+                  {detailText(item)}
+                  <span className="mx-1 opacity-40">·</span>
+                  {formatTimeAgo(item.timestamp)}
+                </p>
+              </div>
+            </Link>
+          ))}
 
-          <Button
-            variant="secondary"
-            size="small"
-            className="w-full mt-4 text-[10px]"
-          >
-            View Full Event Log
-          </Button>
-        </>
+          {/* Footer */}
+          <div className="mt-3 pt-3 border-t border-border flex justify-end">
+            <Link
+              href="/dashboard/activity"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md mono text-[10px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors"
+            >
+              View full activity log
+              <ChevronRight className="size-2.5" />
+            </Link>
+          </div>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

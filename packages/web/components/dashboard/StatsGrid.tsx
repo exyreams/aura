@@ -1,5 +1,6 @@
-import { Activity, BarChart3, Box, TrendingUp } from "lucide-react";
+import { Activity, DollarSign, Shield, TrendingUp } from "lucide-react";
 import { Card } from "@/components/global/Card";
+import { Progress } from "@/components/global/Progress";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 interface StatCardProps {
@@ -7,19 +8,36 @@ interface StatCardProps {
   value: string;
   subtitle: string;
   icon: React.ReactNode;
+  progress?: { value: number; max: number };
 }
 
-function StatCard({ title, value, subtitle, icon }: StatCardProps) {
+function StatCard({ title, value, subtitle, icon, progress }: StatCardProps) {
   return (
-    <Card>
-      <div className="mono text-[10px] uppercase text-(--text-muted) mb-4 flex justify-between items-center">
-        {title}
-        {icon}
+    <Card hover={false} className="flex flex-col gap-0">
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <span className="mono text-[10px] uppercase tracking-[0.2em] text-(--text-muted)">
+          {title}
+        </span>
+        <span className="text-(--text-muted) shrink-0">{icon}</span>
       </div>
-      <div className="text-3xl font-bold text-(--text-main) mono mb-1">
+      <div className="text-3xl font-bold text-(--text-main) mono tracking-tight mb-1.5">
         {value}
       </div>
-      <div className="text-[11px] text-(--text-muted)">{subtitle}</div>
+      <div className="text-[11px] text-(--text-muted) leading-relaxed mb-4">
+        {subtitle}
+      </div>
+      {progress ? (
+        <Progress
+          value={progress.value}
+          max={progress.max}
+          size="extraSmall"
+          showPercentage={false}
+          label={undefined}
+          className="mt-auto"
+        />
+      ) : (
+        <div className="h-1.5 mt-auto" />
+      )}
     </Card>
   );
 }
@@ -38,38 +56,52 @@ export function StatsGrid({
   totalTreasuries,
   totalTransactions,
   totalVolume,
-  activeAgents,
+  activeAgents: _activeAgents,
   totalSpentToday,
   totalDailyLimit,
   isConnected,
 }: StatsGridProps) {
+  const spendPct =
+    totalDailyLimit > 0
+      ? Math.min(100, (totalSpentToday / totalDailyLimit) * 100)
+      : 0;
+
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
       <StatCard
-        title="Total Treasuries"
-        value={isConnected ? formatNumber(totalTreasuries) : "0"}
+        title="Treasuries"
+        value={isConnected ? formatNumber(totalTreasuries) : "—"}
         subtitle={
           isConnected ? "Owned by connected wallet" : "Connect a wallet"
         }
-        icon={<Box className="size-4" />}
+        icon={<Shield className="size-4" />}
       />
       <StatCard
-        title="Total Transactions"
+        title="Transactions"
         value={formatNumber(totalTransactions)}
-        subtitle="From treasury account counters"
-        icon={<TrendingUp className="size-4" />}
+        subtitle="Lifetime across all treasuries"
+        icon={<Activity className="size-4" />}
       />
       <StatCard
         title="Total Volume"
-        value={formatCurrency(totalVolume)}
+        value={formatCurrency(totalVolume / 100)}
         subtitle="Aggregated reputation volume"
-        icon={<BarChart3 className="size-4" />}
+        icon={<TrendingUp className="size-4" />}
       />
       <StatCard
-        title="Active Agents"
-        value={formatNumber(activeAgents)}
-        subtitle={`${formatCurrency(totalSpentToday)} spent today of ${formatCurrency(totalDailyLimit)}`}
-        icon={<Activity className="size-4" />}
+        title="Daily Spend"
+        value={formatCurrency(totalSpentToday)}
+        subtitle={
+          totalDailyLimit > 0
+            ? `${spendPct.toFixed(0)}% of ${formatCurrency(totalDailyLimit)} limit`
+            : "No limit configured"
+        }
+        icon={<DollarSign className="size-4" />}
+        progress={
+          totalDailyLimit > 0
+            ? { value: totalSpentToday, max: totalDailyLimit }
+            : undefined
+        }
       />
     </section>
   );

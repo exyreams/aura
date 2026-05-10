@@ -51,7 +51,7 @@ export function Table<T>({
   // Loading State - Dynamic to match actual table structure
   if (loading) {
     return (
-      <div className={cn("space-y-6", className)}>
+      <div className={cn("space-y-4", className)}>
         <div className="border border-border rounded-sm overflow-hidden bg-(--input-bg)">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -61,7 +61,7 @@ export function Table<T>({
                     <th
                       key={column.key}
                       className={cn(
-                        "px-6 py-4 mono text-[10px] uppercase tracking-[0.15em] text-(--text-muted) font-bold",
+                        "px-4 py-3 mono text-[10px] uppercase tracking-[0.15em] text-(--text-muted) font-bold",
                         column.align === "center" && "text-center",
                         column.align === "right" && "text-right",
                         column.className,
@@ -82,7 +82,7 @@ export function Table<T>({
                       <td
                         key={`${skeletonId}-${column.key}`}
                         className={cn(
-                          "px-6 py-4",
+                          "px-4 py-3",
                           column.align === "center" && "text-center",
                           column.align === "right" && "text-right",
                         )}
@@ -113,12 +113,12 @@ export function Table<T>({
   if (data.length === 0) {
     const isNoWallet = emptyState === "no-wallet";
     const isEmpty = emptyState === "empty";
-    const rowHeight = 57; // py-4 (16px top + 16px bottom) + content height (~25px)
+    const rowHeight = 48;
     const itemsPerPage = pagination?.itemsPerPage || 10;
     const emptyHeight = rowHeight * itemsPerPage;
 
     return (
-      <div className={cn("space-y-6", className)}>
+      <div className={cn("space-y-4", className)}>
         <div className="bg-(--input-bg) border border-border rounded-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -128,7 +128,7 @@ export function Table<T>({
                     <th
                       key={column.key}
                       className={cn(
-                        "px-6 py-4 mono text-[10px] uppercase tracking-[0.15em] text-(--text-muted) font-bold",
+                        "px-4 py-3 mono text-[10px] uppercase tracking-[0.15em] text-(--text-muted) font-bold",
                         column.align === "center" && "text-center",
                         column.align === "right" && "text-right",
                         column.className,
@@ -186,12 +186,12 @@ export function Table<T>({
   }
 
   // Table with Data
-  const rowHeight = 57; // py-4 (16px top + 16px bottom) + content height (~25px)
+  const rowHeight = 48;
   const itemsPerPage = pagination?.itemsPerPage || 10;
   const minHeight = rowHeight * itemsPerPage;
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4 h-full flex flex-col", className)}>
       <div className="border border-border rounded-sm overflow-hidden bg-(--input-bg)">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -201,7 +201,7 @@ export function Table<T>({
                   <th
                     key={column.key}
                     className={cn(
-                      "px-6 py-4 mono text-[10px] uppercase tracking-[0.15em] text-(--text-muted) font-bold",
+                      "px-4 py-3 mono text-[10px] uppercase tracking-[0.15em] text-(--text-muted) font-bold",
                       column.align === "center" && "text-center",
                       column.align === "right" && "text-right",
                       column.className,
@@ -226,7 +226,7 @@ export function Table<T>({
                     <td
                       key={column.key}
                       className={cn(
-                        "px-6 py-4",
+                        "px-4 py-3",
                         column.align === "center" && "text-center",
                         column.align === "right" && "text-right",
                       )}
