@@ -19,10 +19,10 @@ export function DashboardFooter() {
       : "/light-logo-wordmark.svg";
 
   return (
-    <footer className="px-3 md:px-4 pb-4 pt-0">
+    <footer className="pb-0 pt-0">
       <div
         className={[
-          "max-w-[1600px] mx-auto rounded-[14px] px-8 lg:px-12 py-8 backdrop-blur-lg",
+          "max-w-[1600px] mx-auto rounded-tl-[14px] rounded-tr-[14px] px-8 lg:px-12 pt-8 pb-8 backdrop-blur-lg",
           "transition-[background-color,border-color,box-shadow] duration-300",
           !mounted || resolvedTheme === "dark"
             ? "bg-[rgba(28,28,32,0.82)] border border-[rgba(255,255,255,0.12)] shadow-[0_-8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.07)]"

@@ -76,10 +76,14 @@ export function DashboardNav() {
       ? "/dark-logo-wordmark.svg"
       : "/light-logo-wordmark.svg";
 
-  const navBg =
-    !mounted || resolvedTheme === "dark"
-      ? "bg-[rgba(12,12,14,0.8)]"
-      : "bg-[rgba(255,255,255,0.8)]";
+  const isDark = !mounted || resolvedTheme === "dark";
+
+  const navCls = [
+    "fixed top-0 w-full px-8 py-4 flex justify-between items-center z-100 backdrop-blur-md transition-all duration-300",
+    isDark
+      ? "bg-[rgba(28,28,32,0.82)] border-b border-[rgba(255,255,255,0.12)] shadow-[0_8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.07)]"
+      : "bg-[rgba(255,255,255,0.72)] border-b border-[rgba(0,0,0,0.1)] shadow-[0_-8px_40px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)]",
+  ].join(" ");
 
   const mobileBg =
     !mounted || resolvedTheme === "dark"
@@ -117,9 +121,7 @@ export function DashboardNav() {
 
   return (
     <>
-      <nav
-        className={`fixed top-0 w-full px-8 py-4 flex justify-between items-center z-100 ${navBg} backdrop-blur-md border-b border-border transition-all duration-300`}
-      >
+      <nav className={navCls}>
         <Link href="/" className="flex items-center">
           <Image
             src={logoSrc}

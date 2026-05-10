@@ -176,9 +176,10 @@ export function Navbar() {
       : [
           // Top bar: always see-through
           "max-w-full rounded-none px-6 md:px-[4vw] py-5",
-          "border-b border-border border-t-0 border-l-0 border-r-0",
-          "shadow-none",
-          isDark ? "bg-[rgba(12,12,14,0.7)]" : "bg-[rgba(255,255,255,0.7)]",
+          "border-b border-t-0 border-l-0 border-r-0",
+          isDark
+            ? "bg-[rgba(28,28,32,0.82)] border-[rgba(255,255,255,0.12)] shadow-[0_8px_40px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.07)]"
+            : "bg-[rgba(255,255,255,0.72)] border-[rgba(0,0,0,0.1)] shadow-[0_8px_40px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]",
         ].join(" "),
   ].join(" ");
 
@@ -265,7 +266,7 @@ export function Navbar() {
                         exit={{ opacity: 0, scale: 0.96, y: -4 }}
                         transition={{ duration: 0.12, ease: "easeOut" }}
                         style={{ transformOrigin: "top right" }}
-                        className="absolute right-0 mt-2 w-60 bg-(--input-bg) border border-border rounded-lg shadow-2xl overflow-hidden"
+                        className="absolute right-0 mt-2 w-60 bg-(--card-bg) border border-border rounded-lg shadow-2xl overflow-hidden"
                       >
                         {/* Wallet address header */}
                         <div className="px-3 py-2.5 border-b border-border bg-(--card-bg)">
