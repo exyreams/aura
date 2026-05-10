@@ -13,27 +13,47 @@ export interface TooltipProps {
   position?: "top" | "bottom" | "left" | "right";
 }
 
+const TOOLTIP_MAX_WIDTH = 240;
+const TOOLTIP_OFFSET = 8;
+
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
   className,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [style, setStyle] = useState<React.CSSProperties>({});
+  const [flipped, setFlipped] = useState(false);
   const triggerRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (isVisible && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setCoords({
-        x: rect.left + rect.width / 2,
-        y: rect.top,
-      });
-    }
+    if (!isVisible || !triggerRef.current) return;
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Horizontal: center on trigger, clamp to viewport with padding
+    const idealX = rect.left + rect.width / 2;
+    const halfW = TOOLTIP_MAX_WIDTH / 2;
+    const clampedX = Math.min(Math.max(idealX, halfW + 8), vw - halfW - 8);
+
+    // Vertical: prefer above, flip below if not enough space
+    const spaceAbove = rect.top;
+    const shouldFlip = spaceAbove < 60;
+    setFlipped(shouldFlip);
+
+    setStyle({
+      left: `${clampedX}px`,
+      top: shouldFlip
+        ? `${rect.bottom + TOOLTIP_OFFSET}px`
+        : `${rect.top - TOOLTIP_OFFSET}px`,
+      transform: shouldFlip ? "translateX(-50%)" : "translate(-50%, -100%)",
+    });
   }, [isVisible]);
 
   const tooltipVariants = {
-    hidden: { opacity: 0, scale: 0.95, y: 4 },
+    hidden: { opacity: 0, scale: 0.95, y: flipped ? -4 : 4 },
     visible: { opacity: 1, scale: 1, y: 0 },
   };
 
@@ -56,12 +76,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
           <AnimatePresence>
             {isVisible && (
               <div
-                className="fixed z-100 pointer-events-none"
-                style={{
-                  left: `${coords.x}px`,
-                  top: `${coords.y}px`,
-                  transform: "translate(-50%, calc(-100% - 8px))",
-                }}
+                className="fixed z-200 pointer-events-none"
+                style={style}
               >
                 <m.div
                   variants={tooltipVariants}
@@ -69,8 +85,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
                   animate="visible"
                   exit="hidden"
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="relative px-3 py-2 bg-(--card-bg) text-(--text-main) text-[10px] mono rounded border border-border shadow-xl backdrop-blur-md max-w-xs"
+                  className="relative px-3 py-2 bg-(--card-bg) text-(--text-main) text-[10px] mono rounded border border-border shadow-xl backdrop-blur-md"
                   style={{
+                    maxWidth: `${TOOLTIP_MAX_WIDTH}px`,
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",
                   }}
