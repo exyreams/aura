@@ -54,6 +54,18 @@ export {
   type DollarSignProps,
 } from "./DollarSign";
 export {
+  Eraser,
+  EraserIcon,
+  type EraserIconProps,
+  type EraserProps,
+} from "./Eraser";
+export {
+  ExternalLink,
+  ExternalLinkIcon,
+  type ExternalLinkIconProps,
+  type ExternalLinkProps,
+} from "./ExternalLink";
+export {
   FileText,
   FileTextIcon,
   type FileTextIconProps,
@@ -78,6 +90,7 @@ export {
   type PenLineIconProps,
   type PenLineProps,
 } from "./PenLine";
+export { Plus, PlusIcon, type PlusIconProps, type PlusProps } from "./Plus";
 export {
   RefreshCw,
   RefreshCwIcon,
@@ -139,6 +152,12 @@ export {
   type TriangleAlertIconProps,
   type TriangleAlertProps,
 } from "./TriangleAlert";
+export {
+  Vault,
+  VaultIcon,
+  type VaultIconProps,
+  type VaultProps,
+} from "./Vault";
 export {
   Wallet,
   WalletIcon,

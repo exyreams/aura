@@ -261,9 +261,11 @@ export default function DashboardPage() {
 
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+          {" "}
           {/* Treasury table */}
           <section className="lg:col-span-8 flex flex-col">
             <div className="flex items-center justify-between mb-4">
+              {" "}
               <div>
                 <span className="mono text-[10px] uppercase tracking-[0.2em] text-(--text-muted) block mb-1">
                   Treasuries
@@ -282,7 +284,7 @@ export default function DashboardPage() {
                 </Button>
               </Link>
             </div>
-            <div className="flex-1 min-h-[320px]">
+            <div className="flex-1">
               <Table<TreasuryEntry>
                 columns={columns}
                 data={publicKey ? paginatedData : []}
@@ -311,7 +313,6 @@ export default function DashboardPage() {
               />
             </div>
           </section>
-
           {/* Activity feed */}
           <aside className="lg:col-span-4 self-start">
             <ActivityFeed

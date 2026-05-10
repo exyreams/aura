@@ -113,9 +113,6 @@ export function Table<T>({
   if (data.length === 0) {
     const isNoWallet = emptyState === "no-wallet";
     const isEmpty = emptyState === "empty";
-    const rowHeight = 48;
-    const itemsPerPage = pagination?.itemsPerPage || 10;
-    const emptyHeight = rowHeight * itemsPerPage;
 
     return (
       <div className={cn("space-y-4", className)}>
@@ -141,10 +138,7 @@ export function Table<T>({
               </thead>
             </table>
           </div>
-          <div
-            className="flex items-center justify-center"
-            style={{ height: `${emptyHeight}px` }}
-          >
+          <div className="flex items-center justify-center py-20">
             <div className="text-center space-y-4 px-6">
               <div className="size-16 bg-(--card-bg) rounded-full flex items-center justify-center mx-auto border border-border">
                 {isNoWallet ? (
@@ -192,10 +186,6 @@ export function Table<T>({
   }
 
   // Table with Data
-  const rowHeight = 48;
-  const itemsPerPage = pagination?.itemsPerPage || 10;
-  const minHeight = rowHeight * itemsPerPage;
-
   return (
     <div className={cn("space-y-4 h-full flex flex-col", className)}>
       <div className="border border-border rounded-sm overflow-hidden bg-(--input-bg)">
@@ -218,10 +208,7 @@ export function Table<T>({
                 ))}
               </tr>
             </thead>
-            <tbody
-              className="divide-y divide-border"
-              style={{ minHeight: `${minHeight}px` }}
-            >
+            <tbody className="divide-y divide-border">
               {data.map((item) => (
                 <tr
                   key={keyExtractor(item)}

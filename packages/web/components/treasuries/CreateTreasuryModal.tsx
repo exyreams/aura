@@ -3,7 +3,6 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Eraser, ExternalLink, Vault } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,6 +12,7 @@ import { Dropdown } from "@/components/global/Dropdown";
 import { Input } from "@/components/global/Input";
 import { Modal } from "@/components/global/Modal";
 import { UsdInput } from "@/components/global/UsdInput";
+import { Check, Copy, Eraser, ExternalLink, Vault } from "@/components/icons";
 import {
   buildCreateTreasuryArgs,
   sendWalletInstructions,
@@ -312,7 +312,11 @@ export function CreateTreasuryModal({
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
                   >
-                    <Check className="size-6 text-success" strokeWidth={2.5} />
+                    <Check
+                      className="size-6 text-success"
+                      animateOnHover
+                      strokeWidth={2.5}
+                    />
                   </m.div>
                 </m.div>
                 <m.div
@@ -342,64 +346,61 @@ export function CreateTreasuryModal({
                   <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
                     PDA Address
                   </p>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <code className="flex-1 mono text-[11px] text-success break-all leading-relaxed min-w-0">
-                      {successData?.treasury}
-                    </code>
+                  <p className="mono text-[11px] text-success break-all leading-relaxed">
+                    {successData?.treasury}
                     <button
                       type="button"
+                      title={copiedPDA ? "Copied!" : "Copy"}
                       onClick={() =>
                         handleCopy(successData?.treasury ?? "", "pda")
                       }
-                      className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                      className="inline-flex align-middle ml-1.5 text-(--text-muted) hover:text-(--text-main) transition-colors"
                       aria-label="Copy PDA"
                     >
                       {copiedPDA ? (
-                        <Check className="size-3.5 text-success" />
+                        <Check className="size-3 text-success" animateOnHover />
                       ) : (
-                        <Copy className="size-3.5" />
+                        <Copy className="size-3" animateOnHover />
                       )}
                     </button>
-                  </div>
+                  </p>
                 </div>
                 <div className="rounded-sm border border-border bg-(--card-content) p-3">
                   <p className="mono text-[9px] uppercase tracking-widest text-(--text-muted) mb-1.5">
                     Transaction Signature
                   </p>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <code className="flex-1 mono text-[11px] text-success break-all leading-relaxed min-w-0">
-                      {successData?.signature}
-                    </code>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleCopy(successData?.signature ?? "", "tx")
-                        }
-                        className="text-(--text-muted) hover:text-(--text-main) transition-colors"
-                        aria-label="Copy signature"
-                      >
-                        {copiedTx ? (
-                          <Check className="size-3.5 text-success" />
-                        ) : (
-                          <Copy className="size-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(
-                            `https://explorer.solana.com/tx/${successData?.signature}?cluster=${settings.network}`,
-                            "_blank",
-                          )
-                        }
-                        className="text-(--text-muted) hover:text-(--text-main) transition-colors"
-                        aria-label="View on explorer"
-                      >
-                        <ExternalLink className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                  <p className="mono text-[11px] text-success break-all leading-relaxed">
+                    {successData?.signature}
+                    <button
+                      type="button"
+                      title={copiedTx ? "Copied!" : "Copy"}
+                      onClick={() =>
+                        handleCopy(successData?.signature ?? "", "tx")
+                      }
+                      className="inline-flex align-middle ml-1.5 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                      aria-label="Copy signature"
+                    >
+                      {copiedTx ? (
+                        <Check className="size-3 text-success" animateOnHover />
+                      ) : (
+                        <Copy className="size-3" animateOnHover />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      title="View on Explorer"
+                      onClick={() =>
+                        window.open(
+                          `https://explorer.solana.com/tx/${successData?.signature}?cluster=${settings.network}`,
+                          "_blank",
+                        )
+                      }
+                      className="inline-flex align-middle ml-1 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                      aria-label="View on explorer"
+                    >
+                      <ExternalLink className="size-3" animateOnHover />
+                    </button>
+                  </p>
                 </div>
               </m.div>
             </m.div>
@@ -413,7 +414,10 @@ export function CreateTreasuryModal({
             >
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-border bg-(--hover-bg)">
-                  <Vault className="size-4.5 text-(--text-main)" />
+                  <Vault
+                    className="size-4.5 text-(--text-main)"
+                    animateOnHover
+                  />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-(--text-main) tracking-tight">
@@ -525,7 +529,7 @@ export function CreateTreasuryModal({
                         disabled={createMutation.isPending}
                         className="inline-flex items-center gap-1 rounded-sm border border-border bg-(--hover-bg) px-2 py-0.5 mono text-[9px] uppercase tracking-widest text-(--text-muted) transition-colors hover:border-danger/50 hover:text-danger disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <Eraser className="size-2.5" />
+                        <Eraser className="size-2.5" animateOnHover />
                         Clear
                       </button>
                     </div>
