@@ -9,7 +9,11 @@ export type BadgeVariant =
   | "low"
   | "medium"
   | "high"
-  | "on-primary";
+  | "on-primary"
+  | "wallet"
+  | "backend"
+  | "read_only"
+  | "external_cpi";
 
 export interface BadgeProps {
   variant?: BadgeVariant;
@@ -25,10 +29,14 @@ const variantClasses: Record<BadgeVariant, string> = {
   low: "bg-(--success-bg) border-(--success-border) text-(--success-text)",
   medium: "bg-(--warning-bg) border-(--warning-border) text-(--warning-text)",
   high: "bg-(--danger-bg) border-(--danger-border) text-(--danger-text)",
-  // Designed to sit on top of a primary-colored background.
-  // Light mode: white bg + dark border + dark text. Dark mode: black bg + white text.
   "on-primary":
     "bg-white border-black/30 text-black dark:bg-black dark:border-white/30 dark:text-white",
+  // Maturity variants — mapped to existing CSS variable sets
+  wallet: "bg-(--hover-bg) border-(--border) text-(--text-main)",
+  backend: "bg-(--info-bg) border-(--info-border) text-(--info-text)",
+  read_only: "bg-(--card-bg) border-(--border) text-(--text-muted)",
+  external_cpi:
+    "bg-(--warning-bg) border-(--warning-border) text-(--warning-text)",
 };
 
 export const Badge: React.FC<BadgeProps> = ({

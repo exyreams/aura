@@ -79,19 +79,21 @@ export const Alert: React.FC<AlertProps> = ({
       >
         {message}
       </span>
-      <m.button
-        type="button"
-        onClick={onClose}
-        className={cn(
-          "shrink-0 cursor-pointer rounded-sm p-1 transition-colors",
-          config.text,
-          config.closeBg,
-        )}
-        whileTap={{ scale: 0.88 }}
-        transition={{ type: "spring", stiffness: 500, damping: 20 }}
-      >
-        <X className="size-4" />
-      </m.button>
+      {onClose && (
+        <m.button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            "shrink-0 cursor-pointer rounded-sm p-1 transition-colors",
+            config.text,
+            config.closeBg,
+          )}
+          whileTap={{ scale: 0.88 }}
+          transition={{ type: "spring", stiffness: 500, damping: 20 }}
+        >
+          <X className="size-4" />
+        </m.button>
+      )}
     </m.div>
   );
 };

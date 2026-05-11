@@ -71,14 +71,6 @@ function buildInstructionMap(
   return map;
 }
 
-function findInstruction(
-  catalog: InstructionCatalogResponse | undefined,
-  name: string,
-) {
-  if (!catalog) return null;
-  return buildInstructionMap(catalog).get(name) ?? null;
-}
-
 function buildArgsSample(schema: ProgramInstructionSchema) {
   if (schema.args.length === 0) {
     return {};
@@ -370,11 +362,11 @@ export default function ProgramInstructionPage() {
     return (
       <div className="mx-auto max-w-[960px]">
         <Link
-          href="/dashboard/controls"
+          href="/dashboard/playground"
           className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <ArrowLeft className="size-3.5" />
-          Controls
+          Playground
         </Link>
         <Alert
           variant="warning"
@@ -393,11 +385,11 @@ export default function ProgramInstructionPage() {
   return (
     <div className="mx-auto max-w-[1500px]">
       <Link
-        href="/dashboard/controls"
+        href="/dashboard/playground"
         className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <ArrowLeft className="size-3.5" />
-        Controls
+        Playground
       </Link>
 
       <header className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">

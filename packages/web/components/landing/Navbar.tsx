@@ -40,7 +40,7 @@ const APP_LINKS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Treasuries", href: "/dashboard/treasuries", icon: Vault },
   { label: "Activity", href: "/dashboard/activity", icon: Activity },
-  { label: "Controls", href: "/dashboard/controls", icon: Shield },
+  { label: "Playground", href: "/dashboard/playground", icon: Shield },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
