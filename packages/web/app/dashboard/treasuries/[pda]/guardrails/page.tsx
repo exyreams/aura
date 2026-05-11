@@ -5,12 +5,7 @@ import { type PublicKey, Transaction } from "@solana/web3.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-  CurrentEncryptedState,
-  EncryptionModeSelector,
-  GuardrailsHeader,
-  ScalarConfigForm,
-} from "@/components/guardrails";
+import { GuardrailsHeader, ScalarConfigForm } from "@/components/guardrails";
 import { parsePublicKey, sendWalletInstructions } from "@/lib/aura-app";
 import { postBackend } from "@/lib/backend-client";
 import {
@@ -255,31 +250,159 @@ export default function ConfidentialGuardrailsPage() {
         />
       </div>
 
-      <main className="max-w-5xl mx-auto px-8 py-12 relative z-10">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 relative z-10">
         <GuardrailsHeader treasury={entry} />
 
-        <EncryptionModeSelector
-          active={Boolean(
-            account?.confidentialGuardrails?.dailyLimitCiphertext,
-          )}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Steps — left */}
+          <div className="lg:col-span-8">
+            <ScalarConfigForm
+              account={account}
+              plaintextForm={plaintextForm}
+              setPlaintextForm={setPlaintextForm}
+              scalarForm={scalarForm}
+              setScalarForm={setScalarForm}
+              encryptScalarMutation={encryptScalarMutation}
+              scalarMutation={scalarMutation}
+              backendInfo={backendInfoQuery.data}
+              selectedAgentPublicKey={selectedAgent?.publicKey}
+              ensureDepositMutation={ensureDepositMutation}
+              allCiphertextsExist={allCiphertextsExist}
+              ciphertextExistence={ciphertextExistenceQuery.data}
+              network={settings.network}
+            />
+          </div>
 
-        <ScalarConfigForm
-          account={account}
-          plaintextForm={plaintextForm}
-          setPlaintextForm={setPlaintextForm}
-          scalarForm={scalarForm}
-          setScalarForm={setScalarForm}
-          encryptScalarMutation={encryptScalarMutation}
-          scalarMutation={scalarMutation}
-          backendInfo={backendInfoQuery.data}
-          selectedAgentPublicKey={selectedAgent?.publicKey}
-          ensureDepositMutation={ensureDepositMutation}
-          allCiphertextsExist={allCiphertextsExist}
-          ciphertextExistence={ciphertextExistenceQuery.data}
-        />
-
-        <CurrentEncryptedState account={account} />
+          {/* Account context — right, sticky */}
+          <div className="lg:col-span-4">
+            <div className="lg:sticky lg:top-24 space-y-4">
+              {" "}
+              {/* Treasury info */}
+              {account && (
+                <div className="border border-border rounded-sm overflow-hidden">
+                  <div className="px-4 py-3 bg-(--card-content)/60 border-b border-border">
+                    <span className="mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                      Treasury
+                    </span>
+                  </div>
+                  <div className="px-4 py-3 space-y-3">
+                    <div>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) block mb-0.5">
+                        Agent ID
+                      </span>
+                      <span className="mono text-[11px] font-bold text-(--text-main)">
+                        {account.agentId}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) block mb-0.5">
+                        Daily Limit
+                      </span>
+                      <span className="mono text-[11px] text-(--text-main)">
+                        $
+                        {(
+                          Number(
+                            account.policyConfig.dailyLimitUsd.toString(),
+                          ) / 100
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) block mb-0.5">
+                        Per-Tx Limit
+                      </span>
+                      <span className="mono text-[11px] text-(--text-main)">
+                        $
+                        {(
+                          Number(
+                            account.policyConfig.perTxLimitUsd.toString(),
+                          ) / 100
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) block mb-0.5">
+                        Spent Today
+                      </span>
+                      <span className="mono text-[11px] text-(--text-main)">
+                        $
+                        {(
+                          Number(account.policyState.spentTodayUsd.toString()) /
+                          100
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) block mb-0.5">
+                        Execution
+                      </span>
+                      <span
+                        className={`mono text-[11px] ${account.executionPaused ? "text-warning" : "text-success"}`}
+                      >
+                        {account.executionPaused ? "Paused" : "Active"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) block mb-0.5">
+                        Total Transactions
+                      </span>
+                      <span className="mono text-[11px] text-(--text-main)">
+                        {Number(
+                          account.totalTransactions.toString(),
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* What is FHE */}
+              <div className="border border-border rounded-sm overflow-hidden">
+                <div className="px-4 py-3 bg-(--card-content)/60 border-b border-border">
+                  <span className="mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                    About FHE Guardrails
+                  </span>
+                </div>
+                <div className="px-4 py-3 space-y-2.5">
+                  {[
+                    {
+                      label: "Privacy",
+                      desc: "Spending limits are stored as encrypted ciphertexts — never revealed on-chain.",
+                    },
+                    {
+                      label: "Evaluation",
+                      desc: "Policy checks run directly over encrypted values via the Ika Encrypt network.",
+                    },
+                    {
+                      label: "Mode",
+                      desc: "Scalar mode uses 3 ciphertexts: daily limit, per-tx limit, and spent-today counter.",
+                    },
+                  ].map(({ label, desc }) => (
+                    <div key={label}>
+                      <span className="mono text-[9px] uppercase text-(--text-muted) font-bold block mb-0.5">
+                        {label}
+                      </span>
+                      <p className="text-[11px] text-(--text-muted) leading-relaxed">
+                        {desc}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t border-border flex items-center gap-2">
+                    <span className="mono text-[9px] uppercase text-(--text-muted)">
+                      FHE Status
+                    </span>
+                    <span
+                      className={`mono text-[9px] px-1.5 py-0.5 rounded-sm border ${account?.confidentialGuardrails?.dailyLimitCiphertext ? "border-success/40 bg-success/10 text-success" : "border-border text-(--text-muted)"}`}
+                    >
+                      {account?.confidentialGuardrails?.dailyLimitCiphertext
+                        ? "Active"
+                        : "Not configured"}
+                    </span>
+                  </div>{" "}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );
