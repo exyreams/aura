@@ -86,7 +86,7 @@ function alreadyExists(txSignature: string): boolean {
 export async function backfillActivity(
   user: AuthenticatedUser,
   opts: { perTreasury?: number } = {},
-): Promise<{ processed: number; inserted: number; skipped: number; treasuries: number }> {
+): Promise<{ processed: number; inserted: number; skipped: number; treasuries: number; addresses: string[] }> {
   const perTreasury = Math.min(opts.perTreasury ?? 100, 200);
   const apiKey = config.heliusApiKey;
 
@@ -107,7 +107,7 @@ export async function backfillActivity(
 
   if (userTreasuries.length === 0) {
     logger.info("backfill.no_treasuries", { userId: user.id, wallet: user.wallet });
-    return { processed: 0, inserted: 0, skipped: 0, treasuries: 0 };
+    return { processed: 0, inserted: 0, skipped: 0, treasuries: 0, addresses: [] };
   }
 
   logger.info("backfill.start", { userId: user.id, treasuryCount: userTreasuries.length, addresses: userTreasuries.map(t => t.treasuryAddress) });
