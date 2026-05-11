@@ -38,13 +38,13 @@ import {
 } from "@/components/icons";
 import {
   CHAINS,
+  mapBackendEvents,
   type ParsedActivity,
   PROPOSAL_STATUSES,
   VIOLATION_DESCRIPTIONS,
   VIOLATIONS,
 } from "@/lib/aura-app";
 import {
-  type ActivityEvent,
   type TreasuryEntry,
   useActivity,
   useOwnedTreasuries,
@@ -542,114 +542,6 @@ function fmtDateTime(ts: number | undefined): string {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
-}
-
-// Map backend ActivityEvent[] → ParsedActivity[] so mapToProposalEntries works unchanged
-function mapBackendEvents(
-  events: ActivityEvent[],
-): import("@/lib/aura-app").ParsedActivity[] {
-  return events.map((ev) => {
-    const meta = ev.meta ?? {};
-
-    // For backend-written events, build a human-readable detail string
-    // that buildAuditStepMeta can parse into proper rows
-    let detail: string | undefined;
-    switch (ev.kind) {
-      case "treasury_created":
-        detail = `treasury_created:agentId=${meta.agentId ?? ""},publicKey=${meta.agentPublicKey ?? ""}`;
-        break;
-      case "guardrails_configured":
-        detail = `confidential_guardrails_configured:FHE guardrails configured — daily, per-tx, and spent-today ciphertexts set,daily=${meta.dailyLimitCiphertext ?? ""},perTx=${meta.perTxLimitCiphertext ?? ""},spent=${meta.spentTodayCiphertext ?? ""}`;
-        break;
-      case "dwallet_registered": {
-        const chainCode =
-          meta.chain !== undefined ? Number(meta.chain) : undefined;
-        const chainName =
-          chainCode !== undefined
-            ? (CHAINS.find((c) => c.code === chainCode)?.label ??
-              `Chain ${chainCode}`)
-            : "Unknown";
-        detail = `dwallet_registered:${chainName} dWallet registered — address: ${meta.address ?? "unknown"},chain=${meta.chain ?? ""},address=${meta.address ?? ""},account=${meta.dwalletAccount ?? ""}`;
-        break;
-      }
-      case "execution_paused":
-        detail = "execution_paused:Execution paused by treasury owner";
-        break;
-      case "execution_resumed":
-        detail = "execution_resumed:Execution resumed by treasury owner";
-        break;
-      case "proposal_cancelled":
-        detail = "proposal_cancelled:Proposal cancelled by treasury owner";
-        break;
-      case "proposal_submitted": {
-        const chainCode =
-          meta.chain !== undefined ? Number(meta.chain) : undefined;
-        const chainName =
-          chainCode !== undefined
-            ? (CHAINS.find((c) => c.code === chainCode)?.label ??
-              `Chain ${chainCode}`)
-            : "Unknown";
-        detail = `proposal_submitted:${chainName} transfer of $${(((meta.amountUsd as number) ?? 0) / 100).toFixed(2)} to ${String(meta.recipient ?? "").slice(0, 8)}...`;
-        break;
-      }
-      case "confidential_proposal_submitted": {
-        const chainCode =
-          meta.chain !== undefined ? Number(meta.chain) : undefined;
-        const chainName =
-          chainCode !== undefined
-            ? (CHAINS.find((c) => c.code === chainCode)?.label ??
-              `Chain ${chainCode}`)
-            : "Unknown";
-        detail = `proposal_submitted:${chainName} confidential transfer of $${(((meta.amountUsd as number) ?? 0) / 100).toFixed(2)} to ${String(meta.recipient ?? "").slice(0, 8)}...`;
-        break;
-      }
-      case "execution_submitted":
-        detail = `execution_submitted:Execution submitted — awaiting Ika dWallet signature`;
-        break;
-      case "execution_finalized":
-        detail = `execution_finalized:Execution finalized — proposal completed on-chain`;
-        break;
-      case "decryption_requested":
-        detail = `decryption_requested:Policy output ciphertext submitted for decryption via Ika Encrypt|ciphertext=${meta.ciphertext ?? ""},requestAccount=${meta.requestAccount ?? ""},txSignature=${ev.txSignature}`;
-        break;
-      case "decryption_confirmed":
-        detail = `decryption_verified:Policy decryption confirmed — violation code resolved on-chain|requestAccount=${meta.requestAccount ?? ""},violationCode=${meta.violationCode ?? ""},txSignature=${ev.txSignature}`;
-        break;
-      default:
-        detail =
-          ev.kind !== "proposal_submitted" &&
-          ev.kind !== "confidential_proposal_submitted"
-            ? `${ev.kind}: ${JSON.stringify(meta)}`
-            : undefined;
-    }
-
-    return {
-      signature: `${ev.txSignature}:${ev.id}`,
-      txSignature: ev.txSignature,
-      treasury: ev.treasuryAddress,
-      proposalId: ev.proposalId ?? undefined,
-      proposalDigest: (meta.proposalDigest as string) ?? undefined,
-      kind:
-        (ev.kind === "proposal_submitted" ||
-          ev.kind === "confidential_proposal_submitted" ||
-          ev.kind === "decryption_requested" ||
-          ev.kind === "decryption_confirmed") &&
-        ev.proposalId
-          ? "proposal"
-          : (ev.kind === "execution_submitted" ||
-                ev.kind === "execution_finalized") &&
-              ev.proposalId
-            ? "execution"
-            : "audit",
-      status: ev.status ?? undefined,
-      approved: ev.approved ?? undefined,
-      violation: ev.violation ?? undefined,
-      detail,
-      timestamp: ev.timestamp,
-      messageApprovalAccount: (meta.messageApproval as string) ?? undefined,
-      decryptionRequestAccount: (meta.requestAccount as string) ?? undefined,
-    };
   });
 }
 

@@ -43,12 +43,12 @@ export function DashboardFooter() {
 
           <div className="h-4 w-px bg-border hidden md:block" />
 
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mono text-[10px] text-(--text-muted)">
+          <div className="flex flex-wrap justify-center gap-x-2 gap-y-3 mono text-[10px] text-(--text-muted)">
             <a
               href={DEFAULT_DOCS_URL}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-(--text-main) transition-colors"
+              className="hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors px-2 py-1 rounded-md"
             >
               Documentation
             </a>
@@ -56,13 +56,13 @@ export function DashboardFooter() {
               href={`${DEFAULT_DOCS_URL}/docs/sdk-ts`}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-(--text-main) transition-colors"
+              className="hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors px-2 py-1 rounded-md"
             >
               API Docs
             </a>
             <a
-              href="mailto:hello@aura-protocol.com"
-              className="hover:text-(--text-main) transition-colors"
+              href="mailto:exyreams@gmail.com"
+              className="hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors px-2 py-1 rounded-md"
             >
               Contact
             </a>

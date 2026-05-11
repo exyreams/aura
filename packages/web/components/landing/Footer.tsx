@@ -149,7 +149,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
+                    className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors inline-block px-2 py-1 -mx-2 rounded-md"
                   >
                     {link.label}
                   </Link>
@@ -169,7 +169,7 @@ export function Footer() {
                   href={docsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors inline-block px-2 py-1 -mx-2 rounded-md"
                 >
                   Documentation
                 </a>
@@ -179,7 +179,7 @@ export function Footer() {
                   href="https://github.com/exyreams/aura"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors inline-block px-2 py-1 -mx-2 rounded-md"
                 >
                   GitHub
                 </a>
@@ -187,7 +187,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/dashboard"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors inline-block px-2 py-1 -mx-2 rounded-md"
                 >
                   Dashboard
                 </Link>
@@ -195,7 +195,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#faq"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors inline-block px-2 py-1 -mx-2 rounded-md"
                 >
                   FAQ
                 </Link>
@@ -211,32 +211,30 @@ export function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="https://twitter.com/aura_protocol"
+                  href="https://x.com/auraacoreuse"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors flex items-center gap-2 px-2 py-1 -mx-2 rounded-md"
                 >
                   <TwitterXIcon className="size-4 shrink-0" />
                   Twitter / X
                 </a>
               </li>
               <li>
-                <a
-                  href="https://discord.gg/aura"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
-                >
+                <span className="text-sm text-(--text-muted) flex items-center gap-2 opacity-50 cursor-not-allowed select-none px-2 py-1 -mx-2">
                   <DiscordIcon className="size-4 shrink-0" />
                   Discord
-                </a>
+                  <span className="font-mono text-[9px] uppercase tracking-wider">
+                    (Soon)
+                  </span>
+                </span>
               </li>
               <li>
                 <a
                   href="https://github.com/exyreams/aura"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors flex items-center gap-2 px-2 py-1 -mx-2 rounded-md"
                 >
                   <GitHubIcon className="size-4 shrink-0" />
                   GitHub
@@ -244,11 +242,11 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:hello@aura-protocol.com"
-                  className="text-sm text-(--text-muted) hover:text-(--text-main) transition-colors flex items-center gap-2"
+                  href="mailto:exyreams@gmail.com"
+                  className="text-sm text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors flex items-center gap-2 px-2 py-1 -mx-2 rounded-md"
                 >
                   <Mail className="size-4 shrink-0" />
-                  hello@aura-protocol.com
+                  exyreams@gmail.com
                 </a>
               </li>
             </ul>

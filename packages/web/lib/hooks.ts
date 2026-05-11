@@ -9,10 +9,11 @@ import { PublicKey } from "@solana/web3.js";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
+  type ActivityEvent,
   createAuraClient,
   fetchOwnedTreasuries,
-  fetchRecentActivity,
   fetchTreasury,
+  mapBackendEvents,
   type ParsedActivity,
   type TreasuryEntry,
 } from "@/lib/aura-app";
@@ -76,45 +77,9 @@ export function useTreasury(treasury: string | undefined) {
   });
 }
 
-export function useRecentActivity(treasuries: TreasuryEntry[], limit = 30) {
-  const { connection } = useConnection();
-  const settings = useAppSettings();
-
-  return useQuery({
-    queryKey: [
-      "recent-activity",
-      treasuries.map((entry) => entry.publicKey.toBase58()).join(","),
-      settings.endpoint,
-      settings.programId,
-      limit,
-    ],
-    queryFn: () =>
-      fetchRecentActivity(
-        connection,
-        treasuries.map((entry) => entry.publicKey),
-        settings.resolvedProgramId,
-        limit,
-      ),
-    enabled: treasuries.length > 0,
-  });
-}
-
 // ── Backend-sourced activity (replaces RPC polling) ───────────────────────
 
-export interface ActivityEvent {
-  id: number;
-  treasuryAddress: string;
-  agentKeypairId: number | null;
-  walletAddress: string | null;
-  kind: string;
-  txSignature: string;
-  proposalId: string | null;
-  status: number | null;
-  approved: boolean | null;
-  violation: number | null;
-  meta: Record<string, unknown> | null;
-  timestamp: number;
-}
+export type { ActivityEvent } from "@/lib/aura-app";
 
 export interface ActivityResponse {
   events: ActivityEvent[];
@@ -167,27 +132,24 @@ export function useTreasuryAuditTrail(
   treasuryPda: string | undefined,
   limit = 20,
 ) {
-  const { connection } = useConnection();
   const settings = useAppSettings();
 
   return useQuery({
-    queryKey: [
-      "audit-trail",
-      treasuryPda,
-      settings.endpoint,
-      settings.programId,
-      limit,
-    ],
-    queryFn: () =>
-      fetchRecentActivity(
-        connection,
-        [new PublicKey(treasuryPda as string)],
-        settings.resolvedProgramId,
-        limit,
-      ),
+    queryKey: ["audit-trail", treasuryPda, settings.backendUrl, limit],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      if (treasuryPda) params.set("treasury", treasuryPda);
+      const res = await backendRequest<ActivityResponse>(
+        settings.backendUrl,
+        `/v1/activity?${params.toString()}`,
+      );
+      return mapBackendEvents(res.events);
+    },
     enabled: Boolean(treasuryPda),
-    refetchInterval: 12_000,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false,
+    staleTime: 0,
   });
 }
 

@@ -13,8 +13,9 @@ import { Tooltip } from "@/components/global/Tooltip";
 import { Check, Copy, SquareArrowOutUpRight } from "@/components/icons";
 import { ChevronRight } from "@/components/icons/ChevronRight";
 import { CreateTreasuryModal } from "@/components/treasuries/CreateTreasuryModal";
+import { mapBackendEvents } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
-import { useOwnedTreasuries, useRecentActivity } from "@/lib/hooks";
+import { useActivity, useOwnedTreasuries } from "@/lib/hooks";
 import { formatCurrency, shortenAddress } from "@/lib/utils";
 
 // Signer address cell with copy + explorer
@@ -89,8 +90,8 @@ export default function DashboardPage() {
 
   const treasuriesQuery = useOwnedTreasuries();
   const treasuries = treasuriesQuery.data ?? [];
-  const activityQuery = useRecentActivity(treasuries);
-  const activity = activityQuery.data ?? [];
+  const activityQuery = useActivity({ limit: 20 });
+  const activity = mapBackendEvents(activityQuery.data?.events ?? []);
 
   // Stats
   const totalTransactions = treasuries.reduce(

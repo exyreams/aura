@@ -3,6 +3,7 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import {
   Activity,
+  BookOpen,
   Check,
   Copy,
   ExternalLink,
@@ -128,53 +129,42 @@ export function Navbar() {
     };
   }, [mobileMenuOpen]);
 
-  // Track nav height for mobile menu offset
+  // Track nav ref for desktop nav
   const navRef = useRef<HTMLElement>(null);
-  const [navHeight, setNavHeight] = useState(73);
-  useEffect(() => {
-    if (!navRef.current) return;
-    const ro = new ResizeObserver(() => {
-      setNavHeight(navRef.current?.offsetHeight ?? 73);
-    });
-    ro.observe(navRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  const mobileBg = isDark
-    ? "bg-[rgba(12,12,14,0.98)]"
-    : "bg-[rgba(255,255,255,0.98)]";
 
   // All floating transition is pure CSS — no layout-triggering JS animation.
   // Only opacity/transform (composited) go through Framer Motion.
   const wrapperCls = [
     "fixed top-0 left-0 w-full z-[100] flex justify-center",
-    "transition-[padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
-    scrolled ? "pt-4 px-3 md:px-4" : "pt-0 px-0",
+    "md:transition-[padding] md:duration-300 md:ease-[cubic-bezier(0.4,0,0.2,1)]",
+    scrolled ? "pt-4 px-3 md:px-4" : "pt-3 px-3 md:pt-0 md:px-0",
   ].join(" ");
 
   const navCls = [
     "w-full flex justify-between items-center pointer-events-auto",
     "backdrop-blur-[16px]",
-    // layout transitions — all CSS, runs on compositor where possible
     "transition-[max-width,border-radius,padding,background-color,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
     scrolled
       ? isDark
         ? [
-            // Dark pill: semi-transparent so blur shows, but bright border + inner highlight to lift it off the dark page
-            "max-w-[960px] rounded-[14px] px-5 py-3",
+            "max-w-full px-5 py-3",
+            mobileMenuOpen
+              ? "rounded-tl-[14px] rounded-tr-[14px] rounded-bl-none rounded-br-none border-b-0"
+              : "rounded-[14px]",
             "bg-[rgba(28,28,32,0.82)]",
             "border border-[rgba(255,255,255,0.12)]",
             "shadow-[0_8px_40px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.07)]",
           ].join(" ")
         : [
-            // Light pill: same translucent frosted feel as dark
-            "max-w-[960px] rounded-[14px] px-5 py-3",
+            "max-w-full px-5 py-3",
+            mobileMenuOpen
+              ? "rounded-tl-[14px] rounded-tr-[14px] rounded-bl-none rounded-br-none border-b-0"
+              : "rounded-[14px]",
             "bg-[rgba(255,255,255,0.72)]",
             "border border-[rgba(0,0,0,0.1)]",
             "shadow-[0_8px_40px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]",
           ].join(" ")
       : [
-          // Top bar: always see-through
           "max-w-full rounded-none px-6 md:px-[4vw] py-5",
           "border-b border-t-0 border-l-0 border-r-0",
           isDark
@@ -197,7 +187,7 @@ export function Navbar() {
       />
 
       <div className={wrapperCls}>
-        <nav ref={navRef} className={navCls}>
+        <nav ref={navRef} className={[navCls, "hidden md:flex"].join(" ")}>
           <Link href="/" className="flex items-center shrink-0">
             <Image
               src={logoSrc}
@@ -352,195 +342,240 @@ export function Navbar() {
           </div>
 
           {/* Mobile controls */}
-          <div className="md:hidden flex items-center gap-4">
+          <div className="md:hidden flex items-center gap-3">
             <ThemeToggle />
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-(--text-main) size-6 relative"
+              className="p-1.5 rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors relative size-8 flex items-center justify-center"
               aria-label="Toggle menu"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {mobileMenuOpen ? (
                   <m.span
-                    key="close"
+                    key="x"
                     className="absolute inset-0 flex items-center justify-center"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.12 }}
+                    initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                    transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <X className="size-6" />
+                    <X className="size-4" />
                   </m.span>
                 ) : (
                   <m.span
                     key="menu"
                     className="absolute inset-0 flex items-center justify-center"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.12 }}
+                    initial={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                    transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <Menu className="size-6" />
+                    <Menu className="size-4" />
                   </m.span>
                 )}
               </AnimatePresence>
             </button>
           </div>
         </nav>
+
+        {/* Mobile — single unified pill, expands in-place, no seam */}
+        <div
+          className={[
+            "md:hidden w-full overflow-hidden rounded-[14px] backdrop-blur-[16px]",
+            "transition-[background-color,border-color,box-shadow] duration-300",
+            isDark
+              ? "bg-[rgba(28,28,32,0.82)] border border-[rgba(255,255,255,0.12)] shadow-[0_8px_40px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.07)]"
+              : "bg-[rgba(255,255,255,0.72)] border border-[rgba(0,0,0,0.1)] shadow-[0_8px_40px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]",
+          ].join(" ")}
+        >
+          {/* Top bar row */}
+          <div className="flex justify-between items-center px-5 py-3">
+            <Link href="/" className="flex items-center shrink-0">
+              <Image
+                src={logoSrc}
+                alt="AURA"
+                width={80}
+                height={20}
+                className="h-5 w-auto"
+                suppressHydrationWarning
+              />
+            </Link>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-1.5 rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors relative size-8 flex items-center justify-center"
+                aria-label="Toggle menu"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {mobileMenuOpen ? (
+                    <m.span
+                      key="x"
+                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      <X className="size-4" />
+                    </m.span>
+                  ) : (
+                    <m.span
+                      key="menu"
+                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      <Menu className="size-4" />
+                    </m.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            </div>
+          </div>
+
+          {/* Expandable body — same element, zero seam */}
+          <AnimatePresence initial={false}>
+            {mobileMenuOpen && (
+              <m.div
+                key="body"
+                initial={{ height: 0 }}
+                animate={{ height: "auto" }}
+                exit={{ height: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 340,
+                  damping: 34,
+                  mass: 0.7,
+                }}
+                className="overflow-hidden"
+                style={{ willChange: "height" }}
+              >
+                <div
+                  className={
+                    isDark
+                      ? "mx-3 border-t border-[rgba(255,255,255,0.08)]"
+                      : "mx-3 border-t border-[rgba(0,0,0,0.08)]"
+                  }
+                />
+                <div className="flex flex-col p-3 gap-1">
+                  {isConnected ? (
+                    <>
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <div className="size-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                        <span className="font-mono text-[10px] text-(--text-muted) truncate">
+                          {walletAddress}
+                        </span>
+                      </div>
+
+                      {APP_LINKS.map(({ label, href, icon: Icon }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors"
+                        >
+                          <Icon className="size-3.5 shrink-0" />
+                          <span className="font-mono text-[11px] uppercase tracking-widest">
+                            {label}
+                          </span>
+                        </Link>
+                      ))}
+
+                      <div className="my-1 border-t border-border" />
+
+                      <a
+                        href={docsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors"
+                      >
+                        <BookOpen className="size-3.5 shrink-0" />
+                        <span className="font-mono text-[11px] uppercase tracking-widest">
+                          Docs
+                        </span>
+                      </a>
+
+                      <div className="my-1 border-t border-border" />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          disconnect();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-danger hover:bg-danger/10 transition-colors w-full text-left"
+                      >
+                        <LogOut className="size-3.5 shrink-0" />
+                        <span className="text-xs">Disconnect</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {LANDING_LINKS.map(({ label, href }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="font-mono text-[11px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) px-3 py-2.5 rounded-md transition-colors block"
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                      <a
+                        href={docsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors"
+                      >
+                        <BookOpen className="size-3.5 shrink-0" />
+                        <span className="font-mono text-[11px] uppercase tracking-widest">
+                          Docs
+                        </span>
+                      </a>
+
+                      <div className="my-1 border-t border-border" />
+
+                      <div className="px-1 pb-1">
+                        <Button
+                          variant="primary"
+                          className="font-mono! text-[11px]! uppercase! tracking-widest! w-full!"
+                          icon={<Wallet className="size-3" />}
+                          onClick={() => {
+                            setWalletModalOpen(true);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          Connect Wallet
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </m.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Backdrop */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <m.div
-            key="mobile-menu"
+            key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className={`fixed inset-0 ${mobileBg} backdrop-blur-[10px] z-50 md:hidden overflow-y-auto`}
-            style={{ top: navHeight + (scrolled ? 16 : 0) }}
-          >
-            <div className="flex flex-col gap-6 p-6">
-              {isConnected ? (
-                // App navigation for connected users
-                <>
-                  <div className="flex items-center gap-2 px-3 py-2.5 bg-(--card-bg) border border-border rounded-md">
-                    <div className="size-1.5 rounded-full bg-primary animate-pulse" />
-                    <span className="font-mono text-xs text-(--text-main) truncate">
-                      {walletAddress}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="font-mono text-[9px] uppercase tracking-wider text-(--text-muted) px-1 mb-2">
-                      Navigate
-                    </p>
-                    {APP_LINKS.map(({ label, href, icon: Icon }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) text-(--text-muted) hover:text-(--text-main) transition-colors"
-                      >
-                        <Icon className="size-4 shrink-0" />
-                        <span className="font-mono text-sm uppercase tracking-widest">
-                          {label}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-
-                  <div className="border-t border-border" />
-
-                  <div className="space-y-1">
-                    <a
-                      href={docsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="font-mono text-sm uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) transition-colors py-2 block"
-                    >
-                      Docs
-                    </a>
-                  </div>
-
-                  <div className="border-t border-border" />
-
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyAddress}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) transition-colors"
-                    >
-                      {copied ? (
-                        <Check className="size-4 text-primary" />
-                      ) : (
-                        <Copy className="size-4 text-(--text-muted)" />
-                      )}
-                      <span className="text-sm text-(--text-main)">
-                        {copied ? "Copied!" : "Copy Address"}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleViewExplorer();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) transition-colors"
-                    >
-                      <ExternalLink className="size-4 text-(--text-muted)" />
-                      <span className="text-sm text-(--text-main)">
-                        View on Explorer
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        disconnect();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-(--hover-bg) transition-colors"
-                    >
-                      <LogOut className="size-4 text-danger" />
-                      <span className="text-sm text-danger">Disconnect</span>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                // Landing links for visitors
-                <>
-                  {[
-                    ...LANDING_LINKS,
-                    { label: "Docs", href: docsUrl, external: true },
-                  ].map((link, i) => (
-                    <m.div
-                      key={link.href}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.03, duration: 0.18 }}
-                    >
-                      {"external" in link && link.external ? (
-                        <a
-                          href={link.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="font-mono text-sm uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) transition-colors py-2 block"
-                        >
-                          {link.label}
-                        </a>
-                      ) : (
-                        <Link
-                          href={link.href}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="font-mono text-sm uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) transition-colors py-2 block"
-                        >
-                          {link.label}
-                        </Link>
-                      )}
-                    </m.div>
-                  ))}
-
-                  <div className="border-t border-border my-2" />
-
-                  <Button
-                    variant="primary"
-                    className="font-mono! text-sm! uppercase! tracking-widest! w-full!"
-                    icon={<Wallet className="size-4" />}
-                    onClick={() => {
-                      setWalletModalOpen(true);
-                      setMobileMenuOpen(false);
-                    }}
-                  >
-                    Connect Wallet
-                  </Button>
-                </>
-              )}
-            </div>
-          </m.div>
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[39] md:hidden bg-black/50"
+            onClick={() => setMobileMenuOpen(false)}
+          />
         )}
       </AnimatePresence>
 
