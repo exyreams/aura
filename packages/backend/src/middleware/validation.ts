@@ -253,6 +253,55 @@ export function parseCreateDwalletRequest(input: unknown) {
   };
 }
 
+export function parseRegisterTreasuryRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    treasuryAddress: requiredString(body, "treasuryAddress"),
+    agentId: requiredString(body, "agentId"),
+    txSignature: requiredString(body, "txSignature"),
+    ownerWallet: optionalString(body, "ownerWallet"),
+    agentPublicKey: optionalString(body, "agentPublicKey"),
+  };
+}
+
+export function parseRegisterGuardrailsRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    treasuryAddress: requiredString(body, "treasuryAddress"),
+    txSignature: requiredString(body, "txSignature"),
+    dailyLimitCiphertext: requiredString(body, "dailyLimitCiphertext"),
+    perTxLimitCiphertext: requiredString(body, "perTxLimitCiphertext"),
+    spentTodayCiphertext: requiredString(body, "spentTodayCiphertext"),
+  };
+}
+
+export function parseRegisterEventRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    treasuryAddress: requiredString(body, "treasuryAddress"),
+    txSignature: requiredString(body, "txSignature"),
+    kind: requiredString(body, "kind"),
+    walletAddress: optionalString(body, "walletAddress"),
+    meta: body["meta"] && typeof body["meta"] === "object" && !Array.isArray(body["meta"])
+      ? (body["meta"] as Record<string, unknown>)
+      : undefined,
+  };
+}
+
+export function parseRegisterDwalletRequest(input: unknown) {
+  const body = ensureObject(input);
+  return {
+    treasuryAddress: requiredString(body, "treasuryAddress"),
+    txSignature: requiredString(body, "txSignature"),
+    dwalletId: requiredString(body, "dwalletId"),
+    dwalletAccount: requiredString(body, "dwalletAccount"),
+    chain: requiredNumber(body, "chain"),
+    address: requiredString(body, "address"),
+    balanceUsd: optionalNumber(body, "balanceUsd") ?? 0,
+    publicKeyHex: optionalString(body, "publicKeyHex"),
+  };
+}
+
 function optionalRecord(body: JsonRecord, key: string) {
   const value = body[key];
   if (value === undefined || value === null) {

@@ -86,6 +86,24 @@ export const authNonces = sqliteTable("auth_nonces", {
   usedAt: integer("used_at"),
 });
 
+export const events = sqliteTable("events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  treasuryAddress: text("treasury_address").notNull(),
+  agentKeypairId: integer("agent_keypair_id").references(
+    () => agentKeypairs.id,
+    { onDelete: "set null" },
+  ),
+  walletAddress: text("wallet_address"),
+  kind: text("kind").notNull(),
+  txSignature: text("tx_signature").notNull(),
+  proposalId: text("proposal_id"),
+  status: integer("status"),
+  approved: integer("approved"),   // 0 | 1 | null
+  violation: integer("violation"), // violation code, 0 = none
+  metaJson: text("meta_json"),     // JSON string, kind-specific extra data
+  timestamp: integer("timestamp").notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   agentKeypairs: many(agentKeypairs),
 }));
@@ -97,6 +115,7 @@ export const agentKeypairsRelations = relations(agentKeypairs, ({ one, many }) =
   }),
   treasuries: many(treasuries),
   dkgSessions: many(dkgSessions),
+  events: many(events),
 }));
 
 export const treasuriesRelations = relations(treasuries, ({ one, many }) => ({
@@ -107,8 +126,16 @@ export const treasuriesRelations = relations(treasuries, ({ one, many }) => ({
   jobs: many(agentJobs),
 }));
 
+export const eventsRelations = relations(events, ({ one }) => ({
+  agentKeypair: one(agentKeypairs, {
+    fields: [events.agentKeypairId],
+    references: [agentKeypairs.id],
+  }),
+}));
+
 export type UserRecord = typeof users.$inferSelect;
 export type AgentKeypairRecord = typeof agentKeypairs.$inferSelect;
 export type TreasuryRecord = typeof treasuries.$inferSelect;
 export type DkgSessionRecord = typeof dkgSessions.$inferSelect;
 export type AgentJobRecord = typeof agentJobs.$inferSelect;
+export type EventRecord = typeof events.$inferSelect;

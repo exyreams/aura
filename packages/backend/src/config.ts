@@ -22,6 +22,7 @@ export interface BackendConfig {
   rateLimitWindowMs: number;
   rateLimitMaxRequests: number;
   allowedOrigins: string[];
+  heliusApiKey: string | undefined;
   logLevel: "debug" | "info" | "warn" | "error";
 }
 
@@ -117,6 +118,7 @@ export function loadConfig(): BackendConfig {
       "AURA_RATE_LIMIT_MAX_REQUESTS",
     ),
     allowedOrigins,
+    heliusApiKey: process.env.AURA_HELIUS_API_KEY?.trim() || undefined,
     logLevel: resolvedLogLevel,
   };
 }

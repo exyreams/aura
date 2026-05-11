@@ -30,17 +30,23 @@ import {
   ensureBackendEncryptDeposit,
   executePendingService,
   finalizeExecutionService,
+  getActivity,
   getMessageApprovalStatusService,
   triggerIkaSignService,
   buildGenericProgramInstruction,
   getBackendInfo,
   getFeatureCatalog,
   getInstructionCatalog,
+  registerDwalletOnTreasury,
+  registerEvent,
+  registerGuardrails,
+  registerTreasury,
   requestPolicyDecryptionService,
   sendGenericProgramInstruction,
   submitConfidentialProposal,
   submitPublicProposal,
 } from "./services/index.js";
+import { backfillActivity } from "./services/backfill.js";
 import type { ApiErrorResponse, ApiSuccessResponse } from "./types.js";
 import {
   parseAuthLoginRequest,
@@ -54,6 +60,10 @@ import {
   parseFinalizeExecutionRequest,
   parseProgramInstructionRequest,
   parsePublicProposalRequest,
+  parseRegisterDwalletRequest,
+  parseRegisterEventRequest,
+  parseRegisterGuardrailsRequest,
+  parseRegisterTreasuryRequest,
   parseRequestDecryptionRequest,
 } from "./middleware/validation.js";
 
@@ -365,6 +375,23 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    // GET /v1/activity — no body needed, handle before ensureJsonRequest
+    if (routeKey === "GET /v1/activity") {
+      const limit = Math.min(Number(url.searchParams.get("limit") ?? "50"), 100);
+      const before = url.searchParams.get("before")
+        ? Number(url.searchParams.get("before"))
+        : undefined;
+      const treasury = url.searchParams.get("treasury") ?? undefined;
+      const kind = url.searchParams.get("kind") ?? undefined;
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        getActivity(serviceContext!, { limit, before, treasury, kind }),
+      );
+      return;
+    }
+
     ensureJsonRequest(request);    const body = await readJson(request);
 
     if (routeKey === "POST /v1/auth/login") {
@@ -522,6 +549,63 @@ const server = createServer(async (request, response) => {
         200,
         requestId,
         await finalizeExecutionService(serviceContext!, parseFinalizeExecutionRequest(body)),
+      );
+      return;
+    }
+
+    // ── Activity ──────────────────────────────────────────────────────────
+
+    // ── Wallet-signed registration ────────────────────────────────────────
+
+    if (routeKey === "POST /v1/treasuries/register") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        registerTreasury(serviceContext!, parseRegisterTreasuryRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/treasuries/register-guardrails") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        registerGuardrails(serviceContext!, parseRegisterGuardrailsRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/treasuries/register-dwallet") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        registerDwalletOnTreasury(serviceContext!, parseRegisterDwalletRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/activity/register-event") {
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        registerEvent(serviceContext!, parseRegisterEventRequest(body)),
+      );
+      return;
+    }
+
+    if (routeKey === "POST /v1/activity/backfill") {
+      const perTreasury = body && typeof body === "object"
+        ? (body as Record<string, unknown>)["perTreasury"] as number | undefined
+        : undefined;
+      sendSuccess(
+        response,
+        200,
+        requestId,
+        await backfillActivity(authUser!, { perTreasury }),
       );
       return;
     }

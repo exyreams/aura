@@ -4,7 +4,6 @@ import bs58 from "bs58";import {
   AuraClient,
   type ProposeConfidentialTransactionArgs,
   type ProposeTransactionArgs,
-  type TreasuryAccountRecord,
   validateAddress,
   validateAmountUsd,
 } from "@aura-protocol/sdk-ts";
@@ -31,8 +30,6 @@ import {
   requestDwalletSign,
 } from "../ika/client.js";
 import {
-  buildExecutePendingInstruction,
-  buildMessageDigestHex,
   buildPendingMessage,
   createEphemeralKeypair,
   deriveApprovedExecutionAccounts,
@@ -54,6 +51,7 @@ import {
   buildProgramInstruction,
   getProgramInstructionCatalog,
 } from "./program-instructions.js";
+import { insertEvent, listEventsForUser, type EventKind, updateProposalEvent } from "../db/events.js";
 import { createLogger } from "../logger.js";
 
 const config = loadConfig();
@@ -404,6 +402,28 @@ export async function submitConfidentialProposal(context: ServiceContext, input:
       instructions: [instruction],
       extraSigners: [policyOutputSigner],
     });
+    // Read proposal ID from on-chain account after submission
+    let proposalId: string | null = null;
+    try {
+      const refreshed = await client.getTreasuryAccount(treasury);
+      const pending = getActivePendingProposal(refreshed);
+      if (pending) proposalId = pending.proposalId.toString();
+    } catch { /* non-fatal */ }
+    insertEvent({
+      treasuryAddress: treasury.toBase58(),
+      agentKeypairId: agent.id,
+      kind: "confidential_proposal_submitted",
+      txSignature: signature,
+      proposalId,
+      meta: {
+        amountUsd: input.amountUsd,
+        chain: input.chain,
+        txType: input.txType,
+        recipient: input.recipient,
+        amountCiphertext: amountCiphertext.toBase58(),
+        policyOutputCiphertext: policyOutputSigner.publicKey.toBase58(),
+      },
+    });
     if (input.waitForOutput) {
       await waitForCiphertextVerified(connection, policyOutputSigner.publicKey);
     }
@@ -462,6 +482,17 @@ export async function requestPolicyDecryptionService(context: ServiceContext, in
       instructions: [instruction],
       extraSigners: [requestSigner],
     });
+    insertEvent({
+      treasuryAddress: treasury.toBase58(),
+      agentKeypairId: agent.id,
+      kind: "decryption_requested",
+      txSignature: signature,
+      proposalId: getActivePendingProposal(account)?.proposalId?.toString() ?? null,
+      meta: {
+        requestAccount: requestSigner.publicKey.toBase58(),
+        ciphertext: ciphertext.toBase58(),
+      },
+    });
     if (input.wait) {
       await waitForDecryptionReady(connection, requestSigner.publicKey);
     }
@@ -510,6 +541,26 @@ export async function confirmPolicyDecryptionService(context: ServiceContext, in
       ).toString();
     } catch {
       violationCode = null;
+    }
+    insertEvent({
+      treasuryAddress: treasury.toBase58(),
+      agentKeypairId: agent.id,
+      kind: "decryption_confirmed",
+      txSignature: signature,
+      proposalId: refreshedPending?.proposalId?.toString() ?? getActivePendingProposal(account)?.proposalId?.toString() ?? null,
+      approved: refreshedPending?.decision.approved ?? null,
+      violation: refreshedPending?.decision.violation ?? null,
+      meta: { requestAccount: requestAccount.toBase58(), violationCode },
+    });
+    // If denied by policy, update the proposal_submitted event immediately
+    if (refreshedPending?.decision.approved === false) {
+      updateProposalEvent({
+        treasuryAddress: treasury.toBase58(),
+        proposalId: refreshedPending.proposalId?.toString() ?? null,
+        approved: false,
+        violation: refreshedPending.decision.violation ?? null,
+        status: 4, // Denied
+      });
     }
     return {
       signature,
@@ -563,6 +614,28 @@ export async function executePendingService(context: ServiceContext, input: {
       payer: agentKeypair,
       instructions: [instruction],
     });
+    insertEvent({
+      treasuryAddress: treasury.toBase58(),
+      agentKeypairId: agent.id,
+      kind: "execution_submitted",
+      txSignature: signature,
+      proposalId: pending.proposalId?.toString() ?? null,
+      approved: pending.decision.approved,
+      violation: pending.decision.approved ? null : (pending.decision.violation ?? null),
+      meta: {
+        messageApproval: approvedAccounts?.messageApproval.toBase58() ?? null,
+      },
+    });
+    // If denied at execution (public proposal), update immediately
+    if (!pending.decision.approved) {
+      updateProposalEvent({
+        treasuryAddress: treasury.toBase58(),
+        proposalId: pending.proposalId?.toString() ?? null,
+        approved: false,
+        violation: pending.decision.violation ?? null,
+        status: 4, // Denied
+      });
+    }
     if (pending.decision.approved && approvedAccounts) {
       // Always trigger the gRPC sign request — without this Ika never signs.
       // Fire-and-forget: wrapped in try/catch so a gRPC hiccup doesn't fail
@@ -701,6 +774,21 @@ export async function finalizeExecutionService(context: ServiceContext, input: {
       Math.floor(Date.now() / 1000),
     );
     const refreshed = await client.getTreasuryAccount(treasury);
+    insertEvent({
+      treasuryAddress: treasury.toBase58(),
+      agentKeypairId: agent.id,
+      kind: "execution_finalized",
+      txSignature: signature,
+      proposalId: pending.proposalId?.toString() ?? null,
+      meta: { totalTransactions: refreshed.totalTransactions.toString() },
+    });
+    // Update the original proposal_submitted event to reflect final outcome
+    updateProposalEvent({
+      treasuryAddress: treasury.toBase58(),
+      proposalId: pending.proposalId?.toString() ?? null,
+      approved: true,
+      status: 3, // Executed
+    });
     return {
       signature,
       totalTransactions: refreshed.totalTransactions.toString(),
@@ -745,6 +833,19 @@ export async function createDwalletService(context: ServiceContext, input: {
       sessionIdentifier: result.sessionIdentifier,
       dkgAttestation: result.dkgAttestation,
     });
+    insertEvent({
+      treasuryAddress: result.dwalletAccount.toBase58(), // no treasury yet — use dWallet account as placeholder
+      agentKeypairId: agent.id,
+      kind: "dwallet_created",
+      txSignature: result.transferSignature,
+      meta: {
+        dwalletAccount: result.dwalletAccount.toBase58(),
+        dwalletId: result.dwalletId,
+        chain: 2,
+        address: result.address,
+        publicKeyHex: result.publicKeyHex,
+      },
+    });
     return {
       dwalletId: result.dwalletId,
       dwalletAccount: result.dwalletAccount.toBase58(),
@@ -788,7 +889,193 @@ export async function submitPublicProposal(context: ServiceContext, input: {
       payer: agentKeypair,
       instructions: [instruction],
     });
+    // Read proposal ID from on-chain account after submission
+    let proposalId: string | null = null;
+    try {
+      const refreshed = await client.getTreasuryAccount(treasury);
+      const pending = getActivePendingProposal(refreshed);
+      if (pending) proposalId = pending.proposalId.toString();
+    } catch { /* non-fatal */ }
+    insertEvent({
+      treasuryAddress: treasury.toBase58(),
+      agentKeypairId: agent.id,
+      kind: "proposal_submitted",
+      txSignature: signature,
+      proposalId,
+      meta: {
+        amountUsd: input.amountUsd,
+        chain: input.chain,
+        txType: input.txType,
+        recipient: input.recipient,
+        protocolId: input.protocolId ?? null,
+      },
+    });
     return { signature };
   });
 }
 
+
+// ── Activity service ──────────────────────────────────────────────────────
+
+export function getActivity(
+  context: ServiceContext,
+  opts: {
+    limit?: number;
+    before?: number;
+    treasury?: string;
+    kind?: string;
+  },
+) {
+  return listEventsForUser(context.user, {
+    limit: opts.limit,
+    before: opts.before,
+    treasury: opts.treasury,
+    kind: opts.kind as EventKind | undefined,
+  });
+}
+
+// ── Wallet-signed registration endpoints ─────────────────────────────────
+
+import { eq } from "drizzle-orm";
+import { db } from "../db/client.js";
+import { agentKeypairs, treasuries } from "../db/schema.js";
+
+export function registerTreasury(
+  context: ServiceContext,
+  input: {
+    treasuryAddress: string;
+    agentId: string;
+    txSignature: string;
+    ownerWallet?: string;
+    agentPublicKey?: string;
+  },
+) {
+  // Find the agent keypair for this user + agentId
+  const agent = db
+    .select()
+    .from(agentKeypairs)
+    .where(
+      eq(agentKeypairs.userId, context.user.id),
+    )
+    .all()
+    .find((a) => a.agentId === input.agentId);
+
+  const agentKeypairId = agent?.id ?? null;
+
+  // Upsert treasury row
+  const existing = db
+    .select()
+    .from(treasuries)
+    .where(eq(treasuries.treasuryAddress, input.treasuryAddress))
+    .get();
+
+  if (!existing && agentKeypairId) {
+    db.insert(treasuries)
+      .values({
+        agentKeypairId,
+        treasuryAddress: input.treasuryAddress,
+        agentId: input.agentId,
+        createdAt: Math.floor(Date.now() / 1000),
+      })
+      .onConflictDoNothing()
+      .run();
+  }
+
+  insertEvent({
+    treasuryAddress: input.treasuryAddress,
+    agentKeypairId,
+    walletAddress: input.ownerWallet ?? context.user.wallet,
+    kind: "treasury_created",
+    txSignature: input.txSignature,
+    meta: {
+      agentId: input.agentId,
+      agentPublicKey: input.agentPublicKey ?? null,
+    },
+  });
+
+  return { registered: true, treasuryAddress: input.treasuryAddress };
+}
+
+export function registerGuardrails(
+  context: ServiceContext,
+  input: {
+    treasuryAddress: string;
+    txSignature: string;
+    dailyLimitCiphertext: string;
+    perTxLimitCiphertext: string;
+    spentTodayCiphertext: string;
+  },
+) {
+  insertEvent({
+    treasuryAddress: input.treasuryAddress,
+    walletAddress: context.user.wallet,
+    kind: "guardrails_configured",
+    txSignature: input.txSignature,
+    meta: {
+      dailyLimitCiphertext: input.dailyLimitCiphertext,
+      perTxLimitCiphertext: input.perTxLimitCiphertext,
+      spentTodayCiphertext: input.spentTodayCiphertext,
+    },
+  });
+  return { registered: true };
+}
+
+export function registerDwalletOnTreasury(
+  context: ServiceContext,
+  input: {
+    treasuryAddress: string;
+    txSignature: string;
+    dwalletId: string;
+    dwalletAccount: string;
+    chain: number;
+    address: string;
+    balanceUsd: number;
+    publicKeyHex?: string;
+  },
+) {
+  insertEvent({
+    treasuryAddress: input.treasuryAddress,
+    walletAddress: context.user.wallet,
+    kind: "dwallet_registered",
+    txSignature: input.txSignature,
+    meta: {
+      dwalletId: input.dwalletId,
+      dwalletAccount: input.dwalletAccount,
+      chain: input.chain,
+      address: input.address,
+      balanceUsd: input.balanceUsd,
+      publicKeyHex: input.publicKeyHex ?? null,
+    },
+  });
+  return { registered: true };
+}
+
+export function registerEvent(
+  context: ServiceContext,
+  input: {
+    treasuryAddress: string;
+    txSignature: string;
+    kind: string;
+    walletAddress?: string;
+    meta?: Record<string, unknown>;
+  },
+) {
+  insertEvent({
+    treasuryAddress: input.treasuryAddress,
+    walletAddress: input.walletAddress ?? context.user.wallet,
+    kind: input.kind as EventKind,
+    txSignature: input.txSignature,
+    meta: input.meta,
+  });
+  // For cancellations, update the original proposal_submitted event
+  if (input.kind === "proposal_cancelled") {
+    const proposalId = input.meta?.proposalId as string | null | undefined;
+    updateProposalEvent({
+      treasuryAddress: input.treasuryAddress,
+      proposalId: proposalId ?? null,
+      approved: false,
+      status: 5, // Cancelled
+    });
+  }
+  return { registered: true };
+}

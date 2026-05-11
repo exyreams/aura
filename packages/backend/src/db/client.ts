@@ -84,6 +84,28 @@ function migrate() {
 
     CREATE INDEX IF NOT EXISTS auth_nonces_expires_at_idx
       ON auth_nonces(expires_at);
+
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      treasury_address TEXT NOT NULL,
+      agent_keypair_id INTEGER REFERENCES agent_keypairs(id) ON DELETE SET NULL,
+      wallet_address TEXT,
+      kind TEXT NOT NULL,
+      tx_signature TEXT NOT NULL,
+      proposal_id TEXT,
+      status INTEGER,
+      approved INTEGER,
+      violation INTEGER,
+      meta_json TEXT,
+      timestamp INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS events_treasury_time_idx
+      ON events(treasury_address, timestamp DESC);
+    CREATE INDEX IF NOT EXISTS events_wallet_idx
+      ON events(wallet_address);
+    CREATE INDEX IF NOT EXISTS events_kind_idx
+      ON events(kind);
   `);
 }
 
