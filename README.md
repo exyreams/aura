@@ -6,7 +6,6 @@
 
 - **Dashboard:** https://auraa-protocol.vercel.app
 - **Docs:** https://docs-auraprotocol.vercel.app
-- **Backend API:** https://aura-backend-production-eb86.up.railway.app
 
 AURA lets AI agents manage real crypto treasuries without exposing your strategy on-chain and without trusting a centralized approval server. Spending limits are stored as FHE ciphertexts — unreadable to anyone — and policy evaluation happens directly over those encrypted values via Ika's Encrypt network. When a transaction is approved, it is co-signed by an Ika dWallet, giving you native multi-chain execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism.
 

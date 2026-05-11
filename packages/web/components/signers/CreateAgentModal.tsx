@@ -1,8 +1,9 @@
 "use client";
 
-import { KeyRound, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
 import { useState } from "react";
 import { Alert, Button, Modal } from "@/components/global";
+import { KeyRound } from "@/components/icons";
 import { useAgents } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -159,7 +160,7 @@ export function CreateAgentModal({ open, onClose }: CreateAgentModalProps) {
       {/* Icon + heading */}
       <div className="flex flex-col items-center text-center mb-7">
         <div className="flex size-12 items-center justify-center rounded-sm border border-border bg-(--hover-bg) mb-4">
-          <KeyRound className="size-5 text-(--text-main)" />
+          <KeyRound className="size-5 text-(--text-main)" animateOnHover />
         </div>
         <h3 className="text-lg font-semibold text-(--text-main) tracking-tight">
           New Signer Agent

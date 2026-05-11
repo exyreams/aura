@@ -2,9 +2,10 @@
 
 import { useConnection } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { Plus, RefreshCw, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Skeleton } from "@/components/global";
+import { Alert, Button, Skeleton } from "@/components/global";
+import { ConfirmDialog } from "@/components/global/ConfirmDialog";
+import { Plus, RefreshCw, Zap } from "@/components/icons";
 import {
   AgentEmptyState,
   AgentRow,
@@ -68,6 +69,7 @@ function useAgentBalances(agents: AgentKeypair[]) {
 export default function AgentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AgentKeypair | null>(null);
 
   const treasuriesQuery = useOwnedTreasuries();
   const treasuries = treasuriesQuery.data ?? [];
@@ -92,6 +94,12 @@ export default function AgentsPage() {
     setRefreshing(false);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteAgent(deleteTarget.id);
+    setDeleteTarget(null);
+  };
+
   return (
     <>
       <CreateAgentModal
@@ -99,9 +107,38 @@ export default function AgentsPage() {
         onClose={() => setCreateOpen(false)}
       />
 
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+        title="Delete agent"
+        confirmLabel="Sign & Delete"
+        cancelLabel="Cancel"
+        loading={deleteAgentMutation.isPending}
+        requireWalletSign={
+          deleteTarget ? `Delete agent: ${deleteTarget.agentId}` : undefined
+        }
+        disclaimer="This permanently removes the encrypted keypair from the backend vault. Any treasuries using this agent as ai_authority will lose their signer."
+        rows={
+          deleteTarget
+            ? [
+                { label: "Agent ID", value: deleteTarget.agentId },
+                {
+                  label: "Public key",
+                  value: deleteTarget.publicKey.slice(0, 20) + "…",
+                },
+                {
+                  label: "Label",
+                  value: deleteTarget.label || "—",
+                },
+              ]
+            : []
+        }
+      />
+
       <div className="relative max-w-[1600px] mx-auto">
         {/* Header */}
-        <header className="mb-6 sm:mb-10 flex flex-col gap-4">
+        <header className="mb-6 sm:mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
               Agent Vault
@@ -114,27 +151,26 @@ export default function AgentsPage() {
               authorize dWallet, confidential, and policy flows.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="secondary"
               size="medium"
               icon={
                 <RefreshCw
                   className={cn("size-3.5", refreshing && "animate-spin")}
+                  animateOnHover
                 />
               }
               onClick={() => void handleRefresh()}
               disabled={refreshing}
-              className="flex-1 sm:flex-none"
             >
               Refresh
             </Button>
             <Button
               variant="primary"
               size="medium"
-              icon={<Plus className="size-4" />}
+              icon={<Plus className="size-4" animateOnHover />}
               onClick={() => setCreateOpen(true)}
-              className="flex-1 sm:flex-none"
             >
               New Agent
             </Button>
@@ -143,17 +179,26 @@ export default function AgentsPage() {
 
         {/* Stats */}
         {!isLoading && agents.length > 0 && (
-          <Card hover={false} className="py-4 px-4 sm:px-5 mb-5 sm:mb-6">
+          <div className="mb-5 sm:mb-6">
             <AgentStatsBar
               total={agents.length}
               selected={selectedAgent?.agentId ?? null}
+              lowBalanceCount={
+                agents.filter((a) => {
+                  const bal = balances[a.publicKey];
+                  return bal !== undefined && bal < 0.005;
+                }).length
+              }
             />
-          </Card>
+          </div>
         )}
 
         {/* Callout */}
         <div className="flex items-start gap-2.5 rounded border border-border bg-(--card-bg) px-3 py-2.5 mb-5 sm:mb-6">
-          <Zap className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)" />
+          <Zap
+            className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)"
+            animateOnHover
+          />
           <p className="text-[11px] leading-5 text-(--text-muted)">
             The agent's public key is the{" "}
             <code className="mono text-[10px] text-(--text-main)">
@@ -181,7 +226,6 @@ export default function AgentsPage() {
             )}
           </div>
 
-          {/* Initial load skeletons */}
           {isLoading && agents.length === 0 && (
             <div className="space-y-3">
               <Skeleton className="h-36" />
@@ -189,15 +233,12 @@ export default function AgentsPage() {
             </div>
           )}
 
-          {/* Error */}
           {!isLoading && error && <Alert variant="error" message={error} />}
 
-          {/* Empty state */}
           {!isLoading && !error && agents.length === 0 && (
             <AgentEmptyState onCreateClick={() => setCreateOpen(true)} />
           )}
 
-          {/* Agent rows — stay visible during background refetch */}
           {agents.length > 0 && (
             <div className="space-y-2">
               {agents.map((agent) => (
@@ -213,15 +254,7 @@ export default function AgentsPage() {
                     const identity = await downloadAgentIdentity(agent);
                     downloadJson(`${agent.agentId}.aura-agent.json`, identity);
                   }}
-                  onDelete={() => {
-                    if (
-                      window.confirm(
-                        `Delete agent '${agent.agentId}'? This removes the encrypted signer from the backend vault.`,
-                      )
-                    ) {
-                      void deleteAgent(agent.id);
-                    }
-                  }}
+                  onDelete={() => setDeleteTarget(agent)}
                 />
               ))}
             </div>
