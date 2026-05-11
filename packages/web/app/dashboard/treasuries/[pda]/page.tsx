@@ -85,19 +85,30 @@ export default function TreasuryDetailsPage() {
   return (
     <div className="relative min-h-screen">
       {bg}
-      <div className="relative max-w-[1600px] mx-auto z-10 space-y-8">
-        <TreasuryHeader treasury={treasury} pda={pda} />
-        <TreasuryStats treasury={treasury} />
-
-        <SpendingProgress treasury={treasury} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PolicyConfig treasury={treasury} />
-          <AuditTrail pda={pda} />
+      <div className="relative max-w-[1600px] mx-auto z-10">
+        <div className="mb-8">
+          <TreasuryHeader treasury={treasury} pda={pda} />
         </div>
 
-        <div className="pt-8 border-t border-border">
+        <div className="mb-8">
+          <TreasuryStats treasury={treasury} />
+        </div>
+
+        <div className="mb-8">
+          <SpendingProgress treasury={treasury} />
+        </div>
+
+        <div className="mb-8">
           <PendingProposals treasury={treasury} pda={pda} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="lg:col-span-1">
+            <PolicyConfig treasury={treasury} />
+          </div>
+          <div className="lg:col-span-1">
+            <AuditTrail pda={pda} />
+          </div>
         </div>
       </div>
     </div>

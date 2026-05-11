@@ -2,22 +2,22 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Copy,
-  ExternalLink,
-  MoreVertical,
-  Pause,
-  Plus,
-  Send,
-  Shield,
-  Users,
-  XCircle,
-} from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
+import {
+  Copy,
+  EllipsisVertical,
+  ExternalLink,
+  Pause,
+  Plus,
+  Send,
+  Shield,
+  Users,
+  Xcircle,
+} from "@/components/icons";
 import { ProposeTransactionModal } from "@/components/propose/ProposeTransactionModal";
 import {
   getActivePendingProposal,
@@ -25,7 +25,7 @@ import {
 } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
-import { cn } from "@/lib/utils";
+import { cn, shortenAddress } from "@/lib/utils";
 import { RegisterDWalletForm } from "./RegisterDWalletForm";
 
 interface ActionOption {
@@ -132,32 +132,27 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
     () => [
       {
         label: "Propose Transaction",
-        icon: <Send size={16} />,
+        icon: <Send className="size-4" animateOnHover />,
         onClick: () => setIsProposeOpen(true),
       },
       {
-        label: "Configure Confidential Guardrails",
-        icon: <Shield size={16} />,
+        label: "Guardrails",
+        icon: <Shield className="size-4" animateOnHover />,
         onClick: () => push(`/dashboard/treasuries/${pda}/guardrails`),
       },
       {
-        label: "Governance Configuration",
-        icon: <Users size={16} />,
+        label: "Governance",
+        icon: <Users size={16} animateOnHover />,
         onClick: () => push(`/dashboard/treasuries/${pda}/governance`),
       },
       {
-        label: "View on Explorer",
-        icon: <ExternalLink size={16} />,
-        onClick: handleOpenExplorer,
-      },
-      {
         label: "Cancel Pending",
-        icon: <XCircle size={16} />,
+        icon: <Xcircle className="size-4" animateOnHover />,
         onClick: () => cancelMutation.mutate(),
         disabled: !activePending || cancelMutation.isPending,
       },
     ],
-    [activePending, cancelMutation, pda, push, handleOpenExplorer],
+    [activePending, cancelMutation, pda, push],
   );
 
   const handleActionClick = (action: ActionOption) => {
@@ -203,10 +198,10 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
               {treasury.account.executionPaused ? "Paused" : "Active"}
             </StatusPill>
           </div>
-          {/* Full PDA with copy + explorer */}
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="font-mono text-xs text-(--text-muted) break-all">
-              {pda}
+          {/* Shortened PDA with copy + explorer */}
+          <div className="flex items-center gap-2 mt-1 flex-wrap break-all sm:break-normal">
+            <span className="font-mono text-xs text-(--text-muted)">
+              {shortenAddress(pda, 8, 6)}
             </span>
             <button
               type="button"
@@ -214,7 +209,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
               title="Copy PDA"
               className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
             >
-              <Copy size={12} />
+              <Copy className="size-3" animateOnHover />
             </button>
             <button
               type="button"
@@ -222,7 +217,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
               title="View on Solana Explorer"
               className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
             >
-              <ExternalLink size={12} />
+              <ExternalLink className="size-3" animateOnHover />
             </button>
             {copiedPda && (
               <span className="text-[10px] text-(--success-text) font-mono">
@@ -231,10 +226,10 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
-            icon={<Pause size={14} />}
+            icon={<Pause size={14} animateOnHover />}
             loading={pauseMutation.isPending}
             onClick={() => pauseMutation.mutate()}
           >
@@ -242,7 +237,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
           </Button>
           <Button
             variant="primary"
-            icon={<Plus size={14} />}
+            icon={<Plus className="size-3.5" animateOnHover />}
             onClick={() => setIsModalOpen(true)}
           >
             Register dWallet
@@ -251,7 +246,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
           <div ref={dropdownRef} className="relative">
             <Button
               variant="ghost"
-              icon={<MoreVertical size={16} />}
+              icon={<EllipsisVertical size={16} animateOnHover />}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="px-3"
             >
@@ -267,7 +262,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
                   transition={{ duration: 0.15, ease: "easeOut" }}
                   className="absolute top-full right-0 mt-2 w-64 bg-(--bg) border border-border rounded-sm shadow-2xl z-50 overflow-hidden"
                 >
-                  <div className="p-2 space-y-1">
+                  <div className="p-1.5 space-y-0.5">
                     {actionOptions.map((action) => (
                       <button
                         key={action.label}
@@ -275,7 +270,7 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
                         onClick={() => handleActionClick(action)}
                         disabled={action.disabled}
                         className={cn(
-                          "w-full text-left px-4 py-3 text-sm rounded-sm flex items-center gap-3 transition-colors",
+                          "w-full text-left px-3 py-2 text-sm rounded-sm flex items-center gap-2.5 transition-colors",
                           action.disabled
                             ? "text-(--text-muted) opacity-50 cursor-not-allowed"
                             : "text-(--text-main) hover:bg-(--hover-bg) cursor-pointer",

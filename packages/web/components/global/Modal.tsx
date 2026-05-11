@@ -1,10 +1,10 @@
 "use client";
 
-import { X } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface ModalProps {
@@ -14,6 +14,7 @@ export interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  overlayClassName?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -23,6 +24,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   footer,
   className,
+  overlayClassName,
 }) => {
   const mountedRef = useRef(false);
   const [, forceUpdate] = useState(0);
@@ -56,7 +58,10 @@ export const Modal: React.FC<ModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-md z-9999 flex items-center justify-center p-4"
+          className={cn(
+            "fixed inset-0 bg-black/60 backdrop-blur-md z-9999 flex items-center justify-center p-4",
+            overlayClassName,
+          )}
           style={{
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
@@ -84,7 +89,7 @@ export const Modal: React.FC<ModalProps> = ({
                   onClick={onClose}
                   className="text-(--text-muted) hover:text-(--text-main) transition-colors hover:bg-(--hover-bg) rounded-sm p-1.5"
                 >
-                  <X className="size-5" />
+                  <X className="size-5" animateOnHover />
                 </button>
               </div>
             )}

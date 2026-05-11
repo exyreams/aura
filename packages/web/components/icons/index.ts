@@ -10,6 +10,7 @@ export {
   type ArchiveIconProps,
   type ArchiveProps,
 } from "./Archive";
+export { Ban, BanIcon, type BanIconProps, type BanProps } from "./Ban";
 export {
   Check,
   CheckIcon,
@@ -41,6 +42,12 @@ export {
   type ChevronRightProps,
 } from "./ChevronRight";
 export {
+  Circle,
+  CircleIcon,
+  type CircleIconProps,
+  type CircleProps,
+} from "./Circle";
+export {
   Clock,
   ClockIcon,
   type ClockIconProps,
@@ -53,6 +60,12 @@ export {
   type DollarSignIconProps,
   type DollarSignProps,
 } from "./DollarSign";
+export {
+  EllipsisVertical,
+  EllipsisVerticalIcon,
+  type EllipsisVerticalIconProps,
+  type EllipsisVerticalProps,
+} from "./EllipsisVertical";
 export {
   Eraser,
   EraserIcon,
@@ -84,6 +97,12 @@ export {
   type LockKeyholeOpenIconProps,
   type LockKeyholeOpenProps,
 } from "./LockKeyholeOpen";
+export {
+  Pause,
+  PauseIcon,
+  type PauseIconProps,
+  type PauseProps,
+} from "./Pause";
 export {
   PenLine,
   PenLineIcon,
@@ -153,6 +172,12 @@ export {
   type TriangleAlertProps,
 } from "./TriangleAlert";
 export {
+  Users,
+  UsersIcon,
+  type UsersIconProps,
+  type UsersProps,
+} from "./Users";
+export {
   Vault,
   VaultIcon,
   type VaultIconProps,
@@ -164,6 +189,7 @@ export {
   type WalletIconProps,
   type WalletProps,
 } from "./Wallet";
+export { X, XIcon, type XIconProps, type XProps } from "./X";
 export {
   Xcircle,
   XcircleIcon,

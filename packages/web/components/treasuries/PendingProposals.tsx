@@ -6,7 +6,10 @@ import { useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
+import { Tooltip } from "@/components/global/Tooltip";
+import { Copy, SquareArrowOutUpRight } from "@/components/icons";
 import { ConfidentialLifecycleModal } from "@/components/treasuries/ConfidentialLifecycleModal";
+import { ProposalLifecycleModal } from "@/components/treasuries/ProposalLifecycleModal";
 import {
   CHAINS,
   getActivePendingProposal,
@@ -31,7 +34,6 @@ type PendingSignatureRequest = {
 };
 
 const STATUS_PROPOSED = 0;
-const STATUS_DECRYPTION_REQUESTED = 1;
 const STATUS_SIGNATURE_PENDING = 2;
 const STATUS_EXECUTED = 3;
 const STATUS_DENIED = 4;
@@ -53,22 +55,13 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const [lifecycleDismissedId, setLifecycleDismissedId] = useState<
     string | null
   >(null);
+  const [proposalModalOpen, setProposalModalOpen] = useState(false);
   const wallet = useWallet();
   const { connection } = useConnection();
   const settings = useAppSettings();
   const { selectedAgent } = useAgents();
   const client = useAuraClient();
   const queryClient = useQueryClient();
-
-  const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
-      queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-      queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
-      queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-    ]);
-  };
-
   const messageApprovalAddress = messageApprovalFromPending(pending);
 
   const messageApprovalStatusQuery = useQuery({
@@ -105,16 +98,14 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
 
   // status codes: 0=Proposed, 1=DecryptionRequested, 2=AwaitingSignature,
   // 3=Executed, 4=Denied, 5=Cancelled, 6=Expired.
-  const hasScalarGuardrails =
-    !!treasury.account.confidentialGuardrails?.dailyLimitCiphertext;
   const policyFheType = hasPending
     ? (pending as { policyOutputFheType?: number | null }).policyOutputFheType
     : null;
+  // A proposal is confidential only if it actually carries FHE output data —
+  // not just because the treasury has guardrails configured.
   const isConfidential = Boolean(
     hasPending &&
-      (!!pending.policyOutputCiphertextAccount ||
-        policyFheType != null ||
-        hasScalarGuardrails),
+      (!!pending.policyOutputCiphertextAccount || policyFheType != null),
   );
   // For confidential proposals, Execute is handled inside ConfidentialLifecycleModal
   const canExecute =
@@ -284,10 +275,24 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       return "Transaction timed out waiting for confirmation. Try again.";
     if (/transaction too large/i.test(msg))
       return "Transaction is too large to submit. Contact support.";
+    if (/ttl.*elapsed|proposal.*expired/i.test(msg))
+      return "This proposal has expired. Create a new one.";
+    if (
+      /0x1783|PendingTransactionExpired|pending transaction expired/i.test(msg)
+    )
+      return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
     if (/transaction.*failed|failed.*transaction/i.test(msg))
       return "Transaction failed on-chain. Check your wallet balance and try again.";
-    if (/simulation failed/i.test(msg))
+    if (/simulation failed/i.test(msg)) {
+      // Check for specific program errors inside the simulation failure first
+      if (
+        /0x1783|PendingTransactionExpired|pending transaction expired/i.test(
+          msg,
+        )
+      )
+        return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
       return "Transaction simulation failed. Check your wallet balance and try again.";
+    }
     if (/already.*processed|duplicate.*transaction/i.test(msg))
       return "This transaction was already processed. Refresh and check the proposal status.";
     // --- RPC / network ---
@@ -317,6 +322,10 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       return "No pending proposal found on this treasury.";
     if (/proposal.*already.*exists/i.test(msg))
       return "A proposal is already active on this treasury. Cancel it before creating a new one.";
+    if (
+      /memory allocation failed|out of memory|SBF program panicked/i.test(msg)
+    )
+      return "Transaction failed — there may already be an active proposal on this treasury. Cancel the existing proposal first.";
     if (/execution paused/i.test(msg))
       return "Execution is paused on this treasury. Unpause it in treasury settings.";
     if (/treasury.*not.*found/i.test(msg))
@@ -401,53 +410,39 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
         </p>
       </div>
 
-      {sanitizedError && (
-        <div className="mb-4">
-          <Alert
-            variant="error"
-            message={sanitizedError}
-            onClose={() => {
-              executeMutation.reset();
-              finalizeMutation.reset();
-              cancelMutation.reset();
-            }}
-          />
-        </div>
-      )}
-
-      <div className="border border-border rounded-sm overflow-hidden">
-        <table className="w-full">
+      <div className="border border-border rounded-sm overflow-hidden overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="bg-(--card-content) border-b border-border">
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-left px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Proposal ID
               </th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-left px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Type
               </th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-left px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Chain
               </th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-left px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Amount
               </th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-left px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Recipient
               </th>
-              <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-left px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Status
               </th>
-              <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+              <th className="text-right px-3 sm:px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
             <tr className="border-b border-border hover:bg-(--hover-bg) transition-colors">
-              <td className="p-4 font-mono text-sm text-(--text-main)">
+              <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-main)">
                 PROP-{pending.proposalId.toString().padStart(4, "0")}
               </td>
-              <td className="p-4 font-mono text-sm text-(--text-main)">
+              <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-main)">
                 <div className="flex flex-col gap-1">
                   <span>{txType}</span>
                   {isConfidential && (
@@ -460,16 +455,45 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                   )}
                 </div>
               </td>
-              <td className="p-4 font-mono text-sm text-(--text-main)">
+              <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-main)">
                 {chain}
               </td>
-              <td className="p-4 font-mono text-sm text-(--text-main)">
+              <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-main)">
                 {formatCurrency(amountUsd)}
               </td>
-              <td className="p-4 font-mono text-sm text-(--text-muted)">
-                {shortenAddress(pending.recipientOrContract, 6, 4)}
+              <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-muted)">
+                <span className="flex items-center gap-1.5">
+                  <Tooltip content={pending.recipientOrContract}>
+                    <span>
+                      {shortenAddress(pending.recipientOrContract, 6, 4)}
+                    </span>
+                  </Tooltip>
+                  <Tooltip content="Copy">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigator.clipboard.writeText(
+                          pending.recipientOrContract,
+                        )
+                      }
+                      className="text-(--text-muted) hover:text-primary transition-colors"
+                    >
+                      <Copy size={10} animateOnHover />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="View on Explorer">
+                    <a
+                      href={`https://explorer.solana.com/address/${pending.recipientOrContract}?cluster=devnet`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-(--text-muted) hover:text-primary transition-colors"
+                    >
+                      <SquareArrowOutUpRight size={10} animateOnHover />
+                    </a>
+                  </Tooltip>
+                </span>
               </td>
-              <td className="p-4">
+              <td className="px-3 sm:px-4 py-4">
                 <div className="flex flex-col gap-1.5">
                   <StatusPill
                     variant={statusVariant}
@@ -493,87 +517,48 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
                   )}
                 </div>
               </td>
-              <td className="p-4 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  {isConfidential && (
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onClick={() => {
-                        setLifecycleDismissedId(null);
-                        setLifecycleOpen(true);
-                      }}
-                    >
-                      Lifecycle
-                    </Button>
-                  )}
-                  {!isConfidential && (
-                    <Button
-                      variant="primary"
-                      size="small"
-                      loading={executeMutation.isPending}
-                      disabled={
-                        !canExecute ||
-                        executeMutation.isPending ||
-                        !selectedAgent
-                      }
-                      onClick={() => executeMutation.mutate()}
-                    >
-                      Execute
-                    </Button>
-                  )}
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    loading={finalizeMutation.isPending}
-                    disabled={
-                      !canFinalize ||
-                      finalizeMutation.isPending ||
-                      !selectedAgent
-                    }
-                    onClick={() => finalizeMutation.mutate()}
-                  >
-                    Finalize
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="small"
-                    loading={cancelMutation.isPending}
-                    disabled={!canCancel || cancelMutation.isPending}
-                    onClick={() => cancelMutation.mutate()}
-                  >
-                    Cancel
-                  </Button>
-                </div>
+              <td className="px-3 sm:px-4 py-4 text-right">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setProposalModalOpen(true)}
+                >
+                  Review →
+                </Button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Lifecycle step hint */}
-      <div className="mt-4 p-4 bg-(--card-content) border border-border rounded-sm">
-        <p className="text-[11px] font-mono text-(--text-muted)">
-          {isConfidential
-            ? "Scalar FHE proposal — click Lifecycle to manage the decryption and execution steps."
-            : pending.status === STATUS_PROPOSED
-              ? "Step 1 of 2 — Click Execute to send the approve_message CPI to the dWallet. Requires the backend service running at " +
-                settings.backendUrl
-              : pending.status === STATUS_DECRYPTION_REQUESTED
-                ? "Decryption in progress — waiting for Ika Encrypt network."
-                : pending.status === STATUS_SIGNATURE_PENDING
-                  ? "Step 2 of 2 — dWallet has signed. Click Finalize to verify the signature and close the proposal."
-                  : pending.status === STATUS_EXECUTED
-                    ? "✓ Executed — proposal completed successfully."
-                    : pending.status === STATUS_DENIED
-                      ? "✗ Denied — policy engine rejected this proposal."
-                      : pending.status === STATUS_CANCELLED
-                        ? "Cancelled by owner."
-                        : pending.status === STATUS_EXPIRED
-                          ? "Expired — TTL elapsed before execution."
-                          : null}
-        </p>
-      </div>
+      <ProposalLifecycleModal
+        isOpen={proposalModalOpen}
+        onClose={() => setProposalModalOpen(false)}
+        pending={pending}
+        messageApprovalAddress={messageApprovalAddress || undefined}
+        ikaState={ikaState}
+        isConfidential={isConfidential}
+        canExecute={!!canExecute}
+        canFinalize={!!canFinalize}
+        canCancel={!!canCancel}
+        isExecuting={executeMutation.isPending}
+        isFinalizing={finalizeMutation.isPending}
+        isCancelling={cancelMutation.isPending}
+        error={sanitizedError}
+        onExecute={() => executeMutation.mutate()}
+        onFinalize={() => finalizeMutation.mutate()}
+        onCancel={() => cancelMutation.mutate()}
+        onLifecycle={() => {
+          setLifecycleDismissedId(null);
+          setLifecycleOpen(true);
+        }}
+        onDismissError={() => {
+          executeMutation.reset();
+          finalizeMutation.reset();
+          cancelMutation.reset();
+        }}
+        backendUrl={settings.backendUrl}
+      />
 
       {isConfidential && pending && (
         <ConfidentialLifecycleModal

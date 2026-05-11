@@ -2,13 +2,14 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, ExternalLink, Loader2, Lock, ShieldAlert } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
+import { Check, ExternalLink, Lock, ShieldAlert } from "@/components/icons";
 import {
   buildProposeTransactionArgs,
   sendWalletInstructions,
@@ -44,6 +45,57 @@ interface ProposeTransactionModalProps {
   pda: string;
 }
 
+function sanitizeProposalError(msg: string): string {
+  if (/user rejected|rejected the request|user denied/i.test(msg))
+    return "Transaction cancelled by wallet.";
+  if (/wallet not connected|no wallet|connect.*wallet/i.test(msg))
+    return "No wallet connected. Connect a wallet and try again.";
+  if (/insufficient funds for rent/i.test(msg))
+    return "Not enough SOL to cover rent. Top up your wallet and try again.";
+  if (/insufficient lamports|insufficient funds/i.test(msg))
+    return "Insufficient funds to complete this transaction.";
+  if (/0x1\b/.test(msg))
+    return "Not enough SOL in your wallet. Fund it with devnet SOL and try again.";
+  if (/memory allocation failed|out of memory|SBF program panicked/i.test(msg))
+    return "A proposal is already active on this treasury. Cancel the existing proposal before submitting a new one.";
+  if (/blockhash not found|blockhash.*expired/i.test(msg))
+    return "Transaction expired — the network was too slow. Please try again.";
+  if (/was not confirmed|transaction not confirmed/i.test(msg))
+    return "Transaction timed out waiting for confirmation. Try again.";
+  if (/ttl.*elapsed|proposal.*expired/i.test(msg))
+    return "This proposal has expired. Create a new one.";
+  if (/0x1783|PendingTransactionExpired|pending transaction expired/i.test(msg))
+    return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
+  if (/simulation failed/i.test(msg)) {
+    if (
+      /0x1783|PendingTransactionExpired|pending transaction expired/i.test(msg)
+    )
+      return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
+    if (/memory allocation failed|out of memory/i.test(msg))
+      return "A proposal is already active on this treasury. Cancel it before submitting a new one.";
+    return "Transaction simulation failed. Check your wallet balance and try again.";
+  }
+  if (/fetch.*fail|network.*error|econnrefused|failed to fetch/i.test(msg))
+    return "Could not reach the backend. Check your network connection and backend URL in Settings.";
+  if (/timeout|timed out/i.test(msg))
+    return "Request timed out. The network may be congested — please try again.";
+  if (/execution paused/i.test(msg))
+    return "Execution is paused on this treasury. Unpause it before submitting proposals.";
+  if (/create and select an agent/i.test(msg))
+    return "No agent selected. Create and select an agent first.";
+  if (/agent.*not found|invalid.*agent/i.test(msg))
+    return "Agent not found. Select a valid agent in the agent panel.";
+  // Strip UUIDs and Program log prefixes from fallback
+  return msg
+    .replace(/\s*\([0-9a-f-]{36}\)\s*$/i, "")
+    .replace(/^Program log:\s*/i, "")
+    .replace(/Simulation failed\.\s*Message:\s*/i, "")
+    .replace(/Transaction simulation failed:\s*/i, "")
+    .replace(/Error processing Instruction \d+:\s*/i, "")
+    .replace(/\.\s*Logs:[\s\S]*$/i, "")
+    .trim();
+}
+
 export function ProposeTransactionModal({
   isOpen,
   onClose,
@@ -74,16 +126,6 @@ export function ProposeTransactionModal({
   const [showPreview, setShowPreview] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const proposedRef = useRef(false);
-
-  useEffect(() => {
-    if (isOpen && !proposedRef.current) {
-      setSignature(null);
-      setShowPreview(false);
-    }
-    if (!isOpen) {
-      proposedRef.current = false;
-    }
-  }, [isOpen]);
 
   const preview = useMemo(
     () => ({
@@ -243,6 +285,13 @@ export function ProposeTransactionModal({
     proposeMutation.mutate();
   };
 
+  // Auto-dismiss error after 6 seconds
+  useEffect(() => {
+    if (!proposeMutation.error) return;
+    const t = setTimeout(() => proposeMutation.reset(), 6000);
+    return () => clearTimeout(t);
+  }, [proposeMutation.error, proposeMutation.reset]);
+
   const succeededPublic =
     proposeMutation.isSuccess && signature !== null && mode === "public";
   const succeededConfidential =
@@ -269,11 +318,11 @@ export function ProposeTransactionModal({
             {proposeMutation.error && (
               <Alert
                 variant="error"
-                message={
+                message={sanitizeProposalError(
                   proposeMutation.error instanceof Error
                     ? proposeMutation.error.message
-                    : "Failed to submit proposal"
-                }
+                    : "Failed to submit proposal",
+                )}
                 onClose={() => proposeMutation.reset()}
               />
             )}
@@ -337,7 +386,7 @@ export function ProposeTransactionModal({
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.25, duration: 0.25, type: "spring" }}
                   >
-                    <Check className="size-6 text-success" strokeWidth={2.5} />
+                    <Check className="size-6 text-success" animateOnHover />
                   </m.div>
                 </m.div>
                 <m.div
@@ -389,7 +438,7 @@ export function ProposeTransactionModal({
                         className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
                         aria-label="View on explorer"
                       >
-                        <ExternalLink className="size-3.5" />
+                        <ExternalLink className="size-3.5" animateOnHover />
                       </button>
                     </div>
                   </div>
@@ -432,7 +481,10 @@ export function ProposeTransactionModal({
                     </div>
                   ) : confidentialReady === false ? (
                     <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4 flex gap-3">
-                      <ShieldAlert className="size-4 text-(--warning-text) shrink-0 mt-0.5" />
+                      <ShieldAlert
+                        className="size-4 text-(--warning-text) shrink-0 mt-0.5"
+                        animateOnHover
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-(--warning-text) mb-1">
                           Confidential guardrails not configured
@@ -446,7 +498,7 @@ export function ProposeTransactionModal({
                           onClick={onClose}
                           className="inline-flex items-center gap-1.5 mono text-[10px] uppercase tracking-widest text-(--warning-text) hover:underline"
                         >
-                          <Lock className="size-3" />
+                          <Lock className="size-3" animateOnHover />
                           Configure Guardrails
                         </Link>
                       </div>

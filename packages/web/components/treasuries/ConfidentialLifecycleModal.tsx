@@ -3,17 +3,12 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Circle,
-  Loader2,
-  Lock,
-} from "lucide-react";
+import { Circle, Loader2 } from "lucide-react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
 import { Tooltip } from "@/components/global/Tooltip";
+import { Checkcircle, Lock, TriangleAlert } from "@/components/icons";
 import type { PendingProposalRecord } from "@/lib/aura-app";
 import { PROPOSAL_STATUSES, sendWalletInstructions } from "@/lib/aura-app";
 import {
@@ -52,7 +47,7 @@ function StepIndicator({
     <div className="flex items-center gap-3">
       <div className="shrink-0">
         {state === "done" ? (
-          <CheckCircle2 className="size-5 text-active" />
+          <Checkcircle className="size-5 text-active" animateOnHover />
         ) : state === "active" ? (
           <div className="size-5 rounded-full border-2 border-active flex items-center justify-center">
             <span className="text-[9px] font-bold text-active">{number}</span>
@@ -128,16 +123,6 @@ export function ConfidentialLifecycleModal({
   });
 
   const ikaState = messageApprovalStatusQuery.data?.state;
-
-  const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
-      queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-      queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-      queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
-    ]);
-  };
-
   const requestDecryptionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedAgent?.agentId) throw new Error("Select an agent first.");
@@ -352,6 +337,7 @@ export function ConfidentialLifecycleModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      overlayClassName="z-[10000]"
       title="Confidential Lifecycle"
       className="max-w-lg"
     >
@@ -359,7 +345,7 @@ export function ConfidentialLifecycleModal({
       <div className="mb-6 p-4 bg-(--card-content) border border-border rounded-sm">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Lock className="size-3.5 text-(--text-muted)" />
+            <Lock className="size-3.5 text-(--text-muted)" animateOnHover />
             <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
               Confidential Proposal
             </span>
@@ -485,7 +471,10 @@ export function ConfidentialLifecycleModal({
       {isExpired && (
         <div className="mb-4 rounded-sm border border-(--warning-border) bg-(--warning-bg) p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="size-4 text-(--warning-text) shrink-0 mt-0.5" />
+            <TriangleAlert
+              className="size-4 text-(--warning-text) shrink-0 mt-0.5"
+              animateOnHover
+            />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-(--warning-text) mb-1">
                 Proposal has expired

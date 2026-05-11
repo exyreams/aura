@@ -2,14 +2,19 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Copy, ExternalLink, Loader2, Zap } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AnimatePresence, m } from "motion/react";
+import Image from "next/image";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/global/Button";
+import { Dropdown } from "@/components/global/Dropdown";
 import { Input } from "@/components/global/Input";
 import { Modal } from "@/components/global/Modal";
 import { Tabs } from "@/components/global/Tabs";
+import { Tooltip } from "@/components/global/Tooltip";
 import { UsdInput } from "@/components/global/UsdInput";
+import { Checkcircle, Copy, ExternalLink, Wallet } from "@/components/icons";
 import {
   buildRegisterDwalletArgs,
   CHAINS,
@@ -19,6 +24,7 @@ import {
 import { postBackend } from "@/lib/backend-client";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
+import { shortenAddress } from "@/lib/utils";
 
 interface CreateDWalletResponse {
   dwalletId: string;
@@ -52,7 +58,6 @@ function CreateContent({
   form,
   setForm,
   registerMutation,
-  backendUrl,
 }: {
   createResult: CreateDWalletResponse | null;
   createMutation: { isPending: boolean; mutate: () => void };
@@ -60,19 +65,26 @@ function CreateContent({
   form: typeof emptyForm;
   setForm: React.Dispatch<React.SetStateAction<typeof emptyForm>>;
   registerMutation: { isPending: boolean };
-  backendUrl: string;
 }) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyVal = async (text: string, key: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
+
   if (!createResult) {
     return (
       <div className="space-y-6">
-        <div className="p-4 bg-(--info-bg) border border-(--info-border) rounded-sm text-[12px] text-(--text-muted) leading-relaxed">
-          This will call the Ika DKG service via the backend to generate a new
-          Ed25519 dWallet, wait for the on-chain PDA to appear, then transfer
-          ownership to AURA's CPI authority. Takes ~5–30 seconds.
-          <br />
-          <span className="text-(--text-main) font-medium">
-            Backend must be running at {backendUrl}
-          </span>
+        <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm text-[12px] text-(--text-muted) leading-relaxed space-y-1">
+          <p className="text-(--text-main) font-medium text-sm">
+            Generate a new dWallet
+          </p>
+          <p>
+            Creates a fresh Ed25519 dWallet on the Ika network using distributed
+            key generation (DKG), then registers it on-chain with this treasury.
+            Takes ~5–30 seconds.
+          </p>
         </div>
 
         <div className="flex flex-col items-center gap-4 py-6">
@@ -82,7 +94,7 @@ function CreateContent({
               createMutation.isPending ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
-                <Zap size={16} />
+                <Wallet size={16} animateOnHover />
               )
             }
             loading={createMutation.isPending}
@@ -106,63 +118,132 @@ function CreateContent({
     );
   }
 
+  const network = "devnet";
+
+  const rows: { label: string; value: string; explorerUrl?: string }[] = [
+    {
+      label: "dWallet Account",
+      value: createResult.dwalletAccount,
+      explorerUrl: `https://explorer.solana.com/address/${createResult.dwalletAccount}?cluster=${network}`,
+    },
+    {
+      label: "Authorized User",
+      value: createResult.authorizedUserPubkey,
+      explorerUrl: `https://explorer.solana.com/address/${createResult.authorizedUserPubkey}?cluster=${network}`,
+    },
+    {
+      label: "Public Key Hex",
+      value: createResult.publicKeyHex,
+    },
+    {
+      label: "Chain",
+      value:
+        CHAINS.find((c) => c.code === createResult.chain)?.label ?? "Solana",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
-        <CheckCircle size={18} className="text-emerald-500 shrink-0" />
-        <div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-sm">
+        <Checkcircle
+          size={16}
+          animateOnHover
+          className="text-emerald-500 shrink-0"
+        />
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-(--text-main)">
             dWallet created on Ika network
           </p>
-          <p className="text-[11px] text-(--text-muted)">
-            Tx:{" "}
-            <span className="font-mono">
-              {createResult.transferSignature.slice(0, 20)}...
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="font-mono text-[10px] text-(--text-muted)">
+              Tx:
             </span>
-          </p>
+            <Tooltip content={createResult.transferSignature}>
+              <span className="font-mono text-[10px] text-(--text-muted)">
+                {shortenAddress(createResult.transferSignature, 8, 6)}
+              </span>
+            </Tooltip>
+            <Tooltip content="Copy tx">
+              <button
+                type="button"
+                onClick={() => copyVal(createResult.transferSignature, "tx")}
+                className="text-(--text-muted) hover:text-primary transition-colors"
+              >
+                <Copy size={10} animateOnHover />
+              </button>
+            </Tooltip>
+            <Tooltip content="View on Explorer">
+              <a
+                href={`https://explorer.solana.com/tx/${createResult.transferSignature}?cluster=${network}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-(--text-muted) hover:text-primary transition-colors"
+              >
+                <ExternalLink size={10} animateOnHover />
+              </a>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        {[
-          { label: "dWallet Account", value: createResult.dwalletAccount },
-          {
-            label: "Authorized User",
-            value: createResult.authorizedUserPubkey,
-          },
-          {
-            label: "Public Key Hex",
-            value: `${createResult.publicKeyHex.slice(0, 24)}...`,
-          },
-          {
-            label: "Chain",
-            value:
-              CHAINS.find((c) => c.code === createResult.chain)?.label ??
-              "Solana",
-          },
-        ].map((row) => (
-          <div
-            key={row.label}
-            className="flex justify-between items-center py-2 border-b border-border last:border-0"
-          >
-            <span className="font-mono text-[10px] uppercase tracking-wider text-(--text-muted)">
-              {row.label}
-            </span>
-            <span className="font-mono text-[11px] text-(--text-main) truncate max-w-[200px]">
-              {row.value}
-            </span>
-          </div>
-        ))}
+      <div className="bg-(--card-content)/60 border border-border rounded-sm overflow-hidden">
+        {rows.map((row, i) => {
+          const isHash = row.value.length > 20;
+          const display = isHash ? shortenAddress(row.value, 8, 6) : row.value;
+          const isCopied = copiedKey === row.label;
+          return (
+            <div
+              key={row.label}
+              className={`flex items-center justify-between px-3 py-2.5 ${i < rows.length - 1 ? "border-b border-border" : ""}`}
+            >
+              <span className="mono text-[10px] uppercase tracking-wider text-(--text-muted) shrink-0">
+                {row.label}
+              </span>
+              <span className="mono text-[11px] text-(--text-main) flex items-center gap-1.5">
+                {isHash ? (
+                  <Tooltip content={row.value}>
+                    <span>{display}</span>
+                  </Tooltip>
+                ) : (
+                  <span>{display}</span>
+                )}
+                {isHash && (
+                  <>
+                    <Tooltip content={isCopied ? "Copied!" : "Copy"}>
+                      <button
+                        type="button"
+                        onClick={() => copyVal(row.value, row.label)}
+                        className="text-(--text-muted) hover:text-primary transition-colors"
+                      >
+                        <Copy size={10} animateOnHover />
+                      </button>
+                    </Tooltip>
+                    {row.explorerUrl && (
+                      <Tooltip content="View on Explorer">
+                        <a
+                          href={row.explorerUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-(--text-muted) hover:text-primary transition-colors"
+                        >
+                          <ExternalLink size={10} animateOnHover />
+                        </a>
+                      </Tooltip>
+                    )}
+                  </>
+                )}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
-      <div>
-        <UsdInput
-          label="Initial Balance"
-          valueCents={form.balanceUsd}
-          onChangeCents={(v) => setForm((f) => ({ ...f, balanceUsd: v }))}
-          disabled={registerMutation.isPending}
-        />
-      </div>
+      <UsdInput
+        label="Initial Balance"
+        valueCents={form.balanceUsd}
+        onChangeCents={(v) => setForm((f) => ({ ...f, balanceUsd: v }))}
+        disabled={registerMutation.isPending}
+      />
     </div>
   );
 }
@@ -185,31 +266,15 @@ function ManualContent({
         >
           Chain
         </label>
-        <div className="relative">
-          <select
-            id="chain-code"
-            className="bg-(--input-bg) border border-border rounded-sm px-4 py-3 text-sm outline-none w-full transition-colors text-(--text-main) focus:border-primary appearance-none"
-            value={form.chain}
-            onChange={(e) => setForm((f) => ({ ...f, chain: e.target.value }))}
-            disabled={anyPending}
-          >
-            {CHAINS.map((chain) => (
-              <option key={chain.code} value={chain.code}>
-                {chain.label}
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-(--text-muted)">
-            <svg
-              className="size-4 fill-current"
-              viewBox="0 0 20 20"
-              aria-hidden="true"
-            >
-              <title>Dropdown arrow</title>
-              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-            </svg>
-          </div>
-        </div>
+        <Dropdown
+          options={CHAINS.map((chain) => ({
+            value: String(chain.code),
+            label: chain.label,
+          }))}
+          value={form.chain}
+          onChange={(v) => setForm((f) => ({ ...f, chain: v }))}
+          placeholder="Select chain"
+        />
       </div>
       <Input
         label="dWallet ID"
@@ -286,6 +351,7 @@ function CurrentContent({
   onCopy: (text: string, id: string) => void;
   network: string;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const registered = treasury.account.dwallets.filter(
     (dw) => dw.dwalletId.length > 0,
   );
@@ -301,86 +367,187 @@ function CurrentContent({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {registered.map((dw) => {
         const chainLabel =
           CHAINS.find((c) => c.code === dw.chain)?.label ?? "Unknown";
+        const isExpanded = expandedId === dw.dwalletId;
+
+        const chainIconMap: Record<string, string> = {
+          Bitcoin: "/assets/bitcoin.svg",
+          Ethereum: "/assets/ethereum.svg",
+          Solana: "/assets/solana.svg",
+          Polygon: "/assets/polygon.svg",
+          Arbitrum: "/assets/arbitrum.svg",
+          Optimism: "/assets/optimism.svg",
+        };
+        const chainIcon = chainIconMap[chainLabel];
+
         return (
           <div
             key={dw.dwalletId}
-            className="p-4 bg-(--card-content) border border-border rounded-sm space-y-2"
+            className="border border-border rounded-sm overflow-hidden"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="size-7 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center">
-                  <span className="text-xs font-bold">{chainLabel[0]}</span>
+            {/* Header row */}
+            <button
+              type="button"
+              onClick={() => setExpandedId(isExpanded ? null : dw.dwalletId)}
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                setExpandedId(isExpanded ? null : dw.dwalletId)
+              }
+              className="w-full text-left p-4 bg-(--card-content)/60 hover:bg-(--hover-bg) transition-colors cursor-pointer"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-8 rounded-sm bg-(--card-bg) border border-border flex items-center justify-center shrink-0 p-1">
+                    {chainIcon ? (
+                      <Image
+                        src={chainIcon}
+                        alt={chainLabel}
+                        width={24}
+                        height={24}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-xs font-bold">{chainLabel[0]}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-semibold text-sm text-(--text-main)">
+                        {chainLabel}
+                      </span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-sm border border-success/40 bg-success/10 text-success">
+                        Active
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[11px] text-(--text-muted) truncate">
+                        {dw.address
+                          ? `${dw.address.slice(0, 8)}...${dw.address.slice(-6)}`
+                          : "No address"}
+                      </span>
+                      {dw.address && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCopy(dw.address, `addr-hdr-${dw.dwalletId}`);
+                          }}
+                          className="text-(--text-muted) hover:text-(--text-main) transition-colors shrink-0"
+                        >
+                          <Copy size={10} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="size-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="font-mono text-[10px] text-(--text-main)">
+                        ${(Number(dw.balanceUsd.toString()) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-(--text-main)">
-                  {chainLabel}
-                </span>
-              </div>
-              <span className="font-mono text-xs text-(--text-main)">
-                ${(Number(dw.balanceUsd.toString()) / 100).toFixed(2)}
-              </span>
-            </div>
-            <div className="p-2 bg-(--card-bg) rounded-sm border border-border">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) block mb-0.5">
-                dWallet Account
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-(--text-main) break-all flex-1">
-                  {dw.dwalletId}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onCopy(dw.dwalletId, `dw-${dw.dwalletId}`)}
-                  className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`shrink-0 text-(--text-muted) transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                  aria-hidden="true"
                 >
-                  <Copy size={11} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    window.open(
-                      `https://explorer.solana.com/address/${dw.dwalletId}?cluster=${network}`,
-                      "_blank",
-                    )
-                  }
-                  className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </button>
+
+            {/* Expanded detail rows */}
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <m.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                  className="overflow-hidden"
                 >
-                  <ExternalLink size={11} />
-                </button>
-                {copiedId === `dw-${dw.dwalletId}` && (
-                  <span className="text-[10px] text-(--success-text) font-mono shrink-0">
-                    copied
-                  </span>
-                )}
-              </div>
-            </div>
-            {dw.address && (
-              <div className="p-2 bg-(--card-bg) rounded-sm border border-border">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) block mb-0.5">
-                  {chainLabel} Address
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-(--text-main) break-all flex-1">
-                    {dw.address}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onCopy(dw.address, `addr-${dw.dwalletId}`)}
-                    className="shrink-0 text-(--text-muted) hover:text-(--text-main) transition-colors"
-                  >
-                    <Copy size={11} />
-                  </button>
-                  {copiedId === `addr-${dw.dwalletId}` && (
-                    <span className="text-[10px] text-(--success-text) font-mono shrink-0">
-                      copied
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+                  <div className="p-3 bg-(--card-bg) border-t border-border space-y-2">
+                    {[
+                      {
+                        label: `${chainLabel} Address — send tokens here`,
+                        value: dw.address,
+                        key: `addr-${dw.dwalletId}`,
+                        explorer: null,
+                      },
+                      {
+                        label: "dWallet Account (Solana PDA)",
+                        value: dw.dwalletId,
+                        key: `dwid-${dw.dwalletId}`,
+                        explorer: `https://explorer.solana.com/address/${dw.dwalletId}?cluster=${network}`,
+                      },
+                      {
+                        label: "Authorized User (agent keypair)",
+                        value: dw.authorizedUserPubkey?.toString?.() ?? null,
+                        key: `auth-${dw.dwalletId}`,
+                        explorer: null,
+                      },
+                      {
+                        label: "Public Key Hex (signing key)",
+                        value: dw.publicKeyHex ?? null,
+                        key: `hex-${dw.dwalletId}`,
+                        explorer: null,
+                      },
+                    ]
+                      .filter((r) => r.value)
+                      .map((row) => (
+                        <div
+                          key={row.key}
+                          className="p-2 bg-(--card-content)/60 rounded-sm border border-border"
+                        >
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) block mb-0.5">
+                            {row.label}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[11px] text-(--text-main) break-all flex-1">
+                              {row.value}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => onCopy(row.value ?? "", row.key)}
+                                className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+                              >
+                                <Copy size={11} />
+                              </button>
+                              {row.explorer && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    window.open(row.explorer ?? "", "_blank")
+                                  }
+                                  className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+                                >
+                                  <ExternalLink size={11} />
+                                </button>
+                              )}
+                              {copiedId === row.key && (
+                                <span className="text-[10px] text-(--success-text) font-mono">
+                                  copied
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </m.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       })}
@@ -430,16 +597,6 @@ export const RegisterDWalletForm = ({
       setCopiedId(null);
     }
   }, [isOpen]);
-
-  const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ["treasury", treasury.publicKey.toBase58()],
-      }),
-      queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-    ]);
-  };
-
   // Step 1: Create dWallet via backend (DKG + transfer ownership)
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -558,7 +715,6 @@ export const RegisterDWalletForm = ({
           form={form}
           setForm={setForm}
           registerMutation={registerMutation}
-          backendUrl={settings.backendUrl}
         />
       ),
     },
@@ -631,12 +787,14 @@ export const RegisterDWalletForm = ({
       className="max-w-2xl"
       footer={footer}
     >
-      <Tabs
-        tabs={tabs}
-        defaultTab="create"
-        layoutId="registerDwalletTabs"
-        onChange={(id) => setTab(id as "create" | "manual" | "current")}
-      />
+      <div className="min-h-[320px]">
+        <Tabs
+          tabs={tabs}
+          defaultTab="create"
+          layoutId="registerDwalletTabs"
+          onChange={(id) => setTab(id as "create" | "manual" | "current")}
+        />
+      </div>
     </Modal>
   );
 };

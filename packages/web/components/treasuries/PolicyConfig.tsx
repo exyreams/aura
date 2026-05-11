@@ -1,20 +1,23 @@
 "use client";
 
 import type { PublicKey } from "@solana/web3.js";
+import Image from "next/image";
+import { useState } from "react";
+import { Badge, StatusPill } from "@/components/global/Badge";
+import { Progress } from "@/components/global/Progress";
+import { Tabs } from "@/components/global/Tabs";
+import { Tooltip } from "@/components/global/Tooltip";
 import {
   Ban,
   Check,
   ChevronDown,
   Copy,
   ExternalLink,
+  KeyRound,
+  Lock,
   Shield,
   ShieldCheck,
-} from "lucide-react";
-import Image from "next/image";
-import { useState } from "react";
-import { Badge, StatusPill } from "@/components/global/Badge";
-import { Tabs } from "@/components/global/Tabs";
-import { Tooltip } from "@/components/global/Tooltip";
+} from "@/components/icons";
 import { CHAINS } from "@/lib/aura-app";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAppSettings, useDWalletLiveBalance } from "@/lib/hooks";
@@ -48,6 +51,24 @@ function bs58Encode(bytes: Uint8Array): string {
 }
 
 // ---------------------------------------------------------------------------
+// Policy label tooltips
+// ---------------------------------------------------------------------------
+const POLICY_TOOLTIPS: Record<string, string> = {
+  "DAILY LIMIT": "Maximum USD spend allowed per 24-hour rolling window",
+  "PER-TX LIMIT": "Maximum USD amount per individual transaction",
+  "DAYTIME HOURLY": "Hourly spend cap during daytime hours (6am–10pm)",
+  "NIGHTTIME HOURLY": "Hourly spend cap during nighttime hours (10pm–6am)",
+  "VELOCITY LIMIT":
+    "Maximum spend across recent transactions in a sliding window",
+  "MAX SLIPPAGE":
+    "Maximum allowed price slippage in basis points (1 bps = 0.01%)",
+  "MAX QUOTE AGE": "Maximum age of oracle price quotes accepted for validation",
+  "MAX RISK SCORE":
+    "Maximum counterparty risk score (0=lowest risk, 100=highest)",
+  "SHARED POOL": "Shared spending pool limit for swarm agents",
+};
+
+// ---------------------------------------------------------------------------
 // Module-level sub-components (lifted out to avoid re-creation on each render)
 // ---------------------------------------------------------------------------
 
@@ -66,6 +87,7 @@ function AddressField({
   onCopy: (value: string, key: string) => void;
   network: string;
 }) {
+  const isCopied = copiedField === fieldKey;
   return (
     <div className="py-2 border-b border-border last:border-0">
       <span className="mono text-[9px] uppercase text-(--text-muted) tracking-wider block mb-1">
@@ -78,32 +100,36 @@ function AddressField({
           </span>
         </Tooltip>
         <div className="flex items-center gap-1 shrink-0">
-          <Tooltip content={copiedField === fieldKey ? "Copied!" : "Copy"}>
-            <button
-              type="button"
-              onClick={() => onCopy(value, fieldKey)}
-              className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
-            >
-              {copiedField === fieldKey ? (
-                <Check className="size-3 text-active" />
-              ) : (
-                <Copy className="size-3" />
-              )}
-            </button>
+          <Tooltip content={isCopied ? "Copied!" : "Copy"}>
+            <span>
+              <button
+                type="button"
+                onClick={() => onCopy(value, fieldKey)}
+                className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
+              >
+                {isCopied ? (
+                  <Check size={12} animateOnHover className="text-active" />
+                ) : (
+                  <Copy size={12} animateOnHover />
+                )}
+              </button>
+            </span>
           </Tooltip>
-          <Tooltip content="View on Solana Explorer">
-            <button
-              type="button"
-              onClick={() =>
-                window.open(
-                  `https://explorer.solana.com/address/${value}?cluster=${network}`,
-                  "_blank",
-                )
-              }
-              className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
-            >
-              <ExternalLink className="size-3" />
-            </button>
+          <Tooltip content="View on Explorer">
+            <span>
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(
+                    `https://explorer.solana.com/address/${value}?cluster=${network}`,
+                    "_blank",
+                  )
+                }
+                className="p-0.5 rounded text-(--text-muted) hover:text-(--text-main) transition-colors"
+              >
+                <ExternalLink size={12} animateOnHover />
+              </button>
+            </span>
           </Tooltip>
         </div>
       </div>
@@ -123,6 +149,8 @@ function InfoContent({ treasury }: { treasury: TreasuryEntry }) {
   const totalTx = Number(treasury.account.totalTransactions.toString());
   const hasGuardrails = !!treasury.account.confidentialGuardrails;
   const guardrailMode = hasGuardrails ? "Scalar" : null;
+  const spendPct = dailyLimit > 0 ? (spentToday / dailyLimit) * 100 : 0;
+  const isPaused = treasury.account.executionPaused;
 
   const copy = async (text: string, key: string) => {
     await navigator.clipboard.writeText(text);
@@ -133,7 +161,7 @@ function InfoContent({ treasury }: { treasury: TreasuryEntry }) {
   return (
     <div className="space-y-4">
       {/* Identity */}
-      <div className="p-4 bg-(--card-content) border border-border rounded-sm">
+      <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm">
         <span className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-wider block mb-3">
           Identity
         </span>
@@ -168,36 +196,81 @@ function InfoContent({ treasury }: { treasury: TreasuryEntry }) {
       </div>
 
       {/* Status */}
-      <div className="p-4 bg-(--card-content) border border-border rounded-sm">
+      <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm">
         <span className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-wider block mb-3">
           Status
         </span>
         <div className="grid grid-cols-2 gap-3">
+          {/* Execution status */}
           <div>
             <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1.5">
               Execution
             </span>
-            <Badge
-              variant={treasury.account.executionPaused ? "paused" : "active"}
-              className="text-[9px] px-2 py-0.5"
+            <Tooltip
+              content={
+                isPaused
+                  ? "Execution is paused — no new proposals will be processed"
+                  : "Execution is active — proposals are being processed normally"
+              }
             >
-              {treasury.account.executionPaused ? "Paused" : "Active"}
-            </Badge>
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full shrink-0",
+                    isPaused ? "bg-amber-400" : "bg-emerald-400",
+                  )}
+                />
+                <Badge
+                  variant={isPaused ? "paused" : "active"}
+                  className="text-[9px] px-2 py-0.5"
+                >
+                  {isPaused ? "Paused" : "Active"}
+                </Badge>
+              </span>
+            </Tooltip>
           </div>
+
+          {/* FHE Guardrails */}
           <div>
             <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1.5">
               FHE Guardrails
             </span>
-            {guardrailMode ? (
-              <Badge variant="active" className="text-[9px] px-2 py-0.5">
-                {guardrailMode}
-              </Badge>
-            ) : (
-              <Badge variant="default" className="text-[9px] px-2 py-0.5">
-                Not set
-              </Badge>
-            )}
+            <Tooltip
+              content={
+                guardrailMode
+                  ? "Confidential FHE guardrails are active — spend limits are encrypted on-chain"
+                  : "No FHE guardrails configured — policy runs in plaintext mode"
+              }
+            >
+              <span className="inline-flex items-center gap-1.5">
+                {guardrailMode ? (
+                  <>
+                    <KeyRound
+                      size={12}
+                      animateOnHover
+                      className="text-emerald-400 shrink-0"
+                    />
+                    <Badge variant="active" className="text-[9px] px-2 py-0.5">
+                      {guardrailMode}
+                    </Badge>
+                  </>
+                ) : (
+                  <>
+                    <Lock
+                      size={12}
+                      animateOnHover
+                      className="text-(--text-muted) shrink-0"
+                    />
+                    <Badge variant="default" className="text-[9px] px-2 py-0.5">
+                      Not set
+                    </Badge>
+                  </>
+                )}
+              </span>
+            </Tooltip>
           </div>
+
+          {/* Today's Spend */}
           <div>
             <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1">
               Today's Spend
@@ -205,10 +278,19 @@ function InfoContent({ treasury }: { treasury: TreasuryEntry }) {
             <span className="text-sm font-semibold text-(--text-main)">
               {formatCurrency(spentToday)}
             </span>
-            <span className="mono text-[9px] text-(--text-muted) block">
+            <span className="mono text-[9px] text-(--text-muted) block mb-1.5">
               of {formatCurrency(dailyLimit)} limit
             </span>
+            <Progress
+              value={spendPct}
+              max={100}
+              size="extraSmall"
+              showPercentage={false}
+              className="space-y-0!"
+            />
           </div>
+
+          {/* Total Transactions */}
           <div>
             <span className="mono text-[9px] uppercase text-(--text-muted) block mb-1">
               Total Transactions
@@ -228,75 +310,93 @@ function PolicyContent({
 }: {
   policy: TreasuryEntry["account"]["policyConfig"];
 }) {
+  const rows = [
+    {
+      label: "DAILY LIMIT",
+      raw: Number(policy.dailyLimitUsd.toString()) / 100,
+      isCurrency: true,
+    },
+    {
+      label: "PER-TX LIMIT",
+      raw: Number(policy.perTxLimitUsd.toString()) / 100,
+      isCurrency: true,
+    },
+    {
+      label: "DAYTIME HOURLY",
+      raw: Number(policy.daytimeHourlyLimitUsd.toString()) / 100,
+      isCurrency: true,
+    },
+    {
+      label: "NIGHTTIME HOURLY",
+      raw: Number(policy.nighttimeHourlyLimitUsd.toString()) / 100,
+      isCurrency: true,
+    },
+    {
+      label: "VELOCITY LIMIT",
+      raw: Number(policy.velocityLimitUsd.toString()) / 100,
+      isCurrency: true,
+    },
+    {
+      label: "MAX SLIPPAGE",
+      value: `${policy.maxSlippageBps} bps`,
+      isCurrency: false,
+    },
+    {
+      label: "MAX QUOTE AGE",
+      value: policy.maxQuoteAgeSecs
+        ? `${policy.maxQuoteAgeSecs.toString()}s`
+        : null,
+      isCurrency: false,
+    },
+    {
+      label: "MAX RISK SCORE",
+      value: `${policy.maxCounterpartyRiskScore}`,
+      isCurrency: false,
+    },
+    {
+      label: "SHARED POOL",
+      raw: policy.sharedPoolLimitUsd
+        ? Number(policy.sharedPoolLimitUsd.toString()) / 100
+        : null,
+      isCurrency: true,
+    },
+  ] as const;
+
   return (
-    <div className="space-y-2">
-      {[
-        {
-          label: "DAILY LIMIT",
-          value: formatCurrency(Number(policy.dailyLimitUsd.toString()) / 100),
-          variant: "default" as const,
-        },
-        {
-          label: "PER-TX LIMIT",
-          value: formatCurrency(Number(policy.perTxLimitUsd.toString()) / 100),
-          variant: "default" as const,
-        },
-        {
-          label: "DAYTIME HOURLY",
-          value: formatCurrency(
-            Number(policy.daytimeHourlyLimitUsd.toString()) / 100,
-          ),
-          variant: "default" as const,
-        },
-        {
-          label: "NIGHTTIME HOURLY",
-          value: formatCurrency(
-            Number(policy.nighttimeHourlyLimitUsd.toString()) / 100,
-          ),
-          variant: "default" as const,
-        },
-        {
-          label: "VELOCITY LIMIT",
-          value: formatCurrency(
-            Number(policy.velocityLimitUsd.toString()) / 100,
-          ),
-          variant: "default" as const,
-        },
-        {
-          label: "MAX SLIPPAGE",
-          value: `${policy.maxSlippageBps} bps`,
-          variant: "default" as const,
-        },
-        {
-          label: "MAX QUOTE AGE",
-          value: policy.maxQuoteAgeSecs
-            ? `${policy.maxQuoteAgeSecs.toString()}s`
-            : "N/A",
-          variant: "default" as const,
-        },
-        {
-          label: "MAX RISK SCORE",
-          value: `${policy.maxCounterpartyRiskScore}`,
-          variant: "default" as const,
-        },
-        {
-          label: "SHARED POOL",
-          value: policy.sharedPoolLimitUsd
-            ? formatCurrency(Number(policy.sharedPoolLimitUsd.toString()) / 100)
-            : "N/A",
-          variant: "default" as const,
-        },
-      ].map((item) => (
-        <div
-          key={item.label}
-          className="flex justify-between items-center py-2 border-b border-border last:border-b-0"
-        >
-          <span className="font-mono text-[11px] uppercase tracking-wider text-(--text-muted)">
-            {item.label}
-          </span>
-          <Badge variant={item.variant}>{item.value}</Badge>
-        </div>
-      ))}
+    <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm space-y-0">
+      {rows.map((item) => {
+        const displayValue =
+          "raw" in item
+            ? item.raw != null
+              ? item.isCurrency
+                ? formatCurrency(item.raw)
+                : String(item.raw)
+              : null
+            : (item.value ?? null);
+        const isNA = displayValue == null;
+        const tooltip = POLICY_TOOLTIPS[item.label];
+
+        return (
+          <div
+            key={item.label}
+            className="flex justify-between items-center py-2.5 border-b border-border last:border-b-0"
+          >
+            <Tooltip content={tooltip}>
+              <span className="font-mono text-[11px] uppercase tracking-wider text-(--text-muted) cursor-help">
+                {item.label}
+              </span>
+            </Tooltip>
+            <span
+              className={cn(
+                "font-mono text-[12px] tabular-nums",
+                isNA ? "text-(--text-muted)" : "text-(--text-main)",
+              )}
+            >
+              {isNA ? "N/A" : displayValue}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -308,54 +408,101 @@ function GovernanceContent({
   multisig: TreasuryEntry["account"]["multisig"];
   swarm: TreasuryEntry["account"]["swarm"];
 }) {
+  const [copiedGuardian, setCopiedGuardian] = useState<string | null>(null);
   const hasMultisig = multisig && multisig.guardians.length > 0;
   const hasSwarm = swarm && swarm.memberAgents.length > 0;
+
+  const copyGuardian = async (addr: string) => {
+    await navigator.clipboard.writeText(addr);
+    setCopiedGuardian(addr);
+    setTimeout(() => setCopiedGuardian(null), 2000);
+  };
 
   return (
     <div>
       <div className="grid grid-cols-1 gap-4 mb-6">
-        <div className="p-4 bg-(--card-content) border border-border rounded-sm">
+        {/* Emergency Multisig */}
+        <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm">
           <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted) block mb-3">
             Emergency Multisig
           </span>
           {hasMultisig ? (
             <>
               <div className="flex items-center gap-2 mb-3">
-                <ShieldCheck size={16} className="text-(--success-text)" />
+                <ShieldCheck
+                  size={16}
+                  animateOnHover
+                  className="text-(--success-text)"
+                />
                 <span className="text-sm font-semibold text-(--text-main)">
                   {multisig.requiredSignatures}-of-{multisig.guardians.length}{" "}
                   Active
                 </span>
               </div>
               <div className="space-y-2">
-                {multisig.guardians.map((guardian: PublicKey, idx: number) => (
-                  <div
-                    key={guardian.toBase58()}
-                    className="text-[11px] text-(--text-muted)"
-                  >
-                    <span className="font-mono">Guardian {idx + 1}:</span>{" "}
-                    {shortenAddress(guardian.toBase58(), 4, 4)}
-                  </div>
-                ))}
+                {multisig.guardians.map((guardian: PublicKey, idx: number) => {
+                  const addr = guardian.toBase58();
+                  const isCopied = copiedGuardian === addr;
+                  return (
+                    <div
+                      key={addr}
+                      className="flex items-center gap-2 text-[11px] text-(--text-muted)"
+                    >
+                      <span className="font-mono shrink-0">
+                        Guardian {idx + 1}:
+                      </span>
+                      <Tooltip content={addr}>
+                        <span className="font-mono cursor-default">
+                          {shortenAddress(addr, 6, 4)}
+                        </span>
+                      </Tooltip>
+                      <Tooltip content={isCopied ? "Copied!" : "Copy"}>
+                        <span>
+                          <button
+                            type="button"
+                            onClick={() => copyGuardian(addr)}
+                            className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+                          >
+                            {isCopied ? (
+                              <Check
+                                size={11}
+                                animateOnHover
+                                className="text-active"
+                              />
+                            ) : (
+                              <Copy size={11} animateOnHover />
+                            )}
+                          </button>
+                        </span>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
               </div>
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <Ban size={16} className="text-(--text-muted)" />
+              <Ban size={16} animateOnHover className="text-(--text-muted)" />
               <span className="text-sm text-(--text-muted)">
                 Not Configured
               </span>
             </div>
           )}
         </div>
-        <div className="p-4 bg-(--card-content) border border-border rounded-sm">
+
+        {/* Agent Swarm */}
+        <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm">
           <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted) block mb-3">
             Agent Swarm
           </span>
           {hasSwarm ? (
             <>
               <div className="flex items-center gap-2 mb-3">
-                <ShieldCheck size={16} className="text-(--success-text)" />
+                <ShieldCheck
+                  size={16}
+                  animateOnHover
+                  className="text-(--success-text)"
+                />
                 <span className="text-sm font-semibold text-(--text-main)">
                   {swarm.memberAgents.length} Members
                 </span>
@@ -370,7 +517,7 @@ function GovernanceContent({
           ) : (
             <>
               <div className="flex items-center gap-2 mb-3">
-                <Ban size={16} className="text-(--text-muted)" />
+                <Ban size={16} animateOnHover className="text-(--text-muted)" />
                 <span className="text-sm text-(--text-muted)">
                   Not Configured
                 </span>
@@ -384,20 +531,27 @@ function GovernanceContent({
         </div>
       </div>
 
-      <div className="p-4 bg-(--info-bg) border border-(--info-border) rounded-sm">
-        <div className="flex items-start gap-3">
-          <Shield size={16} className="text-(--info-text) mt-0.5 shrink-0" />
-          <div>
-            <h4 className="text-sm font-semibold text-(--text-main) mb-1">
-              Governance Override
-            </h4>
-            <p className="text-[11px] text-(--text-muted)">
-              Emergency multisig can override policy decisions and cancel
-              pending proposals in break-glass scenarios.
-            </p>
+      {/* Governance Override info banner */}
+      <Tooltip content="Emergency multisig guardians can override policy decisions and cancel pending proposals in break-glass scenarios, bypassing normal agent authority.">
+        <div className="p-4 bg-(--info-bg) border border-(--info-border) rounded-sm cursor-help">
+          <div className="flex items-start gap-3">
+            <Shield
+              size={16}
+              animateOnHover
+              className="text-(--info-text) mt-0.5 shrink-0"
+            />
+            <div>
+              <h4 className="text-sm font-semibold text-(--text-main) mb-1">
+                Governance Override
+              </h4>
+              <p className="text-[11px] text-(--text-muted)">
+                Emergency multisig can override policy decisions and cancel
+                pending proposals in break-glass scenarios.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </Tooltip>
     </div>
   );
 }
@@ -427,36 +581,49 @@ function InfoRow({
   onCopy: (value: string, key: string) => void;
 }) {
   if (!value) return null;
+  const isCopied = copiedId === copyKey;
+  const isLong = value.length > 20;
+  const displayValue = isLong ? shortenAddress(value, 8, 6) : value;
+
   return (
     <div className="p-2 bg-(--card-bg) rounded-sm border border-border">
       <span className="font-mono text-[9px] uppercase tracking-widest text-(--text-muted) block mb-0.5">
         {label}
       </span>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[11px] text-(--text-main) break-all flex-1">
-          {value}
-        </span>
+        <Tooltip content={isLong ? value : undefined}>
+          <span className="font-mono text-[11px] text-(--text-main) break-all flex-1 cursor-default">
+            {displayValue}
+          </span>
+        </Tooltip>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => onCopy(value, copyKey)}
-            className="text-(--text-muted) hover:text-(--text-main) transition-colors"
-          >
-            <Copy size={11} />
-          </button>
-          {explorerUrl && (
-            <button
-              type="button"
-              onClick={() => window.open(explorerUrl, "_blank")}
-              className="text-(--text-muted) hover:text-(--text-main) transition-colors"
-            >
-              <ExternalLink size={11} />
-            </button>
-          )}
-          {copiedId === copyKey && (
-            <span className="text-[10px] text-(--success-text) font-mono">
-              copied
+          <Tooltip content={isCopied ? "Copied!" : "Copy"}>
+            <span>
+              <button
+                type="button"
+                onClick={() => onCopy(value, copyKey)}
+                className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+              >
+                {isCopied ? (
+                  <Check size={11} animateOnHover className="text-active" />
+                ) : (
+                  <Copy size={11} animateOnHover />
+                )}
+              </button>
             </span>
+          </Tooltip>
+          {explorerUrl && (
+            <Tooltip content="View on Explorer">
+              <span>
+                <button
+                  type="button"
+                  onClick={() => window.open(explorerUrl, "_blank")}
+                  className="text-(--text-muted) hover:text-(--text-main) transition-colors"
+                >
+                  <ExternalLink size={11} animateOnHover />
+                </button>
+              </span>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -488,8 +655,11 @@ function DWalletCard({
 }) {
   const chain = CHAINS.find((c) => c.code === dw.chain);
   const chainName = chain?.label || "Unknown";
+  const chainDescription = chainName;
   const isExpanded = expandedId === dw.dwalletId;
   const chainIcon = chainIconMap[chainName];
+  const hdrKey = `hdr-${dw.dwalletId}`;
+  const isHdrCopied = copiedId === hdrKey;
 
   let displayAddress = dw.address;
   if (dw.address && /[+/=]/.test(dw.address)) {
@@ -502,13 +672,19 @@ function DWalletCard({
   }
 
   const liveBalance = useDWalletLiveBalance(displayAddress);
+  const hasBalance =
+    liveBalance.data &&
+    (liveBalance.data.sol > 0 || liveBalance.data.tokens.length > 0);
 
   return (
     <div className="border border-border rounded-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setExpandedId(isExpanded ? null : dw.dwalletId)}
-        className="w-full text-left p-4 bg-(--card-content) hover:bg-(--hover-bg) transition-colors cursor-pointer"
+        onKeyDown={(e) =>
+          e.key === "Enter" && setExpandedId(isExpanded ? null : dw.dwalletId)
+        }
+        className="w-full text-left p-4 bg-(--card-content)/60 hover:bg-(--hover-bg) transition-colors cursor-pointer"
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -527,9 +703,11 @@ function DWalletCard({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-semibold text-sm text-(--text-main)">
-                  {chainName}
-                </span>
+                <Tooltip content={chainDescription}>
+                  <span className="font-semibold text-sm text-(--text-main)">
+                    {chainName}
+                  </span>
+                </Tooltip>
                 <StatusPill variant="active">Active</StatusPill>
               </div>
               <div className="flex items-center gap-2">
@@ -539,58 +717,69 @@ function DWalletCard({
                     : "No address"}
                 </span>
                 {displayAddress && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCopy(displayAddress, `hdr-${dw.dwalletId}`);
-                    }}
-                    className="text-(--text-muted) hover:text-(--text-main) transition-colors shrink-0"
-                  >
-                    <Copy size={10} />
-                  </button>
-                )}
-                {copiedId === `hdr-${dw.dwalletId}` && (
-                  <span className="text-[10px] text-(--success-text) font-mono">
-                    copied
-                  </span>
+                  <Tooltip content={isHdrCopied ? "Copied!" : "Copy address"}>
+                    <span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCopy(displayAddress, hdrKey);
+                        }}
+                        className="text-(--text-muted) hover:text-(--text-main) transition-colors shrink-0"
+                      >
+                        {isHdrCopied ? (
+                          <Check
+                            size={10}
+                            animateOnHover
+                            className="text-active"
+                          />
+                        ) : (
+                          <Copy size={10} animateOnHover />
+                        )}
+                      </button>
+                    </span>
+                  </Tooltip>
                 )}
               </div>
+              {/* Balance display */}
               <div className="flex items-center gap-3 mt-1 flex-wrap">
                 {liveBalance.isLoading && (
                   <span className="text-[10px] text-(--text-muted) font-mono animate-pulse">
                     fetching balance…
                   </span>
                 )}
-                {liveBalance.data && (
-                  <>
-                    {liveBalance.data.sol > 0 && (
-                      <span className="text-[10px] font-mono text-(--text-main)">
-                        {liveBalance.data.sol.toFixed(4)} SOL
-                      </span>
-                    )}
-                    {liveBalance.data.tokens.map((t) => (
-                      <span
-                        key={t.mint}
-                        className="text-[10px] font-mono text-(--text-main)"
-                      >
-                        {t.uiAmount}{" "}
-                        <span className="text-(--text-muted)">{t.symbol}</span>
-                      </span>
-                    ))}
-                    {liveBalance.data.sol === 0 &&
-                      liveBalance.data.tokens.length === 0 && (
-                        <span className="text-[10px] text-(--text-muted) font-mono">
-                          empty
+                {liveBalance.data &&
+                  (hasBalance ? (
+                    <>
+                      <span className="size-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      {liveBalance.data.sol > 0 && (
+                        <span className="text-[10px] font-mono text-(--text-main) font-semibold">
+                          {liveBalance.data.sol.toFixed(4)} SOL
                         </span>
                       )}
-                  </>
-                )}
+                      {liveBalance.data.tokens.map((t) => (
+                        <span
+                          key={t.mint}
+                          className="text-[10px] font-mono text-(--text-main)"
+                        >
+                          {t.uiAmount}{" "}
+                          <span className="text-(--text-muted)">
+                            {t.symbol}
+                          </span>
+                        </span>
+                      ))}
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-(--text-muted) font-mono">
+                      empty
+                    </span>
+                  ))}
               </div>
             </div>
           </div>
           <ChevronDown
             size={14}
+            animateOnHover
             className={cn(
               "shrink-0 text-(--text-muted) transition-transform duration-200",
               isExpanded && "rotate-180",
@@ -741,12 +930,12 @@ export const PolicyConfig = ({ treasury }: PolicyConfigProps) => {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
-          Config
-        </h2>
-        <p className="text-[12px] text-(--text-muted)">
-          Policy limits, governance settings, and registered dWallets.
+        <p className="mono text-[10px] uppercase tracking-[0.2em] text-(--text-muted) mb-1">
+          Configuration
         </p>
+        <h2 className="text-base font-semibold text-(--text-main)">
+          Treasury Config
+        </h2>
       </div>
       <Tabs tabs={tabs} defaultTab="info" layoutId="configTabs" />
     </div>
