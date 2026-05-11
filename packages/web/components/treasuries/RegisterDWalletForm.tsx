@@ -633,6 +633,7 @@ export const RegisterDWalletForm = ({
           queryKey: ["treasury", treasury.publicKey.toBase58()],
         }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
     },
   });
@@ -666,13 +667,25 @@ export const RegisterDWalletForm = ({
 
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["treasury", treasury.publicKey.toBase58()],
         }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
+      // Register with backend — fire-and-forget
+      postBackend(settings.backendUrl, "/v1/treasuries/register-dwallet", {
+        treasuryAddress: treasury.publicKey.toBase58(),
+        txSignature: result,
+        dwalletId: form.dwalletId,
+        dwalletAccount: form.dwalletAccount,
+        chain: Number(form.chain),
+        address: form.address,
+        balanceUsd: Number(form.balanceUsd),
+        publicKeyHex: form.publicKeyHex || undefined,
+      }).catch(() => {});
       onClose();
     },
   });

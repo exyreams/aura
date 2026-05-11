@@ -99,6 +99,70 @@ export function useRecentActivity(treasuries: TreasuryEntry[], limit = 30) {
   });
 }
 
+// ── Backend-sourced activity (replaces RPC polling) ───────────────────────
+
+export interface ActivityEvent {
+  id: number;
+  treasuryAddress: string;
+  agentKeypairId: number | null;
+  walletAddress: string | null;
+  kind: string;
+  txSignature: string;
+  proposalId: string | null;
+  status: number | null;
+  approved: boolean | null;
+  violation: number | null;
+  meta: Record<string, unknown> | null;
+  timestamp: number;
+}
+
+export interface ActivityResponse {
+  events: ActivityEvent[];
+  hasMore: boolean;
+}
+
+export function useActivity(
+  opts: {
+    limit?: number;
+    before?: number;
+    treasury?: string;
+    kind?: string;
+    enabled?: boolean;
+  } = {},
+) {
+  const settings = useAppSettings();
+
+  return useQuery({
+    queryKey: [
+      "activity",
+      settings.backendUrl,
+      opts.limit,
+      opts.before,
+      opts.treasury,
+      opts.kind,
+    ],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (opts.limit) params.set("limit", String(opts.limit));
+      if (opts.before) params.set("before", String(opts.before));
+      if (opts.treasury) params.set("treasury", opts.treasury);
+      if (opts.kind) params.set("kind", opts.kind);
+      const qs = params.toString();
+      return backendRequest<ActivityResponse>(
+        settings.backendUrl,
+        `/v1/activity${qs ? `?${qs}` : ""}`,
+      );
+    },
+    enabled: opts.enabled !== false,
+    // Refetch on tab focus so switching back to activity tab shows latest instantly
+    refetchOnWindowFocus: true,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
+    staleTime: 0,
+    retry: 1,
+  });
+}
+
 export function useTreasuryAuditTrail(
   treasuryPda: string | undefined,
   limit = 20,

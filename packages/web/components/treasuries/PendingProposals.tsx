@@ -147,7 +147,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
       ]);
     },
@@ -176,7 +176,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
       ]);
     },
@@ -191,11 +191,22 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       );
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: async () => {
+    onSuccess: async (signature) => {
+      postBackend(settings.backendUrl, "/v1/activity/register-event", {
+        treasuryAddress: pda,
+        txSignature: signature,
+        kind: "proposal_cancelled",
+        walletAddress: wallet.publicKey?.toBase58(),
+        meta: {
+          proposalId: pending?.proposalId?.toString() ?? null,
+          approved: false,
+          status: 5,
+        },
+      }).catch(() => {});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
       ]);
     },

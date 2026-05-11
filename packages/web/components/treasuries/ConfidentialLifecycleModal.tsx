@@ -3,10 +3,11 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Circle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
+import { Spinner } from "@/components/global/Spinner";
 import { Tooltip } from "@/components/global/Tooltip";
 import { Checkcircle, Lock, TriangleAlert } from "@/components/icons";
 import type { PendingProposalRecord } from "@/lib/aura-app";
@@ -35,7 +36,7 @@ const STATUS_CANCELLED = 5;
 const STATUS_EXPIRED = 6;
 
 function StepIndicator({
-  number,
+  number: _number,
   label,
   state,
 }: {
@@ -47,13 +48,11 @@ function StepIndicator({
     <div className="flex items-center gap-3">
       <div className="shrink-0">
         {state === "done" ? (
-          <Checkcircle className="size-5 text-active" animateOnHover />
+          <Checkcircle className="size-5 text-success" animateOnHover />
         ) : state === "active" ? (
-          <div className="size-5 rounded-full border-2 border-active flex items-center justify-center">
-            <span className="text-[9px] font-bold text-active">{number}</span>
-          </div>
+          <Spinner size="xs" className="text-primary" />
         ) : (
-          <Circle className="size-5 text-(--text-muted)" />
+          <div className="size-5 rounded-full border-2 border-border opacity-40" />
         )}
       </div>
       <span
@@ -61,7 +60,7 @@ function StepIndicator({
           state === "active"
             ? "text-(--text-main) font-bold"
             : state === "done"
-              ? "text-active"
+              ? "text-success"
               : "text-(--text-muted)"
         }`}
       >
@@ -147,7 +146,7 @@ export function ConfidentialLifecycleModal({
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
     },
   });
@@ -179,7 +178,7 @@ export function ConfidentialLifecycleModal({
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
     },
   });
@@ -205,7 +204,7 @@ export function ConfidentialLifecycleModal({
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
     },
   });
@@ -230,7 +229,7 @@ export function ConfidentialLifecycleModal({
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
       onClose();
     },
@@ -245,12 +244,18 @@ export function ConfidentialLifecycleModal({
       );
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: async () => {
+    onSuccess: async (signature) => {
+      postBackend(settings.backendUrl, "/v1/activity/register-event", {
+        treasuryAddress: pda,
+        txSignature: signature,
+        kind: "proposal_cancelled",
+        walletAddress: wallet.publicKey?.toBase58(),
+      }).catch(() => {});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
         queryClient.invalidateQueries({ queryKey: ["audit-trail", pda] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
       onClose();
     },

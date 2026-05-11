@@ -7,6 +7,7 @@ import { Badge, type BadgeVariant } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Dropdown } from "@/components/global/Dropdown";
 import { Skeleton } from "@/components/global/Skeleton";
+import { Spinner } from "@/components/global/Spinner";
 import { Tabs } from "@/components/global/Tabs";
 import { Tooltip } from "@/components/global/Tooltip";
 import {
@@ -16,8 +17,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Copy,
+  FileLock,
   FileText,
   KeyRound,
   Lock,
@@ -43,9 +44,10 @@ import {
   VIOLATIONS,
 } from "@/lib/aura-app";
 import {
+  type ActivityEvent,
   type TreasuryEntry,
+  useActivity,
   useOwnedTreasuries,
-  useRecentActivity,
 } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -132,7 +134,7 @@ function buildAuditStepMeta(
   detail: string,
   txSignature: string,
   treasury: string,
-  treasuries: TreasuryEntry[],
+  _treasuries: TreasuryEntry[],
 ): Record<string, string> {
   const base: Record<string, string> = {
     "Tx signature": txSignature,
@@ -141,14 +143,39 @@ function buildAuditStepMeta(
 
   switch (rawKind) {
     case "dwallet_registered": {
-      const dwalletMeta = parseDWalletDetail(detail, treasury, treasuries);
-      return dwalletMeta ? { ...dwalletMeta, ...base } : base;
+      // detail: "dwallet_registered:chain=2,address=0x...,account=..."
+      const chainMatch = detail.match(/chain=([^,]+)/);
+      const addressMatch = detail.match(/address=([^,]+)/);
+      const accountMatch = detail.match(/account=([^,]+)/);
+      const chainCode = chainMatch?.[1] ? Number(chainMatch[1]) : undefined;
+      const chainName =
+        chainCode !== undefined
+          ? (CHAINS.find((c) => c.code === chainCode)?.label ??
+            `Chain ${chainCode}`)
+          : undefined;
+      return {
+        ...base,
+        ...(chainName ? { Chain: chainName } : {}),
+        ...(addressMatch?.[1] ? { Address: addressMatch[1] } : {}),
+        ...(accountMatch?.[1] ? { "dWallet Account": accountMatch[1] } : {}),
+      };
     }
     case "execution_paused":
     case "execution_resumed": {
       return {
         ...base,
         Action: rawKind === "execution_paused" ? "Paused" : "Resumed",
+        Detail:
+          detail ||
+          (rawKind === "execution_paused"
+            ? "Execution paused by treasury owner"
+            : "Execution resumed by treasury owner"),
+      };
+    }
+    case "proposal_cancelled": {
+      return {
+        ...base,
+        Detail: detail || "Proposal cancelled by treasury owner",
       };
     }
     case "ai_authority_rotation_proposed":
@@ -182,11 +209,44 @@ function buildAuditStepMeta(
         return { ...base, "Recovery pubkey": recoveryMatch[1] };
       return { ...base, Detail: detail };
     }
-    case "treasury_created": {
-      return { ...base, Detail: detail };
+    case "proposal_submitted":
+    case "confidential_proposal_submitted": {
+      // detail: "proposal_submitted: {...}" — parse meta from the ev.meta directly
+      // The detail string contains the raw kind, actual data is in meta rows
+      return { ...base, Detail: detail || "Proposal submitted to treasury" };
     }
-    case "confidential_guardrails_configured": {
-      return { ...base, Detail: detail };
+    case "execution_submitted": {
+      return {
+        ...base,
+        Detail: detail || "Execution submitted — awaiting Ika signature",
+      };
+    }
+    case "execution_finalized": {
+      return { ...base, Detail: detail || "Execution finalized on-chain" };
+    }
+    case "treasury_created": {
+      // detail: "treasury_created:agentId=X,publicKey=Y"
+      const agentIdMatch = detail.match(/agentId=([^,]+)/);
+      const pubkeyMatch = detail.match(/publicKey=([^,]+)/);
+      return {
+        ...base,
+        ...(agentIdMatch?.[1] ? { "Agent ID": agentIdMatch[1] } : {}),
+        ...(pubkeyMatch?.[1] ? { "AI Authority": pubkeyMatch[1] } : {}),
+      };
+    }
+    case "confidential_guardrails_configured":
+    case "guardrails_configured": {
+      const dailyMatch = detail.match(/daily=([^,]+)/);
+      const perTxMatch = detail.match(/perTx=([^,]+)/);
+      const spentMatch = detail.match(/spent=([^,]+)/);
+      return {
+        ...base,
+        ...(dailyMatch?.[1] ? { "Daily limit ciphertext": dailyMatch[1] } : {}),
+        ...(perTxMatch?.[1]
+          ? { "Per-tx limit ciphertext": perTxMatch[1] }
+          : {}),
+        ...(spentMatch?.[1] ? { "Spent-today ciphertext": spentMatch[1] } : {}),
+      };
     }
     default:
       return detail ? { ...base, Detail: detail } : base;
@@ -194,7 +254,7 @@ function buildAuditStepMeta(
 }
 // or "updated solana runtime metadata for live CPI"
 // Falls back to parsing the audit string if no treasury account data available
-function parseDWalletDetail(
+function _parseDWalletDetail(
   detail: string,
   treasury: string,
   treasuries: TreasuryEntry[],
@@ -391,6 +451,26 @@ const AUDIT_KIND_CONFIG: Record<
     icon: <RefreshCw size={14} animateOnHover />,
     variant: "default",
   },
+  proposal_submitted: {
+    label: "Proposal Submitted",
+    icon: <Send size={14} animateOnHover />,
+    variant: "active",
+  },
+  confidential_proposal_submitted: {
+    label: "Confidential Proposal",
+    icon: <Lock size={14} animateOnHover />,
+    variant: "active",
+  },
+  execution_submitted: {
+    label: "Execution Submitted",
+    icon: <Send size={14} animateOnHover />,
+    variant: "active",
+  },
+  execution_finalized: {
+    label: "Execution Finalized",
+    icon: <CheckCircle2 size={14} animateOnHover />,
+    variant: "active",
+  },
 };
 
 // Helpers
@@ -465,7 +545,113 @@ function fmtDateTime(ts: number | undefined): string {
   });
 }
 
-// Map ParsedActivity[] → ProposalEntry[]
+// Map backend ActivityEvent[] → ParsedActivity[] so mapToProposalEntries works unchanged
+function mapBackendEvents(
+  events: ActivityEvent[],
+): import("@/lib/aura-app").ParsedActivity[] {
+  return events.map((ev) => {
+    const meta = ev.meta ?? {};
+
+    // For backend-written events, build a human-readable detail string
+    // that buildAuditStepMeta can parse into proper rows
+    let detail: string | undefined;
+    switch (ev.kind) {
+      case "treasury_created":
+        detail = `treasury_created:agentId=${meta.agentId ?? ""},publicKey=${meta.agentPublicKey ?? ""}`;
+        break;
+      case "guardrails_configured":
+        detail = `confidential_guardrails_configured:FHE guardrails configured — daily, per-tx, and spent-today ciphertexts set,daily=${meta.dailyLimitCiphertext ?? ""},perTx=${meta.perTxLimitCiphertext ?? ""},spent=${meta.spentTodayCiphertext ?? ""}`;
+        break;
+      case "dwallet_registered": {
+        const chainCode =
+          meta.chain !== undefined ? Number(meta.chain) : undefined;
+        const chainName =
+          chainCode !== undefined
+            ? (CHAINS.find((c) => c.code === chainCode)?.label ??
+              `Chain ${chainCode}`)
+            : "Unknown";
+        detail = `dwallet_registered:${chainName} dWallet registered — address: ${meta.address ?? "unknown"},chain=${meta.chain ?? ""},address=${meta.address ?? ""},account=${meta.dwalletAccount ?? ""}`;
+        break;
+      }
+      case "execution_paused":
+        detail = "execution_paused:Execution paused by treasury owner";
+        break;
+      case "execution_resumed":
+        detail = "execution_resumed:Execution resumed by treasury owner";
+        break;
+      case "proposal_cancelled":
+        detail = "proposal_cancelled:Proposal cancelled by treasury owner";
+        break;
+      case "proposal_submitted": {
+        const chainCode =
+          meta.chain !== undefined ? Number(meta.chain) : undefined;
+        const chainName =
+          chainCode !== undefined
+            ? (CHAINS.find((c) => c.code === chainCode)?.label ??
+              `Chain ${chainCode}`)
+            : "Unknown";
+        detail = `proposal_submitted:${chainName} transfer of $${(((meta.amountUsd as number) ?? 0) / 100).toFixed(2)} to ${String(meta.recipient ?? "").slice(0, 8)}...`;
+        break;
+      }
+      case "confidential_proposal_submitted": {
+        const chainCode =
+          meta.chain !== undefined ? Number(meta.chain) : undefined;
+        const chainName =
+          chainCode !== undefined
+            ? (CHAINS.find((c) => c.code === chainCode)?.label ??
+              `Chain ${chainCode}`)
+            : "Unknown";
+        detail = `proposal_submitted:${chainName} confidential transfer of $${(((meta.amountUsd as number) ?? 0) / 100).toFixed(2)} to ${String(meta.recipient ?? "").slice(0, 8)}...`;
+        break;
+      }
+      case "execution_submitted":
+        detail = `execution_submitted:Execution submitted — awaiting Ika dWallet signature`;
+        break;
+      case "execution_finalized":
+        detail = `execution_finalized:Execution finalized — proposal completed on-chain`;
+        break;
+      case "decryption_requested":
+        detail = `decryption_requested:Policy output ciphertext submitted for decryption via Ika Encrypt|ciphertext=${meta.ciphertext ?? ""},requestAccount=${meta.requestAccount ?? ""},txSignature=${ev.txSignature}`;
+        break;
+      case "decryption_confirmed":
+        detail = `decryption_verified:Policy decryption confirmed — violation code resolved on-chain|requestAccount=${meta.requestAccount ?? ""},violationCode=${meta.violationCode ?? ""},txSignature=${ev.txSignature}`;
+        break;
+      default:
+        detail =
+          ev.kind !== "proposal_submitted" &&
+          ev.kind !== "confidential_proposal_submitted"
+            ? `${ev.kind}: ${JSON.stringify(meta)}`
+            : undefined;
+    }
+
+    return {
+      signature: `${ev.txSignature}:${ev.id}`,
+      txSignature: ev.txSignature,
+      treasury: ev.treasuryAddress,
+      proposalId: ev.proposalId ?? undefined,
+      proposalDigest: (meta.proposalDigest as string) ?? undefined,
+      kind:
+        (ev.kind === "proposal_submitted" ||
+          ev.kind === "confidential_proposal_submitted" ||
+          ev.kind === "decryption_requested" ||
+          ev.kind === "decryption_confirmed") &&
+        ev.proposalId
+          ? "proposal"
+          : (ev.kind === "execution_submitted" ||
+                ev.kind === "execution_finalized") &&
+              ev.proposalId
+            ? "execution"
+            : "audit",
+      status: ev.status ?? undefined,
+      approved: ev.approved ?? undefined,
+      violation: ev.violation ?? undefined,
+      detail,
+      timestamp: ev.timestamp,
+      messageApprovalAccount: (meta.messageApproval as string) ?? undefined,
+      decryptionRequestAccount: (meta.requestAccount as string) ?? undefined,
+    };
+  });
+}
 
 function mapToProposalEntries(
   events: ParsedActivity[],
@@ -515,15 +701,23 @@ function mapToProposalEntries(
       .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 
     const outcome: ProposalEntry["outcome"] =
-      last.approved === true
+      // Check any event in the group for a definitive outcome
+      sorted.some((e) => e.approved === true)
         ? "approved"
-        : last.approved === false
-          ? "denied"
-          : last.status === 5
-            ? "cancelled"
-            : last.status === 6
+        : sorted.some((e) => e.status === 5 || e.status === 6)
+          ? "cancelled"
+          : sorted.some((e) => e.approved === false)
+            ? "denied"
+            : last.status === 5
               ? "cancelled"
-              : "pending";
+              : last.status === 6
+                ? "cancelled"
+                : "pending";
+
+    // Find violation from any event in the group (proposal_submitted has it, last may not)
+    const groupViolation =
+      sorted.find((e) => e.violation != null && e.violation > 0)?.violation ??
+      last.violation;
 
     // Build steps
     const steps: ProposalStep[] = [];
@@ -556,8 +750,8 @@ function mapToProposalEntries(
 
     // Policy pre-check — show all 26 real rule names, highlight failed one
     const failedRule =
-      last.violation && last.violation > 0
-        ? (VIOLATIONS[last.violation] ?? undefined)
+      groupViolation && groupViolation > 0
+        ? (VIOLATIONS[groupViolation] ?? undefined)
         : undefined;
 
     // Build meta: each rule as a key with pass/fail value
@@ -583,46 +777,154 @@ function mapToProposalEntries(
     } as ProposalStep & { violationRule?: string });
 
     // FHE path — check if decryption was requested
+    // Check both on-chain audit events AND our backend-written decryption events in sorted
+    const decryptRequestEvent = sorted.find(
+      (e) =>
+        e.kind === "proposal" && e.detail?.startsWith("decryption_requested"),
+    );
+    const decryptConfirmEvent = sorted.find(
+      (e) =>
+        e.kind === "proposal" && e.detail?.startsWith("decryption_verified"),
+    );
     const hasDecryption =
       sorted.some((e) => e.status === 1 || e.status === 7) ||
-      proposalAudits.some((a) => a.detail?.startsWith("decryption_requested"));
+      proposalAudits.some((a) =>
+        a.detail?.startsWith("decryption_requested"),
+      ) ||
+      !!decryptRequestEvent ||
+      // confidential_proposal_submitted always has FHE
+      sorted.some(
+        (e) =>
+          e.detail?.startsWith("proposal_submitted") &&
+          e.detail?.includes("confidential"),
+      );
 
     if (hasDecryption) {
-      const decryptAudit = proposalAudits.find(
-        (a) =>
-          a.detail?.startsWith("decryption_verified") ||
+      const decryptAudit =
+        proposalAudits.find(
+          (a) =>
+            a.detail?.startsWith("decryption_verified") ||
+            a.detail?.startsWith("decryption_requested"),
+        ) ?? decryptRequestEvent;
+
+      const decryptDone =
+        !!decryptConfirmEvent ||
+        proposalAudits.some((a) => a.detail?.startsWith("decryption_verified"));
+      const requestDone =
+        !!decryptRequestEvent ||
+        proposalAudits.some((a) =>
           a.detail?.startsWith("decryption_requested"),
-      );
+        );
+
       steps.push({
         id: "fhe",
-        label: "FHE evaluation",
+        label: "FHE Evaluation",
         description:
-          "Encrypted amount evaluated against encrypted limits via Ika Encrypt — violation code ciphertext produced",
-        status: "done",
+          outcome === "cancelled"
+            ? "Skipped — proposal was cancelled by treasury owner"
+            : "Encrypted amount evaluated against confidential limits via Ika Encrypt — violation code ciphertext produced",
+        status:
+          outcome === "cancelled"
+            ? "skipped"
+            : requestDone
+              ? "done"
+              : outcome === "denied"
+                ? "done"
+                : "pending",
         timestamp: fmtTime(decryptAudit?.timestamp),
-        icon: <KeyRound size={13} animateOnHover />,
+        icon: <FileLock size={13} animateOnHover />,
+        meta:
+          outcome === "cancelled"
+            ? undefined
+            : (() => {
+                const d = decryptRequestEvent?.detail ?? "";
+                const parts = d.split("|");
+                const paramPart = parts[1] ?? "";
+                const ciphertextMatch = paramPart.match(/ciphertext=([^,]+)/);
+                const requestMatch = paramPart.match(/requestAccount=([^,]+)/);
+                const txSigMatch = paramPart.match(/txSignature=([^,]+)/);
+                const result: Record<string, string> = {};
+                if (ciphertextMatch?.[1])
+                  result["Policy output ciphertext"] = ciphertextMatch[1];
+                if (requestMatch?.[1])
+                  result["Decryption request account"] = requestMatch[1];
+                // Prefer the explicit tx sig from the event; fall back to the event's own sig
+                const fheTxSig =
+                  txSigMatch?.[1] ?? decryptRequestEvent?.txSignature;
+                if (fheTxSig) result["Tx signature"] = fheTxSig;
+                result["Encryption network"] = "Ika Encrypt (pre-alpha-dev-1)";
+                result.Mode = "Scalar FHE — 3 ciphertexts";
+                return result;
+              })(),
       });
+
+      // Parse decryption-confirmed event detail for its own tx sig + violation code
+      const decryptConfirmDetail = decryptConfirmEvent?.detail ?? "";
+      const decryptConfirmParams = decryptConfirmDetail.split("|")[1] ?? "";
+      const confirmTxSigMatch =
+        decryptConfirmParams.match(/txSignature=([^,]+)/);
+      const confirmRequestMatch = decryptConfirmParams.match(
+        /requestAccount=([^,]+)/,
+      );
+      const confirmViolationCodeMatch = decryptConfirmParams.match(
+        /violationCode=([^,]+)/,
+      );
+      const confirmTxSig =
+        confirmTxSigMatch?.[1] ?? decryptConfirmEvent?.txSignature;
+
       steps.push({
         id: "decrypt",
         label: "Decryption",
         description:
-          "Policy output ciphertext decrypted — violation code resolved on-chain",
-        status: "done",
+          outcome === "cancelled"
+            ? "Skipped — proposal was cancelled by treasury owner"
+            : outcome === "denied" && groupViolation && groupViolation > 0
+              ? `Policy decryption confirmed — violation code ${groupViolation} (${violationLabel(groupViolation)}) resolved`
+              : "Policy output ciphertext decrypted — violation code resolved on-chain",
+        status:
+          outcome === "cancelled"
+            ? "skipped"
+            : decryptDone
+              ? "done"
+              : outcome === "denied"
+                ? "done"
+                : requestDone
+                  ? "pending"
+                  : ("upcoming" as StepStatus),
+        timestamp: fmtTime(
+          decryptConfirmEvent?.timestamp ?? decryptAudit?.timestamp,
+        ),
         icon: <UnlockKeyhole size={13} animateOnHover />,
-        meta: {
-          "Violation code":
-            last.violation === 0 || last.violation === undefined
-              ? "0 (approved)"
-              : `${last.violation} (${violationLabel(last.violation)})`,
-          ...(last.proposalDigest
-            ? { "Proposal digest": last.proposalDigest }
-            : {}),
-        },
+        meta:
+          outcome === "cancelled"
+            ? undefined
+            : {
+                "Violation code":
+                  groupViolation && groupViolation > 0
+                    ? `${groupViolation} (${violationLabel(groupViolation)})`
+                    : outcome === "denied"
+                      ? "Denied by FHE policy evaluation"
+                      : "0 (approved)",
+                ...(confirmRequestMatch?.[1]
+                  ? { "Decryption request account": confirmRequestMatch[1] }
+                  : {}),
+                ...(confirmViolationCodeMatch?.[1] &&
+                confirmViolationCodeMatch[1] !== "null" &&
+                confirmViolationCodeMatch[1] !== ""
+                  ? { "Raw violation ciphertext": confirmViolationCodeMatch[1] }
+                  : {}),
+                ...(confirmTxSig ? { "Tx signature": confirmTxSig } : {}),
+                ...(last.proposalDigest
+                  ? { "Proposal digest": last.proposalDigest }
+                  : {}),
+              },
       });
     }
 
     // dWallet signing
-    const execEvent = sorted.find((e) => e.kind === "execution");
+    const execEvent =
+      sorted.find((e) => e.kind === "execution" && e.messageApprovalAccount) ??
+      sorted.find((e) => e.kind === "execution");
     const sigAudit = proposalAudits.find(
       (a) =>
         a.detail?.startsWith("signature_requested") ||
@@ -631,7 +933,7 @@ function mapToProposalEntries(
     const sigStatus: StepStatus =
       outcome === "approved"
         ? "done"
-        : outcome === "denied"
+        : outcome === "denied" || outcome === "cancelled"
           ? "skipped"
           : "pending";
 
@@ -640,7 +942,9 @@ function mapToProposalEntries(
       label: "dWallet signing",
       description:
         sigStatus === "skipped"
-          ? "Skipped — proposal was denied before reaching dWallet signing"
+          ? outcome === "cancelled"
+            ? "Skipped — proposal was cancelled by treasury owner"
+            : "Skipped — proposal was denied before reaching dWallet signing"
           : "approve_message CPI submitted — Ika 2PC-MPC network co-signed the chain message",
       status: sigStatus,
       timestamp: fmtTime(sigAudit?.timestamp),
@@ -665,7 +969,7 @@ function mapToProposalEntries(
       outcome === "approved"
         ? "done"
         : outcome === "denied"
-          ? "failed"
+          ? "skipped"
           : outcome === "cancelled"
             ? "skipped"
             : "pending";
@@ -679,28 +983,44 @@ function mapToProposalEntries(
 
     steps.push({
       id: "finalize",
-      label: "Finalized",
+      label:
+        outcome === "denied"
+          ? "Rejected"
+          : outcome === "cancelled"
+            ? "Cancelled"
+            : "Finalized",
       description:
         outcome === "approved"
           ? "finalize_execution verified MessageApproval account — proposal marked Executed on-chain"
           : outcome === "denied"
-            ? `Proposal denied — policy rule violated: ${last.violation ? violationLabel(last.violation) : "unknown"}`
-            : "Proposal cancelled or expired",
+            ? `Proposal rejected — policy rule violated: ${groupViolation ? violationLabel(groupViolation) : "unknown"}`
+            : outcome === "cancelled"
+              ? "Proposal cancelled by treasury owner"
+              : "Proposal cancelled or expired",
       status: finalStatus,
       timestamp: fmtTime(finalAudit?.timestamp ?? last.timestamp),
       icon:
         outcome === "approved" ? (
           <CheckCircle2 size={13} animateOnHover />
-        ) : (
+        ) : outcome === "denied" || outcome === "cancelled" ? (
           <XCircle size={13} animateOnHover />
+        ) : (
+          <CheckCircle2 size={13} animateOnHover />
         ),
       meta: {
-        "Final status": statusLabel(last.status ?? 0),
-        ...(last.violation && last.violation > 0
+        "Final status":
+          outcome === "denied"
+            ? "Rejected"
+            : outcome === "cancelled"
+              ? "Cancelled"
+              : outcome === "approved"
+                ? "Executed"
+                : statusLabel(last.status ?? 0),
+        ...(groupViolation && groupViolation > 0
           ? {
-              "Violation code": `${last.violation} — ${violationLabel(last.violation)}`,
+              "Violation code": `${groupViolation} — ${violationLabel(groupViolation)}`,
               "Rule description":
-                VIOLATION_DESCRIPTIONS[violationLabel(last.violation)] ?? "",
+                VIOLATION_DESCRIPTIONS[violationLabel(groupViolation)] ?? "",
             }
           : {}),
         ...(first.proposalDigest
@@ -719,10 +1039,10 @@ function mapToProposalEntries(
       treasury: first.treasury,
       txSignature: first.txSignature,
       outcome,
-      violationCode: last.violation,
+      violationCode: groupViolation,
       violationLabel:
-        last.violation && last.violation > 0
-          ? violationLabel(last.violation)
+        groupViolation && groupViolation > 0
+          ? violationLabel(groupViolation)
           : undefined,
       timestamp: fmtDateTime(first.timestamp),
       steps,
@@ -786,6 +1106,19 @@ function mapToProposalEntries(
 
 function isHashLike(key: string, value: string): boolean {
   const k = key.toLowerCase();
+  // Never treat URLs or plain text as hashes
+  if (value.startsWith("http") || value.startsWith("https")) return false;
+  // Skip keys that are clearly not hashes
+  if (
+    k === "explorer" ||
+    k === "signing network" ||
+    k === "signature scheme" ||
+    k === "action" ||
+    k === "detail" ||
+    k === "chain" ||
+    k === "type"
+  )
+    return false;
   if (
     k.includes("signature") ||
     k.includes("digest") ||
@@ -912,7 +1245,11 @@ function StepRow({
       {!hideSpine && (
         <div className="flex flex-col items-center shrink-0 w-5">
           <div className={cn("shrink-0 mt-0.5", stepIconClass(step.status))}>
-            {step.icon}
+            {step.status === "pending" ? (
+              <Spinner size="xs" className="text-primary" />
+            ) : (
+              step.icon
+            )}
           </div>
           {!isLast && (
             <div className="w-px flex-1 bg-border mt-1 min-h-[16px]" />
@@ -943,8 +1280,7 @@ function StepRow({
               {step.label}
             </span>
             {step.timestamp && (
-              <span className="font-mono text-[9px] text-(--text-muted) flex items-center gap-0.5">
-                <Clock size={9} />
+              <span className="font-mono text-[9px] text-(--text-muted)">
                 {step.timestamp}
               </span>
             )}
@@ -1023,14 +1359,29 @@ function StepRow({
                           {k}
                         </span>
                         <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                          <span
-                            className="text-(--text-main) truncate"
-                            title={v}
-                          >
-                            {v}
-                          </span>
-                          {isHashLike(k, v) && (
-                            <HashAction value={v} metaKey={k} />
+                          {k.toLowerCase() === "explorer" &&
+                          v.startsWith("http") ? (
+                            <a
+                              href={v}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary hover:underline truncate flex items-center gap-1"
+                            >
+                              {v.replace(/^https?:\/\//, "").slice(0, 60)}
+                              <SquareArrowOutUpRight size={10} animateOnHover />
+                            </a>
+                          ) : (
+                            <>
+                              <span
+                                className="text-(--text-main) truncate"
+                                title={v}
+                              >
+                                {v}
+                              </span>
+                              {isHashLike(k, v) && (
+                                <HashAction value={v} metaKey={k} />
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -1056,6 +1407,7 @@ function ProposalRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const isProposal = entry.proposalId !== "";
+  const isConfidential = isProposal && entry.steps.some((s) => s.id === "fhe");
   const iconColorClass = proposalIconClass(entry.steps, entry.outcome);
   const cfg =
     !isProposal && entry.steps[0]
@@ -1070,7 +1422,11 @@ function ProposalRow({
     ) : entry.outcome === "cancelled" ? (
       <XCircle size={18} className="text-(--text-muted)" animateOnHover />
     ) : isProposal ? (
-      <FileText size={18} className={iconColorClass} animateOnHover />
+      isConfidential ? (
+        <FileLock size={18} className={iconColorClass} animateOnHover />
+      ) : (
+        <FileText size={18} className={iconColorClass} animateOnHover />
+      )
     ) : cfg?.icon ? (
       <span className={cn("text-(--text-muted)")}>{cfg.icon}</span>
     ) : (
@@ -1098,6 +1454,15 @@ function ProposalRow({
                 ? `Proposal #${entry.proposalId}`
                 : (cfg?.label ?? entry.steps[0]?.label ?? "Audit Event")}
             </span>
+            {isProposal && isConfidential && (
+              <Badge
+                variant="default"
+                className="text-[9px] px-1.5 py-0.5 flex items-center gap-1"
+              >
+                <FileLock size={9} animateOnHover />
+                Confidential
+              </Badge>
+            )}
             {isProposal && (
               <Badge
                 variant={outcomeVariant(entry.outcome)}
@@ -1108,10 +1473,16 @@ function ProposalRow({
             )}
             {!isProposal && cfg && (
               <Badge
-                variant={cfg.variant}
+                variant={
+                  entry.steps[0]?.id === "execution_submitted"
+                    ? "paused"
+                    : cfg.variant
+                }
                 className="text-[9px] px-1.5 sm:px-2 py-0.5"
               >
-                {cfg.label}
+                {entry.steps[0]?.id === "execution_submitted"
+                  ? "Pending"
+                  : "Success"}
               </Badge>
             )}
             {entry.violationLabel && (
@@ -1158,8 +1529,7 @@ function ProposalRow({
             </span>
           </Tooltip>
           <span className="text-border select-none hidden sm:inline">·</span>
-          <span className="flex items-center gap-1">
-            <Clock size={10} />
+          <span className="font-mono text-[10px] text-(--text-muted)">
             {entry.timestamp}
           </span>
         </div>
@@ -1375,8 +1745,9 @@ export default function ActivityLogPage() {
 
   const treasuriesQuery = useOwnedTreasuries();
   const treasuries = treasuriesQuery.data ?? [];
-  const activityQuery = useRecentActivity(treasuries, 60);
-  const rawActivity = activityQuery.data ?? [];
+  // Use backend activity endpoint — no RPC polling, no rate limits
+  const activityQuery = useActivity({ limit: 100 });
+  const rawActivity = mapBackendEvents(activityQuery.data?.events ?? []);
   const isLoading = activityQuery.isLoading || treasuriesQuery.isLoading;
 
   const allEntries = useMemo(

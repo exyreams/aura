@@ -23,6 +23,7 @@ import {
   getActivePendingProposal,
   sendWalletInstructions,
 } from "@/lib/aura-app";
+import { postBackend } from "@/lib/backend-client";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 import { cn, shortenAddress } from "@/lib/utils";
@@ -80,11 +81,20 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       );
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: async () => {
+    onSuccess: async (signature) => {
+      const kind = treasury.account.executionPaused
+        ? "execution_resumed"
+        : "execution_paused";
+      postBackend(settings.backendUrl, "/v1/activity/register-event", {
+        treasuryAddress: pda,
+        txSignature: signature,
+        kind,
+        walletAddress: wallet.publicKey?.toBase58(),
+      }).catch(() => {});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
     },
   });
@@ -100,11 +110,22 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
       );
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: async () => {
+    onSuccess: async (signature) => {
+      postBackend(settings.backendUrl, "/v1/activity/register-event", {
+        treasuryAddress: pda,
+        txSignature: signature,
+        kind: "proposal_cancelled",
+        walletAddress: wallet.publicKey?.toBase58(),
+        meta: {
+          proposalId: activePending?.proposalId?.toString() ?? null,
+          approved: false,
+          status: 5,
+        },
+      }).catch(() => {});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
-        queryClient.invalidateQueries({ queryKey: ["recent-activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
       ]);
     },
   });

@@ -220,9 +220,18 @@ export default function ConfidentialGuardrailsPage() {
 
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       scalarDirtyRef.current = false;
+      // Fire-and-forget — non-fatal if it fails
+      postBackend(settings.backendUrl, "/v1/treasuries/register-guardrails", {
+        treasuryAddress: pda,
+        txSignature: result,
+        dailyLimitCiphertext: scalarForm.dailyLimitCiphertext,
+        perTxLimitCiphertext: scalarForm.perTxLimitCiphertext,
+        spentTodayCiphertext: scalarForm.spentTodayCiphertext,
+      }).catch(() => {});
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
+      await queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
   });
 

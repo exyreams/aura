@@ -79,6 +79,12 @@ export {
   type ExternalLinkProps,
 } from "./ExternalLink";
 export {
+  FileLock,
+  FileLockIcon,
+  type FileLockIconProps,
+  type FileLockProps,
+} from "./FileLock";
+export {
   FileText,
   FileTextIcon,
   type FileTextIconProps,

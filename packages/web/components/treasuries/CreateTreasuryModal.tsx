@@ -17,6 +17,7 @@ import {
   buildCreateTreasuryArgs,
   sendWalletInstructions,
 } from "@/lib/aura-app";
+import { postBackend } from "@/lib/backend-client";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 
 // default form values
@@ -110,10 +111,21 @@ export function CreateTreasuryModal({
       const signature = await sendWalletInstructions(connection, wallet, [
         instruction,
       ]);
+
+      // Register with backend — fire-and-forget, non-fatal
+      postBackend(settings.backendUrl, "/v1/treasuries/register", {
+        treasuryAddress: treasury.toBase58(),
+        agentId: treasuryName.trim(),
+        txSignature: signature,
+        ownerWallet: wallet.publicKey.toBase58(),
+        agentPublicKey: selectedAgent.publicKey,
+      }).catch(() => {});
+
       return { treasury: treasury.toBase58(), signature };
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["treasuries"] });
+      await queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
   });
 

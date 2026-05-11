@@ -18,9 +18,35 @@ import type { SwarmFormArgs } from "@/components/governance/SwarmConfig";
 import {
   buildConfigureMultisigArgs,
   buildConfigureSwarmArgs,
+  type ParsedActivity,
   sendWalletInstructions,
 } from "@/lib/aura-app";
-import { useAuraClient, useRecentActivity, useTreasury } from "@/lib/hooks";
+import {
+  type ActivityEvent,
+  useActivity,
+  useAuraClient,
+  useTreasury,
+} from "@/lib/hooks";
+
+function mapBackendEvents(events: ActivityEvent[]): ParsedActivity[] {
+  return events.map((ev) => ({
+    signature: ev.txSignature,
+    txSignature: ev.txSignature,
+    treasury: ev.treasuryAddress,
+    proposalId: ev.proposalId ?? undefined,
+    kind: (ev.kind === "proposal_submitted" ||
+    ev.kind === "confidential_proposal_submitted"
+      ? "proposal"
+      : ev.kind === "execution_finalized"
+        ? "execution"
+        : "audit") as ParsedActivity["kind"],
+    status: ev.status ?? undefined,
+    approved: ev.approved ?? undefined,
+    violation: ev.violation ?? undefined,
+    detail: ev.kind,
+    timestamp: ev.timestamp,
+  }));
+}
 
 export default function GovernanceConfigurationPage() {
   const params = useParams<{ pda: string }>();
@@ -34,8 +60,8 @@ export default function GovernanceConfigurationPage() {
   const entry = treasuryQuery.data;
   const account = entry?.account;
 
-  const activityQuery = useRecentActivity(entry ? [entry] : []);
-  const activity = activityQuery.data ?? [];
+  const activityQuery = useActivity({ treasury: pda, enabled: !!pda });
+  const activity = mapBackendEvents(activityQuery.data?.events ?? []);
 
   const [overrideLimit, setOverrideLimit] = useState("0");
 

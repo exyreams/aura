@@ -276,7 +276,7 @@ export function ProposeTransactionModal({
         );
       }
       await queryClient.invalidateQueries({ queryKey: ["treasury", pda] });
-      await queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      await queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
   });
 
@@ -284,6 +284,15 @@ export function ProposeTransactionModal({
     e.preventDefault();
     proposeMutation.mutate();
   };
+
+  // Reset mutation and signature when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      proposeMutation.reset();
+      setSignature(null);
+      proposedRef.current = false;
+    }
+  }, [isOpen, proposeMutation.reset]);
 
   // Auto-dismiss error after 6 seconds
   useEffect(() => {
