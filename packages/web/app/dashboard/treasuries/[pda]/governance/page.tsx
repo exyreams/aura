@@ -4,14 +4,17 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   GovernanceHeader,
   GovernanceHistory,
+  GovernanceStatsBar,
   MultisigConfig,
   ProposeOverride,
   SwarmConfig,
 } from "@/components/governance";
+import type { MultisigFormArgs } from "@/components/governance/MultisigConfig";
+import type { SwarmFormArgs } from "@/components/governance/SwarmConfig";
 import {
   buildConfigureMultisigArgs,
   buildConfigureSwarmArgs,
@@ -26,58 +29,26 @@ export default function GovernanceConfigurationPage() {
   const { connection } = useConnection();
   const client = useAuraClient();
   const queryClient = useQueryClient();
+
   const treasuryQuery = useTreasury(pda);
   const entry = treasuryQuery.data;
   const account = entry?.account;
+
   const activityQuery = useRecentActivity(entry ? [entry] : []);
   const activity = activityQuery.data ?? [];
 
-  const [multisigForm, setMultisigForm] = useState({
-    required: account?.multisig?.requiredSignatures.toString() ?? "2",
-    guardians:
-      account?.multisig?.guardians
-        .map((guardian: PublicKey) => guardian.toBase58())
-        .join(", ") ?? "",
-  });
-  const [swarmForm, setSwarmForm] = useState({
-    swarmId: account?.swarm?.swarmId ?? "",
-    members: account?.swarm?.memberAgents.join(", ") ?? "",
-    poolLimit: account?.swarm?.sharedPoolLimitUsd.toString() ?? "0",
-  });
   const [overrideLimit, setOverrideLimit] = useState("0");
 
-  useEffect(() => {
-    if (!account) {
-      return;
-    }
-
-    setMultisigForm({
-      required: account.multisig?.requiredSignatures.toString() ?? "2",
-      guardians:
-        account.multisig?.guardians
-          .map((guardian: PublicKey) => guardian.toBase58())
-          .join(", ") ?? "",
-    });
-    setSwarmForm({
-      swarmId: account.swarm?.swarmId ?? "",
-      members: account.swarm?.memberAgents.join(", ") ?? "",
-      poolLimit: account.swarm?.sharedPoolLimitUsd.toString() ?? "0",
-    });
-  }, [account]);
-
   const multisigMutation = useMutation({
-    mutationFn: async () => {
-      if (!wallet.publicKey || !entry) {
+    mutationFn: async ({ required, guardians }: MultisigFormArgs) => {
+      if (!wallet.publicKey || !entry)
         throw new Error("Connect a wallet first.");
-      }
       const args = buildConfigureMultisigArgs({
-        requiredSignatures: Number(multisigForm.required),
-        guardians: multisigForm.guardians
-          .split(",")
-          .flatMap((value: string) => {
-            const t = value.trim();
-            return t ? [new PublicKey(t)] : [];
-          }),
+        requiredSignatures: Number(required),
+        guardians: guardians.flatMap((v) => {
+          const t = v.trim();
+          return t ? [new PublicKey(t)] : [];
+        }),
       });
       const instruction = await client.configureMultisigInstruction(
         { owner: wallet.publicKey, treasury: entry.publicKey },
@@ -91,17 +62,16 @@ export default function GovernanceConfigurationPage() {
   });
 
   const swarmMutation = useMutation({
-    mutationFn: async () => {
-      if (!wallet.publicKey || !entry) {
+    mutationFn: async ({ swarmId, members, poolLimit }: SwarmFormArgs) => {
+      if (!wallet.publicKey || !entry)
         throw new Error("Connect a wallet first.");
-      }
       const args = buildConfigureSwarmArgs({
-        swarmId: swarmForm.swarmId,
-        memberAgents: swarmForm.members.split(",").flatMap((value: string) => {
-          const t = value.trim();
+        swarmId,
+        memberAgents: members.flatMap((v) => {
+          const t = v.trim();
           return t ? [t] : [];
         }),
-        sharedPoolLimitUsd: Number(swarmForm.poolLimit),
+        sharedPoolLimitUsd: Number(poolLimit),
       });
       const instruction = await client.configureSwarmInstruction(
         { owner: wallet.publicKey, treasury: entry.publicKey },
@@ -116,9 +86,8 @@ export default function GovernanceConfigurationPage() {
 
   const overrideProposeMutation = useMutation({
     mutationFn: async () => {
-      if (!wallet.publicKey || !entry) {
+      if (!wallet.publicKey || !entry)
         throw new Error("Connect a wallet first.");
-      }
       const instruction = await client.proposeOverrideInstruction(
         { guardian: wallet.publicKey, treasury: entry.publicKey },
         Number(overrideLimit),
@@ -133,9 +102,8 @@ export default function GovernanceConfigurationPage() {
 
   const overrideCollectMutation = useMutation({
     mutationFn: async () => {
-      if (!wallet.publicKey || !entry) {
+      if (!wallet.publicKey || !entry)
         throw new Error("Connect a wallet first.");
-      }
       const instruction = await client.collectOverrideSignatureInstruction(
         { guardian: wallet.publicKey, treasury: entry.publicKey },
         Math.floor(Date.now() / 1000),
@@ -149,61 +117,42 @@ export default function GovernanceConfigurationPage() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Background Elements */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(to right, var(--grid) 1px, transparent 1px),
-              linear-gradient(to bottom, var(--grid) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px",
-            opacity: 0.5,
-          }}
-        />
-        <div
-          className="absolute top-[10%] right-[5%] size-[800px] rounded-full pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(107, 114, 128, 0.04) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="absolute bottom-[20%] left-[5%] size-[800px] rounded-full pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(107, 114, 128, 0.04) 0%, transparent 70%)",
-          }}
-        />
-      </div>
-
-      <main className="max-w-[1440px] mx-auto p-8 lg:p-12 relative z-10 space-y-8">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 relative z-10 space-y-8">
         <GovernanceHeader treasury={entry} />
 
-        <MultisigConfig
+        <GovernanceStatsBar
           account={account}
-          multisigForm={multisigForm}
-          setMultisigForm={setMultisigForm}
-          multisigMutation={multisigMutation}
+          isLoading={treasuryQuery.isLoading}
         />
 
-        <ProposeOverride
-          account={account}
-          overrideLimit={overrideLimit}
-          setOverrideLimit={setOverrideLimit}
-          overrideProposeMutation={overrideProposeMutation}
-          overrideCollectMutation={overrideCollectMutation}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left: config cards */}
+          <div className="lg:col-span-8 space-y-6">
+            <MultisigConfig
+              account={account}
+              multisigMutation={multisigMutation}
+            />
+            <SwarmConfig account={account} swarmMutation={swarmMutation} />
+          </div>
 
-        <SwarmConfig
-          account={account}
-          swarmForm={swarmForm}
-          setSwarmForm={setSwarmForm}
-          swarmMutation={swarmMutation}
-        />
+          {/* Right: override sidebar */}
+          <div className="lg:col-span-4">
+            <div className="lg:sticky lg:top-6">
+              <ProposeOverride
+                account={account}
+                overrideLimit={overrideLimit}
+                setOverrideLimit={setOverrideLimit}
+                overrideProposeMutation={overrideProposeMutation}
+                overrideCollectMutation={overrideCollectMutation}
+              />
+            </div>
+          </div>
+        </div>
 
-        <GovernanceHistory activity={activity} />
+        <GovernanceHistory
+          activity={activity}
+          isLoading={activityQuery.isLoading}
+        />
       </main>
     </div>
   );

@@ -1,166 +1,224 @@
 "use client";
 
 import type { UseMutationResult } from "@tanstack/react-query";
-import type { Dispatch, SetStateAction } from "react";
-import { Button, Card, Input, StatusPill } from "@/components/global";
+import { useEffect, useState } from "react";
+import { Alert } from "@/components/global/Alert";
+import { Button } from "@/components/global/Button";
+import { Card } from "@/components/global/Card";
+import { Input } from "@/components/global/Input";
+import { Modal } from "@/components/global/Modal";
+import { MultiSelect } from "@/components/global/MultiSelect";
 import { UsdInput } from "@/components/global/UsdInput";
-import type { TreasuryEntry } from "@/lib/hooks";
+import { Zap } from "@/components/icons";
+import { type TreasuryEntry, useAgents } from "@/lib/hooks";
 import { formatCurrency } from "@/lib/utils";
+
+export interface SwarmFormArgs {
+  swarmId: string;
+  members: string[];
+  poolLimit: string;
+}
 
 interface SwarmConfigProps {
   account?: TreasuryEntry["account"];
-  swarmForm: {
-    swarmId: string;
-    members: string;
-    poolLimit: string;
-  };
-  setSwarmForm: Dispatch<
-    SetStateAction<{
-      swarmId: string;
-      members: string;
-      poolLimit: string;
-    }>
-  >;
-  swarmMutation: UseMutationResult<string, Error, void, unknown>;
+  swarmMutation: UseMutationResult<string, Error, SwarmFormArgs, unknown>;
 }
 
-export function SwarmConfig({
-  account,
-  swarmForm,
-  setSwarmForm,
-  swarmMutation,
-}: SwarmConfigProps) {
+export function SwarmConfig({ account, swarmMutation }: SwarmConfigProps) {
+  const { agents } = useAgents();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [swarmId, setSwarmId] = useState("");
+  const [poolLimit, setPoolLimit] = useState("0");
+  const [members, setMembers] = useState<string[]>([]);
+
+  const openModal = () => {
+    setSwarmId(account?.swarm?.swarmId ?? "");
+    setPoolLimit(account?.swarm?.sharedPoolLimitUsd.toString() ?? "0");
+    setMembers(account?.swarm?.memberAgents ?? []);
+    swarmMutation.reset();
+    setIsOpen(true);
+  };
+
+  const handleSave = () => {
+    swarmMutation.mutate({ swarmId, members, poolLimit });
+  };
+
+  useEffect(() => {
+    if (swarmMutation.isSuccess) setIsOpen(false);
+  }, [swarmMutation.isSuccess]);
+
+  // Build MultiSelect options from fetched agents
+  const agentOptions = agents.map((agent) => ({
+    value: agent.agentId,
+    label: agent.label || agent.agentId,
+  }));
+
+  const swarm = account?.swarm;
+
   return (
-    <Card className="p-8 md:p-10" hover={false}>
-      <div className="flex flex-col lg:flex-row justify-between gap-12">
-        <div className="flex-1 space-y-8">
-          <div>
-            <h2 className="text-xl font-semibold text-(--text-main) mb-1">
-              Agent Swarm Configuration
-            </h2>
-            <p className="text-sm text-(--text-muted)">
-              Shared spending pool across multiple agents.
+    <>
+      <Card className="p-6" hover={false}>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-sm bg-(--card-content)/60 border border-border shrink-0 mt-0.5">
+              <Zap size={16} className="text-(--text-muted)" animateOnHover />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-(--text-main) mb-1">
+                Agent Swarm
+              </h2>
+              <p className="text-xs text-(--text-muted)">
+                Shared spending pool across multiple agent instances.
+              </p>
+            </div>
+          </div>
+          <Button variant="secondary" size="small" onClick={openModal}>
+            {swarm ? "Edit" : "Configure"}
+          </Button>
+        </div>
+
+        {/* Read-only state display */}
+        {swarm ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-(--card-content)/60 border border-border rounded-sm">
+                <div className="mono text-[9px] uppercase text-(--text-muted) tracking-widest mb-1.5">
+                  Swarm ID
+                </div>
+                <div className="mono text-xs text-(--text-main) font-semibold truncate">
+                  {swarm.swarmId}
+                </div>
+              </div>
+              <div className="p-3 bg-(--card-content)/60 border border-border rounded-sm">
+                <div className="mono text-[9px] uppercase text-(--text-muted) tracking-widest mb-1.5">
+                  Pool Limit
+                </div>
+                <div className="mono text-xs text-(--text-main) font-semibold">
+                  {formatCurrency(
+                    Number(swarm.sharedPoolLimitUsd.toString()) / 100,
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="p-3 bg-(--card-content)/60 border border-border rounded-sm">
+              <div className="mono text-[9px] uppercase text-(--text-muted) tracking-widest mb-2.5">
+                Member agents ({swarm.memberAgents.length})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {swarm.memberAgents.map((agentId) => {
+                  const known = agents.find((a) => a.agentId === agentId);
+                  return (
+                    <span
+                      key={agentId}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-(--card-content)/60 border border-border rounded-sm mono text-[10px] text-(--text-main)"
+                    >
+                      <span className="size-1.5 rounded-full bg-success/60 shrink-0" />
+                      {known?.label || agentId}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-10 text-center border border-dashed border-border rounded-sm space-y-2">
+            <Zap
+              size={22}
+              className="text-(--text-muted) mx-auto"
+              animateOnHover
+            />
+            <p className="text-sm text-(--text-muted)">No swarm configured.</p>
+            <p className="text-xs text-(--text-muted) opacity-60">
+              Create a swarm to share spending limits across agents.
             </p>
           </div>
+        )}
+      </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
+      {/* Edit modal */}
+      <Modal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Configure Agent Swarm"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={handleSave}
+              loading={swarmMutation.isPending}
+              disabled={!swarmId || !poolLimit || members.length === 0}
+            >
+              Save Changes
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
               <label
-                htmlFor="swarm-id"
-                className="mono text-[10px] uppercase text-(--text-muted) font-bold block"
+                htmlFor="modal-swarm-id"
+                className="mono text-[10px] uppercase text-(--text-muted) font-bold block mb-2.5 tracking-widest"
               >
                 Swarm ID
               </label>
               <Input
-                id="swarm-id"
-                value={swarmForm.swarmId}
-                onChange={(e) =>
-                  setSwarmForm((current) => ({
-                    ...current,
-                    swarmId: e.target.value,
-                  }))
-                }
+                id="modal-swarm-id"
+                value={swarmId}
+                onChange={(e) => setSwarmId(e.target.value)}
                 placeholder="ALPHA-SWARM-01"
+                className="mono"
               />
             </div>
             <UsdInput
               label="Shared pool limit"
-              valueCents={swarmForm.poolLimit}
-              onChangeCents={(v) =>
-                setSwarmForm((current) => ({ ...current, poolLimit: v }))
-              }
+              valueCents={poolLimit}
+              onChangeCents={setPoolLimit}
               placeholder="100000.00"
             />
-            <div className="md:col-span-2 space-y-4">
-              <label
-                htmlFor="member-agents"
-                className="mono text-[10px] uppercase text-(--text-muted) font-bold block"
-              >
-                Member agent IDs (comma-separated)
-              </label>
-              <textarea
-                id="member-agents"
-                className="w-full px-4 py-3 bg-(--card-bg) border border-border rounded-sm text-(--text-main) text-sm mono focus:outline-none focus:border-(--text-main) transition-colors resize-none"
-                rows={3}
-                value={swarmForm.members}
-                onChange={(e) =>
-                  setSwarmForm((current) => ({
-                    ...current,
-                    members: e.target.value,
-                  }))
-                }
-                placeholder="agent-1, agent-2, agent-3"
-              />
-            </div>
           </div>
-        </div>
 
-        <div className="lg:w-80 space-y-6 pt-2">
-          <span className="mono text-[10px] uppercase text-(--text-muted) font-bold block">
-            Current Swarm State
-          </span>
-          <div className="p-4 bg-white/5 border border-white/5 rounded space-y-5">
-            {account?.swarm ? (
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-(--text-muted)">Swarm ID</span>
-                  <StatusPill variant="active" className="text-[9px]">
-                    {account.swarm.swarmId}
-                  </StatusPill>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-(--text-muted) uppercase mono">
-                      Pool Limit
-                    </span>
-                    <span className="text-(--text-main) mono">
-                      {formatCurrency(
-                        Number(account.swarm.sharedPoolLimitUsd.toString()),
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <span className="text-[9px] mono text-(--text-muted) uppercase">
-                    Member Agents
-                  </span>
-                  <ul className="space-y-1">
-                    {account.swarm.memberAgents.map((agent) => (
-                      <li
-                        key={agent}
-                        className="text-[10px] text-(--text-main) opacity-80 flex items-center gap-2"
-                      >
-                        <div className="size-1 rounded-full bg-zinc-500" />{" "}
-                        {agent}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            ) : (
-              <div className="text-xs text-(--text-muted) italic">
-                No swarm configured
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => swarmMutation.mutate()}
-              loading={swarmMutation.isPending}
-              disabled={!swarmForm.swarmId || !swarmForm.poolLimit}
+          <div>
+            <label
+              htmlFor="member-agents"
+              className="mono text-[10px] uppercase text-(--text-muted) font-bold block mb-2.5 tracking-widest"
             >
-              Configure Swarm
-            </Button>
-            {swarmMutation.error && (
-              <div className="text-xs text-danger">
-                {swarmMutation.error.message}
-              </div>
+              Member agents
+            </label>
+            <MultiSelect
+              id="member-agents"
+              options={agentOptions}
+              value={members}
+              onChange={setMembers}
+              placeholder={
+                agentOptions.length > 0
+                  ? "Select agents or type a custom ID..."
+                  : "Type an agent ID and press Enter..."
+              }
+            />
+            {agentOptions.length > 0 && (
+              <p className="mt-2 text-[10px] mono text-(--text-muted)">
+                {agentOptions.length} agent
+                {agentOptions.length !== 1 ? "s" : ""} available · press Enter
+                to add custom IDs
+              </p>
             )}
           </div>
+
+          {swarmMutation.error && (
+            <Alert variant="error" message={swarmMutation.error.message} />
+          )}
         </div>
-      </div>
-    </Card>
+      </Modal>
+    </>
   );
 }

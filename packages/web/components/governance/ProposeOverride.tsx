@@ -3,8 +3,11 @@
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 import { Badge, Button, Card } from "@/components/global";
+import { Alert } from "@/components/global/Alert";
 import { UsdInput } from "@/components/global/UsdInput";
+import { ShieldCheck, TriangleAlert } from "@/components/icons";
 import type { TreasuryEntry } from "@/lib/hooks";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProposeOverrideProps {
   account?: TreasuryEntry["account"];
@@ -22,106 +25,144 @@ export function ProposeOverride({
   overrideCollectMutation,
 }: ProposeOverrideProps) {
   const activeOverride = account?.multisig?.pendingOverride;
+  const required = account?.multisig?.requiredSignatures ?? 0;
+  const collected = activeOverride?.signaturesCollected.length ?? 0;
+  const progress =
+    required > 0 ? Math.min(100, (collected / required) * 100) : 0;
 
   return (
-    <Card className="p-10" hover={false}>
-      <div className="mb-10">
-        <h2 className="text-xl font-semibold text-(--text-main) mb-1">
-          Propose Override
-        </h2>
-        <p className="text-sm text-(--text-muted)">
-          Create a new daily limit increase proposal for the emergency multisig.
-        </p>
+    <Card className="p-6" hover={false}>
+      {/* Section header */}
+      <div className="flex items-start gap-3 mb-6">
+        <div className="p-2 rounded-sm bg-(--card-content)/60 border border-border shrink-0 mt-0.5">
+          <TriangleAlert
+            size={16}
+            className="text-(--text-muted)"
+            animateOnHover
+          />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-(--text-main) mb-1">
+            Override Proposal
+          </h2>
+          <p className="text-xs text-(--text-muted)">
+            Propose or sign a daily limit increase via the emergency multisig.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <form className="lg:col-span-7 space-y-8">
-          <div className="grid grid-cols-1 gap-8">
-            <UsdInput
-              label="New daily limit"
-              valueCents={overrideLimit}
-              onChangeCents={setOverrideLimit}
-              placeholder="25000.00"
-            />
+      {/* Active override status */}
+      {activeOverride ? (
+        <div className="mb-6 p-4 bg-warning/5 border border-warning/20 rounded-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="mono text-[10px] uppercase text-warning tracking-widest font-bold">
+              Active Proposal
+            </span>
+            <Badge variant="paused" className="text-[8px]">
+              Awaiting Sigs
+            </Badge>
           </div>
-          <div className="flex gap-3">
-            <Button
-              variant="primary"
-              className="px-12"
-              onClick={() => overrideProposeMutation.mutate()}
-              loading={overrideProposeMutation.isPending}
-              disabled={!overrideLimit || !account?.multisig}
-            >
-              Propose Override
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => overrideCollectMutation.mutate()}
-              loading={overrideCollectMutation.isPending}
-              disabled={!activeOverride}
-            >
-              Sign Override
-            </Button>
-          </div>
-          {(overrideProposeMutation.error || overrideCollectMutation.error) && (
-            <div className="text-xs text-danger">
-              {overrideProposeMutation.error?.message ||
-                overrideCollectMutation.error?.message}
-            </div>
-          )}
-        </form>
 
-        <div className="lg:col-span-5 space-y-6">
-          <span className="mono text-[10px] uppercase text-(--text-muted) font-bold block tracking-widest">
-            Active Proposals
-          </span>
-          <div className="space-y-4">
-            {activeOverride ? (
-              <div className="p-5 bg-white/3 border border-warning/20 rounded relative">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="text-[10px] mono text-warning mb-1">
-                      ACTIVE-OVERRIDE
-                    </div>
-                    <h3 className="font-semibold text-(--text-main) text-sm">
-                      {activeOverride.newDailyLimitUsd.toString()} cents limit
-                      increase
-                    </h3>
-                  </div>
-                  <Badge variant="paused" className="text-[8px]">
-                    Awaiting Sigs
-                  </Badge>
-                </div>
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-(--text-muted)">Status</span>
-                    <span className="text-(--text-main) mono font-bold">
-                      {activeOverride.signaturesCollected.length} signatures
-                    </span>
-                  </div>
-                  <div
-                    className="flex justify-between text-xs"
-                    suppressHydrationWarning
-                  >
-                    <span className="text-(--text-muted)">Expires</span>
-                    <span
-                      className="text-(--text-muted) mono"
-                      suppressHydrationWarning
-                    >
-                      {new Date(
-                        Number(activeOverride.expiration.toString()) * 1000,
-                      ).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="p-5 bg-white/2 border border-white/5 rounded text-center text-xs text-(--text-muted) italic">
-                No active override proposals
-              </div>
-            )}
+          <div>
+            <div className="text-sm font-semibold text-(--text-main)">
+              {formatCurrency(
+                Number(activeOverride.newDailyLimitUsd.toString()) / 100,
+              )}{" "}
+              new daily limit
+            </div>
+            <div
+              className="text-[10px] text-(--text-muted) mono mt-0.5"
+              suppressHydrationWarning
+            >
+              Expires{" "}
+              {new Date(
+                Number(activeOverride.expiration.toString()) * 1000,
+              ).toLocaleString()}
+            </div>
           </div>
+
+          {/* Signature progress bar */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="mono text-[10px] text-(--text-muted)">
+                Signatures
+              </span>
+              <span className="mono text-[10px] text-(--text-main) font-bold">
+                {collected} / {required}
+              </span>
+            </div>
+            <div className="h-1 bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full bg-warning rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => overrideCollectMutation.mutate()}
+            loading={overrideCollectMutation.isPending}
+          >
+            Sign Override
+          </Button>
         </div>
+      ) : (
+        <div className="mb-6 p-4 bg-(--card-content)/60 border border-border rounded-sm flex items-center gap-3">
+          <ShieldCheck
+            size={15}
+            className="text-(--text-muted) shrink-0"
+            animateOnHover
+          />
+          <span className="text-xs text-(--text-muted)">
+            No active override proposals
+          </span>
+        </div>
+      )}
+
+      {/* New proposal form */}
+      <div className="space-y-4">
+        <div className="border-t border-border pt-4">
+          <span className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block mb-4">
+            New Proposal
+          </span>
+          <UsdInput
+            label="New daily limit"
+            valueCents={overrideLimit}
+            onChangeCents={setOverrideLimit}
+            placeholder="25000.00"
+          />
+        </div>
+
+        <Button
+          variant="primary"
+          className="w-full"
+          onClick={() => overrideProposeMutation.mutate()}
+          loading={overrideProposeMutation.isPending}
+          disabled={
+            !overrideLimit || overrideLimit === "0" || !account?.multisig
+          }
+        >
+          Propose Override
+        </Button>
+
+        {!account?.multisig && (
+          <p className="text-[10px] text-(--text-muted) mono text-center">
+            Configure a multisig first to propose overrides.
+          </p>
+        )}
+
+        {(overrideProposeMutation.error || overrideCollectMutation.error) && (
+          <Alert
+            variant="error"
+            message={
+              overrideProposeMutation.error?.message ??
+              overrideCollectMutation.error?.message ??
+              ""
+            }
+          />
+        )}
       </div>
     </Card>
   );
