@@ -360,7 +360,7 @@ function PolicyContent({
         : null,
       isCurrency: true,
     },
-  ] as const;
+  ];
 
   return (
     <div className="p-4 bg-(--card-content)/60 border border-border rounded-sm space-y-0">

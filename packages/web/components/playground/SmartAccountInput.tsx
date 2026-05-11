@@ -64,7 +64,8 @@ export function SmartAccountInput({
     const options = [
       ...treasuries.map((t) => ({
         value: t.publicKey.toBase58(),
-        label: t.account.label || shortenAddress(t.publicKey.toBase58(), 6, 4),
+        label:
+          t.account.agentId || shortenAddress(t.publicKey.toBase58(), 6, 4),
         badge: shortenAddress(t.publicKey.toBase58(), 4, 4),
         icon: <Vault className="size-3" animateOnHover />,
       })),

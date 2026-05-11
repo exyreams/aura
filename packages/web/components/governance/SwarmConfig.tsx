@@ -195,7 +195,6 @@ export function SwarmConfig({ account, swarmMutation }: SwarmConfigProps) {
               Member agents
             </label>
             <MultiSelect
-              id="member-agents"
               options={agentOptions}
               value={members}
               onChange={setMembers}
