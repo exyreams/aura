@@ -62,8 +62,9 @@ export function Technology() {
               Fully Homomorphic Encryption (FHE)
             </strong>{" "}
             via Ika's Encrypt network. Daily limits, per-transaction caps, and
-            running spend counters are stored as FHE scalar ciphertexts on-chain. The
-            policy engine evaluates them without ever decrypting the values.
+            running spend counters are stored as FHE scalar ciphertexts
+            on-chain. The policy engine evaluates them without ever decrypting
+            the values.
           </p>
           <ul className="space-y-4 md:space-y-6">
             <li className="flex gap-3 md:gap-4">
@@ -86,7 +87,8 @@ export function Technology() {
                 </span>
                 <span className="text-(--text-muted) text-xs md:text-sm">
                   Approved proposals are co-signed by Ika dWallet records,
-                  enabling native multi-chain execution without raw key exposure.
+                  enabling native multi-chain execution without raw key
+                  exposure.
                 </span>
               </div>
             </li>
@@ -98,7 +100,8 @@ export function Technology() {
                 </span>
                 <span className="text-(--text-muted) text-xs md:text-sm">
                   Hidden limits mean bots cannot calculate your thresholds,
-                  front-run your trades, or infer your strategy from on-chain data.
+                  front-run your trades, or infer your strategy from on-chain
+                  data.
                 </span>
               </div>
             </li>

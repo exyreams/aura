@@ -928,8 +928,11 @@ function mapToProposalEntries(
 
     // Detect confidential from event kind — most reliable signal
     const isConfidential =
-      sorted.some((e) => e.detail?.startsWith("proposal_submitted") && e.detail?.includes("confidential")) ||
-      hasDecryption;
+      sorted.some(
+        (e) =>
+          e.detail?.startsWith("proposal_submitted") &&
+          e.detail?.includes("confidential"),
+      ) || hasDecryption;
 
     entries.push({
       id: `${first.treasury}:${first.proposalId}`,

@@ -125,7 +125,7 @@ export default function AgentsPage() {
                 { label: "Agent ID", value: deleteTarget.agentId },
                 {
                   label: "Public key",
-                  value: deleteTarget.publicKey.slice(0, 20) + "…",
+                  value: `${deleteTarget.publicKey.slice(0, 20)}…`,
                 },
                 {
                   label: "Label",

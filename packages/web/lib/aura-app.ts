@@ -818,7 +818,9 @@ export interface AuditTrailItem {
  * Orphaned proposal-lifecycle events without a proposalId are silently dropped
  * because they are already captured by the proposal group's outcome.
  */
-export function groupEventsForAuditTrail(events: ParsedActivity[]): AuditTrailItem[] {
+export function groupEventsForAuditTrail(
+  events: ParsedActivity[],
+): AuditTrailItem[] {
   const byProposal = new Map<string, ParsedActivity[]>();
   const auditItems: AuditTrailItem[] = [];
 
@@ -844,26 +846,31 @@ export function groupEventsForAuditTrail(events: ParsedActivity[]): AuditTrailIt
   const proposalItems: AuditTrailItem[] = [];
 
   for (const [, group] of byProposal) {
-    const sorted = [...group].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+    const sorted = [...group].sort(
+      (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
+    );
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
 
-    const outcome: AuditTrailItem["outcome"] =
-      sorted.some((e) => e.approved === true)
-        ? "approved"
-        : sorted.some((e) => e.status === 5 || e.status === 6)
-          ? "cancelled"
-          : sorted.some((e) => e.approved === false)
-            ? "denied"
-            : last.status === 5
-              ? "cancelled"
-              : "pending";
+    const outcome: AuditTrailItem["outcome"] = sorted.some(
+      (e) => e.approved === true,
+    )
+      ? "approved"
+      : sorted.some((e) => e.status === 5 || e.status === 6)
+        ? "cancelled"
+        : sorted.some((e) => e.approved === false)
+          ? "denied"
+          : last.status === 5
+            ? "cancelled"
+            : "pending";
 
     const violation =
       sorted.find((e) => e.violation != null && (e.violation as number) > 0)
         ?.violation ?? undefined;
 
-    const isConfidential = sorted.some((e) => e.detail?.includes("confidential"));
+    const isConfidential = sorted.some((e) =>
+      e.detail?.includes("confidential"),
+    );
 
     proposalItems.push({
       signature: first.signature,
@@ -878,5 +885,7 @@ export function groupEventsForAuditTrail(events: ParsedActivity[]): AuditTrailIt
     });
   }
 
-  return [...proposalItems, ...auditItems].sort((a, b) => b.timestamp - a.timestamp);
+  return [...proposalItems, ...auditItems].sort(
+    (a, b) => b.timestamp - a.timestamp,
+  );
 }

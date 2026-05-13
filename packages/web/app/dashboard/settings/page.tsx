@@ -301,9 +301,10 @@ export default function SettingsPage() {
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          void copyValue(item.copyValue!, item.label)
-                        }
+                        onClick={() => {
+                          const val = item.copyValue;
+                          if (val) void copyValue(val, item.label);
+                        }}
                         className="inline-flex size-5 items-center justify-center text-(--text-muted) transition-colors hover:text-(--text-main)"
                       >
                         <Copy className="size-3" animateOnHover />

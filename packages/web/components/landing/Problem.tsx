@@ -42,7 +42,9 @@ export function Problem() {
       key: "approach",
       header: "Approach",
       render: (item: ProblemRow) => (
-        <span className={`font-bold text-base ${item.isAura ? "text-primary" : "text-(--text-main)"}`}>
+        <span
+          className={`font-bold text-base ${item.isAura ? "text-primary" : "text-(--text-main)"}`}
+        >
           {item.approach}
         </span>
       ),
@@ -58,7 +60,9 @@ export function Problem() {
       key: "status",
       header: "Status",
       render: (item: ProblemRow) => (
-        <span className={`font-mono text-xs ${item.isAura ? "text-primary font-bold" : "text-(--text-muted)"}`}>
+        <span
+          className={`font-mono text-xs ${item.isAura ? "text-primary font-bold" : "text-(--text-muted)"}`}
+        >
           {item.status}
         </span>
       ),
@@ -79,8 +83,8 @@ export function Problem() {
             The Agentic Trust Gap
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            Every existing approach forces a tradeoff between autonomy, security,
-            and privacy. AURA eliminates all three.
+            Every existing approach forces a tradeoff between autonomy,
+            security, and privacy. AURA eliminates all three.
           </p>
         </div>
 

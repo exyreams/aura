@@ -15,8 +15,8 @@ export function Steps() {
             How AURA Works
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            From encrypted policy setup to multi-chain execution — every step
-            is cryptographically enforced on Solana.
+            From encrypted policy setup to multi-chain execution — every step is
+            cryptographically enforced on Solana.
           </p>
         </div>
 

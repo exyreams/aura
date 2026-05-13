@@ -9,7 +9,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
-import { Check, ExternalLink, Lock, ShieldAlert, Wallet } from "@/components/icons";
+import {
+  Check,
+  ExternalLink,
+  Lock,
+  ShieldAlert,
+  Wallet,
+} from "@/components/icons";
 import {
   buildProposeTransactionArgs,
   sendWalletInstructions,
@@ -350,7 +356,8 @@ export function ProposeTransactionModal({
                 />
                 <p className="text-[11px] text-(--warning-text) leading-relaxed">
                   No dWallet registered — the proposal will evaluate but
-                  execution will fail. Register a dWallet on this treasury first.
+                  execution will fail. Register a dWallet on this treasury
+                  first.
                 </p>
               </div>
             )}

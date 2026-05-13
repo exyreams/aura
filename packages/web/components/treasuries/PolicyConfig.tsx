@@ -678,13 +678,9 @@ function DWalletCard({
 
   return (
     <div className="border border-border rounded-sm overflow-hidden">
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         onClick={() => setExpandedId(isExpanded ? null : dw.dwalletId)}
-        onKeyDown={(e) =>
-          e.key === "Enter" && setExpandedId(isExpanded ? null : dw.dwalletId)
-        }
         className="w-full text-left p-4 bg-(--card-content)/60 hover:bg-(--hover-bg) transition-colors cursor-pointer"
       >
         <div className="flex items-center justify-between gap-3">
@@ -787,7 +783,7 @@ function DWalletCard({
             )}
           />
         </div>
-      </div>
+      </button>
 
       {isExpanded && (
         <div className="p-4 bg-(--card-bg) border-t border-border space-y-2">

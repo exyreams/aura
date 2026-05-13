@@ -49,7 +49,9 @@ function getEventConfig(event: AuditEvent): EventConfig {
     if (event.outcome === "cancelled")
       return {
         label: "Cancelled",
-        icon: <Xcircle size={18} className="text-(--text-muted)" animateOnHover />,
+        icon: (
+          <Xcircle size={18} className="text-(--text-muted)" animateOnHover />
+        ),
         variant: "paused",
         badgeLabel: "cancelled",
       };
@@ -57,7 +59,9 @@ function getEventConfig(event: AuditEvent): EventConfig {
       if (event.violation && event.violation > 0)
         return {
           label: "Policy Violation",
-          icon: <ShieldAlert size={18} className="text-danger" animateOnHover />,
+          icon: (
+            <ShieldAlert size={18} className="text-danger" animateOnHover />
+          ),
           variant: "error",
           badgeLabel: "denied",
         };
@@ -100,21 +104,27 @@ function getEventConfig(event: AuditEvent): EventConfig {
     case "confidential_guardrails_configured":
       return {
         label: "Policy Configured",
-        icon: <Settings size={18} className="text-(--text-muted)" animateOnHover />,
+        icon: (
+          <Settings size={18} className="text-(--text-muted)" animateOnHover />
+        ),
         variant: "default",
         badgeLabel: "policy",
       };
     case "execution_paused":
       return {
         label: "Execution Paused",
-        icon: <TriangleAlert size={18} className="text-warning" animateOnHover />,
+        icon: (
+          <TriangleAlert size={18} className="text-warning" animateOnHover />
+        ),
         variant: "paused",
         badgeLabel: "paused",
       };
     case "execution_resumed":
       return {
         label: "Execution Resumed",
-        icon: <RefreshCw size={18} className="text-(--text-muted)" animateOnHover />,
+        icon: (
+          <RefreshCw size={18} className="text-(--text-muted)" animateOnHover />
+        ),
         variant: "active",
         badgeLabel: "resumed",
       };
@@ -122,7 +132,9 @@ function getEventConfig(event: AuditEvent): EventConfig {
     case "decryption_verified":
       return {
         label: "FHE Decryption",
-        icon: <Shield size={18} className="text-(--text-muted)" animateOnHover />,
+        icon: (
+          <Shield size={18} className="text-(--text-muted)" animateOnHover />
+        ),
         variant: "default",
         badgeLabel: "fhe",
       };
@@ -139,7 +151,9 @@ function getEventConfig(event: AuditEvent): EventConfig {
   if (detail.includes("limit") || detail.includes("policy"))
     return {
       label: "Policy Audit",
-      icon: <Settings size={18} className="text-(--text-muted)" animateOnHover />,
+      icon: (
+        <Settings size={18} className="text-(--text-muted)" animateOnHover />
+      ),
       variant: "default",
       badgeLabel: "policy",
     };
@@ -152,7 +166,9 @@ function getEventConfig(event: AuditEvent): EventConfig {
     };
   if (detail.includes("paused") || detail.includes("resumed"))
     return {
-      label: detail.includes("paused") ? "Execution Paused" : "Execution Resumed",
+      label: detail.includes("paused")
+        ? "Execution Paused"
+        : "Execution Resumed",
       icon: <TriangleAlert size={18} className="text-warning" animateOnHover />,
       variant: "paused",
       badgeLabel: detail.includes("paused") ? "paused" : "resumed",
@@ -160,7 +176,9 @@ function getEventConfig(event: AuditEvent): EventConfig {
   if (detail.includes("rotation") || detail.includes("authority"))
     return {
       label: "AI Rotation",
-      icon: <RefreshCw size={18} className="text-(--text-muted)" animateOnHover />,
+      icon: (
+        <RefreshCw size={18} className="text-(--text-muted)" animateOnHover />
+      ),
       variant: "default",
       badgeLabel: "rotation",
     };
@@ -183,10 +201,8 @@ function getDescription(event: AuditEvent): string {
       return `Proposal ${id} approved and executed`;
     if (event.outcome === "denied" && violationStr)
       return `Proposal ${id} rejected: ${violationStr}`;
-    if (event.outcome === "denied")
-      return `Proposal ${id} denied`;
-    if (event.outcome === "cancelled")
-      return `Proposal ${id} cancelled`;
+    if (event.outcome === "denied") return `Proposal ${id} denied`;
+    if (event.outcome === "cancelled") return `Proposal ${id} cancelled`;
     return `Proposal ${id} submitted`;
   }
 

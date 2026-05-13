@@ -212,11 +212,11 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   // When the active proposal changes (new proposalId), clear any leftover
   // mutation errors so the fresh proposal's modal starts with a clean slate.
   const currentProposalId = hasPending ? pending?.proposalId?.toString() : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentProposalId is the intentional trigger; .reset refs are stable
   useEffect(() => {
     executeMutation.reset();
     finalizeMutation.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProposalId]);
+  }, [currentProposalId, executeMutation.reset, finalizeMutation.reset]);
 
   // Auto-execute proposals already denied by policy at status=0 (Proposed).
   // The on-chain program evaluates policy at propose time; denied proposals sit
@@ -231,7 +231,12 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
     if (isDeniedAtPropose && selectedAgent?.agentId && executeMutation.isIdle) {
       executeMutation.mutate();
     }
-  }, [isDeniedAtPropose, selectedAgent?.agentId, executeMutation.isIdle, executeMutation.mutate]);
+  }, [
+    isDeniedAtPropose,
+    selectedAgent?.agentId,
+    executeMutation.isIdle,
+    executeMutation.mutate,
+  ]);
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
@@ -516,7 +521,9 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
               </td>
               <td className="px-3 sm:px-4 py-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-(--text-main)">{txType}</span>
+                  <span className="font-mono text-sm text-(--text-main)">
+                    {txType}
+                  </span>
                   {isConfidential && (
                     <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-border text-(--text-muted) bg-(--card-content)">
                       <Lock size={8} />

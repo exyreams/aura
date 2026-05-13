@@ -1,10 +1,10 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useEffect } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
@@ -271,8 +271,13 @@ export function ConfidentialLifecycleModal({
       executeMutation.reset();
       finalizeMutation.reset();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [
+    isOpen,
+    requestDecryptionMutation.reset,
+    confirmDecryptionMutation.reset,
+    executeMutation.reset,
+    finalizeMutation.reset,
+  ]);
 
   const isExpiredError = (msg: string | null | undefined) =>
     !!msg &&

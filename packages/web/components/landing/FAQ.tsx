@@ -56,7 +56,10 @@ export function FAQ() {
   ];
 
   return (
-    <section id="faq" className="border-t border-border max-w-4xl mx-auto z-10 px-6 py-[120px] md:px-[4vw]">
+    <section
+      id="faq"
+      className="border-t border-border max-w-4xl mx-auto z-10 px-6 py-[120px] md:px-[4vw]"
+    >
       <Reveal>
         <div className="mb-10 md:mb-12 text-center">
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
