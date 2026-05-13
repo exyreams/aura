@@ -21,6 +21,7 @@ import {
   sendWalletInstructions,
 } from "@/lib/aura-app";
 import { LONG_TIMEOUT_MS, postBackend } from "@/lib/backend-client";
+import { sanitizeError } from "@/lib/error-sanitizer";
 import {
   useAgents,
   useAppSettings,
@@ -51,57 +52,6 @@ interface ProposeTransactionModalProps {
   pda: string;
 }
 
-function sanitizeProposalError(msg: string): string {
-  if (/user rejected|rejected the request|user denied/i.test(msg))
-    return "Transaction cancelled by wallet.";
-  if (/wallet not connected|no wallet|connect.*wallet/i.test(msg))
-    return "No wallet connected. Connect a wallet and try again.";
-  if (/insufficient funds for rent/i.test(msg))
-    return "Not enough SOL to cover rent. Top up your wallet and try again.";
-  if (/insufficient lamports|insufficient funds/i.test(msg))
-    return "Insufficient funds to complete this transaction.";
-  if (/0x1\b/.test(msg))
-    return "Not enough SOL in your wallet. Fund it with devnet SOL and try again.";
-  if (/memory allocation failed|out of memory|SBF program panicked/i.test(msg))
-    return "A proposal is already active on this treasury. Cancel the existing proposal before submitting a new one.";
-  if (/blockhash not found|blockhash.*expired/i.test(msg))
-    return "Transaction expired — the network was too slow. Please try again.";
-  if (/was not confirmed|transaction not confirmed/i.test(msg))
-    return "Transaction timed out waiting for confirmation. Try again.";
-  if (/ttl.*elapsed|proposal.*expired/i.test(msg))
-    return "This proposal has expired. Create a new one.";
-  if (/0x1783|PendingTransactionExpired|pending transaction expired/i.test(msg))
-    return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
-  if (/simulation failed/i.test(msg)) {
-    if (
-      /0x1783|PendingTransactionExpired|pending transaction expired/i.test(msg)
-    )
-      return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
-    if (/memory allocation failed|out of memory/i.test(msg))
-      return "A proposal is already active on this treasury. Cancel it before submitting a new one.";
-    return "Transaction simulation failed. Check your wallet balance and try again.";
-  }
-  if (/fetch.*fail|network.*error|econnrefused|failed to fetch/i.test(msg))
-    return "Could not reach the backend. Check your network connection and backend URL in Settings.";
-  if (/timeout|timed out/i.test(msg))
-    return "Request timed out. The network may be congested — please try again.";
-  if (/execution paused/i.test(msg))
-    return "Execution is paused on this treasury. Unpause it before submitting proposals.";
-  if (/create and select an agent/i.test(msg))
-    return "No agent selected. Create and select an agent first.";
-  if (/agent.*not found|invalid.*agent/i.test(msg))
-    return "Agent not found. Select a valid agent in the agent panel.";
-  // Strip UUIDs and Program log prefixes from fallback
-  return msg
-    .replace(/\s*\([0-9a-f-]{36}\)\s*$/i, "")
-    .replace(/^Program log:\s*/i, "")
-    .replace(/Simulation failed\.\s*Message:\s*/i, "")
-    .replace(/Transaction simulation failed:\s*/i, "")
-    .replace(/Error processing Instruction \d+:\s*/i, "")
-    .replace(/\.\s*Logs:[\s\S]*$/i, "")
-    .trim();
-}
-
 export function ProposeTransactionModal({
   isOpen,
   onClose,
@@ -120,6 +70,17 @@ export function ProposeTransactionModal({
   const confidentialReady: boolean | null = entry
     ? Boolean(entry.account.confidentialGuardrails)
     : null;
+
+  // Check if the selected agent is the aiAuthority on this treasury.
+  // If not, confidential + backend-signed public proposals will fail with
+  // UnauthorizedAi (error 6000 / 0x1770) on-chain.
+  const aiAuthority = entry?.account.aiAuthority?.toString?.() ?? null;
+  const agentPublicKey = selectedAgent?.publicKey ?? null;
+  const isWrongAgent =
+    entry !== undefined &&
+    agentPublicKey !== null &&
+    aiAuthority !== null &&
+    agentPublicKey !== aiAuthority;
 
   const [mode, setMode] = usePersistentState<"public" | "confidential">(
     `aura:proposal-mode:${pda}`,
@@ -340,11 +301,7 @@ export function ProposeTransactionModal({
             {proposeMutation.error && (
               <Alert
                 variant="error"
-                message={sanitizeProposalError(
-                  proposeMutation.error instanceof Error
-                    ? proposeMutation.error.message
-                    : "Failed to submit proposal",
-                )}
+                message={sanitizeError(proposeMutation.error)}
                 onClose={() => proposeMutation.reset()}
               />
             )}
@@ -359,6 +316,31 @@ export function ProposeTransactionModal({
                   execution will fail. Register a dWallet on this treasury
                   first.
                 </p>
+              </div>
+            )}
+            {isWrongAgent && (
+              <div className="rounded-sm border border-danger/30 bg-danger/10 px-4 py-3 flex gap-3 items-start">
+                <ShieldAlert
+                  className="size-3.5 text-danger shrink-0 mt-0.5"
+                  animateOnHover
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-danger font-semibold mb-0.5">
+                    Unauthorized AI Signer
+                  </p>
+                  <p className="text-[11px] text-(--text-muted) leading-relaxed">
+                    The selected agent{" "}
+                    <span className="font-mono">
+                      ({agentPublicKey?.slice(0, 8)}…)
+                    </span>{" "}
+                    is not the AI authority on this treasury{" "}
+                    <span className="font-mono">
+                      ({aiAuthority?.slice(0, 8)}…)
+                    </span>
+                    . Select the correct agent or re-create the treasury with
+                    this agent as the AI authority.
+                  </p>
+                </div>
               </div>
             )}
             <div className="flex gap-2 w-full">
@@ -381,6 +363,7 @@ export function ProposeTransactionModal({
                 disabled={
                   !entry ||
                   proposeMutation.isPending ||
+                  isWrongAgent ||
                   (mode === "confidential" && !selectedAgent) ||
                   (mode === "confidential" && confidentialReady !== true)
                 }

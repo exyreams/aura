@@ -18,6 +18,7 @@ import {
   TX_TYPES,
 } from "@/lib/aura-app";
 import { backendRequest, postBackend } from "@/lib/backend-client";
+import { sanitizeError } from "@/lib/error-sanitizer";
 import type { TreasuryEntry } from "@/lib/hooks";
 import { useAgents, useAppSettings, useAuraClient } from "@/lib/hooks";
 import { formatCurrency, shortenAddress } from "@/lib/utils";
@@ -321,125 +322,14 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
         ? ("error" as const)
         : ("medium" as const);
 
-  const mutationError =
-    executeMutation.error instanceof Error
-      ? executeMutation.error.message
-      : finalizeMutation.error instanceof Error
-        ? finalizeMutation.error.message
-        : cancelMutation.error instanceof Error
-          ? cancelMutation.error.message
-          : null;
-
-  function sanitizeError(msg: string): string {
-    // --- Wallet / signing ---
-    if (/user rejected|rejected the request|user denied/i.test(msg))
-      return "Transaction cancelled by wallet.";
-    if (/wallet not connected|no wallet|connect.*wallet/i.test(msg))
-      return "No wallet connected. Connect a wallet and try again.";
-    if (/wallet.*locked|please unlock/i.test(msg))
-      return "Your wallet is locked. Unlock it and try again.";
-    // --- Funds / fees ---
-    if (/insufficient funds for rent/i.test(msg))
-      return "Not enough SOL to cover rent. Top up your wallet and try again.";
-    if (/insufficient lamports|insufficient funds/i.test(msg))
-      return "Insufficient funds to complete this transaction.";
-    if (/0x1\b/.test(msg))
-      return "Not enough SOL in your wallet. Fund it with devnet SOL and try again.";
-    // --- Transaction lifecycle ---
-    if (/blockhash not found|blockhash.*expired/i.test(msg))
-      return "Transaction expired — the network was too slow. Please try again.";
-    if (/was not confirmed|transaction not confirmed/i.test(msg))
-      return "Transaction timed out waiting for confirmation. Try again.";
-    if (/transaction too large/i.test(msg))
-      return "Transaction is too large to submit. Contact support.";
-    if (/ttl.*elapsed|proposal.*expired/i.test(msg))
-      return "This proposal has expired. Create a new one.";
-    if (
-      /0x1783|PendingTransactionExpired|pending transaction expired/i.test(msg)
-    )
-      return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
-    if (/transaction.*failed|failed.*transaction/i.test(msg))
-      return "Transaction failed on-chain. Check your wallet balance and try again.";
-    if (/simulation failed/i.test(msg)) {
-      // Check for specific program errors inside the simulation failure first
-      if (
-        /0x1783|PendingTransactionExpired|pending transaction expired/i.test(
-          msg,
+  const sanitizedError =
+    (executeMutation.error ?? finalizeMutation.error ?? cancelMutation.error)
+      ? sanitizeError(
+          executeMutation.error ??
+            finalizeMutation.error ??
+            cancelMutation.error,
         )
-      )
-        return "This proposal has expired (TTL elapsed). Cancel it and create a new one.";
-      return "Transaction simulation failed. Check your wallet balance and try again.";
-    }
-    if (/already.*processed|duplicate.*transaction/i.test(msg))
-      return "This transaction was already processed. Refresh and check the proposal status.";
-    // --- RPC / network ---
-    if (
-      /fetch.*fail|network.*error|econnrefused|enotfound|failed to fetch/i.test(
-        msg,
-      )
-    )
-      return "Could not reach the backend. Check your network connection and backend URL in Settings.";
-    if (/timeout|timed out/i.test(msg))
-      return "Request timed out. The network may be congested — please try again.";
-    if (/429|rate.?limit/i.test(msg))
-      return "Too many requests. Wait a moment and try again.";
-    if (/rpc.*error|node.*error/i.test(msg))
-      return "RPC node error. Try switching to a different endpoint in Settings.";
-    // --- Accounts / program ---
-    if (/account.*not found|could not find account|invalid.*account/i.test(msg))
-      return "Account not found on-chain. The treasury or dWallet may not be initialized.";
-    if (/account.*already.*exist|already in use/i.test(msg))
-      return "Account already exists. Refresh the page and check for an active proposal.";
-    if (/invalid.*program|program.*not.*found/i.test(msg))
-      return "Program not found. Verify the Program ID in Settings.";
-    if (/owner.*mismatch|invalid.*owner/i.test(msg))
-      return "Account owner mismatch. Ensure you are using the correct program ID.";
-    // --- Proposal / treasury state ---
-    if (/no pending transaction|no pending proposal/i.test(msg))
-      return "No pending proposal found on this treasury.";
-    if (/proposal.*already.*exists/i.test(msg))
-      return "A proposal is already active on this treasury. Cancel it before creating a new one.";
-    if (
-      /memory allocation failed|out of memory|SBF program panicked/i.test(msg)
-    )
-      return "Transaction failed — there may already be an active proposal on this treasury. Cancel the existing proposal first.";
-    if (/execution paused/i.test(msg))
-      return "Execution is paused on this treasury. Unpause it in treasury settings.";
-    if (/treasury.*not.*found/i.test(msg))
-      return "Treasury not found. It may have been closed or the address is incorrect.";
-    if (/ttl.*elapsed|proposal.*expired/i.test(msg))
-      return "This proposal has expired. Create a new one.";
-    if (/proposal.*denied/i.test(msg))
-      return "Proposal was denied by the policy engine.";
-    // --- Agent ---
-    if (/agent.*not found|invalid.*agent/i.test(msg))
-      return "Agent not found. Select a valid agent in the agent panel.";
-    if (/create and select an agent/i.test(msg))
-      return "No agent selected. Create and select an agent first.";
-    if (/agent.*not.*authorized|agent.*permission/i.test(msg))
-      return "This agent is not authorized to act on this treasury.";
-    // --- Ika / dWallet ---
-    if (/timed out waiting for/i.test(msg))
-      return "Ika didn't respond in time — the signing window (~15 min) may have passed. Re-execute the proposal to request a fresh signature.";
-    if (/message approval not ready|approval.*not.*ready/i.test(msg))
-      return "Waiting for Ika to sign — the signature isn't ready yet. Check the IKA status indicator.";
-    if (/dwallet not configured|no dwallet/i.test(msg))
-      return "No dWallet registered for this chain. Register one in treasury settings first.";
-    if (/dwallet.*mismatch/i.test(msg))
-      return "dWallet mismatch. The registered dWallet doesn't match the proposal.";
-    if (/ika.*unavailable|ika.*error/i.test(msg))
-      return "Ika network is unavailable. Try again in a few moments.";
-    // --- Auth ---
-    if (/unauthorized|not authorized|forbidden/i.test(msg))
-      return "You are not authorized to perform this action.";
-    // Fallback: strip backend UUIDs and Program log prefixes
-    return msg
-      .replace(/\s*\([0-9a-f-]{36}\)\s*$/i, "")
-      .replace(/^Program log:\s*/i, "")
-      .trim();
-  }
-
-  const sanitizedError = mutationError ? sanitizeError(mutationError) : null;
+      : null;
 
   // Terminal statuses: 4=Denied, 5=Cancelled, 6=Expired
   const isTerminal =
