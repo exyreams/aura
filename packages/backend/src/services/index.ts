@@ -271,20 +271,43 @@ export async function sendGenericProgramInstruction(context: ServiceContext, inp
     });
     if (input.instruction === "create_treasury") {
       const treasury = built.normalizedAccounts["treasury"];
+      // Do not pass agentId — this prevents overwriting an existing registered
+      // treasury address when testing create_treasury from the playground.
       if (treasury instanceof PublicKey) {
         ensureTreasuryRecord({
           agent,
           treasuryAddress: treasury.toBase58(),
-          agentId: agent.agentId,
         });
       } else if (typeof treasury === "string") {
         ensureTreasuryRecord({
           agent,
           treasuryAddress: treasury,
-          agentId: agent.agentId,
         });
       }
     }
+
+    // Record a playground event so the activity log shows what was sent.
+    // Resolve treasury address from the built accounts if available.
+    const treasuryAccount = built.normalizedAccounts["treasury"];
+    const treasuryAddress =
+      treasuryAccount instanceof PublicKey
+        ? treasuryAccount.toBase58()
+        : typeof treasuryAccount === "string"
+          ? treasuryAccount
+          : null;
+    if (treasuryAddress) {
+      insertEvent({
+        treasuryAddress,
+        agentKeypairId: agent.id,
+        kind: "instruction_sent",
+        txSignature: signature,
+        meta: {
+          instruction: input.instruction,
+          source: "playground",
+        },
+      });
+    }
+
     return { ...built, signature };
   });
 }

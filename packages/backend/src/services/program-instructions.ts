@@ -5,6 +5,7 @@ import {
   type AuraFeatureDomain,
   type AuraInstructionFeature,
   AuraClient,
+  deriveTreasuryAddress,
 } from "@aura-protocol/sdk-ts";
 import {
   PublicKey,
@@ -490,13 +491,43 @@ export async function buildProgramInstruction(
       `${instructionDef.name} is not exposed by the Anchor client.`,
     );
   }
+  const normalizedArgs = parseArgs(instructionDef, input.args ?? {}, options.defaultSigner);
+
+  // For create_treasury, derive the treasury PDA from owner + agentId before
+  // parseAccounts runs — accountsStrict requires every account to be present.
+  const accountsInput = { ...(input.accounts ?? {}) } as JsonRecord;
+  if (
+    instructionDef.name === "create_treasury" &&
+    (!accountsInput["treasury"] || accountsInput["treasury"] === "")
+  ) {
+    const ownerRaw = accountsInput["owner"];
+    const argsRaw = input.args;
+    const agentId =
+      argsRaw && typeof argsRaw === "object" && !Array.isArray(argsRaw)
+        ? String(
+            (argsRaw as Record<string, unknown>)["agentId"] ??
+            (argsRaw as Record<string, unknown>)["agent_id"] ??
+            "",
+          )
+        : "";
+    const ownerKey =
+      ownerRaw instanceof PublicKey
+        ? ownerRaw
+        : typeof ownerRaw === "string" && ownerRaw
+          ? (() => { try { return new PublicKey(ownerRaw); } catch { return null; } })()
+          : options.defaultSigner ?? null;
+    if (ownerKey && agentId) {
+      const [treasuryPda] = deriveTreasuryAddress(ownerKey, agentId, options.programId);
+      accountsInput["treasury"] = treasuryPda.toBase58();
+    }
+  }
+
   const normalizedAccounts = parseAccounts(
     instructionDef,
-    input.accounts ?? {},
+    accountsInput,
     options.programId,
     options.defaultSigner,
   );
-  const normalizedArgs = parseArgs(instructionDef, input.args ?? {}, options.defaultSigner);
   const builder = method(...normalizedArgs) as {
     accountsStrict(accounts: JsonRecord): { instruction(): Promise<TransactionInstruction> };
   };

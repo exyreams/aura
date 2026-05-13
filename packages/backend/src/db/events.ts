@@ -51,7 +51,8 @@ export type EventKind =
   | "swarm_attached"
   | "swarm_pool_joined"
   | "balance_refreshed"
-  | "agent_state_transitioned";
+  | "agent_state_transitioned"
+  | "instruction_sent";
 
 export interface InsertEventInput {
   treasuryAddress: string;

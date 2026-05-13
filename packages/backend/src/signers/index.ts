@@ -201,13 +201,20 @@ export function ensureTreasuryRecord(input: {
     )
     .get();
   if (existingByAgentId) {
-    // Different treasury address but same agent+name — update the address
-    return db
-      .update(treasuries)
-      .set({ treasuryAddress: input.treasuryAddress })
-      .where(eq(treasuries.id, existingByAgentId.id))
-      .returning()
-      .get();
+    // Same agent+name but different treasury address.
+    // Only update if explicitly requested (i.e. a real registration flow
+    // passed a new address). The generic instruction path passes the address
+    // derived from the built instruction accounts, which may be a playground
+    // test treasury — never overwrite a real registered address with it.
+    if (input.treasuryAddress !== existingByAgentId.treasuryAddress && input.agentId) {
+      return db
+        .update(treasuries)
+        .set({ treasuryAddress: input.treasuryAddress })
+        .where(eq(treasuries.id, existingByAgentId.id))
+        .returning()
+        .get();
+    }
+    return existingByAgentId;
   }
 
   return db
