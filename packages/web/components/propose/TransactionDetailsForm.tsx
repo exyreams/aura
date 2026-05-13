@@ -1,9 +1,33 @@
 "use client";
 
+import { HelpCircle } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { Dropdown, Input } from "@/components/global";
+import { Tooltip } from "@/components/global/Tooltip";
 import { UsdInput } from "@/components/global/UsdInput";
 import { CHAINS, TX_TYPES } from "@/lib/aura-app";
+
+function FieldLabel({
+  htmlFor,
+  label,
+  tooltip,
+}: {
+  htmlFor: string;
+  label: string;
+  tooltip: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest flex items-center gap-1.5"
+    >
+      {label}
+      <Tooltip content={tooltip}>
+        <HelpCircle className="size-3 text-(--text-muted) opacity-50 hover:opacity-100 transition-opacity" />
+      </Tooltip>
+    </label>
+  );
+}
 
 interface FormState {
   amountUsd: string;
@@ -41,6 +65,7 @@ export function TransactionDetailsForm({
         <div className="space-y-8">
           <UsdInput
             label="Amount"
+            tooltip="The transaction amount in USD. Compared against the per-transaction and daily spending limits in the treasury policy."
             valueCents={form.amountUsd}
             onChangeCents={(v) =>
               setForm((current) => ({ ...current, amountUsd: v }))
@@ -48,12 +73,11 @@ export function TransactionDetailsForm({
           />
 
           <div className="space-y-2">
-            <label
+            <FieldLabel
               htmlFor="target-chain"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Target chain
-            </label>
+              label="Target chain"
+              tooltip="The blockchain where this transaction executes. The treasury must have a registered dWallet for the selected chain."
+            />
             <Dropdown
               options={CHAINS.map((chain) => ({
                 value: String(chain.code),
@@ -67,12 +91,11 @@ export function TransactionDetailsForm({
           </div>
 
           <div className="space-y-2">
-            <label
+            <FieldLabel
               htmlFor="transaction-type"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Transaction type
-            </label>
+              label="Transaction type"
+              tooltip="Category of this transaction. Some policy rules apply per type — e.g. DeFi Swaps may have slippage checks, Bitcoin transfers may require manual review."
+            />
             <Dropdown
               options={TX_TYPES.map((txType) => ({
                 value: String(txType.code),
@@ -86,12 +109,11 @@ export function TransactionDetailsForm({
           </div>
 
           <div className="space-y-2">
-            <label
+            <FieldLabel
               htmlFor="quote-age"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Quote age (seconds)
-            </label>
+              label="Quote age (seconds)"
+              tooltip="How old the price quote is in seconds. Must be below the treasury's max quote age setting to prevent execution on stale pricing."
+            />
             <Input
               id="quote-age"
               placeholder="6"
@@ -109,12 +131,11 @@ export function TransactionDetailsForm({
 
         <div className="space-y-8">
           <div className="space-y-2">
-            <label
+            <FieldLabel
               htmlFor="risk-score"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Counterparty risk score
-            </label>
+              label="Counterparty risk score"
+              tooltip="A 0–100 risk score for the recipient or protocol. Higher means more risk. Must not exceed the treasury's configured maximum counterparty risk score."
+            />
             <Input
               id="risk-score"
               placeholder="18"
@@ -131,12 +152,11 @@ export function TransactionDetailsForm({
           </div>
 
           <div className="space-y-2">
-            <label
+            <FieldLabel
               htmlFor="protocol-id"
-              className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-            >
-              Protocol ID
-            </label>
+              label="Protocol ID"
+              tooltip="Optional numeric identifier for DeFi protocols (e.g. Uniswap, Aave). Used for protocol allowlist checks — leave empty if not interacting with a specific protocol."
+            />
             <Input
               id="protocol-id"
               placeholder="Optional"
@@ -152,6 +172,7 @@ export function TransactionDetailsForm({
 
           <UsdInput
             label="Expected Output"
+            tooltip="Expected USD value to receive (for swaps). Used alongside Actual Output to compute slippage — leave empty if not a swap."
             valueCents={form.expectedOutputUsd}
             onChangeCents={(v) =>
               setForm((current) => ({ ...current, expectedOutputUsd: v }))
@@ -161,6 +182,7 @@ export function TransactionDetailsForm({
 
           <UsdInput
             label="Actual Output"
+            tooltip="Actual USD value received (for swaps). Compared against Expected Output to detect excessive slippage against the policy limit."
             valueCents={form.actualOutputUsd}
             onChangeCents={(v) =>
               setForm((current) => ({ ...current, actualOutputUsd: v }))
@@ -170,12 +192,11 @@ export function TransactionDetailsForm({
         </div>
 
         <div className="md:col-span-2 space-y-2">
-          <label
+          <FieldLabel
             htmlFor="recipient"
-            className="mono text-[10px] uppercase text-(--text-muted) font-bold tracking-widest block"
-          >
-            Recipient / contract address
-          </label>
+            label="Recipient / contract address"
+            tooltip="Destination address for the transaction. For transfers this is the recipient wallet; for DeFi interactions this is the smart contract address."
+          />
           <Input
             id="recipient"
             placeholder="0x7B2...E92 or contract address"

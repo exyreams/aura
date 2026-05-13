@@ -1,6 +1,7 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useEffect } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -260,6 +261,18 @@ export function ConfidentialLifecycleModal({
       onClose();
     },
   });
+
+  // Reset all mutation state when the modal closes so stale errors and
+  // in-progress state from a previous open don't bleed into the next open.
+  useEffect(() => {
+    if (!isOpen) {
+      requestDecryptionMutation.reset();
+      confirmDecryptionMutation.reset();
+      executeMutation.reset();
+      finalizeMutation.reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const isExpiredError = (msg: string | null | undefined) =>
     !!msg &&

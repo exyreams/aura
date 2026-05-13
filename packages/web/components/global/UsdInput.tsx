@@ -1,12 +1,16 @@
 "use client";
 
+import { HelpCircle } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { Tooltip } from "@/components/global/Tooltip";
 import { cn } from "@/lib/utils";
 
 export interface UsdInputProps {
   /** Label shown above the input */
   label?: string;
+  /** Optional tooltip text shown on a ? icon next to the label */
+  tooltip?: string;
   /** Current value in USD cents (integer) */
   valueCents: number | string;
   /** Called with the new value in USD cents as a string */
@@ -35,6 +39,7 @@ function centsToDisplay(cents: number | string): string {
 
 export const UsdInput = ({
   label,
+  tooltip,
   valueCents,
   onChangeCents,
   error,
@@ -98,9 +103,14 @@ export const UsdInput = ({
       {label && (
         <label
           htmlFor={inputId}
-          className="mono text-[10px] uppercase text-(--text-muted) font-bold"
+          className="mono text-[10px] uppercase text-(--text-muted) font-bold flex items-center gap-1.5"
         >
           {label}
+          {tooltip && (
+            <Tooltip content={tooltip}>
+              <HelpCircle className="size-3 text-(--text-muted) opacity-50 hover:opacity-100 transition-opacity" />
+            </Tooltip>
+          )}
         </label>
       )}
       <div className="relative">

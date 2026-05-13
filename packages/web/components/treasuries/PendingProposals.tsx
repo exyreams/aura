@@ -2,12 +2,12 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
 import { Tooltip } from "@/components/global/Tooltip";
-import { Copy, SquareArrowOutUpRight } from "@/components/icons";
+import { Copy, Lock, SquareArrowOutUpRight } from "@/components/icons";
 import { ConfidentialLifecycleModal } from "@/components/treasuries/ConfidentialLifecycleModal";
 import { ProposalLifecycleModal } from "@/components/treasuries/ProposalLifecycleModal";
 import {
@@ -151,6 +151,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       });
     },
     onSuccess: async () => {
+      localStorage.removeItem(`aura:policy-output-ciphertext:${pda}`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
@@ -180,6 +181,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       );
     },
     onSuccess: async () => {
+      localStorage.removeItem(`aura:policy-output-ciphertext:${pda}`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
@@ -188,6 +190,48 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       ]);
     },
   });
+
+  // Clear the stale FHE ciphertext from localStorage whenever the proposal
+  // reaches a terminal state. Without this, a normal proposal submitted after
+  // a confidential one would incorrectly read the stale ciphertext and be
+  // treated as confidential.
+  const pendingStatus = hasPending
+    ? (pending as { status?: number } | null)?.status
+    : null;
+  useEffect(() => {
+    if (
+      !hasPending ||
+      pendingStatus === STATUS_DENIED ||
+      pendingStatus === STATUS_CANCELLED ||
+      pendingStatus === STATUS_EXPIRED
+    ) {
+      localStorage.removeItem(`aura:policy-output-ciphertext:${pda}`);
+    }
+  }, [hasPending, pendingStatus, pda]);
+
+  // When the active proposal changes (new proposalId), clear any leftover
+  // mutation errors so the fresh proposal's modal starts with a clean slate.
+  const currentProposalId = hasPending ? pending?.proposalId?.toString() : null;
+  useEffect(() => {
+    executeMutation.reset();
+    finalizeMutation.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProposalId]);
+
+  // Auto-execute proposals already denied by policy at status=0 (Proposed).
+  // The on-chain program evaluates policy at propose time; denied proposals sit
+  // at status=0 until executePending is called to move them to status=4 (Denied).
+  const isDeniedAtPropose =
+    hasPending &&
+    pending?.status === STATUS_PROPOSED &&
+    (pending as { decision?: { approved?: boolean } } | null)?.decision
+      ?.approved === false;
+
+  useEffect(() => {
+    if (isDeniedAtPropose && selectedAgent?.agentId && executeMutation.isIdle) {
+      executeMutation.mutate();
+    }
+  }, [isDeniedAtPropose, selectedAgent?.agentId, executeMutation.isIdle, executeMutation.mutate]);
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
@@ -199,6 +243,15 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
       return await sendWalletInstructions(connection, wallet, [instruction]);
     },
     onSuccess: async (signature) => {
+      // Reset all UI state immediately — before the refetch arrives.
+      // Without this, the modal stays open and the next proposal inherits
+      // the old error, lifecycle-dismissed state, and open flag.
+      setProposalModalOpen(false);
+      setLifecycleOpen(false);
+      setLifecycleDismissedId(null);
+      executeMutation.reset();
+      finalizeMutation.reset();
+
       postBackend(settings.backendUrl, "/v1/activity/register-event", {
         treasuryAddress: pda,
         txSignature: signature,
@@ -210,6 +263,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
           status: 5,
         },
       }).catch(() => {});
+      localStorage.removeItem(`aura:policy-output-ciphertext:${pda}`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["treasury", pda] }),
         queryClient.invalidateQueries({ queryKey: ["treasuries"] }),
@@ -460,15 +514,13 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
               <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-main)">
                 PROP-{pending.proposalId.toString().padStart(4, "0")}
               </td>
-              <td className="px-3 sm:px-4 py-4 font-mono text-sm text-(--text-main)">
-                <div className="flex flex-col gap-1">
-                  <span>{txType}</span>
+              <td className="px-3 sm:px-4 py-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-(--text-main)">{txType}</span>
                   {isConfidential && (
-                    <span
-                      className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border w-fit
-                      border-(--warning-border) text-(--warning-text) bg-(--warning-bg)"
-                    >
-                      Scalar FHE
+                    <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-border text-(--text-muted) bg-(--card-content)">
+                      <Lock size={8} />
+                      FHE
                     </span>
                   )}
                 </div>
@@ -537,7 +589,7 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
               </td>
               <td className="px-3 sm:px-4 py-4 text-right">
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="small"
                   onClick={() => setProposalModalOpen(true)}
                 >
@@ -551,7 +603,11 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
 
       <ProposalLifecycleModal
         isOpen={proposalModalOpen}
-        onClose={() => setProposalModalOpen(false)}
+        onClose={() => {
+          setProposalModalOpen(false);
+          executeMutation.reset();
+          finalizeMutation.reset();
+        }}
         pending={pending}
         messageApprovalAddress={messageApprovalAddress || undefined}
         ikaState={ikaState}

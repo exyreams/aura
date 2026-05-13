@@ -678,8 +678,9 @@ function DWalletCard({
 
   return (
     <div className="border border-border rounded-sm overflow-hidden">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpandedId(isExpanded ? null : dw.dwalletId)}
         onKeyDown={(e) =>
           e.key === "Enter" && setExpandedId(isExpanded ? null : dw.dwalletId)
@@ -704,14 +705,14 @@ function DWalletCard({
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <Tooltip content={chainDescription}>
-                  <span className="font-semibold text-sm text-(--text-main)">
+                  <span className="font-semibold text-xs text-(--text-main)">
                     {chainName}
                   </span>
                 </Tooltip>
                 <StatusPill variant="active">Active</StatusPill>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-(--text-muted) truncate">
+                <span className="font-mono text-[10px] text-(--text-muted) truncate">
                   {displayAddress
                     ? shortenAddress(displayAddress, 8, 6)
                     : "No address"}
@@ -771,7 +772,7 @@ function DWalletCard({
                     </>
                   ) : (
                     <span className="text-[10px] text-(--text-muted) font-mono">
-                      empty
+                      No balance
                     </span>
                   ))}
               </div>
@@ -786,7 +787,7 @@ function DWalletCard({
             )}
           />
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
         <div className="p-4 bg-(--card-bg) border-t border-border space-y-2">

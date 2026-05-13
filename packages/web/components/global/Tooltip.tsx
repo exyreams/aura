@@ -75,7 +75,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         createPortal(
           <AnimatePresence>
             {isVisible && (
-              <div className="fixed z-200 pointer-events-none" style={style}>
+              <div className="fixed z-10000 pointer-events-none" style={style}>
                 <m.div
                   variants={tooltipVariants}
                   initial="hidden"

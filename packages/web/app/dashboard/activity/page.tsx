@@ -977,6 +977,7 @@ function mapToProposalEntries(
         treasury,
         txSignature: ev.txSignature,
         outcome: "approved",
+        isConfidential: false,
         timestamp: fmtDateTime(ev.timestamp),
         steps: [
           {

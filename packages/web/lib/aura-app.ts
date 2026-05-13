@@ -782,3 +782,101 @@ export function mapBackendEvents(events: ActivityEvent[]): ParsedActivity[] {
     };
   });
 }
+
+// ── Grouped audit-trail view ──────────────────────────────────────────────────
+
+// Proposal lifecycle event kind prefixes that belong inside a proposal group
+// and should not appear as standalone audit rows.
+const PROPOSAL_LIFECYCLE_KINDS = new Set([
+  "execution_submitted",
+  "execution_finalized",
+  "proposal_submitted",
+  "confidential_proposal_submitted",
+  "decryption_requested",
+  "decryption_verified",
+  "proposal_cancelled",
+]);
+
+export interface AuditTrailItem {
+  signature: string;
+  txSignature: string;
+  treasury: string;
+  timestamp: number;
+  kind: "proposal" | "audit";
+  // proposal fields
+  proposalId?: string;
+  outcome?: "approved" | "denied" | "cancelled" | "pending";
+  violation?: number;
+  isConfidential?: boolean;
+  // audit fields
+  detail?: string;
+}
+
+/**
+ * Groups ParsedActivity[] into one item per proposal (merging all lifecycle
+ * events for the same proposalId) plus standalone audit rows.
+ * Orphaned proposal-lifecycle events without a proposalId are silently dropped
+ * because they are already captured by the proposal group's outcome.
+ */
+export function groupEventsForAuditTrail(events: ParsedActivity[]): AuditTrailItem[] {
+  const byProposal = new Map<string, ParsedActivity[]>();
+  const auditItems: AuditTrailItem[] = [];
+
+  for (const ev of events) {
+    if (ev.proposalId && (ev.kind === "proposal" || ev.kind === "execution")) {
+      const key = `${ev.treasury}:${ev.proposalId}`;
+      if (!byProposal.has(key)) byProposal.set(key, []);
+      byProposal.get(key)?.push(ev);
+    } else if (ev.kind === "audit") {
+      const rawKind = ev.detail?.split(":")[0]?.trim() ?? "";
+      if (PROPOSAL_LIFECYCLE_KINDS.has(rawKind)) continue;
+      auditItems.push({
+        signature: ev.signature,
+        txSignature: ev.txSignature,
+        treasury: ev.treasury,
+        timestamp: ev.timestamp ?? 0,
+        kind: "audit",
+        detail: ev.detail,
+      });
+    }
+  }
+
+  const proposalItems: AuditTrailItem[] = [];
+
+  for (const [, group] of byProposal) {
+    const sorted = [...group].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+
+    const outcome: AuditTrailItem["outcome"] =
+      sorted.some((e) => e.approved === true)
+        ? "approved"
+        : sorted.some((e) => e.status === 5 || e.status === 6)
+          ? "cancelled"
+          : sorted.some((e) => e.approved === false)
+            ? "denied"
+            : last.status === 5
+              ? "cancelled"
+              : "pending";
+
+    const violation =
+      sorted.find((e) => e.violation != null && (e.violation as number) > 0)
+        ?.violation ?? undefined;
+
+    const isConfidential = sorted.some((e) => e.detail?.includes("confidential"));
+
+    proposalItems.push({
+      signature: first.signature,
+      txSignature: first.txSignature,
+      treasury: first.treasury,
+      timestamp: last.timestamp ?? first.timestamp ?? 0,
+      kind: "proposal",
+      proposalId: first.proposalId,
+      outcome,
+      violation,
+      isConfidential,
+    });
+  }
+
+  return [...proposalItems, ...auditItems].sort((a, b) => b.timestamp - a.timestamp);
+}

@@ -295,11 +295,11 @@ export function ProposalLifecycleModal({
   // Determine the primary action
   const primaryAction = isConfidential
     ? {
-        label: "Open Lifecycle",
+        label: "Continue",
         onClick: onLifecycle,
         loading: false,
         disabled: false,
-        variant: "secondary" as const,
+        variant: "primary" as const,
       }
     : canExecute
       ? {
@@ -333,15 +333,11 @@ export function ProposalLifecycleModal({
               loading={isCancelling}
               disabled={isCancelling}
               onClick={onCancel}
-              className="shrink-0"
+              className="flex-1"
             >
               Cancel Proposal
             </Button>
           )}
-          <div className="flex-1" />
-          <Button variant="secondary" size="medium" onClick={onClose}>
-            Close
-          </Button>
           {primaryAction && (
             <Button
               variant={primaryAction.variant}
@@ -349,6 +345,7 @@ export function ProposalLifecycleModal({
               loading={primaryAction.loading}
               disabled={primaryAction.disabled}
               onClick={primaryAction.onClick}
+              className="flex-1"
             >
               {primaryAction.label}
             </Button>
@@ -374,7 +371,11 @@ export function ProposalLifecycleModal({
 
         {/* Error */}
         {error && (
-          <Alert variant="error" message={error} onClose={onDismissError} />
+          <Alert
+            variant="error"
+            message={error}
+            onClose={/expired|ttl/i.test(error) ? undefined : onDismissError}
+          />
         )}
 
         {/* Terminal state banner */}

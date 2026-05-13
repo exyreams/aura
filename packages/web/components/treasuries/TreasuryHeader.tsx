@@ -52,6 +52,14 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
   const activePending = getActivePendingProposal(treasury.account);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProposeOpen, setIsProposeOpen] = useState(false);
+
+  // Auto-close the propose modal once the proposal lands on-chain so the
+  // user isn't left looking at a stale "Proposal Submitted" success state.
+  useEffect(() => {
+    if (activePending && isProposeOpen) {
+      setIsProposeOpen(false);
+    }
+  }, [activePending, isProposeOpen]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copiedPda, setCopiedPda] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

@@ -13,6 +13,7 @@ import {
   createAuraClient,
   fetchOwnedTreasuries,
   fetchTreasury,
+  groupEventsForAuditTrail,
   mapBackendEvents,
   type ParsedActivity,
   type TreasuryEntry,
@@ -144,7 +145,7 @@ export function useTreasuryAuditTrail(
         settings.backendUrl,
         `/v1/activity?${params.toString()}`,
       );
-      return mapBackendEvents(res.events);
+      return groupEventsForAuditTrail(mapBackendEvents(res.events));
     },
     enabled: Boolean(treasuryPda),
     refetchInterval: 5_000,

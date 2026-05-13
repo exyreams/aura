@@ -173,6 +173,11 @@ export function listEventsForUser(
 /**
  * Update the most recent proposal_submitted event for a treasury
  * when the proposal reaches a terminal state.
+ *
+ * When proposalId is provided, tries an exact match first. If not found
+ * (e.g., the proposal_submitted event was stored with proposalId=null because
+ * the post-submit RPC read failed), falls back to the most recent unset event
+ * and also backfills the proposalId column so future queries can find it.
  */
 export function updateProposalEvent(input: {
   treasuryAddress: string;
@@ -182,42 +187,52 @@ export function updateProposalEvent(input: {
   status?: number | null;
 }): void {
   try {
-    // Find the matching proposal_submitted or confidential_proposal_submitted event
-    const target = input.proposalId
-      ? db
-          .select({ id: events.id })
-          .from(events)
-          .where(
-            and(
-              eq(events.treasuryAddress, input.treasuryAddress),
-              eq(events.proposalId, input.proposalId),
-              or(
-                eq(events.kind, "proposal_submitted"),
-                eq(events.kind, "confidential_proposal_submitted"),
-              ),
-            ),
-          )
-          .get()
-      : db
-          .select({ id: events.id })
-          .from(events)
-          .where(
-            and(
-              eq(events.treasuryAddress, input.treasuryAddress),
-              or(
-                eq(events.kind, "proposal_submitted"),
-                eq(events.kind, "confidential_proposal_submitted"),
-              ),
-              isNull(events.approved), // only update pending ones
-            ),
-          )
-          .orderBy(desc(events.timestamp))
-          .get();
+    const proposalKinds = or(
+      eq(events.kind, "proposal_submitted"),
+      eq(events.kind, "confidential_proposal_submitted"),
+    );
+
+    let target: { id: number } | undefined;
+
+    if (input.proposalId) {
+      // Exact match by proposalId — no approved guard (idempotent update is fine)
+      target = db
+        .select({ id: events.id })
+        .from(events)
+        .where(
+          and(
+            eq(events.treasuryAddress, input.treasuryAddress),
+            eq(events.proposalId, input.proposalId),
+            proposalKinds,
+          ),
+        )
+        .get();
+    }
+
+    // If not found by exact proposalId, fall back to most recent unset event.
+    // This handles the case where proposal_submitted was stored with proposalId=null
+    // because the post-submit RPC read failed.
+    if (!target) {
+      target = db
+        .select({ id: events.id })
+        .from(events)
+        .where(
+          and(
+            eq(events.treasuryAddress, input.treasuryAddress),
+            proposalKinds,
+            isNull(events.approved),
+          ),
+        )
+        .orderBy(desc(events.timestamp))
+        .get();
+    }
 
     if (!target) return;
 
     db.update(events)
       .set({
+        // Backfill proposalId if it was missing — links the event for future grouping
+        ...(input.proposalId ? { proposalId: input.proposalId } : {}),
         approved: input.approved ? 1 : 0,
         violation: input.violation ?? null,
         status: input.status ?? null,

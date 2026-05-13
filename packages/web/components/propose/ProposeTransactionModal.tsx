@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/global/Alert";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
-import { Check, ExternalLink, Lock, ShieldAlert } from "@/components/icons";
+import { Check, ExternalLink, Lock, ShieldAlert, Wallet } from "@/components/icons";
 import {
   buildProposeTransactionArgs,
   sendWalletInstructions,
@@ -28,7 +28,7 @@ import { ProposalModeSelector } from "./ProposalModeSelector";
 import { TransactionDetailsForm } from "./TransactionDetailsForm";
 
 const initialForm = {
-  amountUsd: "6400",
+  amountUsd: "",
   chain: "2",
   txType: "1",
   recipient: "",
@@ -127,17 +127,10 @@ export function ProposeTransactionModal({
   const [signature, setSignature] = useState<string | null>(null);
   const proposedRef = useRef(false);
 
-  // Reset volatile fields (recipient, optional outputs) every time the modal opens
-  // Keep amount/chain/txType as they're useful defaults across proposals
+  // Reset form to initial state every time the modal closes so the next open is always fresh
   useEffect(() => {
-    if (isOpen) {
-      setForm((prev) => ({
-        ...prev,
-        recipient: "",
-        protocolId: "",
-        expectedOutputUsd: "",
-        actualOutputUsd: "",
-      }));
+    if (!isOpen) {
+      setForm(initialForm);
     }
   }, [isOpen, setForm]);
 
@@ -348,6 +341,18 @@ export function ProposeTransactionModal({
                 )}
                 onClose={() => proposeMutation.reset()}
               />
+            )}
+            {entry && entry.account.dwallets.length === 0 && (
+              <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) px-4 py-3 flex gap-3 items-start">
+                <Wallet
+                  className="size-3.5 text-(--warning-text) shrink-0 mt-0.5"
+                  animateOnHover
+                />
+                <p className="text-[11px] text-(--warning-text) leading-relaxed">
+                  No dWallet registered — the proposal will evaluate but
+                  execution will fail. Register a dWallet on this treasury first.
+                </p>
+              </div>
             )}
             <div className="flex gap-2 w-full">
               <Button
