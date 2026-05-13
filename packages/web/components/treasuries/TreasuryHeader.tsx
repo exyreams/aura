@@ -3,11 +3,14 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, m } from "motion/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Button } from "@/components/global/Button";
+import { Tooltip } from "@/components/global/Tooltip";
 import {
+  ChevronLeft,
   Copy,
   EllipsisVertical,
   ExternalLink,
@@ -195,9 +198,32 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
     <>
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-border">
         <div>
-          {/* Active signing agent banner */}
+          {/* Back to treasuries */}
+          <Link
+            href="/dashboard/treasuries"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md mono text-[10px] uppercase tracking-widest text-(--text-muted) hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors mb-3"
+          >
+            <ChevronLeft size={12} animateOnHover />
+            Treasuries
+          </Link>
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
+            Treasury Detail
+          </span>
+          <div className="flex items-center gap-4 mb-2">
+            <Tooltip content={pda}>
+              <h1 className="text-4xl font-semibold tracking-tight text-(--text-main) cursor-default">
+                {treasury.account.agentId}
+              </h1>
+            </Tooltip>
+            <StatusPill
+              variant={treasury.account.executionPaused ? "paused" : "active"}
+            >
+              {treasury.account.executionPaused ? "Paused" : "Active"}
+            </StatusPill>
+          </div>
+          {/* Signing agent badge */}
           {selectedAgent ? (
-            <div className="inline-flex items-center gap-2 mb-3 rounded-sm border border-primary/30 bg-primary/5 px-2.5 py-1">
+            <div className="inline-flex items-center gap-2 mb-2 rounded-sm border border-primary/30 bg-primary/5 px-2.5 py-1">
               <div className="size-1.5 rounded-full bg-primary" />
               <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
                 Signing agent
@@ -207,26 +233,13 @@ export const TreasuryHeader = ({ treasury, pda }: TreasuryHeaderProps) => {
               </span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-2 mb-3 rounded-sm border border-warning/30 bg-warning/5 px-2.5 py-1">
+            <div className="inline-flex items-center gap-2 mb-2 rounded-sm border border-warning/30 bg-warning/5 px-2.5 py-1">
               <div className="size-1.5 rounded-full bg-warning" />
               <span className="font-mono text-[10px] uppercase tracking-widest text-(--warning-text)">
                 No agent selected
               </span>
             </div>
           )}
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-2 block">
-            Treasury Detail
-          </span>
-          <div className="flex items-center gap-4 mb-2">
-            <h1 className="text-4xl font-semibold tracking-tight text-(--text-main)">
-              {treasury.account.agentId}
-            </h1>
-            <StatusPill
-              variant={treasury.account.executionPaused ? "paused" : "active"}
-            >
-              {treasury.account.executionPaused ? "Paused" : "Active"}
-            </StatusPill>
-          </div>
           {/* Shortened PDA with copy + explorer */}
           <div className="flex items-center gap-2 mt-1 flex-wrap break-all sm:break-normal">
             <span className="font-mono text-xs text-(--text-muted)">
