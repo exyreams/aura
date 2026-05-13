@@ -127,6 +127,20 @@ export function ProposeTransactionModal({
   const [signature, setSignature] = useState<string | null>(null);
   const proposedRef = useRef(false);
 
+  // Reset volatile fields (recipient, optional outputs) every time the modal opens
+  // Keep amount/chain/txType as they're useful defaults across proposals
+  useEffect(() => {
+    if (isOpen) {
+      setForm((prev) => ({
+        ...prev,
+        recipient: "",
+        protocolId: "",
+        expectedOutputUsd: "",
+        actualOutputUsd: "",
+      }));
+    }
+  }, [isOpen, setForm]);
+
   const preview = useMemo(
     () => ({
       dailyLimitPass:

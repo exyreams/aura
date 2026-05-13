@@ -182,7 +182,7 @@ export function updateProposalEvent(input: {
   status?: number | null;
 }): void {
   try {
-    // Find the matching proposal_submitted event
+    // Find the matching proposal_submitted or confidential_proposal_submitted event
     const target = input.proposalId
       ? db
           .select({ id: events.id })
@@ -191,7 +191,10 @@ export function updateProposalEvent(input: {
             and(
               eq(events.treasuryAddress, input.treasuryAddress),
               eq(events.proposalId, input.proposalId),
-              eq(events.kind, "proposal_submitted"),
+              or(
+                eq(events.kind, "proposal_submitted"),
+                eq(events.kind, "confidential_proposal_submitted"),
+              ),
             ),
           )
           .get()
@@ -201,7 +204,10 @@ export function updateProposalEvent(input: {
           .where(
             and(
               eq(events.treasuryAddress, input.treasuryAddress),
-              eq(events.kind, "proposal_submitted"),
+              or(
+                eq(events.kind, "proposal_submitted"),
+                eq(events.kind, "confidential_proposal_submitted"),
+              ),
               isNull(events.approved), // only update pending ones
             ),
           )

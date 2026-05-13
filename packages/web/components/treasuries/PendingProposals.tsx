@@ -101,11 +101,18 @@ export const PendingProposals = ({ treasury, pda }: PendingProposalsProps) => {
   const policyFheType = hasPending
     ? (pending as { policyOutputFheType?: number | null }).policyOutputFheType
     : null;
-  // A proposal is confidential only if it actually carries FHE output data —
-  // not just because the treasury has guardrails configured.
+  // A proposal is confidential if it carries FHE output data on-chain,
+  // OR if localStorage has a stored policy output ciphertext from submission
+  // (the on-chain field may not be populated yet right after submission).
+  const storedCiphertext =
+    typeof window !== "undefined"
+      ? localStorage.getItem(`aura:policy-output-ciphertext:${pda}`)
+      : null;
   const isConfidential = Boolean(
     hasPending &&
-      (!!pending.policyOutputCiphertextAccount || policyFheType != null),
+      (!!pending.policyOutputCiphertextAccount ||
+        policyFheType != null ||
+        !!storedCiphertext),
   );
   // For confidential proposals, Execute is handled inside ConfidentialLifecycleModal
   const canExecute =

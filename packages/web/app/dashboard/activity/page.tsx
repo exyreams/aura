@@ -72,6 +72,7 @@ export interface ProposalEntry {
   treasury: string;
   txSignature: string;
   outcome: "approved" | "denied" | "pending" | "cancelled";
+  isConfidential: boolean;
   violationCode?: number;
   violationLabel?: string;
   timestamp: string;
@@ -925,12 +926,18 @@ function mapToProposalEntries(
       },
     });
 
+    // Detect confidential from event kind — most reliable signal
+    const isConfidential =
+      sorted.some((e) => e.detail?.startsWith("proposal_submitted") && e.detail?.includes("confidential")) ||
+      hasDecryption;
+
     entries.push({
       id: `${first.treasury}:${first.proposalId}`,
       proposalId: first.proposalId ?? "",
       treasury: first.treasury,
       txSignature: first.txSignature,
       outcome,
+      isConfidential,
       violationCode: groupViolation,
       violationLabel:
         groupViolation && groupViolation > 0
@@ -1299,7 +1306,7 @@ function ProposalRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const isProposal = entry.proposalId !== "";
-  const isConfidential = isProposal && entry.steps.some((s) => s.id === "fhe");
+  const isConfidential = isProposal && entry.isConfidential;
   const iconColorClass = proposalIconClass(entry.steps, entry.outcome);
   const cfg =
     !isProposal && entry.steps[0]
