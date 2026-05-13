@@ -13,7 +13,13 @@ interface SmartAccountInputProps {
   value: string;
   optional: boolean;
   onChange: (value: string) => void;
+  /** The instruction this account belongs to — used to skip dropdowns for PDA-init accounts. */
+  instructionName?: string;
 }
+
+// Instructions where the treasury account is a PDA being initialized (output),
+// not an existing account to select (input). Leave blank — Anchor derives it.
+const TREASURY_INIT_INSTRUCTIONS = new Set(["create_treasury"]);
 
 // Account names that map to treasury PDAs
 const TREASURY_ACCOUNT_NAMES = new Set([
@@ -47,6 +53,7 @@ export function SmartAccountInput({
   value,
   optional,
   onChange,
+  instructionName,
 }: SmartAccountInputProps) {
   const wallet = useWallet();
   const { agents } = useAgents();
@@ -57,6 +64,21 @@ export function SmartAccountInput({
   const walletAddress = wallet.publicKey?.toBase58();
   const programId =
     settings.resolvedProgramId?.toBase58() ?? settings.programId;
+
+  // ── PDA-init accounts — derived by the program, not provided by the user ──
+  if (
+    TREASURY_ACCOUNT_NAMES.has(name) &&
+    instructionName &&
+    TREASURY_INIT_INSTRUCTIONS.has(instructionName)
+  ) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-sm border border-border bg-(--hover-bg)">
+        <span className="font-mono text-[10px] text-(--text-muted)">
+          Derived from owner + agent_id
+        </span>
+      </div>
+    );
+  }
 
   // ── Treasury accounts ──
   if (TREASURY_ACCOUNT_NAMES.has(name)) {

@@ -472,6 +472,11 @@ const AUDIT_KIND_CONFIG: Record<
     icon: <CheckCircle2 size={14} animateOnHover />,
     variant: "active",
   },
+  instruction_sent: {
+    label: "Playground",
+    icon: <Zap size={14} animateOnHover />,
+    variant: "default",
+  },
 };
 
 // Helpers
@@ -1388,6 +1393,15 @@ function ProposalRow({
                   : "Success"}
               </Badge>
             )}
+            {!isProposal && entry.steps[0]?.id === "instruction_sent" && (
+              <Badge
+                variant="default"
+                className="text-[9px] px-1.5 py-0.5 flex items-center gap-1"
+              >
+                <Zap size={9} animateOnHover />
+                Playground
+              </Badge>
+            )}
             {entry.violationLabel && (
               <Badge
                 variant="error"
@@ -1721,6 +1735,11 @@ export default function ActivityLogPage() {
     [audits],
   );
 
+  const playground = useMemo(
+    () => audits.filter((e) => e.steps[0]?.id === "instruction_sent"),
+    [audits],
+  );
+
   // Unique treasuries for filter dropdown
   const uniqueTreasuries = useMemo(
     () => [...new Set(allEntries.map((e) => e.treasury))],
@@ -1799,6 +1818,11 @@ export default function ActivityLogPage() {
       id: "governance",
       label: `Governance${governance.length > 0 ? ` (${governance.length})` : ""}`,
       content: tabContent(governance),
+    },
+    {
+      id: "playground",
+      label: `Playground${playground.length > 0 ? ` (${playground.length})` : ""}`,
+      content: tabContent(playground),
     },
     {
       id: "audit",

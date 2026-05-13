@@ -746,6 +746,9 @@ export function mapBackendEvents(events: ActivityEvent[]): ParsedActivity[] {
       case "decryption_confirmed":
         detail = `decryption_verified:Policy decryption confirmed — violation code resolved on-chain|requestAccount=${meta.requestAccount ?? ""},violationCode=${meta.violationCode ?? ""},txSignature=${ev.txSignature}`;
         break;
+      case "instruction_sent":
+        detail = `instruction_sent:${meta.instruction ?? "unknown"} sent via Playground`;
+        break;
       default:
         detail =
           ev.kind !== "proposal_submitted" &&
