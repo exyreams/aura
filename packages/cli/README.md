@@ -2,7 +2,10 @@
 
 # @aura-protocol/cli
 
-> **AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change quickly. Do not use this code to secure production funds or serious treasury operations until a stable release and audit are published.**
+**Docs:** https://docs-auraprotocol.vercel.app/docs/cli
+
+> [!WARNING]
+> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
 
 Terminal interface for the AURA autonomous treasury program on Solana.
 

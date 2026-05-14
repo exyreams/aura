@@ -2,6 +2,11 @@
 
 # @aura-protocol/sdk-ts
 
+**Docs:** https://docs-auraprotocol.vercel.app/docs/sdk-ts
+
+> [!WARNING]
+> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
+
 TypeScript SDK for the AURA autonomous treasury program on Solana.
 
 Wraps the core `aura-core` treasury, confidential execution, dWallet, and
@@ -10,8 +15,6 @@ deserialization — built directly from the Anchor IDL so it stays aligned with
 the deployed program.
 
 ---
-
-> **AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change quickly. Do not use this code to secure production funds or serious treasury operations until a stable release and audit are published.**
 
 ## Installation
 
@@ -654,7 +657,7 @@ validateMultisigThreshold(2, guardians.length); // throws if threshold > count
 # Build ESM output to dist/
 npm run build
 
-# Unit tests — no network required (129 tests)
+# Unit tests — no network required (125 tests)
 npm test
 
 # Devnet integration tests — requires a funded wallet at ~/.config/solana/id.json

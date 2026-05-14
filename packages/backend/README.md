@@ -1,5 +1,10 @@
 # AURA Backend
 
+**Docs:** https://docs-auraprotocol.vercel.app
+
+> [!WARNING]
+> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
+
 Backend service for the server-side parts of AURA:
 
 - confidential Encrypt bridge
@@ -254,14 +259,4 @@ Operational behavior:
 
 ## Frontend Integration
 
-Local development:
-
-```
-http://127.0.0.1:8787
-```
-
-Production (Railway):
-
-```
-https://aura-backend-production-eb86.up.railway.app
-```
+Local development: `http://127.0.0.1:8787`
