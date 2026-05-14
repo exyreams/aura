@@ -53,6 +53,7 @@ export default function HomePage() {
               className="rounded-none border border-[var(--border)] bg-transparent px-10 py-4 font-mono text-xs font-bold uppercase tracking-widest text-[var(--text-main)] transition-colors hover:bg-white/5 hover:border-[var(--primary)]"
             >
               TypeScript SDK
+
             </Link>
             <Link
               href="/docs/cli"

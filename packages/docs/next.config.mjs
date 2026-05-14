@@ -9,7 +9,7 @@ const config = {
     return [
       {
         source: "/docs",
-        destination: "/docs/sdk-ts",
+        destination: "/docs/overview",
         permanent: false,
       },
     ];

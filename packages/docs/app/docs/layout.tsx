@@ -7,6 +7,10 @@ import { source } from "@/lib/source";
 
 // Icons and descriptions keyed by the root folder title
 const TAB_META: Record<string, { icon: ReactNode; description: string }> = {
+  Introduction: {
+    icon: <BookOpen className="size-4" />,
+    description: "Overview & getting started",
+  },
   Architecture: {
     icon: <BookOpen className="size-4" />,
     description: "System design & overview",
@@ -48,6 +52,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           };
         },
       }}
+      sidebar={{}}
       {...baseOptions()}
     >
       {children}

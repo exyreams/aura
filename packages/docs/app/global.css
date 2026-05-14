@@ -73,6 +73,11 @@ html {
   font-family: var(--font-sans);
 }
 
+::selection {
+  background: var(--primary);
+  color: var(--bg);
+}
+
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
@@ -87,6 +92,22 @@ body {
 
 code {
   font-family: var(--font-mono);
+}
+
+/* Inline code — more contrast against the dark page background */
+:not(pre) > code {
+  background: #2a2a30 !important;
+  color: #e5e7eb !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  padding: 0.15em 0.4em !important;
+  font-size: 0.875em !important;
+}
+
+.light :not(pre) > code {
+  background: #e5e7eb !important;
+  color: #111827 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Custom scrollbar matching AURA design */
@@ -149,3 +170,111 @@ details[open] summary .faq-icon {
 [data-active="true"].fd-toc-item-link::before {
   border-left-color: hsl(var(--fd-primary));
 }
+
+/* ─── Mermaid diagrams ─────────────────────────────────────────────────────── */
+
+.aura-mermaid {
+  margin: 2rem 0;
+  width: 100%;
+  overflow-x: auto;
+  cursor: zoom-in;
+}
+
+.aura-mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  font-family: var(--font-mono) !important;
+  pointer-events: none;
+}
+
+/* ─── Mermaid modal ────────────────────────────────────────────────────────── */
+
+.mermaid-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.mermaid-modal-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  background: #0c0c0e;
+  border: 1px solid #2e2e34;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.light .mermaid-modal-container {
+  background: #f5f5f5;
+  border-color: rgba(0,0,0,0.12);
+}
+
+.mermaid-modal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-bottom: 1px solid #2e2e34;
+  background: #141416;
+  flex-shrink: 0;
+}
+
+.light .mermaid-modal-toolbar {
+  background: #e5e7eb;
+  border-bottom-color: rgba(0,0,0,0.1);
+}
+
+.mermaid-modal-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.mermaid-modal-btn:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+  background: var(--hover-bg);
+}
+
+.mermaid-modal-canvas {
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  position: relative;
+  background: #0c0c0e;
+}
+
+.light .mermaid-modal-canvas {
+  background: #f5f5f5;
+}
+
+.mermaid-modal-canvas:active {
+  cursor: grabbing;
+}
+
+.mermaid-modal-canvas svg {
+  display: block;
+}
+

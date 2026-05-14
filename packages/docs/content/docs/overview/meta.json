@@ -1,0 +1,17 @@
+{
+  "title": "Introduction",
+  "root": true,
+  "icon": "BookOpen",
+  "pages": [
+    "---Overview---",
+    "index",
+    "---How It Works---",
+    "architecture",
+    "confidential-guardrails",
+    "dwallet-execution",
+    "policy-engine",
+    "---Guides---",
+    "quickstart",
+    "concepts"
+  ]
+}
