@@ -4,6 +4,13 @@ description: Execute, finalize, and watch pending proposal lifecycle.
 icon: Play
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura execution execute
 
 Run `execute_pending` for the current proposal. If the proposal was approved,
@@ -13,6 +20,14 @@ submits the dWallet co-signing CPI. If denied, clears the pending state.
 aura execution execute --agent-id agent-1
 aura execution execute --agent-id agent-1 --wait         # wait for message approval
 aura execution execute --agent-id agent-1 --wait-signed  # wait for dWallet signature
+```
+
+<small>Example output:</small>
+```
+$ aura execution execute
+⠋ Submitting execute_pending for live dWallet signing...
+⠙ Waiting for message approval signature...
+✓ Execution request submitted: 3rGh…Lw5T
 ```
 
 | Flag | Description |
@@ -33,6 +48,13 @@ aura execution finalize --agent-id agent-1
 aura execution finalize --agent-id agent-1 --message-approval <pubkey>
 ```
 
+<small>Example output:</small>
+```
+$ aura execution finalize
+⠋ Finalizing execution...
+✓ Execution finalized: 6kMn…Qs8X (total tx 4)
+```
+
 | Flag | Description |
 |------|-------------|
 | `--agent-id <id>` | Treasury agent ID |
@@ -50,6 +72,33 @@ policy output verification, decryption readiness, and message approval status.
 aura execution watch --agent-id agent-1
 aura execution watch --agent-id agent-1 --interval 10   # refresh every 10s
 aura execution watch --agent-id agent-1 --json
+```
+
+<small>Example output:</small>
+```
+$ aura execution watch
+AURA :: Execution Watch: agent-1
+
+┌──────────────────────┬──────────────────────────────────────┐
+│ Pending              │ Value                                │
+├──────────────────────┼──────────────────────────────────────┤
+│ Proposal ID          │ 3                                    │
+│ Amount               │ $250.00                              │
+│ Chain                │ Ethereum                             │
+│ Type                 │ Transfer                             │
+│ Recipient            │ 0xdead…beef                          │
+│ Status               │ Approved                             │
+│ Approved             │ Yes                                  │
+│ Policy output ct     │ 8pQr…Nt6V                            │
+└──────────────────────┴──────────────────────────────────────┘
+
+┌──────────────────────┬───────┐
+│ Live check           │ Value │
+├──────────────────────┼───────┤
+│ Policy output verified│ Yes  │
+│ Decryption ready     │ Yes   │
+│ Message approval     │ signed│
+└──────────────────────┴───────┘
 ```
 
 | Flag | Description |

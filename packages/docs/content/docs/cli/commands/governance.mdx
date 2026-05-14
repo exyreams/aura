@@ -4,6 +4,13 @@ description: Configure multisig, swarms, and emergency override proposals.
 icon: Shield
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura governance multisig
 
 Configure an emergency guardian multisig on a treasury.
@@ -13,6 +20,13 @@ aura governance multisig \
   --agent-id agent-1 \
   --required 2 \
   --guardians pk1,pk2,pk3
+```
+
+<small>Example output:</small>
+```
+$ aura governance multisig
+⠋ Configuring multisig...
+✓ Multisig configured: 4tJw…Bx2M
 ```
 
 | Flag | Description |
@@ -36,6 +50,13 @@ aura governance swarm \
   --pool-limit 50000
 ```
 
+<small>Example output:</small>
+```
+$ aura governance swarm
+⠋ Configuring swarm...
+✓ Swarm configured: 7nCk…Yd4F
+```
+
 | Flag | Description |
 |------|-------------|
 | `--agent-id <id>` | Treasury agent ID |
@@ -56,6 +77,13 @@ aura governance override propose \
   --new-daily-limit 25000
 ```
 
+<small>Example output:</small>
+```
+$ aura governance override propose
+⠋ Submitting override proposal...
+✓ Override proposed: 2sHp…Rc6G
+```
+
 | Flag | Description |
 |------|-------------|
 | `--agent-id <id>` | Treasury agent ID |
@@ -70,6 +98,13 @@ Guardian co-signs an active override proposal.
 
 ```bash
 aura governance override collect --agent-id agent-1
+```
+
+<small>Example output:</small>
+```
+$ aura governance override collect
+⠋ Collecting override signature...
+✓ Override signature collected: 5vXq…Ew3D
 ```
 
 | Flag | Description |

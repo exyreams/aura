@@ -1,9 +1,15 @@
 ---
 title: Overview
 description: All AURA CLI command groups and common patterns.
+icon: LayoutList
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 Every command supports the global `--rpc-url`, `--wallet`, `--program-id`,
 `--json`, `--quiet`, and `--dry-run` flags. Commands that submit transactions

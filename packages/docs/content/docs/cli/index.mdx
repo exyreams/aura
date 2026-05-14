@@ -5,6 +5,11 @@ icon: Rocket
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 `@aura-protocol/cli` is the terminal interface for AURA operators. It wraps the
 TypeScript SDK, supports `--json` output for automation and CI, and exposes the

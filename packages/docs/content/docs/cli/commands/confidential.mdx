@@ -4,6 +4,13 @@ description: Configure scalar FHE guardrails and run confidential proposal/decry
 icon: Lock
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura confidential deposit ensure
 
 Ensure the configured agent wallet has an Encrypt deposit account.
@@ -11,6 +18,13 @@ Ensure the configured agent wallet has an Encrypt deposit account.
 ```bash
 aura confidential deposit ensure
 aura confidential deposit ensure --dry-run
+```
+
+<small>Example output:</small>
+```
+$ aura confidential deposit ensure
+⠋ Ensuring Encrypt deposit account...
+✓ Encrypt deposit ready: 6bWz…Pn2Q
 ```
 
 ## aura confidential guardrails scalar
@@ -23,6 +37,15 @@ aura confidential guardrails scalar \
   --daily-limit 10000 \
   --per-tx-limit 1000 \
   --spent-today 0
+```
+
+<small>Example output:</small>
+```
+$ aura confidential guardrails scalar
+⠋ Encrypting guardrail values via Ika Encrypt...
+⠙ Waiting for ciphertexts to be verified on-chain...
+⠸ Configuring scalar guardrails...
+✓ Scalar guardrails configured: 3mKr…Ux7B
 ```
 
 | Flag | Description |
@@ -45,6 +68,20 @@ aura confidential status --agent-id agent-1
 aura confidential status --agent-id agent-1 --json
 ```
 
+<small>Example output:</small>
+```
+$ aura confidential status
+AURA :: Confidential: agent-1
+
+┌──────────────────┬───────────┐
+│ Confidential     │ Value     │
+├──────────────────┼───────────┤
+│ Daily limit ct   │ 9pQs…Nt4V │
+│ Per-tx limit ct  │ 2rWx…Km8J │
+│ Spent today ct   │ 5hBn…Lc3F │
+└──────────────────┴───────────┘
+```
+
 ## aura confidential propose
 
 Encrypt the amount, submit the scalar FHE policy graph, and create the pending
@@ -57,6 +94,19 @@ aura confidential propose \
   --chain ethereum \
   --recipient 0xdeadbeef... \
   --wait
+```
+
+<small>Example output:</small>
+```
+$ aura confidential propose
+⠋ Ensuring Encrypt deposit account...
+⠙ Encrypting amount (250 USD) via Ika Encrypt...
+⠸ Waiting for amount ciphertext to be verified on-chain...
+⠼ Submitting confidential proposal...
+⠴ Waiting for output ciphertext verification...
+✓ Confidential proposal submitted: 4xGv…Rp9C
+  amount ciphertext: 7tNm…Qs2H
+  output ciphertext: 8pQr…Nt6V
 ```
 
 | Flag | Description |
@@ -85,6 +135,23 @@ aura confidential request-decryption --agent-id agent-1 --wait
 aura confidential request-decryption --agent-id agent-1 --ciphertext <pubkey>
 ```
 
+<small>Example output:</small>
+```
+$ aura confidential request-decryption
+⠋ Ensuring Encrypt deposit account...
+⠙ Submitting decryption request...
+⠸ Waiting for decrypted plaintext...
+✓ Policy decryption requested: 6wJk…Mv4L (request 3bYc…Xd7P)
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--ciphertext <pubkey>` | Override the pending policy output ciphertext |
+| `--request-keypair <path>` | Keypair path for the decryption request account |
+| `--wait` | Wait until the plaintext is ready on-chain |
+
 ## aura confidential confirm-decryption
 
 Apply the decrypted violation code on-chain and print the approval/denial
@@ -94,6 +161,21 @@ decision.
 aura confidential confirm-decryption --agent-id agent-1
 aura confidential confirm-decryption --agent-id agent-1 --request-account <pubkey>
 ```
+
+<small>Example output:</small>
+```
+$ aura confidential confirm-decryption
+⠋ Confirming policy decryption...
+⠙ Reading decrypted policy result from Encrypt network...
+✓ Policy decryption confirmed: 5nRt…Wz8K
+  result: approved ✓
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent-id <id>` | Treasury agent ID |
+| `--treasury <pda>` | Treasury PDA |
+| `--request-account <pubkey>` | Override the pending decryption request account |
 
 ## Full Confidential Flow
 

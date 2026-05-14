@@ -4,6 +4,12 @@ description: Initialize and manage local CLI configuration.
 icon: Settings
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
 ## aura config init
 
 Interactive setup wizard. Prompts for RPC URL, wallet path, program ID, and
@@ -11,6 +17,18 @@ default agent ID, then writes `~/.aura/config.json`.
 
 ```bash
 aura config init
+```
+
+<small>Example output:</small>
+
+```
+$ aura config init
+AURA :: AURA CLI - Initial Setup
+? RPC URL https://api.devnet.solana.com
+? Wallet path ~/.config/solana/id.json
+? Program ID EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+? Default agent ID (optional) agent-1
+✓ Config written to ~/.aura/config.json
 ```
 
 ---
@@ -24,15 +42,28 @@ aura config show
 aura config show --json
 ```
 
-Output shows each field, its resolved value, and where it came from (file,
-env var, flag, or default).
+<small>Example output:</small>
+
+```
+$ aura config show
+AURA :: Config
+
+┌───────────────┬──────────────────────────────────────────────┬──────────┐
+│ Field         │ Value                                        │ Source   │
+├───────────────┼──────────────────────────────────────────────┼──────────┤
+│ RPC URL       │ https://api.devnet.solana.com                │ file     │
+│ Wallet        │ ~/.config/solana/id.json                     │ file     │
+│ Cluster       │ devnet                                       │ default  │
+│ Program ID    │ EaRo…bhHs                                    │ file     │
+│ Default Agent │ agent-1                                      │ file     │
+└───────────────┴──────────────────────────────────────────────┴──────────┘
+```
 
 ---
 
 ## aura config set
 
-Set a single configuration value. Takes a key name and value as positional
-arguments.
+Set a single configuration value. Takes a key name and value as positional arguments.
 
 ```bash
 aura config set rpc-url https://devnet.helius-rpc.com/?api-key=YOUR_KEY
@@ -42,12 +73,19 @@ aura config set default-agent-id my-agent
 aura config set cluster devnet
 ```
 
+<small>Example output:</small>
+
+```
+$ aura config set rpc-url <url>
+✓ Updated rpcUrl in ~/.aura/config.json
+```
+
 Valid keys:
 
 | Key | Description |
 |-----|-------------|
 | `rpc-url` | Solana RPC endpoint |
 | `wallet-path` | Path to keypair JSON file |
+| `cluster` | Cluster label for display purposes |
 | `program-id` | AURA program ID |
 | `default-agent-id` | Default agent ID used when `--agent-id` is omitted |
-| `cluster` | Cluster label for display purposes |

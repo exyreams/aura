@@ -4,6 +4,13 @@ description: Inspect the SDK-backed AURA instruction and policy surface.
 icon: Layers
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura features
 
 List all instruction domains and their maturity breakdown. No wallet required.
@@ -21,6 +28,40 @@ aura features --maturity wallet
 aura features --maturity backend
 ```
 
+<small>Example output:</small>
+```
+$ aura features
+AURA Feature Surface
+
+┌──────────────────────┬──────────────┬────────┬─────────┬──────────────┐
+│ Domain               │ Instructions │ Wallet │ Backend │ External CPI │
+├──────────────────────┼──────────────┼────────┼─────────┼──────────────┤
+│ Treasury             │ 8            │ 5      │ 2       │ 1            │
+│ treasury             │              │        │         │              │
+├──────────────────────┼──────────────┼────────┼─────────┼──────────────┤
+│ Confidential         │ 6            │ 2      │ 4       │ 0            │
+│ confidential         │              │        │         │              │
+├──────────────────────┼──────────────┼────────┼─────────┼──────────────┤
+│ Execution            │ 4            │ 0      │ 4       │ 0            │
+│ execution            │              │        │         │              │
+├──────────────────────┼──────────────┼────────┼─────────┼──────────────┤
+│ Governance           │ 12           │ 8      │ 2       │ 2            │
+│ governance           │              │        │         │              │
+└──────────────────────┴──────────────┴────────┴─────────┴──────────────┘
+
+Treasury
+
+┌──────────────────────────┬──────────┬────────────────────────────────────────┐
+│ Instruction              │ Maturity │ Purpose                                │
+├──────────────────────────┼──────────┼────────────────────────────────────────┤
+│ createTreasury           │ wallet   │ Initialize a new agent treasury        │
+│ pauseExecution           │ wallet   │ Pause or resume execution              │
+│ proposeTransaction       │ wallet   │ Submit a public policy proposal        │
+│ cancelPending            │ wallet   │ Cancel the current pending transaction │
+│ registerDwallet          │ wallet   │ Register an Ika dWallet reference      │
+└──────────────────────────┴──────────┴────────────────────────────────────────┘
+```
+
 | Flag | Description |
 |------|-------------|
 | `--domain <id>` | Filter by domain ID (e.g. `governance`, `treasury`, `confidential`) |
@@ -34,23 +75,3 @@ aura features --maturity backend
 | `backend` | Signed by an operator backend service |
 | `read-only` | No signing required — account reads and simulations |
 | `external-cpi` | Invoked via CPI from external programs |
-
-### Example Output
-
-```
-AURA Feature Surface
-
-Domain          Instructions  Wallet  Backend  External CPI
-Treasury        8             5       2        1
-Confidential    6             2       4        0
-Execution       4             0       4        0
-Governance      12            8       2        2
-...
-
-Treasury
-Instruction                    Maturity   Purpose
-createTreasury                 wallet     Initialize a new agent treasury
-pauseExecution                 wallet     Pause or resume execution
-proposeTransaction             wallet     Submit a public policy proposal
-...
-```

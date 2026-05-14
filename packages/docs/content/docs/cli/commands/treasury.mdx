@@ -4,6 +4,13 @@ description: Create, inspect, propose, pause, and cancel AURA treasuries.
 icon: Vault
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura treasury create
 
 Create a new agent treasury. Prompts for any missing required values.
@@ -13,6 +20,13 @@ aura treasury create \
   --agent-id agent-1 \
   --daily-limit 10000 \
   --per-tx-limit 1000
+```
+
+<small>Example output:</small>
+```
+$ aura treasury create
+⠋ Creating treasury on devnet...
+✓ Treasury created: 3xKp…mF9z
 ```
 
 | Flag | Description |
@@ -42,12 +56,45 @@ aura treasury show --agent-id agent-1 --interval 10    # refresh every 10s
 aura treasury show --agent-id agent-1 --json
 ```
 
+<small>Example output:</small>
+```
+$ aura treasury show
+AURA :: Treasury: agent-1
+
+┌─────────────┬──────────────────────────────────────────────┐
+│ Field       │ Value                                        │
+├─────────────┼──────────────────────────────────────────────┤
+│ PDA         │ 9mTq…Wr4K                                    │
+│ Agent ID    │ agent-1                                      │
+│ Owner       │ 7mNv…QrSt                                    │
+│ AI Authority│ 7mNv…QrSt                                    │
+│ Status      │ Active                                       │
+│ Total tx    │ 4                                            │
+│ Created     │ Jan 15, 2025, 10:32:01 AM                    │
+│ Updated     │ Jan 15, 2025, 02:14:47 PM                    │
+└─────────────┴──────────────────────────────────────────────┘
+
+┌──────────────────┬────────────┐
+│ Policy           │ Value      │
+├──────────────────┼────────────┤
+│ Daily limit      │ $10,000.00 │
+│ Per-tx limit     │ $1,000.00  │
+│ Daytime hourly   │ —          │
+│ Nighttime hourly │ —          │
+│ Velocity limit   │ —          │
+│ Shared pool      │ —          │
+│ Max slippage     │ —          │
+│ Max quote age    │ —          │
+│ Max risk score   │ —          │
+└──────────────────┴────────────┘
+```
+
 | Flag | Description |
 |------|-------------|
 | `--agent-id <id>` | Look up by agent ID |
 | `--treasury <pda>` | Look up by treasury PDA |
-| `--watch` | Refresh every 5 seconds |
-| `--interval <secs>` | Custom refresh interval |
+| `--watch` | Refresh every 5 seconds (clears screen on each refresh) |
+| `--interval <secs>` | Custom refresh interval in seconds (default: 5) |
 
 ---
 
@@ -58,6 +105,19 @@ List all treasuries owned by the configured wallet.
 ```bash
 aura treasury list
 aura treasury list --json
+```
+
+<small>Example output:</small>
+```
+$ aura treasury list
+AURA :: Treasuries (2)
+
+┌──────────┬───────────┬────────┬──────────┐
+│ Agent ID │ PDA       │ Status │ Total Tx │
+├──────────┼───────────┼────────┼──────────┤
+│ agent-1  │ 9mTq…Wr4K │ Active │ 4        │
+│ agent-2  │ 4pRx…Hn8L │ Paused │ 1        │
+└──────────┴───────────┴────────┴──────────┘
 ```
 
 ---
@@ -72,6 +132,13 @@ aura treasury propose \
   --amount 250 \
   --chain ethereum \
   --recipient 0xdeadbeef...
+```
+
+<small>Example output:</small>
+```
+$ aura treasury propose
+⠋ Submitting proposal...
+✓ Proposal submitted: 5vBn…Kx2P
 ```
 
 | Flag | Description |
@@ -99,6 +166,14 @@ aura treasury cancel --agent-id agent-1
 aura treasury cancel --agent-id agent-1 --yes    # skip confirmation
 ```
 
+<small>Example output:</small>
+```
+$ aura treasury cancel
+? Cancel the current pending transaction? (y/N) y
+⠋ Cancelling pending transaction...
+✓ Pending transaction cancelled: 2wQj…Tz7R
+```
+
 ---
 
 ## aura treasury pause
@@ -109,4 +184,12 @@ Pause or unpause treasury execution.
 aura treasury pause --agent-id agent-1            # pause
 aura treasury pause --agent-id agent-1 --unpause  # unpause
 aura treasury pause --agent-id agent-1 --yes      # skip confirmation
+```
+
+<small>Example output:</small>
+```
+$ aura treasury pause
+? Pause this treasury? (y/N) y
+⠋ Pausing treasury...
+✓ Treasury paused: 4hLm…Vp3N
 ```

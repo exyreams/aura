@@ -4,6 +4,13 @@ description: Register and list Ika dWallet references on a treasury.
 icon: Wallet
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura dwallet register
 
 Register a dWallet reference on a treasury. Prompts for any missing values.
@@ -15,6 +22,13 @@ aura dwallet register \
   --dwallet-id dwallet-abc123 \
   --address 0xdeadbeef... \
   --balance 5000
+```
+
+<small>Example output:</small>
+```
+$ aura dwallet register
+⠋ Registering dWallet...
+✓ dWallet registered: 2xFp…Jk9W
 ```
 
 | Flag | Description |
@@ -50,4 +64,17 @@ List all dWallets registered on a treasury.
 ```bash
 aura dwallet list --agent-id agent-1
 aura dwallet list --agent-id agent-1 --json
+```
+
+<small>Example output:</small>
+```
+$ aura dwallet list
+AURA :: dWallets: agent-1
+
+┌──────────┬────────────────┬────────────────────────────┬────────────┐
+│ Chain    │ dWallet ID     │ Address                    │ Balance    │
+├──────────┼────────────────┼────────────────────────────┼────────────┤
+│ Ethereum │ dwallet-abc123 │ 0xdead…beef                │ $5,000.00  │
+│ Solana   │ dwallet-sol01  │ 7mNv…QrSt                  │ $1,250.00  │
+└──────────┴────────────────┴────────────────────────────┴────────────┘
 ```

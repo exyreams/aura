@@ -4,6 +4,13 @@ description: Derive any AURA, dWallet, or Encrypt program-derived address.
 icon: KeyRound
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura pda \<kind\>
 
 Derive a PDA and print the address, bump, program ID, and seeds used.
@@ -14,6 +21,22 @@ aura pda dwallet-cpi-authority
 aura pda encrypt-cpi-authority
 aura pda encrypt-event-authority
 aura pda treasury --owner <pubkey> --agent-id agent-1 --json
+```
+
+<small>Example output:</small>
+```
+$ aura pda treasury
+AURA :: PDA: treasury
+
+┌─────────┬──────────────────────────────────────────────┐
+│ Field   │ Value                                        │
+├─────────┼──────────────────────────────────────────────┤
+│ Address │ 9mTq…Wr4K                                    │
+│ Bump    │ 254                                          │
+│ Program │ EaRo…bhHs                                    │
+│ owner   │ 7mNv…QrSt                                    │
+│ agentId │ agent-1                                      │
+└─────────┴──────────────────────────────────────────────┘
 ```
 
 ## Supported Kinds
@@ -84,3 +107,4 @@ aura pda budget-envelope --treasury <pda> --envelope-id 1
 # All output as JSON
 aura pda treasury --owner <pubkey> --agent-id agent-1 --json
 ```
+

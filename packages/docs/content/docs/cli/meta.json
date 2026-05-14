@@ -7,6 +7,16 @@
     "index",
     "configuration",
     "---Commands---",
-    "commands"
+    "commands/index",
+    "commands/config",
+    "commands/treasury",
+    "commands/dwallet",
+    "commands/confidential",
+    "commands/execution",
+    "commands/governance",
+    "commands/instruction",
+    "commands/pda",
+    "commands/features",
+    "commands/dashboard"
   ]
 }

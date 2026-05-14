@@ -4,6 +4,13 @@ description: Launch a full-screen live terminal dashboard for a treasury.
 icon: Monitor
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+
 ## aura dashboard
 
 Launch a full-screen terminal dashboard that refreshes treasury state on an
@@ -23,3 +30,35 @@ aura dashboard --agent-id agent-1 --interval 10   # refresh every 10s
 | `--interval <secs>` | Refresh interval in seconds (default: 5) |
 
 Press `Ctrl+C` to exit.
+
+### Dashboard Layout
+
+The dashboard is a full-screen [Ink](https://github.com/vadimdemedes/ink) React
+app — it renders live in the terminal and cannot be captured as static text.
+On launch it fills the terminal with the following sections, refreshing on the
+configured interval:
+
+**Header** — `AURA :: Treasury: <agent-id>` banner with the current timestamp
+and refresh countdown.
+
+**Overview table** — PDA address, owner, AI authority, execution status
+(Active / Paused), total transaction count, and created/updated timestamps.
+
+**Policy table** — All policy limits (daily, per-tx, daytime hourly, nighttime
+hourly, velocity, shared pool), max slippage, max quote age, and max
+counterparty risk score.
+
+**Confidential table** _(if configured)_ — Ciphertext pubkeys for the daily
+limit, per-tx limit, and spent-today guardrail accounts.
+
+**dWallets table** _(if any registered)_ — One row per dWallet showing chain,
+dWallet ID, native address, runtime PDA, authorized user, and USD balance.
+
+**Pending proposal table** _(if active)_ — Proposal ID, amount, chain,
+transaction type, recipient, approval status, violation code, effective limit,
+submission and expiry timestamps, policy output ciphertext, decryption request
+state, and message approval account.
+
+**Governance table** _(if configured)_ — Multisig threshold and guardian list,
+any active override proposal with collected signatures and expiry, and swarm
+membership with shared pool totals.
