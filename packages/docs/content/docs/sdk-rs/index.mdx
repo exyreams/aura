@@ -5,6 +5,11 @@ icon: Rocket
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs, types, and instruction shapes may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 `aura-sdk` is the native Rust client for the AURA program. It provides typed
 instruction builders, PDA helpers, account fetching, domain model conversion,

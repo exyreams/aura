@@ -5,6 +5,11 @@ icon: CircleAlert
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 The Rust SDK uses a single `SdkError` enum for all errors.
 
@@ -42,8 +47,6 @@ pub enum SdkError {
 ```rust
 use aura_sdk::{AuraClient, SdkError};
 
-let client = AuraClient::devnet();
-
 match client.get_treasury(&treasury_pda) {
     Ok(treasury) => println!("Agent: {}", treasury.agent_id),
     Err(SdkError::AccountNotFound(addr)) => {
@@ -51,7 +54,6 @@ match client.get_treasury(&treasury_pda) {
     }
     Err(SdkError::AccountDecode { account_name, message }) => {
         eprintln!("Decode failed for {}: {}", account_name, message);
-        eprintln!("Check that your SDK version matches the deployed program");
     }
     Err(SdkError::DomainDecode(msg)) => {
         eprintln!("Domain conversion failed: {}", msg);
@@ -70,68 +72,66 @@ match client.get_treasury(&treasury_pda) {
 
 ## Program Error Codes
 
-The AURA program emits Anchor error codes. These arrive inside
-`SdkError::Rpc(_)` — inspect the inner `ClientError` to extract the code.
+The AURA program emits Anchor error codes starting at 6000. These arrive inside `SdkError::Rpc(_)`.
 
 | Code | Name | Description |
 |------|------|-------------|
 | 6000 | `UnauthorizedAi` | Caller is not the registered AI authority |
 | 6001 | `UnauthorizedOwner` | Caller is not the treasury owner |
-| 6002 | `DailyLimitExceeded` | Proposed amount would exceed daily USD limit |
-| 6003 | `PerTxLimitExceeded` | Proposed amount exceeds per-transaction limit |
-| 6004 | `HourlyLimitExceeded` | Hourly velocity limit would be breached |
-| 6005 | `VelocityLimitExceeded` | Short-window velocity limit would be breached |
-| 6006 | `SlippageTooHigh` | Quote slippage exceeds `max_slippage_bps` |
-| 6007 | `QuoteTooOld` | Price quote has expired beyond `max_quote_age_secs` |
-| 6008 | `ProtocolNotAllowed` | Target protocol not in `allowed_protocol_bitmap` |
-| 6009 | `CounterpartyRiskTooHigh` | Counterparty risk score exceeds policy threshold |
-| 6010 | `ExecutionPaused` | Treasury execution is currently paused |
-| 6011 | `PendingTransactionExists` | A transaction is already pending |
-| 6012 | `NoPendingTransaction` | No pending transaction to approve or cancel |
-| 6013 | `TransactionExpired` | Pending transaction TTL has elapsed |
-| 6014 | `MultisigNotConfigured` | No multisig attached to this treasury |
-| 6015 | `NotAGuardian` | Caller is not a registered guardian |
-| 6016 | `GuardianThresholdNotMet` | Insufficient guardian signatures |
-| 6017 | `OverrideProposalAlreadyExists` | A guardian override is already pending |
-| 6018 | `NoActiveOverride` | No active override proposal to execute |
-| 6019 | `OverrideExpired` | The override proposal TTL elapsed |
-| 6020 | `TimelockNotElapsed` | Timelock period has not yet passed |
-| 6021 | `InvalidPolicyConfig` | Policy configuration failed on-chain validation |
-| 6022 | `NoActiveRotation` | No pending AI rotation to execute or cancel |
-| 6023 | `AiRotationAlreadyPending` | An AI rotation is already in progress |
-| 6024 | `NoActiveConfigChange` | No pending config change to execute or veto |
-| 6025 | `ConfigChangeAlreadyPending` | A config change is already pending |
-| 6026 | `SessionKeyExpired` | Session key has passed its expiry |
-| 6027 | `SessionKeyLimitExceeded` | Session key USD allowance is exhausted |
-| 6028 | `SessionKeyDomainNotAllowed` | Protocol not permitted for this session key |
-| 6029 | `InvalidSessionKey` | Caller does not match the registered session key |
-| 6030 | `DWalletAlreadyRegistered` | A dWallet for that chain is already registered |
-| 6031 | `DWalletNotConfigured` | No dWallet registered for the target chain |
-| 6032 | `WeeklyLimitExceeded` | Weekly limit would be breached |
-| 6033 | `MonthlyLimitExceeded` | Monthly limit would be breached |
-| 6034 | `LivenessCheckFailed` | A required oracle freshness check failed |
-| 6035 | `BudgetEnvelopeExceeded` | Scoped budget envelope would be exceeded |
-| 6036 | `BudgetEnvelopeNotFound` | Referenced budget envelope does not exist |
-| 6037 | `ApprovalRequired` | Transaction requires guardian approval ladder sign-off |
-| 6038 | `AlreadyApproved` | This approver has already signed for this proposal |
-| 6039 | `InsufficientApprovals` | Approval ladder threshold not yet reached |
-| 6040 | `SwarmNotConfigured` | Treasury is not part of a swarm |
-| 6041 | `SharedPoolLimitExceeded` | Swarm shared-pool limit would be exceeded |
-| 6042 | `ScopedPauseActive` | Instruction blocked by an active scoped pause |
-| 6043 | `InvalidSanctionsProof` | Merkle proof for sanctions check failed |
-| 6044 | `ComplianceCheckFailed` | Compliance oracle rejected the proposal |
-| 6045 | `ChildBudgetExceeded` | Child agent spend budget would be exceeded |
-| 6046 | `FheViolation` | Encrypted policy evaluation rejected the transaction |
-| 6047 | `InvariantViolation` | An internal program invariant was broken |
-| 6048 | `InvalidLifecycleTransition` | Agent state machine transition is not allowed |
-| 6049 | `OperatorRoleNotGranted` | Caller does not hold the required operator role |
-| 6050 | `OperatorRoleAlreadyGranted` | Operator role already exists for this key |
-| 6051 | `ExposureGroupUnauthorized` | Caller is not authorized for this exposure group |
+| 6002 | `UnauthorizedGuardian` | Caller is not a registered guardian |
+| 6003 | `UnauthorizedExecutor` | Caller is not an authorized executor |
+| 6004 | `PendingTransactionExists` | A proposal is already pending; resolve it first |
+| 6005 | `NoPendingTransaction` | No pending proposal to act on |
+| 6006 | `DWalletNotConfigured` | No dWallet registered for the requested chain |
+| 6007 | `DWalletAlreadyRegistered` | A dWallet is already registered for this chain |
+| 6008 | `PolicyGraphMismatch` | FHE policy graph digest does not match |
+| 6009 | `PolicyDigestMismatch` | Policy digest mismatch on verification |
+| 6010 | `DecryptionNotReady` | Decryption result is not yet available |
+| 6011 | `MessageApprovalNotReady` | dWallet message approval is not ready |
+| 6012 | `SignatureVerificationFailed` | Signature verification failed |
+| 6013 | `InvalidDeployment` | Invalid deployment configuration |
+| 6014 | `InvalidExternalAccountData` | Invalid external account data |
+| 6015 | `ConfidentialGuardrailsNotConfigured` | Confidential guardrails must be set up first |
+| 6016 | `PolicyOutputNotReady` | Encrypted policy output is not ready yet |
+| 6017 | `ExecutionPaused` | Treasury execution is currently paused |
+| 6018 | `PendingTransactionExpired` | The pending proposal TTL has elapsed |
+| 6019 | `NoActiveOverride` | No active guardian override to act on |
+| 6020 | `InvalidChain` | Invalid chain value |
+| 6021 | `InvalidTransactionType` | Invalid transaction type value |
+| 6022 | `InvalidCurve` | Invalid dWallet curve value |
+| 6023 | `InvalidSignatureScheme` | Invalid signature scheme value |
+| 6024 | `InvalidViolationCode` | Invalid violation code |
+| 6025 | `InvalidProposalStatus` | Invalid proposal status transition |
+| 6026 | `InvalidGuardianConfiguration` | Invalid guardian configuration |
+| 6027 | `TimelockNotElapsed` | Timelock period has not elapsed |
+| 6028 | `SanctionedAddress` | Recipient address is on the sanctions list |
+| 6029 | `RecipientBlacklisted` | Recipient is on the address deny list |
+| 6030 | `RecipientNotWhitelisted` | Recipient is not on the address allow list |
+| 6031 | `CooldownNotElapsed` | Cooldown period between large transactions has not elapsed |
+| 6032 | `HighRiskTransactionRequiresGuardian` | High-risk transaction requires guardian co-signature |
+| 6033 | `InvalidStateTransition` | Invalid agent state transition |
+| 6034 | `ParentLimitExceeded` | Parent treasury limit would be exceeded |
+| 6035 | `AnomalyDetected` | Anomaly detected in transaction pattern |
+| 6036 | `SessionKeyInactive` | Session key has expired or was revoked |
+| 6037 | `SessionKeyScopeViolation` | Session key scope does not permit this proposal |
+| 6038 | `AccountStillActive` | Account cannot be closed while still active |
+| 6039 | `BudgetEnvelopeLimitExceeded` | Budget envelope limit would be exceeded |
+| 6040 | `ApprovalLevelNotSatisfied` | Approval ladder level has not been satisfied |
+| 6041 | `PendingExecutionTimelockActive` | Pending execution timelock is still active |
+| 6042 | `ExecutionScopePaused` | Execution scope is paused |
+| 6043 | `OperatorRoleMissing` | Operator role is missing required permission |
+| 6044 | `OperatorRoleExpired` | Operator role has expired or was revoked |
+| 6045 | `ExternalDependencyStale` | External dependency freshness check failed |
+| 6046 | `InvalidPolicyPreset` | Policy preset kind is invalid |
+| 6047 | `PolicyAttestationMismatch` | Policy attestation hash or version mismatch |
+| 6048 | `EmptyBatch` | Batch proposal cannot be empty |
+| 6049 | `BatchTooLarge` | Batch proposal exceeds maximum item count |
+| 6050 | `ExposureGroupLimitExceeded` | Cross-treasury exposure group limit exceeded |
+| 6051 | `ExposureGroupUnauthorized` | Treasury is not a member of the exposure group |
 
-## Converting to anyhow / thiserror
+## Converting to anyhow
 
-`SdkError` implements `std::error::Error`, so it works with `anyhow` and
-`thiserror` directly:
+`SdkError` implements `std::error::Error`, so it works with `anyhow` directly:
 
 ```rust
 use anyhow::{Context, Result};
@@ -143,8 +143,6 @@ fn fetch_treasury(client: &AuraClient, pda: &Pubkey) -> Result<AgentTreasury> {
         .with_context(|| format!("failed to fetch treasury {}", pda))
 }
 ```
-
-## Next Steps
 
 <Cards>
   <Card title="AuraClient" description="Client API and transaction sending." href="/docs/sdk-rs/client/overview" />

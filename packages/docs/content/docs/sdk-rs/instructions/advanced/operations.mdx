@@ -1,0 +1,182 @@
+---
+title: Operations
+description: Operator roles, external liveness, health scores, snapshots, activity logs, and policy history.
+icon: Activity
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## grant_operator_role / revoke_operator_role
+
+Delegate specific permissions to an operator without giving them full owner access.
+
+```rust
+// Grant
+client.grant_operator_role(&owner, accounts, args)?;
+
+// Revoke
+client.revoke_operator_role(&owner, accounts, now)?;
+```
+
+```rust
+use aura_sdk::pda::derive_operator_role_pda;
+
+let (operator_role, _) = derive_operator_role_pda(&treasury, &operator.pubkey(), &client.program_id());
+
+client.grant_operator_role(
+    &owner,
+    aura_core::accounts::GrantOperatorRole {
+        owner: owner.pubkey(),
+        treasury,
+        operator: operator.pubkey(),
+        operator_role,
+        system_program: anchor_lang::system_program::ID,
+    },
+    aura_core::GrantOperatorRoleArgs {
+        permissions_bitmap: 0b0000_0111,
+        expires_at: now + 86400 * 30,
+        timestamp: now,
+    },
+)?;
+```
+
+---
+
+## init_external_liveness / refresh_external_liveness
+
+Track freshness of external dependencies. Required when `LivenessConfig` freshness flags are set.
+
+```rust
+// Init
+client.init_external_liveness(&owner, accounts, args)?;
+
+// Refresh
+client.refresh_external_liveness(&operator, accounts, args)?;
+```
+
+```rust
+use aura_sdk::pda::derive_external_liveness_pda;
+
+let (liveness, _) = derive_external_liveness_pda(&treasury, &client.program_id());
+
+// Init once
+client.init_external_liveness(
+    &owner,
+    aura_core::accounts::InitExternalLiveness {
+        owner: owner.pubkey(),
+        treasury,
+        liveness,
+        system_program: anchor_lang::system_program::ID,
+    },
+    aura_core::InitExternalLivenessArgs { dependency_flags: 0b0011, timestamp: now },
+)?;
+
+// Refresh periodically
+client.refresh_external_liveness(
+    &operator,
+    aura_core::accounts::RefreshExternalLiveness {
+        operator: operator.pubkey(),
+        treasury,
+        operator_role: None,
+        liveness,
+    },
+    aura_core::RefreshExternalLivenessArgs { dependency_flags: 0b0011, timestamp: now },
+)?;
+```
+
+---
+
+## configure_liveness_guardrails
+
+Update the `LivenessConfig` on the treasury.
+
+```rust
+client.configure_liveness_guardrails(
+    &owner,
+    aura_core::accounts::ConfigureLivenessGuardrails { owner: owner.pubkey(), treasury },
+    aura_core::ConfigureLivenessGuardrailsArgs {
+        require_encrypt_freshness: true,
+        require_dwallet_freshness: true,
+        require_balance_oracle_freshness: false,
+        require_compliance_oracle_freshness: false,
+        max_staleness_secs: 300,
+        timestamp: now,
+    },
+)?;
+```
+
+---
+
+## init_health_score / refresh_health_score / close_health_score
+
+Compute and store a `u8` health score (0–100) for the treasury.
+
+```rust
+// Init
+client.init_health_score(&owner, accounts, now)?;
+
+// Refresh
+client.refresh_health_score(&operator, accounts, now)?;
+
+// Close (reclaim rent)
+client.close_health_score(&owner, accounts)?;
+```
+
+---
+
+## take_snapshot
+
+Record a point-in-time snapshot of the treasury's health score and key metrics.
+
+```rust
+client.take_snapshot(&payer, accounts, snapshot_index, now)?;
+```
+
+```rust
+client.take_snapshot(
+    &payer,
+    aura_core::accounts::TakeSnapshot {
+        payer: payer.pubkey(),
+        treasury,
+        operator_role: None,
+        health_score: health_score_pda,
+        snapshot: snapshot_pda,
+        system_program: anchor_lang::system_program::ID,
+    },
+    0,   // snapshot_index — slot in the ring buffer
+    now,
+)?;
+```
+
+---
+
+## init_activity_log / close_activity_log
+
+Initialize or close the activity log ring buffer.
+
+```rust
+client.init_activity_log(&owner, accounts)?;
+client.close_activity_log(&owner, accounts)?;
+```
+
+---
+
+## init_policy_history / record_policy_snapshot / close_policy_history
+
+Manage the policy history ring buffer.
+
+```rust
+client.init_policy_history(&owner, accounts)?;
+client.record_policy_snapshot(&owner, accounts, now)?;
+client.close_policy_history(&owner, accounts)?;
+```
+
+<Cards>
+  <Card title="Lifecycle" description="Session keys, dead man's switch, and treasury migration." href="/docs/sdk-rs/instructions/lifecycle" />
+  <Card title="Budget" description="Budget envelopes and exposure groups." href="/docs/sdk-rs/instructions/budget" />
+</Cards>

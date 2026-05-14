@@ -1,14 +1,14 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
-import { BookOpen, Box, Code, Globe, Server, Terminal } from "lucide-react";
+import { BookOpen, Globe, Server } from "lucide-react";
 import type { ReactNode } from "react";
 import { baseOptions } from "@/lib/layout.shared";
 import { source } from "@/lib/source";
+import { TypeScriptLogo, RustLogo, CliLogo, AuraLogo } from "@/components/logo";
 
-// Icons and descriptions keyed by the root folder title
 const TAB_META: Record<string, { icon: ReactNode; description: string }> = {
   Introduction: {
-    icon: <BookOpen className="size-4" />,
+    icon: <AuraLogo size={16} />,
     description: "Overview & getting started",
   },
   Architecture: {
@@ -24,15 +24,15 @@ const TAB_META: Record<string, { icon: ReactNode; description: string }> = {
     description: "REST & gRPC services",
   },
   "TypeScript SDK": {
-    icon: <Code className="size-4" />,
+    icon: <TypeScriptLogo size={16} />,
     description: "JS/TS client library",
   },
   "Rust SDK": {
-    icon: <Box className="size-4" />,
+    icon: <RustLogo size={16} />,
     description: "Native Rust client",
   },
   "CLI Tool": {
-    icon: <Terminal className="size-4" />,
+    icon: <CliLogo size={16} />,
     description: "Command-line interface",
   },
 };

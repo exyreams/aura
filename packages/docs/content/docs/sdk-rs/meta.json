@@ -6,9 +6,15 @@
     "---Getting Started---",
     "index",
     "---Low-Level Client---",
-    "client",
+    "client/overview",
+    "client/types",
+    "client/pda",
+    "client/errors",
+    "client/validation",
     "---Program API---",
-    "instructions",
+    "instructions/index",
+    "instructions/core",
+    "instructions/advanced",
     "---Guides---",
     "examples"
   ]

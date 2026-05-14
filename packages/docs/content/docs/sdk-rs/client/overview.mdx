@@ -1,8 +1,14 @@
 ---
 title: Overview
 description: AuraClient constructor, account fetching, PDA derivation, and transaction sending.
-icon: Cpu
+icon: LayoutList
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 `AuraClient` is the main entry point for interacting with the AURA program from
 Rust. It provides typed builders for the current program surface, account
