@@ -17,7 +17,6 @@ export function baseOptions(): BaseLayoutProps {
             alt="AURA"
             width={88}
             height={24}
-            style={{ width: 88, height: "auto" }}
             className="dark:block hidden"
           />
           <Image
@@ -25,7 +24,6 @@ export function baseOptions(): BaseLayoutProps {
             alt="AURA"
             width={88}
             height={24}
-            style={{ width: 88, height: "auto" }}
             className="dark:hidden block"
           />
         </div>
