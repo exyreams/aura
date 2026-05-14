@@ -25,7 +25,11 @@ const TRACES: Trace[] = [
       { rule: "scoped_pause", detail: "scope is not paused", pass: true },
       { rule: "per_tx_limit", detail: "250 ≤ 1,000", pass: true },
       { rule: "daily_limit", detail: "3,250 + 250 ≤ 10,000", pass: true },
-      { rule: "time_window_limit", detail: "projected 750 ≤ 2,500", pass: true },
+      {
+        rule: "time_window_limit",
+        detail: "projected 750 ≤ 2,500",
+        pass: true,
+      },
       { rule: "protocol_whitelist", detail: "protocol 2 allowed", pass: true },
       { rule: "counterparty_risk", detail: "score 15 ≤ 70", pass: true },
       { rule: "velocity_limit", detail: "1,250 + 250 ≤ 5,000", pass: true },
@@ -50,7 +54,11 @@ const TRACES: Trace[] = [
       { rule: "scoped_pause", detail: "scope is not paused", pass: true },
       { rule: "per_tx_limit", detail: "800 ≤ 1,000", pass: true },
       { rule: "daily_limit", detail: "3,500 + 800 ≤ 10,000", pass: true },
-      { rule: "time_window_limit", detail: "projected 1,550 ≤ 2,500", pass: true },
+      {
+        rule: "time_window_limit",
+        detail: "projected 1,550 ≤ 2,500",
+        pass: true,
+      },
       { rule: "velocity_limit", detail: "2,050 + 800 > 5,000", pass: false },
     ],
     verdict: "denied",
@@ -63,7 +71,11 @@ const TRACES: Trace[] = [
       { rule: "scoped_pause", detail: "scope is not paused", pass: true },
       { rule: "per_tx_limit", detail: "100 ≤ 1,000", pass: true },
       { rule: "daily_limit", detail: "900 + 100 ≤ 10,000", pass: true },
-      { rule: "time_window_limit", detail: "projected 350 ≤ 2,500", pass: true },
+      {
+        rule: "time_window_limit",
+        detail: "projected 350 ≤ 2,500",
+        pass: true,
+      },
       { rule: "protocol_whitelist", detail: "protocol 0 allowed", pass: true },
       { rule: "counterparty_risk", detail: "score 8 ≤ 70", pass: true },
       { rule: "velocity_limit", detail: "850 + 100 ≤ 5,000", pass: true },
@@ -135,25 +147,32 @@ export function PolicyTrace() {
           </div>
 
           {/* rules */}
-          {trace.rules.slice(0, visibleRules).map((r, i) => (
-            <div key={i} className="flex items-start gap-2">
+          {trace.rules.slice(0, visibleRules).map((r) => (
+            <div key={r.rule} className="flex items-start gap-2">
               <span className={r.pass ? "text-green-500" : "text-red-400"}>
                 {r.pass ? "✓" : "✗"}
               </span>
               <span className="text-(--text-muted)">
-                <span className={r.pass ? "text-(--text-main)" : "text-red-400"}>
+                <span
+                  className={r.pass ? "text-(--text-main)" : "text-red-400"}
+                >
                   {r.rule}
                 </span>
-                <span className="text-(--text-muted) opacity-60"> — {r.detail}</span>
+                <span className="text-(--text-muted) opacity-60">
+                  {" "}
+                  — {r.detail}
+                </span>
               </span>
             </div>
           ))}
 
           {/* verdict */}
           {showVerdict && (
-            <div className={`mt-3 pt-3 border-t border-(--border) font-bold tracking-wider ${
-              trace.verdict === "approved" ? "text-green-500" : "text-red-400"
-            }`}>
+            <div
+              className={`mt-3 pt-3 border-t border-(--border) font-bold tracking-wider ${
+                trace.verdict === "approved" ? "text-green-500" : "text-red-400"
+              }`}
+            >
               {trace.verdict === "approved"
                 ? "→ PolicyDecision { approved: true }"
                 : `→ PolicyDecision { violation: ${

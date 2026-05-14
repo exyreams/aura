@@ -1,5 +1,5 @@
-import { DocsNav } from "@/components/DocsNav";
 import { DocsFooter } from "@/components/DocsFooter";
+import { DocsNav } from "@/components/DocsNav";
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (

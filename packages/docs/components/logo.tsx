@@ -34,6 +34,8 @@ export function TypeScriptLogo({ size = 16 }: { size?: number }) {
       height={size}
       viewBox="0 0 512 512"
       fill="none"
+      role="img"
+      aria-label="TypeScript"
     >
       <rect fill="#3178c6" height="512" rx="50" width="512" />
       <path
@@ -55,6 +57,8 @@ export function RustLogo({ size = 16 }: { size?: number }) {
       xmlnsXlink="http://www.w3.org/1999/xlink"
       width={size}
       height={size}
+      role="img"
+      aria-label="Rust"
     >
       <defs>
         <radialGradient
@@ -94,6 +98,8 @@ export function CliLogo({ size = 16 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
+      role="img"
+      aria-label="CLI"
     >
       <path
         fillRule="evenodd"

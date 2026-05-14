@@ -22,14 +22,16 @@ export function StreamingText() {
       {/* Scrolling rows — full width, no horizontal padding so lines reach the edges */}
       <div
         className="relative w-full h-full font-mono text-[11px] text-(--text-main) flex flex-col justify-center gap-3"
-        style={{ opacity: 0.10, paddingTop: "120px", paddingBottom: "120px" }}
+        style={{ opacity: 0.1, paddingTop: "120px", paddingBottom: "120px" }}
       >
         {LINES.map((line, i) => {
           const dir = i % 2 === 0 ? "left" : "right";
           const duration = 28 + i * 4;
           const content = `${line} · ${line}`;
+          // Use first 40 chars of line as a stable key — all lines are unique
+          const key = line.slice(0, 40);
           return (
-            <div key={i} className="overflow-hidden whitespace-nowrap w-full">
+            <div key={key} className="overflow-hidden whitespace-nowrap w-full">
               <span
                 style={{
                   display: "inline-block",
@@ -50,22 +52,37 @@ export function StreamingText() {
       {/* Top */}
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none z-10"
-        style={{ height: "160px", background: "linear-gradient(to bottom, var(--bg) 0%, transparent 100%)" }}
+        style={{
+          height: "160px",
+          background:
+            "linear-gradient(to bottom, var(--bg) 0%, transparent 100%)",
+        }}
       />
       {/* Bottom */}
       <div
         className="absolute bottom-0 left-0 right-0 pointer-events-none z-10"
-        style={{ height: "160px", background: "linear-gradient(to top, var(--bg) 0%, transparent 100%)" }}
+        style={{
+          height: "160px",
+          background: "linear-gradient(to top, var(--bg) 0%, transparent 100%)",
+        }}
       />
       {/* Left — wide soft fade */}
       <div
         className="absolute top-0 left-0 bottom-0 pointer-events-none z-10"
-        style={{ width: "18vw", background: "linear-gradient(to right, var(--bg) 0%, transparent 100%)" }}
+        style={{
+          width: "18vw",
+          background:
+            "linear-gradient(to right, var(--bg) 0%, transparent 100%)",
+        }}
       />
       {/* Right — wide soft fade */}
       <div
         className="absolute top-0 right-0 bottom-0 pointer-events-none z-10"
-        style={{ width: "18vw", background: "linear-gradient(to left, var(--bg) 0%, transparent 100%)" }}
+        style={{
+          width: "18vw",
+          background:
+            "linear-gradient(to left, var(--bg) 0%, transparent 100%)",
+        }}
       />
 
       <style>{`
