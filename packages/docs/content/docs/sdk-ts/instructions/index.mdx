@@ -22,15 +22,15 @@ build-only (`*Instruction()`) and build-and-send.
 | Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `requestPolicyDecryption`, `confirmPolicyDecryption` | [Confidential](/docs/sdk-ts/instructions/confidential) |
 | Execution | `proposeTransaction`, `approvePendingExecution`, `executePending`, `finalizeExecution`, `setScopedPause` | [Execution](/docs/sdk-ts/instructions/execution) |
 | Governance | `configureMultisig`, `proposeAiRotation`, `executeConfigChange`, `vetoConfigChange`, `emergencyShutdown`, `proposeGuardianRotation`, `configureApprovalLadder` | [Governance](/docs/sdk-ts/instructions/governance) |
-| Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` | — |
+| Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` | [Swarm](/docs/sdk-ts/instructions/swarm) |
 | dWallet | `registerDwallet`, `refreshDwalletBalance` | [dWallet](/docs/sdk-ts/instructions/dwallet) |
-| Policy | `simulatePolicy`, `writePolicyReceipt`, `attestPolicy`, `checkInvariants`, `checkPolicyCpi`, `applyPolicyPreset` | — |
-| Budget | `configureBudgetEnvelope`, `initExposureGroup`, `joinExposureGroup` | — |
-| Operations | `setScopedPause`, `refreshExternalLiveness`, `takeSnapshot`, `initActivityLog`, `grantOperatorRole`, `revokeOperatorRole` | — |
-| Lifecycle | `issueSessionKey`, `revokeSessionKey`, `triggerDeadMansSwitch`, `migrateTreasury`, `transitionAgentState` | — |
-| Fees | `initFeeVault`, `collectFees`, `closeFeeVault` | — |
-| Address Lists | `initAddressList`, `manageAddressList`, `closeAddressList` | — |
-| Batch | `proposeBatch` | — |
+| Policy | `simulatePolicy`, `writePolicyReceipt`, `attestPolicy`, `checkInvariants`, `checkPolicyCpi`, `applyPolicyPreset` | [Policy](/docs/sdk-ts/instructions/policy) |
+| Budget | `configureBudgetEnvelope`, `initExposureGroup`, `joinExposureGroup`, `configureApprovalLadder` | [Budget](/docs/sdk-ts/instructions/budget) |
+| Operations | `grantOperatorRole`, `revokeOperatorRole`, `initExternalLiveness`, `refreshExternalLiveness`, `configureLivenessGuardrails`, `initHealthScore`, `refreshHealthScore`, `takeSnapshot`, `initActivityLog`, `initPolicyHistory`, `recordPolicySnapshot` | [Operations](/docs/sdk-ts/instructions/operations) |
+| Lifecycle | `issueSessionKey`, `revokeSessionKey`, `closeSessionKey`, `triggerDeadMansSwitch`, `transitionAgentState`, `migrateTreasury` | [Lifecycle](/docs/sdk-ts/instructions/lifecycle) |
+| Fees | `initFeeVault`, `collectFees`, `closeFeeVault` | [Fees](/docs/sdk-ts/instructions/fees) |
+| Address Lists | `initAddressList`, `manageAddressList`, `closeAddressList` | [Address Lists](/docs/sdk-ts/instructions/address-lists) |
+| Batch | `proposeBatch` | [Batch](/docs/sdk-ts/instructions/batch) |
 
 ## Dual-Form Pattern
 

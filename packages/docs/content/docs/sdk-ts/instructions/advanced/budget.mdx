@@ -1,0 +1,153 @@
+---
+title: Budget
+description: Scoped budget envelopes, cross-treasury exposure groups, and approval ladders.
+icon: Wallet
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## configureBudgetEnvelope
+
+Create or update a scoped sub-budget on the treasury. Envelopes can be scoped by chain, category, or protocol and have their own daily and weekly caps independent of the main policy limits.
+
+```typescript
+// Build only
+const instruction = await client.configureBudgetEnvelopeInstruction(
+  accounts: ConfigureBudgetEnvelopeAccounts,
+  args: ConfigureBudgetEnvelopeArgs,
+);
+
+// Build + send
+await client.configureBudgetEnvelope(owner, accounts, args);
+```
+
+```typescript
+interface ConfigureBudgetEnvelopeAccounts {
+  owner: PublicKey;
+  treasury: PublicKey;
+  budgetEnvelope: PublicKey;  // PDA: deriveBudgetEnvelopeAddress(treasury, envelopeId)
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import { deriveBudgetEnvelopeAddress } from '@aura-protocol/sdk-ts';
+import BN from 'bn.js';
+
+const envelopeId = new BN(1);
+const [budgetEnvelope] = deriveBudgetEnvelopeAddress(treasury, envelopeId);
+
+await client.configureBudgetEnvelope(
+  owner,
+  {
+    owner: owner.publicKey,
+    treasury,
+    budgetEnvelope,
+    systemProgram: SystemProgram.programId,
+  },
+  {
+    envelopeId,
+    dailyLimitUsd: new BN(2_000),
+    weeklyLimitUsd: new BN(10_000),
+    scope: { chain: 2 },  // Ethereum only
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+Pass `budgetEnvelope` in `ProposeTransactionAccounts` to enforce the envelope on a proposal.
+
+---
+
+## initExposureGroup / joinExposureGroup
+
+Create a cross-treasury aggregate cap. Multiple treasuries can join the same group; the group tracks total spend across all members.
+
+```typescript
+// Init — creates the exposure group PDA
+await client.initExposureGroup(authority, accounts, args);
+
+// Join — adds a treasury to an existing group
+await client.joinExposureGroup(authority, accounts);
+```
+
+```typescript
+interface InitExposureGroupAccounts {
+  authority: PublicKey;    // owns the group — must be a signer
+  exposureGroup: PublicKey;  // PDA: deriveExposureGroupAddress(authority, groupId)
+  systemProgram: PublicKey;
+}
+
+interface JoinExposureGroupAccounts {
+  authority: PublicKey;
+  exposureGroup: PublicKey;
+  treasury: PublicKey;  // treasury being added to the group
+}
+```
+
+```typescript
+import { deriveExposureGroupAddress } from '@aura-protocol/sdk-ts';
+
+const groupId = new Uint8Array(16).fill(1); // 16-byte group identifier
+const [exposureGroup] = deriveExposureGroupAddress(authority.publicKey, groupId);
+
+// Create the group
+await client.initExposureGroup(
+  authority,
+  { authority: authority.publicKey, exposureGroup, systemProgram: SystemProgram.programId },
+  { groupId: Array.from(groupId), limitUsd: new BN(100_000), timestamp: new BN(Math.floor(Date.now() / 1000)) },
+);
+
+// Add a treasury
+await client.joinExposureGroup(
+  authority,
+  { authority: authority.publicKey, exposureGroup, treasury },
+);
+```
+
+Pass `exposureGroup` in `ProposeTransactionAccounts` or `FinalizeExecutionAccounts` to enforce the group cap.
+
+---
+
+## configureApprovalLadder
+
+Set amount and risk-score thresholds that require escalating approval levels before a proposal can be executed.
+
+```typescript
+// Build only
+const instruction = await client.configureApprovalLadderInstruction(
+  accounts: OwnerTreasuryAccounts,
+  args: ConfigureApprovalLadderArgs,
+);
+
+// Build + send
+await client.configureApprovalLadder(owner, accounts, args);
+```
+
+```typescript
+await client.configureApprovalLadder(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    levels: [
+      { minAmountUsd: new BN(5_000), minRiskScore: 0, requiredLevel: 1 },
+      { minAmountUsd: new BN(20_000), minRiskScore: 0, requiredLevel: 2 },
+    ],
+    denyAboveAmountUsd: new BN(50_000),
+    denyAboveRiskScore: 90,
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+When a proposal triggers an approval level, `approvePendingExecution` must be called by the owner or a guardian before `executePending` can proceed.
+
+<Cards>
+  <Card title="Policy" description="Simulate, attest, and check policy." href="/docs/sdk-ts/instructions/policy" />
+  <Card title="Operations" description="Operator roles, liveness, health scores, and snapshots." href="/docs/sdk-ts/instructions/operations" />
+</Cards>

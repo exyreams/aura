@@ -1,0 +1,105 @@
+---
+title: Swarm
+description: Initialize and join shared agent swarm spending pools.
+icon: Network
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+A swarm pool is a shared spending counter across multiple agent treasuries. Each member's proposal is checked against both its own policy limits and the shared pool counter. Use `configureSwarm` (in [Governance](/docs/sdk-ts/instructions/governance)) to attach a treasury to a swarm. Use the instructions below to create and join the pool account itself.
+
+## initSwarmPool
+
+Create the shared swarm pool account. Must be done before any treasury can join.
+
+```typescript
+// Build only
+const instruction = await client.initSwarmPoolInstruction(
+  accounts: InitSwarmPoolAccounts,
+  args: InitSwarmPoolArgs,
+);
+
+// Build + send
+await client.initSwarmPool(creator, accounts, args);
+```
+
+```typescript
+interface InitSwarmPoolAccounts {
+  creator: PublicKey;    // funds the pool account — must be a signer
+  swarmPool: PublicKey;  // PDA — derived on-chain from swarmId
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import BN from 'bn.js';
+
+await client.initSwarmPool(
+  creator,
+  {
+    creator: creator.publicKey,
+    swarmPool: swarmPoolPDA,
+    systemProgram: SystemProgram.programId,
+  },
+  {
+    swarmId: 'swarm-alpha',
+    sharedPoolLimitUsd: new BN(100_000),
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+---
+
+## joinSwarm
+
+Add a treasury to an existing swarm pool. After joining, the treasury's proposals will be checked against the shared pool counter.
+
+```typescript
+// Build only
+const instruction = await client.joinSwarmInstruction(
+  accounts: JoinSwarmAccounts,
+  now: BNish,
+);
+
+// Build + send
+await client.joinSwarm(owner, accounts, now);
+```
+
+```typescript
+interface JoinSwarmAccounts {
+  owner: PublicKey;
+  treasury: PublicKey;
+  swarmPool: PublicKey;  // the pool to join
+}
+```
+
+```typescript
+await client.joinSwarm(
+  owner,
+  {
+    owner: owner.publicKey,
+    treasury,
+    swarmPool: swarmPoolPDA,
+  },
+  Math.floor(Date.now() / 1000),
+);
+```
+
+After joining, pass `swarmPool` in `ProposeTransactionAccounts.swarmPool` and `FinalizeExecutionAccounts.swarmPool` to enforce the shared limit.
+
+---
+
+## configureSwarm
+
+To configure the swarm settings on the treasury itself (swarmId, memberAgents, sharedPoolLimitUsd), use `configureSwarm` from the Governance domain.
+
+<Cards>
+  <Card title="Governance" description="configureSwarm and other treasury-level governance." href="/docs/sdk-ts/instructions/governance" />
+  <Card title="Budget" description="Budget envelopes and exposure groups." href="/docs/sdk-ts/instructions/budget" />
+</Cards>

@@ -1,0 +1,15 @@
+{
+  "title": "Advanced",
+  "icon": "Wrench",
+  "defaultOpen": false,
+  "pages": [
+    "policy",
+    "budget",
+    "operations",
+    "lifecycle",
+    "swarm",
+    "fees",
+    "address-lists",
+    "batch"
+  ]
+}

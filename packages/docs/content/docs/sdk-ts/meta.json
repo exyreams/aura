@@ -9,7 +9,9 @@
     "---Low-Level Client---",
     "client",
     "---Program API---",
-    "instructions",
+    "instructions/index",
+    "instructions/core",
+    "instructions/advanced",
     "---Guides---",
     "examples"
   ]
