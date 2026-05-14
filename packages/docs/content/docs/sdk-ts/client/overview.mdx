@@ -5,6 +5,11 @@ icon: Cpu
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 `AuraClient` is the low-level AURA SDK client. It gives you full control over
 every instruction parameter, supports composing multiple instructions into a
@@ -17,17 +22,6 @@ instance via `aura.lowLevel`.
 ## Constructor
 
 ```typescript
-import { AuraClient } from '@aura-protocol/sdk-ts';
-import { Connection } from '@solana/web3.js';
-
-const client = new AuraClient({
-  connection,        // required — Solana RPC connection
-  programId?,        // optional — defaults to devnet AURA_PROGRAM_ID
-  confirmOptions?,   // optional — Anchor ConfirmOptions
-});
-```
-
-```typescript
 import { Connection } from '@solana/web3.js';
 import { AuraClient, AURA_PROGRAM_ID } from '@aura-protocol/sdk-ts';
 
@@ -36,6 +30,7 @@ const connection = new Connection(
   'confirmed',
 );
 
+// Default — targets devnet AURA_PROGRAM_ID
 const client = new AuraClient({ connection });
 
 // Custom program ID (e.g. localnet)
@@ -44,6 +39,14 @@ const localClient = new AuraClient({
   programId: myLocalProgramId,
 });
 ```
+
+`AuraClientOptions`:
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `connection` | `Connection` | ✓ | Solana RPC connection |
+| `programId` | `PublicKey` | — | Override program ID (defaults to devnet `AURA_PROGRAM_ID`) |
+| `confirmOptions` | `ConfirmOptions` | — | Anchor confirm options |
 
 ## Properties
 
@@ -81,17 +84,7 @@ console.log('Signature:', signature);
 
 ## sendInstructions
 
-Send one or more instructions in a single transaction. Returns the signature
-immediately — does not wait for confirmation.
-
-```typescript
-async sendInstructions(
-  payer: Signer,
-  instructions: TransactionInstruction[],
-  extraSigners?: Signer[],
-  options?: SendOptions,
-): Promise<string>
-```
+Send one or more instructions in a single transaction. Returns the signature immediately — does not wait for confirmation.
 
 ```typescript
 const now = new BN(Math.floor(Date.now() / 1000));
@@ -109,6 +102,13 @@ const cancelIx = await client.cancelPendingInstruction(
 const signature = await client.sendInstructions(owner, [pauseIx, cancelIx]);
 console.log('Batched tx:', signature);
 ```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `payer` | `Signer` | Fee payer and primary signer |
+| `instructions` | `TransactionInstruction[]` | Instructions to include |
+| `extraSigners` | `Signer[]` | Additional signers (optional) |
+| `options` | `SendOptions` | Send options e.g. `skipPreflight` (optional) |
 
 <Cards>
   <Card title="Accounts & Fetching" description="getTreasuryAccount, getTreasuryForOwner, and account types." href="/docs/sdk-ts/client/accounts" />

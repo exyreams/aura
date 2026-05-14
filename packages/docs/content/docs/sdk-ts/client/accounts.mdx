@@ -5,6 +5,11 @@ icon: Database
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 `AuraClient` provides three methods for fetching treasury accounts. All return
 typed `TreasuryAccountRecord` objects deserialized from the Anchor IDL.
@@ -163,7 +168,7 @@ interface PolicyStateRecord {
   thirtyDayWindowStartedAt: BN;
   peakSingleTxUsd: BN;
   peakDaySpendUsd: BN;
-  recipientSpend: RecipientSpendRecordAccount[];
+  recipientSpend: RecipientSpendRecord[];  // per-address spend tracking
 }
 ```
 
@@ -277,6 +282,10 @@ console.log(daily.toNumber());   // 10000
 const remaining = daily.sub(account.policyState.spentTodayUsd);
 console.log('Remaining:', remaining.toString());
 ```
+
+## A note on account type definitions
+
+All account types (`TreasuryAccountRecord`, `PolicyConfigRecord`, etc.) are IDL-derived via `IdlAccounts<AuraCore>` and `IdlTypes<AuraCore>`. The interfaces shown on this page are accurate approximations based on the current IDL, but the canonical source of truth is the generated `packages/sdk-ts/src/generated/aura_core.ts`. If a field type looks wrong at runtime, check the generated types directly.
 
 <Cards>
   <Card title="PDA Derivation" description="Derive treasury and authority addresses." href="/docs/sdk-ts/client/pda" />

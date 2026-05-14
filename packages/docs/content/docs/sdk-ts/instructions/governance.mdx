@@ -5,6 +5,11 @@ icon: Shield
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 ## configureMultisig
 
@@ -141,6 +146,44 @@ await client.emergencyShutdown(
   { owner: owner.publicKey, treasury },
   recoveryPubkey,
   Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## proposeGuardianRotation / executeGuardianRotation
+
+Propose adding or removing a guardian from the multisig, then execute after the timelock.
+
+```typescript
+// Propose a guardian change (action: 0=add, 1=remove)
+await client.proposeGuardianRotation(
+  guardian,
+  { guardian: guardian.publicKey, treasury },
+  action,          // 0 = add, 1 = remove
+  targetGuardian,  // PublicKey of the guardian to add or remove
+  now,
+);
+
+// Execute after timelock
+await client.executeGuardianRotation(
+  guardian,
+  { guardian: guardian.publicKey, treasury },
+  now,
+);
+```
+
+---
+
+## configureApprovalLadder
+
+Set amount and risk-score thresholds that require escalating approval levels before execution.
+
+```typescript
+await client.configureApprovalLadder(
+  owner,
+  { owner: owner.publicKey, treasury },
+  args, // ConfigureApprovalLadderArgs
 );
 ```
 

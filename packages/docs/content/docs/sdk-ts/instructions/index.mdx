@@ -4,6 +4,11 @@ description: All AURA program instructions grouped by domain.
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 The TypeScript SDK mirrors the current AURA Anchor IDL and groups all 67
 instruction builders by domain. Every instruction is available in two forms —
@@ -11,21 +16,21 @@ build-only (`*Instruction()`) and build-and-send.
 
 ## Domains
 
-| Domain | Key methods |
-| --- | --- |
-| Treasury | `createTreasury`, `pauseExecution`, `cancelPending` |
-| Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `requestPolicyDecryption`, `confirmPolicyDecryption` |
-| Execution | `proposeTransaction`, `approvePendingExecution`, `executePending`, `finalizeExecution` |
-| Governance | `configureMultisig`, `proposeAiRotation`, `executeConfigChange`, `vetoConfigChange`, `emergencyShutdown` |
-| Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` |
-| dWallet | `registerDwallet`, `refreshDwalletBalance` |
-| Policy | `simulatePolicy`, `writePolicyReceipt`, `attestPolicy`, `checkInvariants` |
-| Budget | `configureBudgetEnvelope`, `initExposureGroup`, `configureApprovalLadder` |
-| Operations | `setScopedPause`, `refreshExternalLiveness`, `takeSnapshot`, `initActivityLog` |
-| Lifecycle | `grantOperatorRole`, `issueSessionKey`, `triggerDeadMansSwitch` |
-| Fees | `initFeeVault`, `collectFees`, `closeFeeVault` |
-| Address Lists | `initAddressList`, `manageAddressList` |
-| Batch | `proposeBatch` |
+| Domain | Key methods | Page |
+| --- | --- | --- |
+| Treasury | `createTreasury`, `pauseExecution`, `cancelPending` | [Treasury](/docs/sdk-ts/instructions/treasury) |
+| Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `requestPolicyDecryption`, `confirmPolicyDecryption` | [Confidential](/docs/sdk-ts/instructions/confidential) |
+| Execution | `proposeTransaction`, `approvePendingExecution`, `executePending`, `finalizeExecution`, `setScopedPause` | [Execution](/docs/sdk-ts/instructions/execution) |
+| Governance | `configureMultisig`, `proposeAiRotation`, `executeConfigChange`, `vetoConfigChange`, `emergencyShutdown`, `proposeGuardianRotation`, `configureApprovalLadder` | [Governance](/docs/sdk-ts/instructions/governance) |
+| Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` | — |
+| dWallet | `registerDwallet`, `refreshDwalletBalance` | [dWallet](/docs/sdk-ts/instructions/dwallet) |
+| Policy | `simulatePolicy`, `writePolicyReceipt`, `attestPolicy`, `checkInvariants`, `checkPolicyCpi`, `applyPolicyPreset` | — |
+| Budget | `configureBudgetEnvelope`, `initExposureGroup`, `joinExposureGroup` | — |
+| Operations | `setScopedPause`, `refreshExternalLiveness`, `takeSnapshot`, `initActivityLog`, `grantOperatorRole`, `revokeOperatorRole` | — |
+| Lifecycle | `issueSessionKey`, `revokeSessionKey`, `triggerDeadMansSwitch`, `migrateTreasury`, `transitionAgentState` | — |
+| Fees | `initFeeVault`, `collectFees`, `closeFeeVault` | — |
+| Address Lists | `initAddressList`, `manageAddressList`, `closeAddressList` | — |
+| Batch | `proposeBatch` | — |
 
 ## Dual-Form Pattern
 

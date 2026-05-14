@@ -5,12 +5,20 @@ icon: Rocket
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. Program instructions,
+  account layouts, instruction argument shapes, and SDK APIs may change without
+  notice between releases. Do not use this SDK to manage real funds or
+  production treasuries until a stable release and security audit are published.
+</Callout>
 
 `@aura-protocol/sdk-ts` is the canonical JavaScript/TypeScript interface for
 AURA. It wraps the Anchor IDL, account fetches, PDA derivation, event parsing,
 instruction builders, and the shared program-surface catalog.
 
-Current published package: `@aura-protocol/sdk-ts@0.2.13`.
+Current published package: `@aura-protocol/sdk-ts@0.2.15`.
 
 ## What It Exposes
 
@@ -32,8 +40,8 @@ The npm package publishes `README.md` alongside `dist/`. To verify a release
 artifact locally:
 
 ```bash
-npm pack @aura-protocol/sdk-ts@0.2.13 --json
-npm view @aura-protocol/sdk-ts@0.2.13 readmeFilename readme
+npm pack @aura-protocol/sdk-ts@0.2.15 --json
+npm view @aura-protocol/sdk-ts@0.2.15 readmeFilename readme
 ```
 
 ## Quick Start

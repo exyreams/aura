@@ -5,8 +5,13 @@ icon: Radio
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
 
-AURA emits four typed Anchor events from its instruction handlers. The SDK
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+AURA emits three typed Anchor events from its instruction handlers. The SDK
 exports typed event definitions, discriminator constants, and a helper for
 matching raw log bytes.
 
@@ -23,73 +28,37 @@ import {
 
 ## Event Types
 
+All event types are IDL-derived via `AuraEvents`. The actual field shapes depend on the compiled IDL — do not hand-write these types. Use the exported aliases directly:
+
+```typescript
+import type {
+  AuraEvents,
+  TreasuryAuditEvent,
+  ProposalLifecycleEvent,
+  ExecutionLifecycleEvent,
+} from '@aura-protocol/sdk-ts';
+
+// Use these as type assertions when handling parsed events:
+// event.data as TreasuryAuditEvent
+// event.data as ProposalLifecycleEvent
+// event.data as ExecutionLifecycleEvent
+```
+
 ### TreasuryAuditEvent
 
 Emitted once after every instruction that mutates treasury state. Clients and
 indexers subscribe to this event to build an off-chain audit trail.
-
-```typescript
-type TreasuryAuditEvent = {
-  treasury: PublicKey;
-  kind: string;      // instruction label, e.g. "create_treasury", "propose_transaction"
-  detail: string;    // human-readable summary of the change
-  timestamp: BN;
-};
-```
 
 ### ProposalLifecycleEvent
 
 Emitted after every proposal state change: propose, execute, deny, cancel,
 and expire. Allows clients to track proposal status without polling the account.
 
-```typescript
-type ProposalLifecycleEvent = {
-  treasury: PublicKey;
-  proposalId: BN;
-  proposalDigest: string;
-  status: number;   // 0=Pending, 1=Approved, 2=Denied, 3=Cancelled, 4=Expired
-  approved: boolean;
-  violation: number; // violation code if denied
-};
-```
-
 ### ExecutionLifecycleEvent
 
 Emitted after `finalize_execution` completes. Carries the full execution
 outcome including signature and decryption account references for off-chain
 verification.
-
-```typescript
-type ExecutionLifecycleEvent = {
-  treasury: PublicKey;
-  proposalId: BN;
-  proposalDigest: string;
-  finalStatus: number;
-  approved: boolean;
-  violation: number;
-  messageApprovalId: string | null;
-  messageApprovalAccount: string | null;
-  decryptionRequestId: string | null;
-  decryptionRequestAccount: string | null;
-};
-```
-
-### PolicyReceiptWrittenEvent
-
-Emitted when `write_policy_receipt` stores an immutable policy snapshot for a
-proposal.
-
-```typescript
-type PolicyReceiptWrittenEvent = {
-  treasury: PublicKey;
-  proposalId: BN;
-  policyVersion: number;
-  decision: number;
-  primaryViolation: number;
-  requiredApprovalLevel: number;
-  policyAttested: boolean;
-};
-```
 
 ## Event Discriminators
 
@@ -127,14 +96,22 @@ if (matchesEventDiscriminator(data, EventDiscriminator.proposalLifecycleEvent)) 
 
 ## Parsing Events from a Transaction
 
-Use `AuraClient.coder.events.decode()` to parse events from a confirmed
-transaction's logs:
+Use Anchor's `EventParser` to decode events from a confirmed transaction's logs. `client.coder` is a `BorshInstructionCoder` (for instructions only) — event parsing requires `EventParser` from `@coral-xyz/anchor`:
 
 ```typescript
-import { AuraClient, AURA_PROGRAM_ID } from '@aura-protocol/sdk-ts';
+import { EventParser } from '@coral-xyz/anchor';
+import {
+  AuraClient,
+  AURA_IDL,
+  AURA_PROGRAM_ID,
+  type ProposalLifecycleEvent,
+  type TreasuryAuditEvent,
+  type ExecutionLifecycleEvent,
+} from '@aura-protocol/sdk-ts';
 import { Connection } from '@solana/web3.js';
 
 const client = new AuraClient({ connection });
+const parser = new EventParser(client.programId, client.program.coder);
 
 async function parseTransactionEvents(signature: string) {
   const tx = await connection.getTransaction(signature, {
@@ -144,21 +121,15 @@ async function parseTransactionEvents(signature: string) {
 
   if (!tx?.meta?.logMessages) return [];
 
-  return tx.meta.logMessages
-    .map((log) => {
-      try {
-        return client.coder.events.decode(log);
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
+  const events: ReturnType<typeof parser.parseLogs> extends Iterable<infer E> ? E[] : never[] = [];
+  for (const event of parser.parseLogs(tx.meta.logMessages)) {
+    events.push(event);
+  }
+  return events;
 }
 
 const events = await parseTransactionEvents(txSignature);
 for (const event of events) {
-  if (!event) continue;
-
   switch (event.name) {
     case 'proposalLifecycleEvent': {
       const data = event.data as ProposalLifecycleEvent;
@@ -185,11 +156,13 @@ for (const event of events) {
 Subscribe to all AURA events in real time using the Solana WebSocket API:
 
 ```typescript
+import { EventParser } from '@coral-xyz/anchor';
 import {
   AuraClient,
   AURA_PROGRAM_ID,
   type ProposalLifecycleEvent,
   type TreasuryAuditEvent,
+  type ExecutionLifecycleEvent,
 } from '@aura-protocol/sdk-ts';
 import { Connection } from '@solana/web3.js';
 
@@ -198,36 +171,30 @@ const wsConnection = new Connection(
   'confirmed',
 );
 const client = new AuraClient({ connection: wsConnection });
+const parser = new EventParser(client.programId, client.program.coder);
 
 const subscriptionId = wsConnection.onLogs(
   AURA_PROGRAM_ID,
-  ({ logs, signature, err }) => {
+  ({ logs, err }) => {
     if (err) return;
 
-    for (const log of logs) {
-      try {
-        const event = client.coder.events.decode(log);
-        if (!event) continue;
-
-        switch (event.name) {
-          case 'treasuryAuditEvent': {
-            const data = event.data as TreasuryAuditEvent;
-            console.log(`[${data.kind}] ${data.treasury.toBase58()} — ${data.detail}`);
-            break;
-          }
-          case 'proposalLifecycleEvent': {
-            const data = event.data as ProposalLifecycleEvent;
-            console.log(`Proposal ${data.proposalId}: approved=${data.approved}`);
-            break;
-          }
-          case 'executionLifecycleEvent': {
-            const data = event.data as ExecutionLifecycleEvent;
-            console.log(`Execution finalized: proposal ${data.proposalId}`);
-            break;
-          }
+    for (const event of parser.parseLogs(logs)) {
+      switch (event.name) {
+        case 'treasuryAuditEvent': {
+          const data = event.data as TreasuryAuditEvent;
+          console.log(`[${data.kind}] ${data.treasury.toBase58()} — ${data.detail}`);
+          break;
         }
-      } catch {
-        // non-AURA log line, ignore
+        case 'proposalLifecycleEvent': {
+          const data = event.data as ProposalLifecycleEvent;
+          console.log(`Proposal ${data.proposalId}: approved=${data.approved}`);
+          break;
+        }
+        case 'executionLifecycleEvent': {
+          const data = event.data as ExecutionLifecycleEvent;
+          console.log(`Execution finalized: proposal ${data.proposalId}`);
+          break;
+        }
       }
     }
   },

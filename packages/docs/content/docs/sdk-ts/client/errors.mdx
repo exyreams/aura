@@ -5,6 +5,11 @@ icon: CircleAlert
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 AURA emits Anchor error codes from the on-chain program. The TypeScript SDK
 exports `AuraErrorCode`, `isAuraError()`, and `getAuraErrorCode()` for
@@ -145,6 +150,8 @@ try {
   }
 }
 ```
+
+`isAuraError` checks `error.code` directly. Anchor wraps program errors in a `SendTransactionError` — if you're catching at the raw RPC level, use `getAuraErrorCode` which handles the nested structure more robustly.
 
 ### `getAuraErrorCode`
 

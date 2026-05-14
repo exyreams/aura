@@ -5,6 +5,11 @@ icon: Vault
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 ## createTreasury
 
@@ -101,7 +106,7 @@ calls will fail with `ExecutionPaused`.
 const instruction = await client.pauseExecutionInstruction(
   accounts: OwnerTreasuryAccounts,
   paused: boolean,
-  now: BN,
+  now: BNish,
 );
 
 // Build + send
@@ -109,7 +114,7 @@ await client.pauseExecution(
   owner: Signer,
   accounts: OwnerTreasuryAccounts,
   paused: boolean,
-  now: BN,
+  now: BNish,
 );
 ```
 
@@ -131,14 +136,14 @@ Cancel the current pending transaction and reset the treasury to idle.
 // Build only
 const instruction = await client.cancelPendingInstruction(
   accounts: OwnerTreasuryAccounts,
-  now: BN,
+  now: BNish,
 );
 
 // Build + send
 await client.cancelPending(
   owner: Signer,
   accounts: OwnerTreasuryAccounts,
-  now: BN,
+  now: BNish,
 );
 ```
 

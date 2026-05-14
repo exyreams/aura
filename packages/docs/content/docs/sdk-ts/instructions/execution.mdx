@@ -5,6 +5,11 @@ icon: Play
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
 
 After a proposal is created, execution follows a fixed sequence. Public
 proposals skip policy decryption. Confidential proposals decrypt only the scalar
@@ -31,6 +36,8 @@ Request the Ika Encrypt network to decrypt the scalar policy output ciphertext.
 ```typescript
 await client.requestPolicyDecryption(operator, accounts, now, extraSigners);
 ```
+
+`now` accepts `BNish` — a `BN`, `number`, `bigint`, or numeric `string`.
 
 ```typescript
 interface RequestPolicyDecryptionAccounts {
@@ -73,10 +80,71 @@ Submit the approved proposal to the dWallet program for co-signing.
 await client.executePending(operator, accounts, now);
 ```
 
+```typescript
+interface ExecutePendingAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  callerProgram: PublicKey;   // AURA program ID
+  systemProgram: PublicKey;
+  messageApproval?: PublicKey | null;
+  dwallet?: PublicKey | null;
+  cpiAuthority?: PublicKey | null;  // derive: deriveDwalletCpiAuthority()
+  dwalletProgram?: PublicKey | null;
+  dwalletCoordinator?: PublicKey | null;
+  externalLiveness?: PublicKey | null;
+}
+```
+
 ## finalizeExecution
 
 Verify the dWallet signature, close the proposal, and increment the treasury's
 total transaction counter.
+
+```typescript
+await client.finalizeExecution(operator, accounts, now);
+```
+
+```typescript
+interface FinalizeExecutionAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  messageApproval: PublicKey;  // MessageApproval PDA from dWallet program
+  swarmPool?: PublicKey | null;
+  budgetEnvelope?: PublicKey | null;
+  exposureGroup?: PublicKey | null;
+  externalLiveness?: PublicKey | null;
+}
+```
+
+## approvePendingExecution
+
+Satisfy an approval ladder requirement on a pending proposal. Called by the owner or a guardian when the proposal requires explicit approval before `executePending` can proceed.
+
+```typescript
+await client.approvePendingExecution(
+  approver,
+  { approver: approver.publicKey, treasury },
+  args, // ApprovePendingExecutionArgs
+);
+```
+
+---
+
+## setScopedPause
+
+Pause or unpause execution for a specific scope (chain, transaction type, or protocol). More granular than the treasury-wide `pauseExecution`.
+
+```typescript
+await client.setScopedPause(
+  operator,
+  { operator: operator.publicKey, treasury },
+  args, // SetScopedPauseArgs
+);
+```
+
+The operator must have a valid `OperatorRole` with the scoped-pause permission, or be the treasury owner.
+
+---
 
 <Cards>
   <Card title="dWallet" description="dWallet account registration and signing accounts." href="/docs/sdk-ts/instructions/dwallet" />
