@@ -305,19 +305,30 @@ export function ProposeTransactionModal({
                 onClose={() => proposeMutation.reset()}
               />
             )}
-            {entry && entry.account.dwallets.length === 0 && (
-              <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) px-4 py-3 flex gap-3 items-start">
-                <Wallet
-                  className="size-3.5 text-(--warning-text) shrink-0 mt-0.5"
-                  animateOnHover
-                />
-                <p className="text-[11px] text-(--warning-text) leading-relaxed">
-                  No dWallet registered — the proposal will evaluate but
-                  execution will fail. Register a dWallet on this treasury
-                  first.
-                </p>
-              </div>
-            )}
+            {entry &&
+              entry.account.dwallets.filter((dw) => dw.dwalletId.length > 0)
+                .length === 0 && (
+                <div className="rounded-sm border border-(--warning-border) bg-(--warning-bg) px-4 py-3 flex gap-3 items-start">
+                  <Wallet
+                    className="size-3.5 text-(--warning-text) shrink-0 mt-0.5"
+                    animateOnHover
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-(--warning-text) leading-relaxed">
+                      No dWallet registered — the proposal will evaluate against
+                      policy but execution will fail without one.{" "}
+                      <Link
+                        href={`/dashboard/treasuries/${pda}/guardrails`}
+                        className="underline hover:no-underline"
+                        onClick={onClose}
+                      >
+                        Register a dWallet
+                      </Link>{" "}
+                      to enable execution.
+                    </p>
+                  </div>
+                </div>
+              )}
             {isWrongAgent && (
               <div className="rounded-sm border border-danger/30 bg-danger/10 px-4 py-3 flex gap-3 items-start">
                 <ShieldAlert

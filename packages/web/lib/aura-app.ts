@@ -818,14 +818,18 @@ export interface AuditTrailItem {
 /**
  * Groups ParsedActivity[] into one item per proposal (merging all lifecycle
  * events for the same proposalId) plus standalone audit rows.
- * Orphaned proposal-lifecycle events without a proposalId are silently dropped
- * because they are already captured by the proposal group's outcome.
+ *
+ * Orphaned lifecycle audit events (e.g. proposal_cancelled) whose parent
+ * proposal_submitted falls outside the fetch window are surfaced as synthetic
+ * proposal items so they don't silently disappear.
  */
 export function groupEventsForAuditTrail(
   events: ParsedActivity[],
 ): AuditTrailItem[] {
   const byProposal = new Map<string, ParsedActivity[]>();
   const auditItems: AuditTrailItem[] = [];
+  // Lifecycle audit events with a proposalId but no matching group parent.
+  const orphanedByKey = new Map<string, ParsedActivity>();
 
   for (const ev of events) {
     if (ev.proposalId && (ev.kind === "proposal" || ev.kind === "execution")) {
@@ -834,7 +838,14 @@ export function groupEventsForAuditTrail(
       byProposal.get(key)?.push(ev);
     } else if (ev.kind === "audit") {
       const rawKind = ev.detail?.split(":")[0]?.trim() ?? "";
-      if (PROPOSAL_LIFECYCLE_KINDS.has(rawKind)) continue;
+      if (PROPOSAL_LIFECYCLE_KINDS.has(rawKind)) {
+        // Track orphaned lifecycle events so we can surface them if no group exists.
+        if (ev.proposalId) {
+          const key = `${ev.treasury}:${ev.proposalId}`;
+          if (!orphanedByKey.has(key)) orphanedByKey.set(key, ev);
+        }
+        continue;
+      }
       auditItems.push({
         signature: ev.signature,
         txSignature: ev.txSignature,
@@ -880,12 +891,36 @@ export function groupEventsForAuditTrail(
       txSignature: first.txSignature,
       treasury: first.treasury,
       timestamp: last.timestamp ?? first.timestamp ?? 0,
-      kind: "proposal",
+      kind: "proposal" as const,
       proposalId: first.proposalId,
       outcome,
       violation,
       isConfidential,
     });
+  }
+
+  // Surface orphaned lifecycle events whose parent proposal_submitted was outside
+  // the fetch window — otherwise cancelled/expired proposals silently disappear.
+  for (const [key, ev] of orphanedByKey) {
+    if (!byProposal.has(key)) {
+      const rawKind = ev.detail?.split(":")[0]?.trim() ?? "";
+      const outcome: AuditTrailItem["outcome"] =
+        rawKind === "proposal_cancelled"
+          ? "cancelled"
+          : rawKind === "execution_finalized"
+            ? "approved"
+            : "pending";
+      proposalItems.push({
+        signature: ev.signature,
+        txSignature: ev.txSignature,
+        treasury: ev.treasury,
+        timestamp: ev.timestamp ?? 0,
+        kind: "proposal" as const,
+        proposalId: ev.proposalId,
+        outcome,
+        isConfidential: ev.detail?.includes("confidential") ?? false,
+      });
+    }
   }
 
   return [...proposalItems, ...auditItems].sort(

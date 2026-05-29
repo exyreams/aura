@@ -244,7 +244,7 @@ function getDescription(event: AuditEvent): string {
 }
 
 export const AuditTrail = ({ pda }: AuditTrailProps) => {
-  const { data: events, isLoading } = useTreasuryAuditTrail(pda, 20);
+  const { data: events, isLoading } = useTreasuryAuditTrail(pda, 50);
   const displayEvents = (events ?? []).slice(0, 5);
 
   return (
