@@ -55,16 +55,16 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@solana/web3.js": ">=1.95.0",
-    "bn.js": ">=5.2.0"
+    "@solana/web3.js": "^1.98.4",
+    "bn.js": "^5.2.3"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1"
   },
   "devDependencies": {
     "@types/bn.js": "5.2.0",
-    "@types/node": "25.6.0",
-    "tsx": "4.21.0",
+    "@types/node": "25.9.1",
+    "tsx": "4.22.3",
     "typescript": "6.0.3"
   }
 }
