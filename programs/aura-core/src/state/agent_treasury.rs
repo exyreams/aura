@@ -319,6 +319,108 @@ impl AgentTreasury {
         );
     }
 
+    /// Updates mutable treasury settings in place. Only `Some` fields change.
+    ///
+    /// `agent_id`/`owner` are part of the PDA seed and are intentionally not
+    /// editable here. Records a `ConfigChangeExecuted` audit event.
+    pub fn update_settings(
+        &mut self,
+        pending_transaction_ttl_secs: Option<i64>,
+        high_risk_threshold: Option<u8>,
+        high_risk_require_guardian: Option<bool>,
+        sanctions_check_enabled: Option<bool>,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        if let Some(ttl) = pending_transaction_ttl_secs {
+            if ttl <= 0 {
+                return Err(crate::TreasuryError::InvalidAccountData(
+                    "pending transaction ttl must be positive".to_string(),
+                ));
+            }
+            self.pending_transaction_ttl_secs = ttl;
+        }
+        if let Some(threshold) = high_risk_threshold {
+            self.high_risk_threshold = threshold;
+        }
+        if let Some(require_guardian) = high_risk_require_guardian {
+            self.high_risk_require_guardian = require_guardian;
+        }
+        if let Some(sanctions) = sanctions_check_enabled {
+            self.sanctions_check_enabled = sanctions;
+        }
+        self.last_owner_activity_at = now;
+        self.audit_trail.record(
+            AuditKind::ConfigChangeExecuted,
+            "treasury metadata updated",
+            now,
+        );
+        Ok(())
+    }
+
+    /// Adds or updates a per-recipient exposure limit, keyed by `(chain, address)`.
+    ///
+    /// Returns an error for an invalid limit or when the recipient-limit set is
+    /// full (capped to match the policy record's `#[max_len]`). Bumps the policy
+    /// version and records an audit event.
+    pub fn upsert_recipient_limit(
+        &mut self,
+        chain: Chain,
+        address: String,
+        daily_limit_usd: u64,
+        per_tx_limit_usd: Option<u64>,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        if daily_limit_usd == 0 || address.len() > 128 {
+            return Err(crate::TreasuryError::InvalidAccountData(
+                "invalid recipient limit".to_string(),
+            ));
+        }
+        let limits = &mut self.policy_config.recipient_limits;
+        if let Some(existing) = limits
+            .iter_mut()
+            .find(|limit| limit.chain == chain && limit.address == address)
+        {
+            existing.daily_limit_usd = daily_limit_usd;
+            existing.per_tx_limit_usd = per_tx_limit_usd;
+        } else {
+            if limits.len() >= 16 {
+                return Err(crate::TreasuryError::InvalidAccountData(
+                    "recipient limit set is full".to_string(),
+                ));
+            }
+            limits.push(aura_policy::RecipientLimit {
+                chain,
+                address,
+                daily_limit_usd,
+                per_tx_limit_usd,
+            });
+        }
+        self.current_policy_version = self.current_policy_version.saturating_add(1);
+        self.audit_trail
+            .record(AuditKind::ConfigChangeExecuted, "recipient limit set", now);
+        Ok(())
+    }
+
+    /// Removes a per-recipient exposure limit. Returns `true` if one was removed,
+    /// `false` if no matching `(chain, address)` existed.
+    pub fn remove_recipient_limit(&mut self, chain: Chain, address: &str, now: i64) -> bool {
+        let limits = &mut self.policy_config.recipient_limits;
+        let Some(position) = limits
+            .iter()
+            .position(|limit| limit.chain == chain && limit.address == address)
+        else {
+            return false;
+        };
+        limits.remove(position);
+        self.current_policy_version = self.current_policy_version.saturating_add(1);
+        self.audit_trail.record(
+            AuditKind::ConfigChangeExecuted,
+            "recipient limit removed",
+            now,
+        );
+        true
+    }
+
     /// Attaches or replaces the emergency multisig configuration.
     pub fn attach_multisig(&mut self, multisig: EmergencyMultisig, timestamp: i64) {
         self.multisig = Some(multisig);

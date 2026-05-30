@@ -6,6 +6,8 @@
 /// - `governance_flow`  — emergency multisig override and protocol fee logic
 /// - `advanced_flow`    — reputation scaling, swarm limits, batch preview, edge cases
 /// - `policy_controls_flow` — approval ladder, envelopes, exposure, roles, liveness
+/// - `administration_flow` — doc-01 CRUD completion: settings + recipient limits
+mod administration_flow;
 mod advanced_flow;
 mod confidential_flow;
 mod governance_flow;

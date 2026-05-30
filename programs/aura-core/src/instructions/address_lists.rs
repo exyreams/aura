@@ -75,9 +75,9 @@ pub fn manage_address_list(
     list.treasury = ctx.accounts.treasury.key();
     list.mode = mode;
     list.chain = chain;
-    list.entry_count = addresses.len().min(256) as u16;
+    list.entry_count = addresses.len().min(64) as u16;
     list.updated_at = now;
-    list.addresses = addresses.into_iter().take(256).collect();
+    list.addresses = addresses.into_iter().take(64).collect();
     Ok(())
 }
 
@@ -120,5 +120,66 @@ pub struct CloseAddressList<'info> {
 }
 
 pub fn close_address_list(_ctx: Context<CloseAddressList>) -> Result<()> {
+    Ok(())
+}
+
+/// Asserts the caller is the owner or an operator with the manage permission.
+fn assert_address_list_authority(ctx: &Context<ManageAddressList>, now: i64) -> Result<()> {
+    if ctx.accounts.operator.key() != ctx.accounts.treasury.owner {
+        ctx.accounts
+            .operator_role
+            .as_ref()
+            .ok_or_else(|| error!(AuraCoreError::OperatorRoleMissing))?
+            .assert_permission(
+                ctx.accounts.treasury.key(),
+                ctx.accounts.operator.key(),
+                role_permissions::MANAGE_ADDRESS_LISTS,
+                now,
+            )?;
+    }
+    Ok(())
+}
+
+/// Adds or removes a single address without resending the whole list.
+///
+/// `add = true` inserts (idempotent; rejects when the list is full); `add =
+/// false` removes (`AddressListEntryNotFound` if absent). Owner- or
+/// operator-gated.
+pub fn update_address_list_entry(
+    ctx: Context<ManageAddressList>,
+    address: String,
+    add: bool,
+    now: i64,
+) -> Result<()> {
+    assert_address_list_authority(&ctx, now)?;
+    let list = &mut ctx.accounts.address_list;
+    if add {
+        if !list.addresses.iter().any(|entry| entry == &address) {
+            require!(
+                list.addresses.len() < 64,
+                AuraCoreError::InvalidExternalAccountData
+            );
+            list.addresses.push(address);
+        }
+    } else {
+        let before = list.addresses.len();
+        list.addresses.retain(|entry| entry != &address);
+        require!(
+            list.addresses.len() < before,
+            AuraCoreError::AddressListEntryNotFound
+        );
+    }
+    list.entry_count = list.addresses.len() as u16;
+    list.updated_at = now;
+    Ok(())
+}
+
+/// Empties an address list in place. Owner- or operator-gated.
+pub fn clear_address_list(ctx: Context<ManageAddressList>, now: i64) -> Result<()> {
+    assert_address_list_authority(&ctx, now)?;
+    let list = &mut ctx.accounts.address_list;
+    list.addresses.clear();
+    list.entry_count = 0;
+    list.updated_at = now;
     Ok(())
 }

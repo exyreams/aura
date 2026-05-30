@@ -115,3 +115,27 @@ pub struct CloseFeeVault<'info> {
 pub fn close_fee_vault(_ctx: Context<CloseFeeVault>) -> Result<()> {
     Ok(())
 }
+
+#[derive(Accounts)]
+pub struct UpdateFeeRecipient<'info> {
+    pub owner: Signer<'info>,
+    #[account(
+        seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
+        bump = treasury.bump,
+        constraint = treasury.owner == owner.key() @ AuraCoreError::UnauthorizedOwner
+    )]
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+    #[account(
+        mut,
+        seeds = [FEE_VAULT_SEED, treasury.key().as_ref()],
+        bump = fee_vault.bump,
+        constraint = fee_vault.treasury == treasury.key() @ AuraCoreError::InvalidExternalAccountData
+    )]
+    pub fee_vault: Box<Account<'info, FeeVaultAccount>>,
+}
+
+/// Updates the protocol fee recipient on the fee vault. Owner-gated.
+pub fn update_fee_recipient(ctx: Context<UpdateFeeRecipient>, new_recipient: Pubkey) -> Result<()> {
+    ctx.accounts.fee_vault.protocol_fee_recipient = new_recipient;
+    Ok(())
+}

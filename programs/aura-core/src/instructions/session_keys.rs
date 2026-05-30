@@ -116,3 +116,77 @@ pub struct CloseSessionKey<'info> {
 pub fn close_session_key(_ctx: Context<CloseSessionKey>) -> Result<()> {
     Ok(())
 }
+
+/// Instruction data for `update_session_key`.
+///
+/// Lets the owner/AI extend or re-scope an active session key without
+/// reissuing it. Each field is optional (`None` leaves it unchanged); the
+/// nullable limit fields use `Option<Option<_>>` so `Some(None)` clears the
+/// limit and `Some(Some(v))` sets it.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateSessionKeyArgs {
+    /// Seconds to add to the current expiry; `None` leaves it unchanged.
+    pub extend_duration_secs: Option<i64>,
+    /// Per-transaction cap: `None` unchanged, `Some(None)` clears, `Some(Some)` sets.
+    pub max_amount_usd_per_tx: Option<Option<u64>>,
+    /// Daily cap: `None` unchanged, `Some(None)` clears, `Some(Some)` sets.
+    pub max_daily_spend_usd: Option<Option<u64>>,
+    /// Replacement allowed-chains scope; `None` leaves it unchanged.
+    pub allowed_chains: Option<Vec<u8>>,
+    /// Replacement allowed-tx-type scope; `None` leaves it unchanged.
+    pub allowed_tx_types: Option<Vec<u8>>,
+    /// Max proposal count: `None` unchanged, `Some(None)` clears, `Some(Some)` sets.
+    pub max_proposal_count: Option<Option<u32>>,
+    /// Unix timestamp used to validate the key is still active.
+    pub now: i64,
+}
+
+#[derive(Accounts)]
+pub struct UpdateSessionKey<'info> {
+    pub authority: Signer<'info>,
+    #[account(seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()], bump = treasury.bump)]
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+    #[account(
+        mut,
+        seeds = [SESSION_KEY_SEED, treasury.key().as_ref(), session_key_account.session_key.as_ref()],
+        bump = session_key_account.bump,
+        constraint = session_key_account.treasury == treasury.key() @ AuraCoreError::InvalidExternalAccountData,
+        constraint = treasury.owner == authority.key() || treasury.ai_authority == authority.key() @ AuraCoreError::UnauthorizedAi
+    )]
+    pub session_key_account: Box<Account<'info, SessionKeyAccount>>,
+}
+
+/// Extends or re-scopes an active session key in place.
+///
+/// Owner- or AI-gated. Refuses a revoked or already-expired key. Replacement
+/// scope vectors must stay within the account's allocated `#[max_len]`.
+pub fn update_session_key(
+    ctx: Context<UpdateSessionKey>,
+    args: UpdateSessionKeyArgs,
+) -> Result<()> {
+    let session = &mut ctx.accounts.session_key_account;
+    require!(!session.revoked, AuraCoreError::SessionKeyInactive);
+    require!(
+        args.now < session.expires_at,
+        AuraCoreError::SessionKeyInactive
+    );
+    if let Some(extend) = args.extend_duration_secs {
+        session.expires_at = session.expires_at.saturating_add(extend);
+    }
+    if let Some(value) = args.max_amount_usd_per_tx {
+        session.max_amount_usd_per_tx = value;
+    }
+    if let Some(value) = args.max_daily_spend_usd {
+        session.max_daily_spend_usd = value;
+    }
+    if let Some(chains) = args.allowed_chains {
+        session.allowed_chains = chains;
+    }
+    if let Some(tx_types) = args.allowed_tx_types {
+        session.allowed_tx_types = tx_types;
+    }
+    if let Some(value) = args.max_proposal_count {
+        session.max_proposal_count = value;
+    }
+    Ok(())
+}

@@ -47,11 +47,12 @@ use instructions::{
     __client_accounts_attest_policy, __client_accounts_cancel_pending,
     __client_accounts_check_invariants, __client_accounts_check_policy_cpi,
     __client_accounts_close_activity_log, __client_accounts_close_address_list,
+    __client_accounts_close_exposure_group, __client_accounts_close_external_liveness,
     __client_accounts_close_fee_vault, __client_accounts_close_health_score,
     __client_accounts_close_policy_history, __client_accounts_close_session_key,
-    __client_accounts_close_snapshot, __client_accounts_collect_fees,
-    __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
-    __client_accounts_configure_budget_envelope,
+    __client_accounts_close_snapshot, __client_accounts_close_swarm_pool,
+    __client_accounts_collect_fees, __client_accounts_collect_override_signature,
+    __client_accounts_configure_approval_ladder, __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
@@ -63,24 +64,28 @@ use instructions::{
     __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
     __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
     __client_accounts_join_swarm, __client_accounts_manage_address_list,
+    __client_accounts_manage_exposure_group, __client_accounts_manage_swarm,
     __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
     __client_accounts_pause_execution, __client_accounts_propose_batch,
     __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
     __client_accounts_refresh_external_liveness, __client_accounts_register_dwallet,
-    __client_accounts_request_policy_decryption, __client_accounts_revoke_operator_role,
-    __client_accounts_revoke_session_key, __client_accounts_set_scoped_pause,
-    __client_accounts_simulate_policy, __client_accounts_take_snapshot,
-    __client_accounts_trigger_dead_mans_switch, __client_accounts_update_health_score,
+    __client_accounts_remove_budget_envelope, __client_accounts_request_policy_decryption,
+    __client_accounts_revoke_operator_role, __client_accounts_revoke_session_key,
+    __client_accounts_set_scoped_pause, __client_accounts_simulate_policy,
+    __client_accounts_take_snapshot, __client_accounts_trigger_dead_mans_switch,
+    __client_accounts_update_fee_recipient, __client_accounts_update_health_score,
+    __client_accounts_update_operator_role, __client_accounts_update_session_key,
     __client_accounts_veto_config_change, __client_accounts_write_policy_receipt,
     __cpi_client_accounts_apply_policy_preset, __cpi_client_accounts_approve_pending_execution,
     __cpi_client_accounts_attest_policy, __cpi_client_accounts_cancel_pending,
     __cpi_client_accounts_check_invariants, __cpi_client_accounts_check_policy_cpi,
     __cpi_client_accounts_close_activity_log, __cpi_client_accounts_close_address_list,
+    __cpi_client_accounts_close_exposure_group, __cpi_client_accounts_close_external_liveness,
     __cpi_client_accounts_close_fee_vault, __cpi_client_accounts_close_health_score,
     __cpi_client_accounts_close_policy_history, __cpi_client_accounts_close_session_key,
-    __cpi_client_accounts_close_snapshot, __cpi_client_accounts_collect_fees,
-    __cpi_client_accounts_collect_override_signature,
+    __cpi_client_accounts_close_snapshot, __cpi_client_accounts_close_swarm_pool,
+    __cpi_client_accounts_collect_fees, __cpi_client_accounts_collect_override_signature,
     __cpi_client_accounts_configure_approval_ladder,
     __cpi_client_accounts_configure_budget_envelope,
     __cpi_client_accounts_configure_confidential_guardrails,
@@ -94,15 +99,18 @@ use instructions::{
     __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
     __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
     __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
+    __cpi_client_accounts_manage_exposure_group, __cpi_client_accounts_manage_swarm,
     __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
     __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
     __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
     __cpi_client_accounts_propose_transaction, __cpi_client_accounts_refresh_dwallet_balance,
     __cpi_client_accounts_refresh_external_liveness, __cpi_client_accounts_register_dwallet,
-    __cpi_client_accounts_request_policy_decryption, __cpi_client_accounts_revoke_operator_role,
-    __cpi_client_accounts_revoke_session_key, __cpi_client_accounts_set_scoped_pause,
-    __cpi_client_accounts_simulate_policy, __cpi_client_accounts_take_snapshot,
-    __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_update_health_score,
+    __cpi_client_accounts_remove_budget_envelope, __cpi_client_accounts_request_policy_decryption,
+    __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_revoke_session_key,
+    __cpi_client_accounts_set_scoped_pause, __cpi_client_accounts_simulate_policy,
+    __cpi_client_accounts_take_snapshot, __cpi_client_accounts_trigger_dead_mans_switch,
+    __cpi_client_accounts_update_fee_recipient, __cpi_client_accounts_update_health_score,
+    __cpi_client_accounts_update_operator_role, __cpi_client_accounts_update_session_key,
     __cpi_client_accounts_veto_config_change, __cpi_client_accounts_write_policy_receipt,
 };
 
@@ -428,6 +436,85 @@ pub mod aura_core {
         instructions::budget_envelopes::join_exposure_group(ctx)
     }
 
+    pub fn remove_budget_envelope(
+        ctx: Context<RemoveBudgetEnvelope>,
+        envelope_id: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::budget_envelopes::remove_budget_envelope(ctx, envelope_id, now)
+    }
+
+    pub fn leave_exposure_group(ctx: Context<ManageExposureGroup>) -> Result<()> {
+        instructions::budget_envelopes::leave_exposure_group(ctx)
+    }
+
+    pub fn update_exposure_group(
+        ctx: Context<ManageExposureGroup>,
+        daily_limit_usd: Option<u64>,
+    ) -> Result<()> {
+        instructions::budget_envelopes::update_exposure_group(ctx, daily_limit_usd)
+    }
+
+    pub fn close_exposure_group(ctx: Context<CloseExposureGroup>) -> Result<()> {
+        instructions::budget_envelopes::close_exposure_group(ctx)
+    }
+
+    pub fn close_external_liveness(ctx: Context<CloseExternalLiveness>) -> Result<()> {
+        instructions::external_liveness::close_external_liveness(ctx)
+    }
+
+    pub fn update_treasury_metadata(
+        ctx: Context<OwnerTreasury>,
+        args: UpdateTreasuryMetadataArgs,
+    ) -> Result<()> {
+        instructions::treasury_admin::update_treasury_metadata(ctx, args)
+    }
+
+    pub fn set_recipient_limit(
+        ctx: Context<OwnerTreasury>,
+        args: SetRecipientLimitArgs,
+    ) -> Result<()> {
+        instructions::treasury_admin::set_recipient_limit(ctx, args)
+    }
+
+    pub fn remove_recipient_limit(
+        ctx: Context<OwnerTreasury>,
+        chain: u8,
+        address: String,
+        now: i64,
+    ) -> Result<()> {
+        instructions::treasury_admin::remove_recipient_limit(ctx, chain, address, now)
+    }
+
+    pub fn update_address_list_entry(
+        ctx: Context<ManageAddressList>,
+        address: String,
+        add: bool,
+        now: i64,
+    ) -> Result<()> {
+        instructions::address_lists::update_address_list_entry(ctx, address, add, now)
+    }
+
+    pub fn clear_address_list(ctx: Context<ManageAddressList>, now: i64) -> Result<()> {
+        instructions::address_lists::clear_address_list(ctx, now)
+    }
+
+    pub fn leave_swarm(ctx: Context<ManageSwarm>, now: i64) -> Result<()> {
+        instructions::swarm_pool::leave_swarm(ctx, now)
+    }
+
+    pub fn update_swarm(
+        ctx: Context<ManageSwarm>,
+        shared_pool_limit_usd: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::swarm_pool::update_swarm(ctx, shared_pool_limit_usd, now)
+    }
+
+    pub fn close_swarm_pool(ctx: Context<CloseSwarmPool>) -> Result<()> {
+        instructions::swarm_pool::close_swarm_pool(ctx)
+    }
+
     pub fn configure_approval_ladder(
         ctx: Context<ConfigureApprovalLadder>,
         args: ConfigureApprovalLadderArgs,
@@ -455,6 +542,27 @@ pub mod aura_core {
 
     pub fn revoke_operator_role(ctx: Context<RevokeOperatorRole>, now: i64) -> Result<()> {
         instructions::operator_roles::revoke_operator_role(ctx, now)
+    }
+
+    pub fn update_operator_role(
+        ctx: Context<UpdateOperatorRole>,
+        args: UpdateOperatorRoleArgs,
+    ) -> Result<()> {
+        instructions::operator_roles::update_operator_role(ctx, args)
+    }
+
+    pub fn update_session_key(
+        ctx: Context<UpdateSessionKey>,
+        args: UpdateSessionKeyArgs,
+    ) -> Result<()> {
+        instructions::session_keys::update_session_key(ctx, args)
+    }
+
+    pub fn update_fee_recipient(
+        ctx: Context<UpdateFeeRecipient>,
+        new_recipient: Pubkey,
+    ) -> Result<()> {
+        instructions::fee_vault::update_fee_recipient(ctx, new_recipient)
     }
 
     pub fn init_external_liveness(

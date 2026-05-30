@@ -70,13 +70,16 @@ pub(crate) use batch_execution::{
     __client_accounts_propose_batch, __cpi_client_accounts_propose_batch,
 };
 pub use budget_envelopes::{
-    ConfigureBudgetEnvelope, ConfigureBudgetEnvelopeArgs, InitExposureGroup, InitExposureGroupArgs,
-    JoinExposureGroup,
+    CloseExposureGroup, ConfigureBudgetEnvelope, ConfigureBudgetEnvelopeArgs, InitExposureGroup,
+    InitExposureGroupArgs, JoinExposureGroup, ManageExposureGroup, RemoveBudgetEnvelope,
 };
 pub(crate) use budget_envelopes::{
-    __client_accounts_configure_budget_envelope, __client_accounts_init_exposure_group,
-    __client_accounts_join_exposure_group, __cpi_client_accounts_configure_budget_envelope,
+    __client_accounts_close_exposure_group, __client_accounts_configure_budget_envelope,
+    __client_accounts_init_exposure_group, __client_accounts_join_exposure_group,
+    __client_accounts_manage_exposure_group, __client_accounts_remove_budget_envelope,
+    __cpi_client_accounts_close_exposure_group, __cpi_client_accounts_configure_budget_envelope,
     __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_join_exposure_group,
+    __cpi_client_accounts_manage_exposure_group, __cpi_client_accounts_remove_budget_envelope,
 };
 pub use cancel_pending::CancelPending;
 pub(crate) use cancel_pending::__client_accounts_cancel_pending;
@@ -103,20 +106,23 @@ pub use execute_pending::ExecutePending;
 pub(crate) use execute_pending::__client_accounts_execute_pending;
 pub(crate) use execute_pending::__cpi_client_accounts_execute_pending;
 pub use external_liveness::{
-    ConfigureLivenessGuardrails, ConfigureLivenessGuardrailsArgs, InitExternalLiveness,
-    InitExternalLivenessArgs, RefreshExternalLiveness, RefreshExternalLivenessArgs,
+    CloseExternalLiveness, ConfigureLivenessGuardrails, ConfigureLivenessGuardrailsArgs,
+    InitExternalLiveness, InitExternalLivenessArgs, RefreshExternalLiveness,
+    RefreshExternalLivenessArgs,
 };
 pub(crate) use external_liveness::{
-    __client_accounts_configure_liveness_guardrails, __client_accounts_init_external_liveness,
-    __client_accounts_refresh_external_liveness,
+    __client_accounts_close_external_liveness, __client_accounts_configure_liveness_guardrails,
+    __client_accounts_init_external_liveness, __client_accounts_refresh_external_liveness,
+    __cpi_client_accounts_close_external_liveness,
     __cpi_client_accounts_configure_liveness_guardrails,
     __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_refresh_external_liveness,
 };
-pub use fee_vault::{CloseFeeVault, CollectFees, InitFeeVault};
+pub use fee_vault::{CloseFeeVault, CollectFees, InitFeeVault, UpdateFeeRecipient};
 pub(crate) use fee_vault::{
     __client_accounts_close_fee_vault, __client_accounts_collect_fees,
-    __client_accounts_init_fee_vault, __cpi_client_accounts_close_fee_vault,
-    __cpi_client_accounts_collect_fees, __cpi_client_accounts_init_fee_vault,
+    __client_accounts_init_fee_vault, __client_accounts_update_fee_recipient,
+    __cpi_client_accounts_close_fee_vault, __cpi_client_accounts_collect_fees,
+    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_update_fee_recipient,
 };
 pub use finalize_execution::FinalizeExecution;
 pub(crate) use finalize_execution::__client_accounts_finalize_execution;
@@ -134,10 +140,14 @@ pub(crate) use invariant_checks::{
 pub use migration::MigrateTreasury;
 pub(crate) use migration::__client_accounts_migrate_treasury;
 pub(crate) use migration::__cpi_client_accounts_migrate_treasury;
-pub use operator_roles::{GrantOperatorRole, GrantOperatorRoleArgs, RevokeOperatorRole};
+pub use operator_roles::{
+    GrantOperatorRole, GrantOperatorRoleArgs, RevokeOperatorRole, UpdateOperatorRole,
+    UpdateOperatorRoleArgs,
+};
 pub(crate) use operator_roles::{
     __client_accounts_grant_operator_role, __client_accounts_revoke_operator_role,
-    __cpi_client_accounts_grant_operator_role, __cpi_client_accounts_revoke_operator_role,
+    __client_accounts_update_operator_role, __cpi_client_accounts_grant_operator_role,
+    __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_update_operator_role,
 };
 pub use pause_execution::PauseExecution;
 pub(crate) use pause_execution::__client_accounts_pause_execution;
@@ -185,23 +195,32 @@ pub use scoped_pause::{SetScopedPause, SetScopedPauseArgs};
 pub(crate) use scoped_pause::{
     __client_accounts_set_scoped_pause, __cpi_client_accounts_set_scoped_pause,
 };
-pub use session_keys::{CloseSessionKey, IssueSessionKey, IssueSessionKeyArgs, RevokeSessionKey};
+pub use session_keys::{
+    CloseSessionKey, IssueSessionKey, IssueSessionKeyArgs, RevokeSessionKey, UpdateSessionKey,
+    UpdateSessionKeyArgs,
+};
 pub(crate) use session_keys::{
     __client_accounts_close_session_key, __client_accounts_issue_session_key,
-    __client_accounts_revoke_session_key, __cpi_client_accounts_close_session_key,
-    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_revoke_session_key,
+    __client_accounts_revoke_session_key, __client_accounts_update_session_key,
+    __cpi_client_accounts_close_session_key, __cpi_client_accounts_issue_session_key,
+    __cpi_client_accounts_revoke_session_key, __cpi_client_accounts_update_session_key,
 };
 pub use snapshots::{CloseSnapshot, TakeSnapshot};
 pub(crate) use snapshots::{
     __client_accounts_close_snapshot, __client_accounts_take_snapshot,
     __cpi_client_accounts_close_snapshot, __cpi_client_accounts_take_snapshot,
 };
-pub use swarm_pool::{InitSwarmPool, InitSwarmPoolArgs, JoinSwarm};
+pub use swarm_pool::{CloseSwarmPool, InitSwarmPool, InitSwarmPoolArgs, JoinSwarm, ManageSwarm};
 pub(crate) use swarm_pool::{
-    __client_accounts_init_swarm_pool, __client_accounts_join_swarm,
-    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_join_swarm,
+    __client_accounts_close_swarm_pool, __client_accounts_init_swarm_pool,
+    __client_accounts_join_swarm, __client_accounts_manage_swarm,
+    __cpi_client_accounts_close_swarm_pool, __cpi_client_accounts_init_swarm_pool,
+    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_swarm,
 };
-pub use treasury_admin::{OwnerTreasury, TriggerDeadMansSwitch, VetoConfigChange};
+pub use treasury_admin::{
+    OwnerTreasury, SetRecipientLimitArgs, TriggerDeadMansSwitch, UpdateTreasuryMetadataArgs,
+    VetoConfigChange,
+};
 pub(crate) use treasury_admin::{
     __client_accounts_owner_treasury, __client_accounts_trigger_dead_mans_switch,
     __client_accounts_veto_config_change, __cpi_client_accounts_owner_treasury,

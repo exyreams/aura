@@ -6,7 +6,8 @@ pub(super) use anchor_lang::{
 pub(super) use anyhow::{ensure, Context};
 pub(super) use aura_core::{
     accounts, instruction, ConfigureMultisigArgs, ConfigureSwarmArgs,
-    ProposeConfidentialTransactionArgs, RegisterDwalletArgs, ENCRYPT_DEVNET_PROGRAM_ID, ID,
+    ProposeConfidentialTransactionArgs, RegisterDwalletArgs, SetRecipientLimitArgs,
+    UpdateTreasuryMetadataArgs, ENCRYPT_DEVNET_PROGRAM_ID, ID,
 };
 pub(super) use solana_client::rpc_client::RpcClient;
 pub(super) use solana_sdk::signature::{Keypair, Signer};

@@ -165,3 +165,40 @@ pub fn refresh_external_liveness(
     ctx.accounts.liveness.updated_by = ctx.accounts.operator.key();
     Ok(())
 }
+
+#[derive(Accounts)]
+pub struct CloseExternalLiveness<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(
+        seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
+        bump = treasury.bump,
+        constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
+    )]
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+    #[account(
+        mut,
+        close = owner,
+        seeds = [EXTERNAL_LIVENESS_SEED, treasury.key().as_ref()],
+        bump = liveness.bump,
+        constraint = liveness.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub liveness: Box<Account<'info, ExternalLivenessAccount>>,
+}
+
+/// Closes the external liveness account and reclaims rent.
+///
+/// Refuses while any liveness requirement is still an active hard gate on the
+/// policy (`LivenessGateActive`); the owner must first disable the requirements
+/// via `configure_liveness_guardrails`.
+pub fn close_external_liveness(ctx: Context<CloseExternalLiveness>) -> Result<()> {
+    let liveness_config = &ctx.accounts.treasury.policy_config.liveness_config;
+    require!(
+        !(liveness_config.require_encrypt_freshness
+            || liveness_config.require_dwallet_freshness
+            || liveness_config.require_balance_oracle_freshness
+            || liveness_config.require_compliance_oracle_freshness),
+        crate::AuraCoreError::LivenessGateActive
+    );
+    Ok(())
+}

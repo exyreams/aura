@@ -197,3 +197,147 @@ pub fn join_exposure_group(ctx: Context<JoinExposureGroup>) -> Result<()> {
     }
     Ok(())
 }
+
+#[derive(Accounts)]
+#[instruction(envelope_id: u64)]
+pub struct RemoveBudgetEnvelope<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
+        bump = treasury.bump,
+        constraint = treasury.owner == owner.key() @ crate::AuraCoreError::UnauthorizedOwner
+    )]
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+    #[account(
+        mut,
+        close = owner,
+        seeds = [BUDGET_ENVELOPE_SEED, treasury.key().as_ref(), &envelope_id.to_le_bytes()],
+        bump = budget_envelope.bump,
+        constraint = budget_envelope.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub budget_envelope: Box<Account<'info, BudgetEnvelopeAccount>>,
+}
+
+/// Removes a scoped budget envelope and reclaims its account rent.
+///
+/// Reconstructs the envelope's scope, refuses removal while an active pending
+/// proposal matches that scope (`BudgetEnvelopeInUse`), drops the matching
+/// entry from the policy config (`BudgetEnvelopeNotFound` if absent), bumps the
+/// policy version, and closes the envelope PDA.
+pub fn remove_budget_envelope(
+    ctx: Context<RemoveBudgetEnvelope>,
+    _envelope_id: u64,
+    now: i64,
+) -> Result<()> {
+    let envelope = &ctx.accounts.budget_envelope;
+    let scope = match envelope.scope_kind {
+        0 => aura_policy::BudgetEnvelopeScope::Chain {
+            chain: chain_from_code(
+                envelope
+                    .chain
+                    .ok_or_else(|| error!(crate::AuraCoreError::InvalidChain))?,
+            )?,
+        },
+        1 => aura_policy::BudgetEnvelopeScope::Category {
+            tx_type_code: envelope
+                .tx_type
+                .ok_or_else(|| error!(crate::AuraCoreError::InvalidTransactionType))?,
+        },
+        2 => aura_policy::BudgetEnvelopeScope::Protocol {
+            protocol_id: envelope
+                .protocol_id
+                .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?,
+        },
+        _ => return err!(crate::AuraCoreError::InvalidExternalAccountData),
+    };
+
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+
+    if let Some(pending) = domain.active_pending() {
+        let conflicts = match &scope {
+            aura_policy::BudgetEnvelopeScope::Chain { chain } => pending.target_chain == *chain,
+            aura_policy::BudgetEnvelopeScope::Category { tx_type_code } => {
+                pending.tx_type as u8 == *tx_type_code
+            }
+            aura_policy::BudgetEnvelopeScope::Protocol { protocol_id } => {
+                pending.protocol_id == Some(*protocol_id)
+            }
+        };
+        require!(!conflicts, crate::AuraCoreError::BudgetEnvelopeInUse);
+    }
+
+    let envelopes = &mut domain.policy_config.budget_envelopes.envelopes;
+    let position = envelopes
+        .iter()
+        .position(|entry| entry.scope == scope)
+        .ok_or_else(|| error!(crate::AuraCoreError::BudgetEnvelopeNotFound))?;
+    envelopes.remove(position);
+    domain.current_policy_version = domain.current_policy_version.saturating_add(1);
+    domain.audit_trail.record(
+        AuditKind::ConfigChangeExecuted,
+        "budget envelope removed",
+        now,
+    );
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
+}
+
+#[derive(Accounts)]
+pub struct ManageExposureGroup<'info> {
+    pub authority: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [EXPOSURE_GROUP_SEED, exposure_group.authority.as_ref(), &exposure_group.group_id],
+        bump = exposure_group.bump,
+        constraint = exposure_group.authority == authority.key() @ crate::AuraCoreError::UnauthorizedOwner
+    )]
+    pub exposure_group: Box<Account<'info, ExposureGroupAccount>>,
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+}
+
+/// Removes a member treasury from an exposure group. Group-authority-gated.
+pub fn leave_exposure_group(ctx: Context<ManageExposureGroup>) -> Result<()> {
+    let key = ctx.accounts.treasury.key();
+    let group = &mut ctx.accounts.exposure_group;
+    if let Some(position) = group.members.iter().position(|member| *member == key) {
+        group.members.remove(position);
+        group.member_count = group.members.len() as u16;
+    }
+    Ok(())
+}
+
+/// Updates an exposure group's aggregate daily cap in place. Group-authority-gated.
+pub fn update_exposure_group(
+    ctx: Context<ManageExposureGroup>,
+    daily_limit_usd: Option<u64>,
+) -> Result<()> {
+    if let Some(daily_limit_usd) = daily_limit_usd {
+        require!(
+            daily_limit_usd > 0,
+            crate::AuraCoreError::InvalidExternalAccountData
+        );
+        ctx.accounts.exposure_group.daily_limit_usd = daily_limit_usd;
+    }
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct CloseExposureGroup<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(
+        mut,
+        close = authority,
+        seeds = [EXPOSURE_GROUP_SEED, exposure_group.authority.as_ref(), &exposure_group.group_id],
+        bump = exposure_group.bump,
+        constraint = exposure_group.authority == authority.key() @ crate::AuraCoreError::UnauthorizedOwner,
+        constraint = exposure_group.members.is_empty() @ crate::AuraCoreError::ExposureGroupNotEmpty
+    )]
+    pub exposure_group: Box<Account<'info, ExposureGroupAccount>>,
+}
+
+/// Closes an empty exposure group and reclaims rent. Refuses while members remain.
+pub fn close_exposure_group(_ctx: Context<CloseExposureGroup>) -> Result<()> {
+    Ok(())
+}

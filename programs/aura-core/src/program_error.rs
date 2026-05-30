@@ -119,6 +119,22 @@ pub enum AuraCoreError {
     ExposureGroupLimitExceeded,
     #[msg("treasury is not a member of the exposure group")]
     ExposureGroupUnauthorized,
+    #[msg("budget envelope not found for the requested scope")]
+    BudgetEnvelopeNotFound,
+    #[msg("budget envelope is referenced by an active pending proposal")]
+    BudgetEnvelopeInUse,
+    #[msg("exposure group still has members")]
+    ExposureGroupNotEmpty,
+    #[msg("swarm still has members")]
+    SwarmNotEmpty,
+    #[msg("swarm pool balance is not settled")]
+    SwarmPoolUnsettled,
+    #[msg("liveness dependency is an active hard gate on policy")]
+    LivenessGateActive,
+    #[msg("recipient limit not found for the requested chain and address")]
+    RecipientLimitNotFound,
+    #[msg("address list entry not found")]
+    AddressListEntryNotFound,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

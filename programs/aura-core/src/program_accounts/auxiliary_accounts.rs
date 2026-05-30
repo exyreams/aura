@@ -1,7 +1,10 @@
 use super::*;
 
 pub const ACTIVITY_LOG_SPACE: usize = 8 + (128 * 220);
-pub const ADDRESS_LIST_SPACE: usize = 8 + (256 * 140);
+// Capped at 64 entries (~9 KiB) so the account can be created in one
+// instruction: Solana limits per-instruction account-data growth to 10 KiB,
+// and `init` allocates via CPI. Must match `addresses` `#[max_len]` below.
+pub const ADDRESS_LIST_SPACE: usize = 8 + (64 * 140);
 pub const SESSION_KEY_SPACE: usize = 8 + 512;
 pub const POLICY_HISTORY_SPACE: usize = 8 + (16 * 96);
 
@@ -185,7 +188,7 @@ pub struct AddressListAccount {
     pub chain: u8,
     pub entry_count: u16,
     pub updated_at: i64,
-    #[max_len(256, 128)]
+    #[max_len(64, 128)]
     pub addresses: Vec<String>,
 }
 

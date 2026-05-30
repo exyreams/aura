@@ -112,3 +112,104 @@ pub fn join_swarm(ctx: Context<JoinSwarm>, now: i64) -> Result<()> {
     );
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
 }
+
+#[derive(Accounts)]
+pub struct ManageSwarm<'info> {
+    pub owner: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
+        bump = treasury.bump,
+        constraint = treasury.owner == owner.key() @ AuraCoreError::UnauthorizedOwner
+    )]
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+    #[account(mut)]
+    pub swarm_pool: Box<Account<'info, SwarmPoolAccount>>,
+}
+
+/// Removes this treasury from a swarm shared pool and detaches its swarm config.
+/// Owner-gated; rebalances the pool member set.
+pub fn leave_swarm(ctx: Context<ManageSwarm>, now: i64) -> Result<()> {
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    require!(
+        domain
+            .swarm
+            .as_ref()
+            .is_some_and(|swarm| swarm.swarm_id == ctx.accounts.swarm_pool.swarm_id),
+        AuraCoreError::InvalidExternalAccountData
+    );
+    let treasury_key = ctx.accounts.treasury.key();
+    if let Some(position) = ctx
+        .accounts
+        .swarm_pool
+        .member_spend
+        .iter()
+        .position(|record| record.treasury == treasury_key)
+    {
+        ctx.accounts.swarm_pool.member_spend.remove(position);
+        ctx.accounts.swarm_pool.member_count = ctx.accounts.swarm_pool.member_spend.len() as u8;
+    }
+    domain.swarm = None;
+    domain.policy_config.shared_pool_limit_usd = None;
+    domain.audit_trail.record(
+        AuditKind::ConfigChangeExecuted,
+        "left swarm shared pool",
+        now,
+    );
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
+}
+
+/// Updates the swarm shared-pool limit on both the treasury and the pool.
+/// Owner-gated.
+pub fn update_swarm(ctx: Context<ManageSwarm>, shared_pool_limit_usd: u64, now: i64) -> Result<()> {
+    require!(
+        shared_pool_limit_usd > 0,
+        AuraCoreError::InvalidExternalAccountData
+    );
+    // Changing the *collective* pool limit is a creator action: without this,
+    // any treasury could spoof a matching `swarm_id` (via `configure_swarm`) and
+    // rewrite an unrelated pool's shared limit.
+    require!(
+        ctx.accounts.swarm_pool.creator == ctx.accounts.owner.key(),
+        AuraCoreError::UnauthorizedOwner
+    );
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    require!(
+        domain
+            .swarm
+            .as_ref()
+            .is_some_and(|swarm| swarm.swarm_id == ctx.accounts.swarm_pool.swarm_id),
+        AuraCoreError::InvalidExternalAccountData
+    );
+    if let Some(swarm) = domain.swarm.as_mut() {
+        swarm.shared_pool_limit_usd = shared_pool_limit_usd;
+    }
+    domain.policy_config.shared_pool_limit_usd = Some(shared_pool_limit_usd);
+    ctx.accounts.swarm_pool.shared_pool_limit_usd = shared_pool_limit_usd;
+    domain.audit_trail.record(
+        AuditKind::ConfigChangeExecuted,
+        "swarm shared pool limit updated",
+        now,
+    );
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
+}
+
+#[derive(Accounts)]
+pub struct CloseSwarmPool<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    #[account(
+        mut,
+        close = creator,
+        seeds = [SWARM_POOL_SEED, &swarm_pool.swarm_id_hash],
+        bump = swarm_pool.bump,
+        constraint = swarm_pool.creator == creator.key() @ AuraCoreError::UnauthorizedOwner,
+        constraint = swarm_pool.member_spend.is_empty() @ AuraCoreError::SwarmNotEmpty
+    )]
+    pub swarm_pool: Box<Account<'info, SwarmPoolAccount>>,
+}
+
+/// Closes a swarm pool with no remaining members and reclaims rent.
+pub fn close_swarm_pool(_ctx: Context<CloseSwarmPool>) -> Result<()> {
+    Ok(())
+}

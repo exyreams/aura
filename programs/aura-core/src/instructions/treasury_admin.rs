@@ -66,6 +66,80 @@ pub fn cancel_ai_rotation(ctx: Context<OwnerTreasury>, now: i64) -> Result<()> {
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
 }
 
+/// Instruction data for `update_treasury_metadata`.
+///
+/// Edits mutable treasury settings only; `agent_id`/`owner` are part of the PDA
+/// seed and cannot change. Each field is optional (`None` leaves it unchanged).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateTreasuryMetadataArgs {
+    pub pending_transaction_ttl_secs: Option<i64>,
+    pub high_risk_threshold: Option<u8>,
+    pub high_risk_require_guardian: Option<bool>,
+    pub sanctions_check_enabled: Option<bool>,
+    pub now: i64,
+}
+
+/// Updates mutable treasury settings in place. Owner-gated.
+pub fn update_treasury_metadata(
+    ctx: Context<OwnerTreasury>,
+    args: UpdateTreasuryMetadataArgs,
+) -> Result<()> {
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    domain
+        .update_settings(
+            args.pending_transaction_ttl_secs,
+            args.high_risk_threshold,
+            args.high_risk_require_guardian,
+            args.sanctions_check_enabled,
+            args.now,
+        )
+        .map_err(crate::map_treasury_error)?;
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)
+}
+
+/// Instruction data for `set_recipient_limit`.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SetRecipientLimitArgs {
+    pub chain: u8,
+    pub address: String,
+    pub daily_limit_usd: u64,
+    pub per_tx_limit_usd: Option<u64>,
+    pub now: i64,
+}
+
+/// Adds or updates a per-recipient exposure limit. Owner-gated; upserts by
+/// `(chain, address)`. Capped at the policy record's recipient-limit length.
+pub fn set_recipient_limit(ctx: Context<OwnerTreasury>, args: SetRecipientLimitArgs) -> Result<()> {
+    let chain = chain_from_code(args.chain)?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    domain
+        .upsert_recipient_limit(
+            chain,
+            args.address,
+            args.daily_limit_usd,
+            args.per_tx_limit_usd,
+            args.now,
+        )
+        .map_err(crate::map_treasury_error)?;
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)
+}
+
+/// Removes a per-recipient exposure limit by `(chain, address)`. Owner-gated.
+pub fn remove_recipient_limit(
+    ctx: Context<OwnerTreasury>,
+    chain: u8,
+    address: String,
+    now: i64,
+) -> Result<()> {
+    let chain = chain_from_code(chain)?;
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    require!(
+        domain.remove_recipient_limit(chain, &address, now),
+        AuraCoreError::RecipientLimitNotFound
+    );
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
+}
+
 pub fn propose_config_change(
     ctx: Context<OwnerTreasury>,
     change_id: u64,

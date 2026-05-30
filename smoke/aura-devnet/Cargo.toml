@@ -18,6 +18,10 @@ path = "src/bin/confidential.rs"
 name = "policy"
 path = "src/bin/policy.rs"
 
+[[bin]]
+name = "admin"
+path = "src/bin/admin.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"

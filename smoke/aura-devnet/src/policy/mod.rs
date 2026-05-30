@@ -5,6 +5,7 @@
 //! branches that need real Solana, Encrypt, or dWallet integration. Pure
 //! validation and account-boundary behavior remains in the program tests.
 
+mod administration;
 mod controls;
 mod governance;
 mod harness;
@@ -127,7 +128,10 @@ Provisioning live dWallet via DKG...");
     .await?;
     println!("  ✓ [12] passed");
 
+    administration::scenario_treasury_administration(&rpc, &payer, seed).await?;
+    println!("  ✓ [13] passed");
+
     println!("
-✓ All 12 AURA policy scenarios passed on devnet.");
+✓ All 13 AURA policy scenarios passed on devnet.");
     Ok(())
 }
