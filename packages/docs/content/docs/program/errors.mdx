@@ -1,0 +1,95 @@
+---
+title: Errors
+description: aura-core program error codes, names, and what triggers them.
+icon: TriangleAlert
+---
+
+`aura-core` returns Anchor errors from the `AuraCoreError` enum, starting at code **6000**. Domain-layer
+`TreasuryError`s are mapped to these at the instruction boundary. Errors marked <New /> were added with the
+latest instructions.
+
+## Authorization
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6000 | `UnauthorizedAi` | Caller is not the registered AI authority. |
+| 6001 | `UnauthorizedOwner` | Caller is not the treasury owner. |
+| 6002 | `UnauthorizedGuardian` | Caller is not a registered guardian. |
+| 6003 | `UnauthorizedExecutor` | Caller may not finalize/execute. |
+| 6044 | `OperatorRoleMissing` | No operator role for the required permission. |
+| 6045 | `OperatorRoleExpired` | Operator role is expired or revoked. |
+
+## Proposals & execution
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6004 | `PendingTransactionExists` | The pending queue is full. |
+| 6005 | `NoPendingTransaction` | No active pending proposal. |
+| 6019 | `PendingTransactionExpired` | TTL elapsed before execution. |
+| 6042 | `PendingExecutionTimelockActive` | Earliest-execution time not reached. |
+| 6041 | `ApprovalLevelNotSatisfied` | Required approval-ladder level unmet. |
+| 6018 | `ExecutionPaused` | Execution is paused. |
+| 6043 | `ExecutionScopePaused` | A specific execution scope is paused. |
+| 6032 | `CooldownNotElapsed` | Large-tx cooldown still active. |
+| 6033 | `HighRiskTransactionRequiresGuardian` | High-risk proposal needs guardian co-sign. |
+| 6036 | `AnomalyDetected` | Anomaly rule denied the proposal. |
+
+## Confidential & signing
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6015 | `ConfidentialGuardrailsNotConfigured` | Confidential proposal without guardrails. |
+| 6016 | `PolicyOutputNotReady` | Encrypted policy output not ready yet. |
+| 6017 | `PolicyOutputAlreadyComputed` | Encrypted policy output already computed. |
+| 6010 | `DecryptionNotReady` | Decryption plaintext not yet available. |
+| 6011 | `MessageApprovalNotReady` | dWallet signature not yet produced. |
+| 6012 | `SignatureVerificationFailed` | Signature did not verify against the request. |
+| 6008 | `PolicyGraphMismatch` | FHE policy graph digest does not match. |
+| 6009 | `PolicyDigestMismatch` | Policy decision/digest binding mismatch. |
+
+## Wallets, limits & entities
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6006 | `DWalletNotConfigured` | No dWallet registered for the chain. |
+| 6007 | `DWalletAlreadyRegistered` | Duplicate dWallet for a chain. |
+| 6040 | `BudgetEnvelopeLimitExceeded` | Scoped budget exceeded. |
+| 6053 | `BudgetEnvelopeNotFound` | Removing a non-existent envelope. <New /> |
+| 6054 | `BudgetEnvelopeInUse` | Removing an envelope referenced by an active proposal. <New /> |
+| 6059 | `RecipientLimitNotFound` | Removing a non-existent recipient limit. <New /> |
+| 6060 | `AddressListEntryNotFound` | Removing an absent address-list entry. <New /> |
+| 6051 | `ExposureGroupLimitExceeded` | Exposure group cap exceeded. |
+| 6052 | `ExposureGroupUnauthorized` | Treasury is not a group member. |
+| 6055 | `ExposureGroupNotEmpty` | Closing an exposure group with members. <New /> |
+| 6056 | `SwarmNotEmpty` | Closing a swarm pool with members. <New /> |
+| 6057 | `SwarmPoolUnsettled` | Swarm pool balance not settled. <New /> |
+| 6058 | `LivenessGateActive` | Closing a liveness record that is an active hard gate. <New /> |
+| 6037 | `SessionKeyInactive` | Session key expired or revoked. |
+| 6038 | `SessionKeyScopeViolation` | Session key out of scope for the proposal. |
+| 6039 | `AccountStillActive` | Closing an account that is still in use. |
+
+## Governance, state & data
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6020 | `NoActiveOverride` | No pending override/rotation. |
+| 6028 | `TimelockNotElapsed` | Timelock period not yet passed. |
+| 6027 | `InvalidGuardianConfiguration` | Invalid guardian/multisig config. |
+| 6034 | `InvalidStateTransition` | Illegal lifecycle transition. |
+| 6035 | `ParentLimitExceeded` | Child spend exceeds the parent limit. |
+| 6029 | `SanctionedAddress` | Recipient is on the sanctions list. |
+| 6030 | `RecipientBlacklisted` | Recipient is blacklisted. |
+| 6031 | `RecipientNotWhitelisted` | Recipient is not on the whitelist. |
+| 6046 | `ExternalDependencyStale` | A required dependency is not fresh. |
+| 6047 | `InvalidPolicyPreset` | Policy preset kind is invalid. |
+| 6048 | `PolicyAttestationMismatch` | Attestation hash or version mismatch. |
+| 6049 | `EmptyBatch` | Batch proposal cannot be empty. |
+| 6050 | `BatchTooLarge` | Batch exceeds the maximum item count. |
+| 6013 | `InvalidDeployment` | Invalid deployment configuration. |
+| 6014 | `InvalidExternalAccountData` | Malformed external account data. |
+| 6021 | `InvalidChain` | Invalid stored chain code. |
+| 6022 | `InvalidTransactionType` | Invalid stored transaction-type code. |
+| 6023 | `InvalidCurve` | Invalid stored curve code. |
+| 6024 | `InvalidSignatureScheme` | Invalid stored signature-scheme code. |
+| 6025 | `InvalidViolationCode` | Invalid stored violation code. |
+| 6026 | `InvalidProposalStatus` | Invalid stored proposal status. |

@@ -1,6 +1,6 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
-import { BookOpen, Globe, Server } from "lucide-react";
+import { BookOpen, Cpu, Globe, Server } from "lucide-react";
 import type { ReactNode } from "react";
 import { AuraLogo, CliLogo, RustLogo, TypeScriptLogo } from "@/components/logo";
 import { baseOptions } from "@/lib/layout.shared";
@@ -10,6 +10,10 @@ const TAB_META: Record<string, { icon: ReactNode; description: string }> = {
   Introduction: {
     icon: <AuraLogo size={16} />,
     description: "Overview & getting started",
+  },
+  Program: {
+    icon: <Cpu className="size-4" />,
+    description: "On-chain program reference",
   },
   Architecture: {
     icon: <BookOpen className="size-4" />,

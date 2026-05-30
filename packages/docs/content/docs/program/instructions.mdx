@@ -1,0 +1,159 @@
+---
+title: Instructions
+description: The full aura-core instruction catalog, grouped by entity. New instructions are marked.
+icon: Blocks
+status: new
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Every in-treasury instruction follows the same shape: load the `AgentTreasury` domain from its account,
+mutate it (recording an audit event), then serialize it back and emit events. Standalone PDAs (fee vault,
+swarm pool, operator role, …) follow an `init` / edit / `close` pattern. Instructions tagged <New /> were
+added in the latest update and may not yet have typed SDK wrappers.
+
+<Callout title="Gating">
+  Unless noted, instructions are **owner-gated**. Some accept an **operator role** with the matching
+  permission, the **AI authority** (proposals/session keys), or a **guardian quorum** (governance/recovery).
+</Callout>
+
+## Treasury lifecycle
+
+| Instruction | Description | |
+|---|---|---|
+| `create_treasury` | Create the treasury PDA with an initial policy + fee schedule. | |
+| `update_treasury_metadata` | Edit mutable settings (pending-tx TTL, high-risk threshold/guardian, sanctions toggle) in place. | <New /> |
+| `migrate_treasury` | Realloc + advance the account to the current schema version. | |
+| `transition_agent_state` | Move the agent between lifecycle states. | |
+| `pause_execution` | Pause / resume all execution. | |
+| `emergency_shutdown` | Halt the treasury and record a recovery pubkey. | |
+| `trigger_dead_mans_switch` | Fire the inactivity switch after the threshold elapses. | |
+
+## dWallets
+
+| Instruction | Description | |
+|---|---|---|
+| `register_dwallet` | Register (or update runtime metadata for) a dWallet on a chain. | |
+| `refresh_dwallet_balance` | Refresh a dWallet's stored USD balance from its oracle. | |
+
+## Proposals & execution
+
+| Instruction | Description | |
+|---|---|---|
+| `propose_transaction` | Submit a public proposal; runs the policy engine. | |
+| `propose_confidential_transaction` | Submit a confidential (FHE) proposal. | |
+| `propose_batch` | Preview/propose a batch of transactions. | |
+| `approve_pending_execution` | Satisfy an approval-ladder level on a pending proposal. | |
+| `execute_pending` | Advance a pending proposal toward execution. | |
+| `finalize_execution` | Verify the dWallet signature and finalize. | |
+| `cancel_pending` | Owner cancels the pending proposal. | |
+
+## Confidential (FHE)
+
+| Instruction | Description | |
+|---|---|---|
+| `configure_confidential_guardrails` | Set the encrypted daily/per-tx limit + spent-counter ciphertexts. | |
+| `request_policy_decryption` | Request decryption of the encrypted policy output. | |
+| `confirm_policy_decryption` | Verify the decrypted violation code and apply it. | |
+
+## Policy configuration
+
+| Instruction | Description | |
+|---|---|---|
+| `apply_policy_preset` | Apply a built-in policy preset. | |
+| `propose_config_change` | Stage a timelocked policy-config change. | |
+| `execute_config_change` | Execute a staged config change after the timelock. | |
+| `veto_config_change` | Guardian veto of a staged config change. | |
+| `configure_approval_ladder` | Configure amount/risk approval escalation. | |
+| `set_scoped_pause` | Pause a specific chain/category/recipient/protocol scope. | |
+| `configure_budget_envelope` | Create/upsert a scoped budget envelope. | |
+| `remove_budget_envelope` | Remove a budget envelope (refused while a matching proposal is pending). | <New /> |
+| `set_recipient_limit` | Add/update a per-recipient daily + per-tx exposure cap. | <New /> |
+| `remove_recipient_limit` | Remove a per-recipient limit. | <New /> |
+
+## Governance & rotation
+
+| Instruction | Description | |
+|---|---|---|
+| `configure_multisig` | Attach the emergency multisig + guardians. | |
+| `propose_override` / `collect_override_signature` | Guardian override of the daily limit (N-of-M). | |
+| `propose_guardian_rotation` / `execute_guardian_rotation` | Add/remove a guardian. | |
+| `propose_ai_rotation` / `execute_ai_rotation` / `cancel_ai_rotation` | Rotate the AI authority (timelocked). | |
+
+## Operator roles
+
+| Instruction | Description | |
+|---|---|---|
+| `grant_operator_role` | Grant a scoped operator permission bitmap. | |
+| `revoke_operator_role` | Revoke an operator role. | |
+| `update_operator_role` | Edit an operator's permission mask / expiry in place. | <New /> |
+
+## Session keys
+
+| Instruction | Description | |
+|---|---|---|
+| `issue_session_key` | Issue a scoped, expiring session key. | |
+| `revoke_session_key` | Revoke a session key. | |
+| `close_session_key` | Close the session-key account (reclaim rent). | |
+| `update_session_key` | Extend expiry / re-scope an active session key. | <New /> |
+
+## Exposure groups
+
+| Instruction | Description | |
+|---|---|---|
+| `init_exposure_group` | Create a cross-treasury exposure group. | |
+| `join_exposure_group` | Add a treasury to the group. | |
+| `leave_exposure_group` | Remove a member from the group. | <New /> |
+| `update_exposure_group` | Edit the group's aggregate daily cap. | <New /> |
+| `close_exposure_group` | Close an empty group (reclaim rent). | <New /> |
+
+## Swarm pools
+
+| Instruction | Description | |
+|---|---|---|
+| `configure_swarm` | Attach a swarm shared-pool config to a treasury. | |
+| `init_swarm_pool` | Create the shared swarm pool account. | |
+| `join_swarm` | Add a treasury to the pool. | |
+| `leave_swarm` | Remove a treasury from the pool + detach its swarm config. | <New /> |
+| `update_swarm` | Update the shared-pool limit (treasury + pool). | <New /> |
+| `close_swarm_pool` | Close a pool with no remaining members. | <New /> |
+
+## Address lists
+
+| Instruction | Description | |
+|---|---|---|
+| `init_address_list` | Create an allow/deny address list. | |
+| `manage_address_list` | Replace the full list. | |
+| `update_address_list_entry` | Add/remove a single address without resending the list. | <New /> |
+| `clear_address_list` | Empty the list in place. | <New /> |
+| `close_address_list` | Close the list account. | |
+
+## Fees
+
+| Instruction | Description | |
+|---|---|---|
+| `init_fee_vault` | Create the protocol fee vault. | |
+| `collect_fees` | Sweep accrued fees to the recipient. | |
+| `update_fee_recipient` | Change the protocol fee recipient. | <New /> |
+| `close_fee_vault` | Close the fee vault. | |
+
+## External liveness
+
+| Instruction | Description | |
+|---|---|---|
+| `init_external_liveness` | Create the dependency freshness record. | |
+| `configure_liveness_guardrails` | Set which dependencies must be fresh. | |
+| `refresh_external_liveness` | Refresh a dependency timestamp. | |
+| `close_external_liveness` | Close the record (refused while it is an active hard gate). | <New /> |
+
+## Observability & services
+
+| Instruction | Description | |
+|---|---|---|
+| `init_health_score` / `refresh_health_score` / `close_health_score` | Treasury health scoring. | |
+| `take_snapshot` / `close_snapshot` | Periodic treasury snapshots. | |
+| `init_activity_log` / `close_activity_log` | On-chain activity ring buffer. | |
+| `init_policy_history` / `record_policy_snapshot` / `close_policy_history` | Policy version history. | |
+| `simulate_policy` | Non-mutating policy simulation. | |
+| `write_policy_receipt` · `attest_policy` | Compact policy receipts + attestations. | |
+| `check_invariants` · `check_policy_cpi` | Invariant reports + CPI policy checks. | |

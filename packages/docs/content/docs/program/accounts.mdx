@@ -1,0 +1,62 @@
+---
+title: Accounts
+description: The treasury PDA and every auxiliary account, with their PDA seeds.
+icon: Database
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+All state is held in Program-Derived Addresses (PDAs) owned by `aura-core`. The **`TreasuryAccount`** is the
+root; everything else is an optional auxiliary account attached to a treasury.
+
+## TreasuryAccount
+
+The root state machine for one agent treasury — owner + AI authority, registered dWallets, the active policy
+config and spend counters, the pending-proposal queue, reputation, fees, optional multisig and swarm, and
+lifecycle/safety state.
+
+```
+seeds = [ b"treasury", owner, agent_id ]
+```
+
+<Callout title="Immutable identity">
+  `owner` and `agent_id` are part of the seed, so they cannot change in place — they define the account's
+  address. Mutable settings are edited via `update_treasury_metadata`; the policy config via the
+  policy-configuration instructions.
+</Callout>
+
+The on-chain record (`TreasuryAccount`) is the serialized form; instructions deserialize it into the
+`AgentTreasury` domain object, mutate that, and write it back. The audit trail is emitted as events rather
+than persisted in the account.
+
+## Auxiliary accounts
+
+Each is created with `init`, edited, and reclaimed with `close`. Seeds are relative to the program ID.
+
+| Account | Seeds | Purpose |
+|---|---|---|
+| `FeeVaultAccount` | `[b"fee_vault", treasury]` | Protocol fee recipient + accrual counters |
+| `SwarmPoolAccount` | `[b"swarm_pool", swarm_id_hash]` | Shared spend pool across treasuries |
+| `ExposureGroupAccount` | `[b"exposure_group", authority, group_id]` | Cross-treasury daily exposure cap |
+| `OperatorRoleAccount` | `[b"operator_role", treasury, operator]` | Scoped operator permission bitmap |
+| `SessionKeyAccount` | `[b"session_key", treasury, session_key]` | Scoped, expiring delegated key |
+| `AddressListAccount` | `[b"address_list", treasury]` | Allow/deny recipient list |
+| `ExternalLivenessAccount` | `[b"external_liveness", treasury]` | Dependency freshness timestamps |
+| `BudgetEnvelopeAccount` | `[b"budget_envelope", treasury, envelope_id]` | Scoped (chain/category/protocol) budget |
+| `PolicyHistoryAccount` | `[b"policy_history", treasury]` | Ring of prior policy-config snapshots |
+| `SnapshotAccount` | `[b"treasury_snapshot", treasury, snapshot_index]` | Point-in-time treasury snapshot |
+| `HealthScoreAccount` | `[b"health_score", treasury]` | Treasury health metrics |
+| `ActivityLogAccount` | `[b"activity_log", treasury]` | On-chain activity ring buffer |
+| `PolicyCheckResult` | `[b"policy_check", treasury, caller]` | CPI policy-check result |
+| `PolicySimulationResultAccount` | `[b"policy_simulation", treasury, simulation_id]` | Non-mutating simulation result |
+| `PolicyReceiptAccount` | `[b"policy_receipt", …]` | Compact policy decision receipt |
+| `AttestationAccount` | `[b"policy_attestation", …]` | Policy attestation |
+| `BatchProposalAccount` | `[b"batch_proposal", …]` | Batch proposal preview |
+| `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
+
+## External program accounts
+
+Execution also reads accounts owned by the Ika networks — `Ciphertext` and `DecryptionRequest` (Encrypt FHE)
+and `MessageApproval` (dWallet signing). These are parsed by `aura-core` but **not** owned by it; see
+[Confidential Guardrails](/docs/overview/confidential-guardrails) and
+[dWallet Execution](/docs/overview/dwallet-execution).

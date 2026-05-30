@@ -1,0 +1,12 @@
+{
+  "title": "Program",
+  "root": true,
+  "icon": "Cpu",
+  "pages": [
+    "---On-Chain Program---",
+    "index",
+    "instructions",
+    "accounts",
+    "errors"
+  ]
+}
