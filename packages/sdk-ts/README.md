@@ -760,8 +760,8 @@ npm run test:devnet
 
 ```
 aura-core (devnet)
-  Program ID:   EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
-  IDL Metadata: FEwkjMC7J1t55i9ASU37jSeD7midnMpkNCQSxPQKNnXb
+  Program ID:   auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
+  IDL Metadata: Eior2CvitsWmDH9vJ6VPCxTW169UaM2sw9dupCLNdoQT
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:   4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8

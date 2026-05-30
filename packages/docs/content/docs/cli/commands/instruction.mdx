@@ -4,12 +4,13 @@ description: Build and send any aura-core instruction directly from the IDL.
 icon: Terminal
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may
+  change without notice. Do not use for real funds until a stable release and
+  audit are published.
 </Callout>
-
 
 The `instruction` command (alias: `instructions`) gives raw access to every
 instruction in the AURA IDL. Useful for advanced operations not covered by the
@@ -31,24 +32,23 @@ aura instruction list --json
 ```
 
 <small>Example output:</small>
-```
-$ aura instruction list
-AURA :: Instruction Surface
+``` $ aura instruction list AURA :: Instruction Surface
 
 ┌──────────────┬──────────────────────────────────────────────────────────┐
-│ Domain       │ Instructions                                             │
+│ Domain │ Instructions │
 ├──────────────┼──────────────────────────────────────────────────────────┤
-│ Treasury     │ createTreasury                                           │
-│              │ pauseExecution                                           │
-│              │ proposeTransaction                                       │
-│              │ cancelPending                                            │
+│ Treasury │ createTreasury │
+│ │ pauseExecution │
+│ │ proposeTransaction │
+│ │ cancelPending │
 ├──────────────┼──────────────────────────────────────────────────────────┤
-│ Confidential │ configureConfidentialGuardrails                          │
-│              │ proposeConfidentialTransaction                           │
-│              │ requestPolicyDecryption                                  │
-│              │ confirmPolicyDecryption                                  │
+│ Confidential │ configureConfidentialGuardrails │
+│ │ proposeConfidentialTransaction │
+│ │ requestPolicyDecryption │
+│ │ confirmPolicyDecryption │
 └──────────────┴──────────────────────────────────────────────────────────┘
-```
+
+````
 
 ---
 
@@ -59,33 +59,32 @@ Show the account and argument schema for a specific instruction.
 ```bash
 aura instruction schema configure_budget_envelope
 aura instruction schema propose_transaction --json
-```
+````
 
 Output includes each account (name, signer, writable, optional, default) and
 each argument (name, type, sample value).
 
 <small>Example output:</small>
-```
-$ aura instruction schema
-AURA :: proposeTransaction
+``` $ aura instruction schema AURA :: proposeTransaction
 
 ┌──────────────┬────────┬──────────┬──────────┬─────────┐
-│ Account      │ Signer │ Writable │ Optional │ Default │
+│ Account │ Signer │ Writable │ Optional │ Default │
 ├──────────────┼────────┼──────────┼──────────┼─────────┤
-│ aiAuthority  │ yes    │ no       │ no       │         │
-│ treasury     │ no     │ yes      │ no       │         │
-│ systemProgram│ no     │ no       │ no       │ 1111…11 │
+│ aiAuthority │ yes │ no │ no │ │
+│ treasury │ no │ yes │ no │ │
+│ systemProgram│ no │ no │ no │ 1111…11 │
 └──────────────┴────────┴──────────┴──────────┴─────────┘
 
 ┌──────────────────────┬────────┬──────────────┐
-│ Arg                  │ Type   │ Sample       │
+│ Arg │ Type │ Sample │
 ├──────────────────────┼────────┼──────────────┤
-│ amountUsd            │ u64    │ 100          │
-│ targetChain          │ u8     │ 2            │
-│ txType               │ u8     │ 0            │
-│ recipientOrContract  │ string │ "0xdeadbeef" │
+│ amountUsd │ u64 │ 100 │
+│ targetChain │ u8 │ 2 │
+│ txType │ u8 │ 0 │
+│ recipientOrContract │ string │ "0xdeadbeef" │
 └──────────────────────┴────────┴──────────────┘
-```
+
+````
 
 ---
 
@@ -108,22 +107,22 @@ aura instruction build cancel_pending \
 aura instruction build cancel_pending \
   --accounts @accounts.json \
   --args @args.json
-```
+````
 
-| Flag | Description |
-|------|-------------|
-| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file |
-| `--args <json\|@file>` | Args as a JSON object/array or `@path` to file |
-| `--account <key=value>` | Single account override, repeatable |
-| `--arg <key=value>` | Single argument override, repeatable |
+| Flag                       | Description                                    |
+| -------------------------- | ---------------------------------------------- |
+| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file   |
+| `--args <json\|@file>`     | Args as a JSON object/array or `@path` to file |
+| `--account <key=value>`    | Single account override, repeatable            |
+| `--arg <key=value>`        | Single argument override, repeatable           |
 
 ```json
 {
   "instruction": "cancelPending",
-  "programId": "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs",
+  "programId": "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce",
   "accounts": [
-    { "pubkey": "7mNv…QrSt", "isSigner": true,  "isWritable": false },
-    { "pubkey": "9mTq…Wr4K", "isSigner": false, "isWritable": true  }
+    { "pubkey": "7mNv…QrSt", "isSigner": true, "isWritable": false },
+    { "pubkey": "9mTq…Wr4K", "isSigner": false, "isWritable": true }
   ],
   "dataBase64": "3ySm...Kx=="
 }
@@ -155,16 +154,13 @@ aura instruction send configure_confidential_guardrails \
 ```
 
 <small>Example output:</small>
-```
-$ aura instruction send
-✓ Instruction sent: 2pVk…Hn6Z
-```
+``` $ aura instruction send ✓ Instruction sent: 2pVk…Hn6Z ```
 
-| Flag | Description |
-|------|-------------|
-| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file |
-| `--args <json\|@file>` | Args as a JSON object/array or `@path` to file |
-| `--account <key=value>` | Single account override, repeatable |
-| `--arg <key=value>` | Single argument override, repeatable |
-| `--extra-signer <path>` | Additional keypair path, repeatable |
-| `--compute-units <units>` | Compute unit limit (default: 600,000) |
+| Flag                       | Description                                    |
+| -------------------------- | ---------------------------------------------- |
+| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file   |
+| `--args <json\|@file>`     | Args as a JSON object/array or `@path` to file |
+| `--account <key=value>`    | Single account override, repeatable            |
+| `--arg <key=value>`        | Single argument override, repeatable           |
+| `--extra-signer <path>`    | Additional keypair path, repeatable            |
+| `--compute-units <units>`  | Compute unit limit (default: 600,000)          |

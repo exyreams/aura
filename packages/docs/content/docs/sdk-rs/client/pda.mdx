@@ -4,11 +4,12 @@ description: Derive treasury and authority program-derived addresses from Rust.
 icon: KeyRound
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warn" title="Pre-alpha — not production ready">
-  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do
+  not use for real funds until a stable release and audit are published.
 </Callout>
 
 All AURA PDAs can be derived off-chain — synchronously and allocation-free.
@@ -139,7 +140,7 @@ use aura_sdk::pda::{
 
 ```rust
 use aura_sdk::{
-    AURA_DEVNET_PROGRAM_ID,     // EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+    AURA_DEVNET_PROGRAM_ID,     // auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
     ENCRYPT_DEVNET_PROGRAM_ID,  // 4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8
     DWALLET_DEVNET_PROGRAM_ID,  // 87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY
 };
@@ -160,9 +161,21 @@ let treasuries: Vec<(String, Pubkey)> = agent_ids
 ```
 
 <Cards>
-  <Card title="Types" description="Domain and record types." href="/docs/sdk-rs/client/types" />
-  <Card title="AuraClient" description="Full client API." href="/docs/sdk-rs/client/overview" />
-  <Card title="Examples" description="End-to-end Rust patterns." href="/docs/sdk-rs/examples" />
+  <Card
+    title="Types"
+    description="Domain and record types."
+    href="/docs/sdk-rs/client/types"
+  />
+  <Card
+    title="AuraClient"
+    description="Full client API."
+    href="/docs/sdk-rs/client/overview"
+  />
+  <Card
+    title="Examples"
+    description="End-to-end Rust patterns."
+    href="/docs/sdk-rs/examples"
+  />
 </Cards>
 
 All AURA PDAs can be derived off-chain — synchronously and allocation-free.
@@ -325,7 +338,19 @@ assert_eq!(expected, provided, "PDA mismatch — wrong owner or agent ID");
 ## Next Steps
 
 <Cards>
-  <Card title="Types" description="Domain and record types used for PDA seeds and accounts." href="/docs/sdk-rs/client/types" />
-  <Card title="AuraClient" description="Full client API including PDA helper methods." href="/docs/sdk-rs/client/overview" />
-  <Card title="Examples" description="End-to-end Rust patterns using PDA derivation." href="/docs/sdk-rs/examples" />
+  <Card
+    title="Types"
+    description="Domain and record types used for PDA seeds and accounts."
+    href="/docs/sdk-rs/client/types"
+  />
+  <Card
+    title="AuraClient"
+    description="Full client API including PDA helper methods."
+    href="/docs/sdk-rs/client/overview"
+  />
+  <Card
+    title="Examples"
+    description="End-to-end Rust patterns using PDA derivation."
+    href="/docs/sdk-rs/examples"
+  />
 </Cards>

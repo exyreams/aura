@@ -4,8 +4,8 @@ description: Create your first AURA treasury and submit a proposal in under 5 mi
 icon: Rocket
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Card, Cards } from "fumadocs-ui/components/card";
+import { Step, Steps } from "fumadocs-ui/components/steps";
 
 <Steps>
 
@@ -35,7 +35,7 @@ const keypair = Keypair.fromSecretKey(/* your secret key bytes */);
 const aura = new Aura({
   rpcUrl: "https://api.devnet.solana.com",
   keypair,
-  // programId defaults to AURA_PROGRAM_ID = EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+  // programId defaults to AURA_PROGRAM_ID = auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
 });
 ```
 
@@ -49,9 +49,9 @@ const aura = new Aura({
 
 ```typescript
 const { treasury, signature } = await aura.treasury.create({
-  agentId: "my-agent-1",       // unique per owner — used in PDA seed
-  dailyLimitUsd: 10_000,       // USD cents = $100/day
-  perTxLimitUsd: 1_000,        // USD cents = $10/tx
+  agentId: "my-agent-1", // unique per owner — used in PDA seed
+  dailyLimitUsd: 10_000, // USD cents = $100/day
+  perTxLimitUsd: 1_000, // USD cents = $10/tx
 
   // Optional — defaults shown:
   // daytimeHourlyLimitUsd: dailyLimitUsd / 10   → 1_000
@@ -80,10 +80,10 @@ Each chain needs its own `DwalletRecord` before proposals can be approved for th
 ```typescript
 await aura.dwallet.register({
   treasury,
-  chain: 2,                          // 0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism
-  dwalletId: "dwallet-abc123",       // from Ika dWallet provisioning
-  address: "0xYourEthAddress",       // native address on the target chain
-  balanceUsd: 5_000,                 // USD cents — balance hint
+  chain: 2, // 0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism
+  dwalletId: "dwallet-abc123", // from Ika dWallet provisioning
+  address: "0xYourEthAddress", // native address on the target chain
+  balanceUsd: 5_000, // USD cents — balance hint
 });
 ```
 
@@ -96,10 +96,10 @@ await aura.dwallet.register({
 ```typescript
 const signature = await aura.treasury.propose({
   treasury,
-  amountUsd: 250,                    // USD cents = $2.50
-  chain: 2,                          // Ethereum
+  amountUsd: 250, // USD cents = $2.50
+  chain: 2, // Ethereum
   recipient: "0xRecipientAddress",
-  txType: 0,                         // 0=Transfer 1=DeFiSwap 2=LendingDeposit 3=NFTPurchase 4=ContractInteraction
+  txType: 0, // 0=Transfer 1=DeFiSwap 2=LendingDeposit 3=NFTPurchase 4=ContractInteraction
 
   // Optional policy telemetry:
   // counterpartyRiskScore: 15,      // 0–100
@@ -110,6 +110,7 @@ const signature = await aura.treasury.propose({
 ```
 
 The proposal goes through `evaluate_transaction` in `aura-policy`:
+
 1. Scoped pause check
 2. Budget envelope check
 3. Per-tx limit: `250 ≤ 1_000` ✓
@@ -152,7 +153,11 @@ const { treasury: pda, account } = await aura.treasury.getForOwner(
 For full control — all 67 instructions, manual `BN` values, instruction composition:
 
 ```typescript
-import { AuraClient, AURA_PROGRAM_ID, deriveTreasuryAddress } from "@aura-protocol/sdk-ts";
+import {
+  AuraClient,
+  AURA_PROGRAM_ID,
+  deriveTreasuryAddress,
+} from "@aura-protocol/sdk-ts";
 import { Connection } from "@solana/web3.js";
 import BN from "bn.js";
 
@@ -167,7 +172,9 @@ const [treasury] = deriveTreasuryAddress(owner.publicKey, "my-agent-1");
 // Build and send an instruction without broadcasting
 const { instruction } = await client.createTreasuryInstruction({
   owner: owner.publicKey,
-  args: { /* full CreateTreasuryArgs with BN values */ },
+  args: {
+    /* full CreateTreasuryArgs with BN values */
+  },
 });
 
 // Compose with other instructions in one transaction
@@ -194,21 +201,37 @@ try {
 
 Common errors:
 
-| Code | Name | Meaning |
-|---|---|---|
-| 6004 | `PendingTransactionExists` | Only one pending proposal allowed at a time |
-| 6005 | `NoPendingTransaction` | No proposal to execute or cancel |
-| 6006 | `DWalletNotConfigured` | No dWallet registered for the target chain |
+| Code | Name                                  | Meaning                                        |
+| ---- | ------------------------------------- | ---------------------------------------------- |
+| 6004 | `PendingTransactionExists`            | Only one pending proposal allowed at a time    |
+| 6005 | `NoPendingTransaction`                | No proposal to execute or cancel               |
+| 6006 | `DWalletNotConfigured`                | No dWallet registered for the target chain     |
 | 6015 | `ConfidentialGuardrailsNotConfigured` | Confidential path requires ciphertext accounts |
-| 6017 | `ExecutionPaused` | Treasury is paused |
-| 6018 | `PendingTransactionExpired` | Proposal TTL elapsed |
-| 6027 | `TimelockNotElapsed` | Dangerous config change timelock still active |
+| 6017 | `ExecutionPaused`                     | Treasury is paused                             |
+| 6018 | `PendingTransactionExpired`           | Proposal TTL elapsed                           |
+| 6027 | `TimelockNotElapsed`                  | Dangerous config change timelock still active  |
 
 ## What's Next
 
 <Cards>
-  <Card title="Confidential Guardrails" description="Add FHE-encrypted spend limits to your treasury." href="/docs/overview/confidential-guardrails" />
-  <Card title="Key Concepts" description="Treasury, proposal lifecycle, PDA seeds, and more." href="/docs/overview/concepts" />
-  <Card title="TypeScript SDK" description="Full AuraClient and Aura API reference." href="/docs/sdk-ts" />
-  <Card title="CLI Tool" description="Manage treasuries from the terminal." href="/docs/cli" />
+  <Card
+    title="Confidential Guardrails"
+    description="Add FHE-encrypted spend limits to your treasury."
+    href="/docs/overview/confidential-guardrails"
+  />
+  <Card
+    title="Key Concepts"
+    description="Treasury, proposal lifecycle, PDA seeds, and more."
+    href="/docs/overview/concepts"
+  />
+  <Card
+    title="TypeScript SDK"
+    description="Full AuraClient and Aura API reference."
+    href="/docs/sdk-ts"
+  />
+  <Card
+    title="CLI Tool"
+    description="Manage treasuries from the terminal."
+    href="/docs/cli"
+  />
 </Cards>

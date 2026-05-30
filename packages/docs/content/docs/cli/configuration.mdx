@@ -4,12 +4,13 @@ description: Config file, environment variables, and resolution order for the AU
 icon: Settings
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may
+  change without notice. Do not use for real funds until a stable release and
+  audit are published.
 </Callout>
-
 
 The CLI resolves configuration from four sources in priority order (highest wins):
 
@@ -26,7 +27,7 @@ Located at `~/.aura/config.json`:
 {
   "rpcUrl": "https://devnet.helius-rpc.com/?api-key=YOUR_KEY",
   "walletPath": "~/.config/solana/id.json",
-  "programId": "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs",
+  "programId": "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce",
   "defaultAgentId": "my-agent"
 }
 ```
@@ -40,7 +41,7 @@ SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
 AURA_WALLET_PATH="/path/to/keypair.json"
 PAYER_KEYPAIR="/path/to/keypair.json"
 AURA_CLUSTER="devnet"
-AURA_PROGRAM_ID="EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs"
+AURA_PROGRAM_ID="auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce"
 AURA_DEFAULT_AGENT_ID="my-agent"
 ```
 

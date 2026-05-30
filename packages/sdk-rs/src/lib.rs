@@ -62,7 +62,7 @@ use solana_sdk::pubkey;
 use solana_sdk::pubkey::Pubkey;
 
 /// AURA program ID on Solana devnet.
-pub const AURA_DEVNET_PROGRAM_ID: Pubkey = pubkey!("EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs");
+pub const AURA_DEVNET_PROGRAM_ID: Pubkey = pubkey!("auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce");
 
 /// dWallet program ID on Ika devnet (pre-alpha).
 pub const DWALLET_DEVNET_PROGRAM_ID: Pubkey =

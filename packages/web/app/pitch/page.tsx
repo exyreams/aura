@@ -202,7 +202,7 @@ function SlideTitle() {
           aura-protocol / devnet live
         </span>
         <span className="font-mono text-[9px] md:text-[10px] text-primary break-all">
-          EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+          auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
         </span>
       </div>
     </div>
@@ -1163,7 +1163,7 @@ function SlideTraction() {
     {
       label: "On-chain program",
       value: "Live on devnet",
-      sub: "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs",
+      sub: "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce",
       highlight: true,
       icon: <CheckCircle2 size={80} strokeWidth={0.75} />,
     },

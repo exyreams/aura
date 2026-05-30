@@ -469,7 +469,7 @@ use aura_sdk::{AURA_DEVNET_PROGRAM_ID, DWALLET_DEVNET_PROGRAM_ID, ENCRYPT_DEVNET
 
 ```
 aura-core (devnet)
-  Program ID:   EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+  Program ID:   auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:   4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8

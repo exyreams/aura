@@ -4,7 +4,7 @@ description: Encrypted guardrails for autonomous AI agent treasuries on Solana.
 icon: Send
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Card, Cards } from "fumadocs-ui/components/card";
 
 **AURA** (Autonomous Universal Resource Agent) is an Anchor program on Solana that lets AI agents manage real crypto treasuries without exposing spending strategy on-chain and without trusting a centralized approval server.
 
@@ -25,24 +25,24 @@ graph LR
 
 ## Core Guarantees
 
-| Guarantee | Mechanism |
-|---|---|
-| Spending limits never leak | Daily and per-tx limits stored as `EUint64` FHE ciphertexts; evaluated over encrypted values by Ika Encrypt |
-| No raw private key exposure | Execution co-signed by Ika dWallet records; agent receives signed bytes, not the key |
-| No trusted approval server | Policy runs on-chain (`aura-policy`) + Ika network; no centralized oracle |
-| Multi-chain reach | dWallet supports Bitcoin, Ethereum, Solana, Polygon, Arbitrum, Optimism from one treasury |
-| Auditable | Append-only on-chain audit trail for every proposal, decision, and governance action |
-| Composable | `check_policy_cpi` lets external programs query AURA policy before executing their own logic |
+| Guarantee                   | Mechanism                                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Spending limits never leak  | Daily and per-tx limits stored as `EUint64` FHE ciphertexts; evaluated over encrypted values by Ika Encrypt |
+| No raw private key exposure | Execution co-signed by Ika dWallet records; agent receives signed bytes, not the key                        |
+| No trusted approval server  | Policy runs on-chain (`aura-policy`) + Ika network; no centralized oracle                                   |
+| Multi-chain reach           | dWallet supports Bitcoin, Ethereum, Solana, Polygon, Arbitrum, Optimism from one treasury                   |
+| Auditable                   | Append-only on-chain audit trail for every proposal, decision, and governance action                        |
+| Composable                  | `check_policy_cpi` lets external programs query AURA policy before executing their own logic                |
 
 ## Program IDs
 
-| Resource | Address |
-|---|---|
-| `aura-core` (devnet) | `EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs` |
-| Ika dWallet program | `87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY` |
-| Ika Encrypt program | `4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8` |
-| Ika Encrypt gRPC | `pre-alpha-dev-1.encrypt.ika-network.net:443` |
-| Ika dWallet gRPC | `pre-alpha-dev-1.ika.ika-network.net:443` |
+| Resource             | Address                                        |
+| -------------------- | ---------------------------------------------- |
+| `aura-core` (devnet) | `auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce`  |
+| Ika dWallet program  | `87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY` |
+| Ika Encrypt program  | `4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8` |
+| Ika Encrypt gRPC     | `pre-alpha-dev-1.encrypt.ika-network.net:443`  |
+| Ika dWallet gRPC     | `pre-alpha-dev-1.ika.ika-network.net:443`      |
 
 ## Status
 

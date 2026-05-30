@@ -5,7 +5,7 @@ const LINES = [
   "ViolationCode::DailyLimit · ViolationCode::PerTransactionLimit · ViolationCode::VelocityLimit · ViolationCode::CounterpartyRisk · ViolationCode::SlippageExceeded · ViolationCode::QuoteStale",
   'b"treasury" · b"__ika_cpi_authority" · b"__encrypt_cpi_authority" · b"__event_authority" · b"message_approval" · b"operator_role" · b"budget_envelope"',
   "evaluate_transaction · evaluate_public_precheck · evaluate_batch · PolicyDecision · PolicyState · ViolationCode · RuleOutcome · RiskFactor · REG_FLAG_CTR_THRESHOLD",
-  "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs · 4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8 · 87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY",
+  "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce · 4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8 · 87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY",
   "configureConfidentialGuardrails · proposeConfidentialTransaction · requestPolicyDecryption · confirmPolicyDecryption · EUint64 · FHE · Ika Encrypt · dWallet",
   "AuraClient · deriveTreasuryAddress · getTreasuryAccount · sendInstructions · BNish · TreasuryAccountRecord · ProposeTransactionArgs · CreateTreasuryArgs",
   "scoped_pause · budget_envelope · exposure_group · approval_ladder · anomaly_detection · reputation_scaling · swarm_pool · liveness_config · session_key",

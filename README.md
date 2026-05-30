@@ -6,7 +6,7 @@
 
 **Dashboard:** https://auraa-protocol.vercel.app  
 **Docs:** https://docs-auraprotocol.vercel.app  
-**Program (devnet):** `EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs`
+**Program (devnet):** `auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce`
 
 > [!WARNING]
 > AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
@@ -39,15 +39,15 @@ This means a competing agent scanning the chain learns nothing useful, a comprom
 
 AI agents can already reason about trades, treasury movement, and operational tasks — but most wallet systems still treat them like ordinary hot-wallet users. That creates a set of hard problems that get worse as agents become more capable:
 
-| Problem | Why it matters |
-|---|---|
-| **Direct key access** | A prompt injection, model bug, or compromised runtime can drain the treasury in a single transaction. The agent and the attacker are indistinguishable once the key is exposed. |
-| **Public spending policy** | On-chain limits are readable by anyone. Competitors, MEV searchers, and attackers can inspect your caps, infer strategy, time their moves around known thresholds, and route around controls entirely. |
-| **Centralized approval middleware** | Routing every agent action through an off-chain approval server reintroduces a single point of failure, kills true autonomy, and shifts trust to whoever operates the server. |
-| **No programmable policy** | Most treasury setups offer binary access — the agent can either sign or it can't. There is no native way to express per-chain limits, time windows, velocity caps, counterparty risk, or escalation ladders without building custom off-chain logic. |
-| **Multi-chain key sprawl** | Supporting Ethereum, Bitcoin, Solana, and other chains typically means managing separate keys per chain, multiplying the attack surface and operational complexity. |
-| **No audit trail** | When an autonomous agent acts, there is often no cryptographically verifiable record of what policy was active, what was checked, and why a transaction was approved or denied. |
-| **Guardrail reconfiguration risk** | Changing spending limits or policy parameters on a live treasury is a high-risk operation with no native timelock or guardian review — a single compromised admin can silently raise limits. |
+| Problem                             | Why it matters                                                                                                                                                                                                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Direct key access**               | A prompt injection, model bug, or compromised runtime can drain the treasury in a single transaction. The agent and the attacker are indistinguishable once the key is exposed.                                                                      |
+| **Public spending policy**          | On-chain limits are readable by anyone. Competitors, MEV searchers, and attackers can inspect your caps, infer strategy, time their moves around known thresholds, and route around controls entirely.                                               |
+| **Centralized approval middleware** | Routing every agent action through an off-chain approval server reintroduces a single point of failure, kills true autonomy, and shifts trust to whoever operates the server.                                                                        |
+| **No programmable policy**          | Most treasury setups offer binary access — the agent can either sign or it can't. There is no native way to express per-chain limits, time windows, velocity caps, counterparty risk, or escalation ladders without building custom off-chain logic. |
+| **Multi-chain key sprawl**          | Supporting Ethereum, Bitcoin, Solana, and other chains typically means managing separate keys per chain, multiplying the attack surface and operational complexity.                                                                                  |
+| **No audit trail**                  | When an autonomous agent acts, there is often no cryptographically verifiable record of what policy was active, what was checked, and why a transaction was approved or denied.                                                                      |
+| **Guardrail reconfiguration risk**  | Changing spending limits or policy parameters on a live treasury is a high-risk operation with no native timelock or guardian review — a single compromised admin can silently raise limits.                                                         |
 
 ---
 
@@ -205,8 +205,8 @@ cargo run --bin policy
 
 ```
 aura-core (devnet)
-  Program ID:  EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
-  IDL:         FEwkjMC7J1t55i9ASU37jSeD7midnMpkNCQSxPQKNnXb
+  Program ID:  auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
+  IDL:         Eior2CvitsWmDH9vJ6VPCxTW169UaM2sw9dupCLNdoQT
 
 Ika Encrypt (pre-alpha devnet)
   Program ID:  4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8
@@ -221,14 +221,14 @@ Ika dWallet (pre-alpha devnet)
 
 ## Toolchain
 
-| Tool | Version |
-|---|---|
-| Anchor | `1.0.0` |
-| Solana CLI | `3.1.13` |
-| Rust edition | `2021`, resolver `2` |
-| TypeScript | `6.0.3` |
-| Node (backend / SDK) | `>=20` |
-| Node (CLI) | `>=22` |
+| Tool                 | Version              |
+| -------------------- | -------------------- |
+| Anchor               | `1.0.0`              |
+| Solana CLI           | `3.1.13`             |
+| Rust edition         | `2021`, resolver `2` |
+| TypeScript           | `6.0.3`              |
+| Node (backend / SDK) | `>=20`               |
+| Node (CLI)           | `>=22`               |
 
 All Rust crates enforce `#![forbid(unsafe_code)]`. Release builds use `overflow-checks = true`.
 

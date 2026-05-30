@@ -4,10 +4,12 @@ description: Initialize and manage local CLI configuration.
 icon: Settings
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may
+  change without notice. Do not use for real funds until a stable release and
+  audit are published.
 </Callout>
 
 ## aura config init
@@ -26,7 +28,7 @@ $ aura config init
 AURA :: AURA CLI - Initial Setup
 ? RPC URL https://api.devnet.solana.com
 ? Wallet path ~/.config/solana/id.json
-? Program ID EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+? Program ID auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
 ? Default agent ID (optional) agent-1
 ✓ Config written to ~/.aura/config.json
 ```
@@ -68,7 +70,7 @@ Set a single configuration value. Takes a key name and value as positional argum
 ```bash
 aura config set rpc-url https://devnet.helius-rpc.com/?api-key=YOUR_KEY
 aura config set wallet-path ~/.config/solana/id.json
-aura config set program-id EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs
+aura config set program-id auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
 aura config set default-agent-id my-agent
 aura config set cluster devnet
 ```
@@ -82,10 +84,10 @@ $ aura config set rpc-url <url>
 
 Valid keys:
 
-| Key | Description |
-|-----|-------------|
-| `rpc-url` | Solana RPC endpoint |
-| `wallet-path` | Path to keypair JSON file |
-| `cluster` | Cluster label for display purposes |
-| `program-id` | AURA program ID |
+| Key                | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| `rpc-url`          | Solana RPC endpoint                                |
+| `wallet-path`      | Path to keypair JSON file                          |
+| `cluster`          | Cluster label for display purposes                 |
+| `program-id`       | AURA program ID                                    |
 | `default-agent-id` | Default agent ID used when `--agent-id` is omitted |

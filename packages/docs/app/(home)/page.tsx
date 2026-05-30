@@ -340,7 +340,7 @@ export default function HomePage() {
             {[
               {
                 label: "aura-core",
-                value: "EaRoLVwL8EErDUeEMPHJ5QJeLVQZWJMtZcgmFzT9bhHs",
+                value: "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce",
               },
               {
                 label: "Ika Encrypt",
