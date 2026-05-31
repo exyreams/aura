@@ -5,17 +5,17 @@
     "": {
       "name": "@aura-protocol/sdk-ts",
       "dependencies": {
-        "@coral-xyz/anchor": "latest",
+        "@coral-xyz/anchor": "0.32.1",
       },
       "devDependencies": {
-        "@types/bn.js": "latest",
-        "@types/node": "latest",
-        "tsx": "latest",
-        "typescript": "latest",
+        "@types/bn.js": "5.2.0",
+        "@types/node": "25.9.1",
+        "tsx": "4.22.3",
+        "typescript": "6.0.3",
       },
       "peerDependencies": {
-        "@solana/web3.js": "latest",
-        "bn.js": "latest",
+        "@solana/web3.js": "^1.98.4",
+        "bn.js": "^5.2.3",
       },
     },
   },
