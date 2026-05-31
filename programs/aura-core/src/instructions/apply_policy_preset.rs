@@ -5,7 +5,9 @@
 //! diff in the audit trail.
 
 use anchor_lang::prelude::*;
-use aura_policy::{build_policy_preset, diff_policy_config, PolicyPresetKind};
+use aura_policy::{
+    build_policy_preset, diff_policy_config, validate_policy_config, PolicyPresetKind,
+};
 
 use crate::{
     audit::AuditKind, constants::TREASURY_SEED, instructions::sync_treasury_account,
@@ -41,6 +43,8 @@ pub fn apply_policy_preset(
     let kind = PolicyPresetKind::from_code(args.preset_kind)
         .ok_or_else(|| error!(crate::AuraCoreError::InvalidPolicyPreset))?;
     let new_config = build_policy_preset(kind);
+    validate_policy_config(&new_config)
+        .map_err(|_| error!(crate::AuraCoreError::InvalidTemplateConfig))?;
     let diff = diff_policy_config(&domain.policy_config, &new_config);
     domain.policy_config = new_config;
     domain.current_policy_version = domain.current_policy_version.saturating_add(1);

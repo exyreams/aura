@@ -329,6 +329,8 @@ pub fn audit_kind_code(kind: &AuditKind) -> u8 {
         AuditKind::SnapshotTaken => 32,
         AuditKind::SwarmPoolJoined => 33,
         AuditKind::BalanceRefreshed => 34,
+        AuditKind::CheckWarned => 35,
+        AuditKind::CheckDegraded => 36,
     }
 }
 

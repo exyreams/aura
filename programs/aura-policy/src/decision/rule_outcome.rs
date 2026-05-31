@@ -32,4 +32,32 @@ impl RuleOutcome {
             detail: detail.into(),
         }
     }
+
+    /// A softenable check that failed but was allowed under `CheckMode::Warn`.
+    /// Counts as passed; the `[warn]` tag marks it as softened in the trace.
+    pub fn warned(rule_name: &'static str, detail: impl Into<String>) -> Self {
+        Self {
+            rule_name,
+            passed: true,
+            detail: format!("[warn] {}", detail.into()),
+        }
+    }
+
+    /// A softenable check allowed under `CheckMode::Degrade` (within the clamp).
+    pub fn degraded(rule_name: &'static str, detail: impl Into<String>) -> Self {
+        Self {
+            rule_name,
+            passed: true,
+            detail: format!("[degrade] {}", detail.into()),
+        }
+    }
+
+    /// A softenable check bypassed under `CheckMode::Skip`.
+    pub fn skipped(rule_name: &'static str, detail: impl Into<String>) -> Self {
+        Self {
+            rule_name,
+            passed: true,
+            detail: format!("[skip] {}", detail.into()),
+        }
+    }
 }

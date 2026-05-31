@@ -14,4 +14,6 @@ mod confidential_flow;
 mod governance_flow;
 mod policy_controls_flow;
 mod proposal_flow;
+mod schedule_flow;
+mod templates_flow;
 mod wallet_runtime_flow;

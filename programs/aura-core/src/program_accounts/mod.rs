@@ -9,9 +9,10 @@ use std::{collections::BTreeMap, str::FromStr};
 use anchor_lang::prelude::*;
 use aura_policy::{
     AnomalyAction, AnomalyConfig, ApprovalLadder, BudgetEnvelope, BudgetEnvelopeScope,
-    BudgetEnvelopeSet, Chain, CooldownConfig, LivenessConfig, PauseScope, PolicyConfig,
-    PolicyDecision, PolicyState, RecipientLimit, RecipientSpendRecord, ReputationPolicy,
-    RiskFactor, RuleOutcome, ScopedPauseControls, ScopedPauseEntry, TransactionType, ViolationCode,
+    BudgetEnvelopeSet, Chain, CheckMode, Condition, ConditionKind, CooldownConfig,
+    FailureModeConfig, LivenessConfig, PauseScope, PolicyConfig, PolicyDecision, PolicyState,
+    RecipientLimit, RecipientSpendRecord, ReputationPolicy, RiskFactor, RuleOutcome,
+    ScopedPauseControls, ScopedPauseEntry, TransactionType, ViolationCode,
 };
 
 use crate::{
@@ -32,6 +33,7 @@ mod attestation_records;
 mod auxiliary_accounts;
 mod batch_records;
 mod codecs;
+mod conditional_records;
 mod envelope_records;
 mod governance_records;
 mod liveness_records;
@@ -39,6 +41,8 @@ mod pending_records;
 mod policy_records;
 mod receipt_records;
 mod role_records;
+mod schedule_records;
+mod template_records;
 mod treasury;
 mod treasury_records;
 mod wallet_records;
@@ -47,6 +51,7 @@ pub use attestation_records::*;
 pub use auxiliary_accounts::*;
 pub use batch_records::*;
 pub use codecs::*;
+pub use conditional_records::*;
 pub use envelope_records::*;
 pub use governance_records::*;
 pub use liveness_records::*;
@@ -54,6 +59,8 @@ pub use pending_records::*;
 pub use policy_records::*;
 pub use receipt_records::*;
 pub use role_records::*;
+pub use schedule_records::*;
+pub use template_records::*;
 pub use treasury::*;
 pub use treasury_records::*;
 pub use wallet_records::*;

@@ -41,7 +41,7 @@ pub const MAX_SWARM_MEMBERS: usize = 16;
 pub const MAX_SWARM_MEMBER_LEN: usize = 64;
 
 /// Current treasury account schema version after the advanced feature upgrade.
-pub const CURRENT_SCHEMA_VERSION: u8 = 3;
+pub const CURRENT_SCHEMA_VERSION: u8 = 4;
 /// Maximum pending proposals stored in the multi-slot queue.
 pub const MAX_PENDING_QUEUE_DEPTH: usize = 3;
 /// Activity log PDA seed.
@@ -84,6 +84,22 @@ pub const POLICY_ATTESTATION_SEED: &[u8] = b"policy_attestation";
 pub const BATCH_PROPOSAL_SEED: &[u8] = b"batch_proposal";
 /// Invariant report PDA seed.
 pub const INVARIANT_REPORT_SEED: &[u8] = b"invariant_report";
+/// User-defined policy template PDA seed: `[seed, owner, template_id]`.
+pub const POLICY_TEMPLATE_SEED: &[u8] = b"policy_template";
+/// Maximum byte length of a policy template name.
+pub const MAX_TEMPLATE_NAME_LEN: usize = 48;
+/// Maximum byte length of a policy template description.
+pub const MAX_TEMPLATE_DESC_LEN: usize = 160;
+/// Scheduled intent PDA seed: `[seed, treasury, intent_id]`.
+pub const SCHEDULED_INTENT_SEED: &[u8] = b"scheduled_intent";
+/// Maximum recipients fanned out by one scheduled intent.
+pub const MAX_SCHEDULE_RECIPIENTS: usize = 8;
+/// Minimum recurrence interval for a scheduled intent (anti-spam floor).
+pub const MIN_INTENT_INTERVAL_SECS: i64 = 60;
+/// Maximum trigger conditions attached to a proposal or scheduled intent.
+pub const MAX_CONDITIONS_PER_PROPOSAL: usize = 4;
+/// Conditional (parked) proposal PDA seed: `[seed, treasury, proposal_id]`.
+pub const CONDITIONAL_PROPOSAL_SEED: &[u8] = b"conditional_proposal";
 /// Maximum scoped budget envelopes per treasury.
 pub const MAX_BUDGET_ENVELOPES: usize = 8;
 /// Maximum scoped pause entries persisted in policy config.

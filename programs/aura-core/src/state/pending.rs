@@ -19,6 +19,9 @@ pub enum ProposalStatus {
     Cancelled,
     /// The proposal's TTL elapsed before it could be executed.
     Expired,
+    /// Submitted with trigger conditions that are not yet met; parked until a
+    /// `try_trigger` finds them satisfied (or the TTL expires).
+    AwaitingCondition,
 }
 
 /// Tracks an in-flight decryption request submitted to the Encrypt network.

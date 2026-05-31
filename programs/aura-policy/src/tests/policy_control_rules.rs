@@ -1,9 +1,11 @@
 use crate::{
     config::{
-        is_fresh, required_approval_level, ApprovalLadder, ApprovalLevel, BudgetEnvelope,
-        BudgetEnvelopeScope, BudgetEnvelopeSet, PauseScope, PolicyPresetKind, ScopedPauseControls,
-        ScopedPauseEntry,
+        evaluate_conditions, is_fresh, required_approval_level, validate_policy_config,
+        ApprovalLadder, ApprovalLevel, BudgetEnvelope, BudgetEnvelopeScope, BudgetEnvelopeSet,
+        CheckMode, Condition, ConditionCombinator, ConditionContext, ConditionKind, PauseScope,
+        PolicyConfigInvariant, PolicyPresetKind, ScopedPauseControls, ScopedPauseEntry,
     },
+    context::PolicyEvaluationContext,
     decision::{explain_decision, rule_outcome_bitmap},
     engine::{evaluate_batch_policy, evaluate_policy_without_spend_mutation, evaluate_transaction},
     helpers::diff::{FIELD_DAILY_LIMIT, FIELD_PER_TX_LIMIT},
@@ -15,6 +17,285 @@ use crate::{
 };
 
 use super::engine_rules::base_tx;
+
+fn cond(kind: ConditionKind, threshold: u64, negate: bool) -> Condition {
+    Condition {
+        kind,
+        threshold,
+        window_start: 0,
+        window_end: 0,
+        negate,
+    }
+}
+
+#[test]
+fn conditions_evaluate_each_kind() {
+    let ctx = ConditionContext {
+        now: 1_500,
+        available_usd: Some(60_000),
+        feed_price: Some(140),
+        oracle_flag: true,
+    };
+    let all = ConditionCombinator::All;
+
+    // price 140 <= 150 → met; 140 >= 150 → unmet
+    assert!(evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::PriceBelow, 150, false)],
+        all
+    ));
+    assert!(!evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::PriceAbove, 150, false)],
+        all
+    ));
+    // negate flips
+    assert!(evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::PriceAbove, 150, true)],
+        all
+    ));
+    // balance 60k > 50k
+    assert!(evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::BalanceAbove, 50_000, false)],
+        all
+    ));
+    assert!(!evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::BalanceBelow, 50_000, false)],
+        all
+    ));
+    // oracle flag true
+    assert!(evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::OracleFlag, 0, false)],
+        all
+    ));
+
+    // time window [1000, 2000] contains 1500
+    let win = Condition {
+        kind: ConditionKind::TimeWindow,
+        threshold: 0,
+        window_start: 1_000,
+        window_end: 2_000,
+        negate: false,
+    };
+    assert!(evaluate_conditions(&ctx, &[win.clone()], all));
+}
+
+#[test]
+fn conditions_missing_inputs_are_unmet() {
+    // No feed/balance inputs → price & balance conditions fail-safe to unmet.
+    let ctx = ConditionContext {
+        now: 0,
+        available_usd: None,
+        feed_price: None,
+        oracle_flag: false,
+    };
+    assert!(!evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::PriceBelow, 100, false)],
+        ConditionCombinator::All
+    ));
+    assert!(!evaluate_conditions(
+        &ctx,
+        &[cond(ConditionKind::BalanceAbove, 100, false)],
+        ConditionCombinator::All
+    ));
+    // an empty condition set is trivially satisfied
+    assert!(evaluate_conditions(&ctx, &[], ConditionCombinator::All));
+}
+
+#[test]
+fn condition_combinator_all_vs_any() {
+    let ctx = ConditionContext {
+        now: 0,
+        available_usd: Some(10),
+        feed_price: Some(200),
+        oracle_flag: false,
+    };
+    // price 200 <= 100 is false; balance 10 >= 5 is true
+    let mixed = [
+        cond(ConditionKind::PriceBelow, 100, false),
+        cond(ConditionKind::BalanceAbove, 5, false),
+    ];
+    assert!(!evaluate_conditions(&ctx, &mixed, ConditionCombinator::All));
+    assert!(evaluate_conditions(&ctx, &mixed, ConditionCombinator::Any));
+}
+
+fn stale_quote_tx() -> crate::context::TransactionContext {
+    let mut tx = base_tx();
+    tx.quote_age_secs = Some(600); // default max is 300 → stale
+    tx
+}
+
+#[test]
+fn failure_mode_enforce_denies_softenable_check() {
+    // default: every check Enforce → stale quote denies
+    let decision = evaluate_transaction(
+        &PolicyConfig::default(),
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(stale_quote_tx()),
+    );
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::QuoteStale);
+}
+
+#[test]
+fn failure_mode_warn_allows_within_budget() {
+    let mut config = PolicyConfig::default();
+    config.failure_modes.quote_freshness = CheckMode::Warn;
+    config.failure_modes.max_fail_open_usd = 10_000;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+
+    let decision = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(stale_quote_tx()),
+    );
+    assert!(decision.approved);
+    assert!(decision
+        .trace
+        .iter()
+        .any(|o| o.rule_name == "quote_freshness" && o.detail.starts_with("[warn]")));
+    // the softened spend consumed fail-open budget
+    assert_eq!(decision.next_state.fail_open_spent_usd, 500);
+    assert_eq!(decision.next_state.fail_open_count, 1);
+}
+
+#[test]
+fn failure_mode_skip_bypasses_check() {
+    let mut config = PolicyConfig::default();
+    config.failure_modes.quote_freshness = CheckMode::Skip;
+    let decision = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(stale_quote_tx()),
+    );
+    assert!(decision.approved);
+    assert!(decision
+        .trace
+        .iter()
+        .any(|o| o.rule_name == "quote_freshness" && o.detail.starts_with("[skip]")));
+    // Skip does not consume fail-open budget
+    assert_eq!(decision.next_state.fail_open_spent_usd, 0);
+}
+
+#[test]
+fn failure_mode_degrade_clamps_to_fallback_ceiling() {
+    let mut config = PolicyConfig::default();
+    config.failure_modes.quote_freshness = CheckMode::Degrade;
+    config.failure_modes.max_fail_open_usd = 10_000;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+
+    // amount (500) under the clamp → allowed
+    config.failure_modes.stale_fallback_limit_usd = 1_000;
+    let allowed = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(stale_quote_tx()),
+    );
+    assert!(allowed.approved);
+    assert!(allowed
+        .trace
+        .iter()
+        .any(|o| o.rule_name == "quote_freshness" && o.detail.starts_with("[degrade]")));
+
+    // amount (500) over the clamp → denied
+    config.failure_modes.stale_fallback_limit_usd = 100;
+    let denied = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(stale_quote_tx()),
+    );
+    assert!(!denied.approved);
+    assert_eq!(denied.violation, ViolationCode::QuoteStale);
+}
+
+#[test]
+fn fail_open_budget_force_enforces_above_cap() {
+    let mut config = PolicyConfig::default();
+    config.failure_modes.quote_freshness = CheckMode::Warn;
+    // amount 500 exceeds the per-tx fail-open ceiling → force Enforce
+    config.failure_modes.max_fail_open_usd = 100;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+
+    let decision = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(stale_quote_tx()),
+    );
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::QuoteStale);
+}
+
+#[test]
+fn always_enforce_per_tx_limit_ignores_failure_modes() {
+    // Even with every softenable check skipped, the hard per-tx cap still denies.
+    let mut config = PolicyConfig::default();
+    config.failure_modes.quote_freshness = CheckMode::Skip;
+    config.failure_modes.counterparty_risk = CheckMode::Skip;
+    config.failure_modes.slippage = CheckMode::Skip;
+    config.per_tx_limit_usd = 100;
+
+    let mut tx = base_tx();
+    tx.amount_usd = 5_000;
+    let decision = evaluate_transaction(
+        &config,
+        &PolicyState::default(),
+        &PolicyEvaluationContext::from(tx),
+    );
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::PerTransactionLimit);
+}
+
+#[test]
+fn every_builtin_preset_is_coherent() {
+    for code in 1u8..=10 {
+        let kind = PolicyPresetKind::from_code(code).expect("valid preset code");
+        let config = crate::build_policy_preset(kind);
+        validate_policy_config(&config)
+            .unwrap_or_else(|invariant| panic!("preset {kind:?} violates {}", invariant.as_str()));
+    }
+}
+
+#[test]
+fn validate_policy_config_rejects_incoherent_configs() {
+    // per_tx above daily
+    let mut cfg = PolicyConfig::default();
+    cfg.per_tx_limit_usd = cfg.daily_limit_usd + 1;
+    assert_eq!(
+        validate_policy_config(&cfg),
+        Err(PolicyConfigInvariant::PerTxAboveDaily)
+    );
+
+    // non-monotonic approval ladder
+    let mut cfg = PolicyConfig::default();
+    cfg.approval_ladder = Some(ApprovalLadder {
+        guardian_above_usd: 5_000,
+        multisig_above_usd: 1_000,
+        timelock_above_usd: 10_000,
+        deny_above_usd: 20_000,
+        ..ApprovalLadder::default()
+    });
+    assert_eq!(
+        validate_policy_config(&cfg),
+        Err(PolicyConfigInvariant::LadderNonMonotonic)
+    );
+
+    // velocity below per_tx
+    let mut cfg = PolicyConfig::default();
+    cfg.per_tx_limit_usd = 1_000;
+    cfg.velocity_limit_usd = 500;
+    assert_eq!(
+        validate_policy_config(&cfg),
+        Err(PolicyConfigInvariant::VelocityBelowPerTx)
+    );
+}
 
 #[test]
 fn explainable_receipt_fields_capture_decision_shape() {

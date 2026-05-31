@@ -78,6 +78,10 @@ pub enum AuditKind {
     SwarmPoolJoined,
     /// Emitted when the treasury balance is refreshed or updated.
     BalanceRefreshed,
+    /// Emitted when a softenable check failed but was allowed under `Warn`.
+    CheckWarned,
+    /// Emitted when a softenable check was allowed under `Degrade`/`Skip`.
+    CheckDegraded,
 }
 
 impl Display for AuditKind {
@@ -118,6 +122,8 @@ impl Display for AuditKind {
             Self::SnapshotTaken => "snapshot_taken",
             Self::SwarmPoolJoined => "swarm_pool_joined",
             Self::BalanceRefreshed => "balance_refreshed",
+            Self::CheckWarned => "check_warned",
+            Self::CheckDegraded => "check_degraded",
         };
 
         write!(f, "{label}")

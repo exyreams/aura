@@ -1,6 +1,7 @@
 use super::{
-    approval_ladder::ApprovalLadder, envelopes::BudgetEnvelopeSet, liveness::LivenessConfig,
-    reputation::ReputationPolicy, scoped_pause::ScopedPauseControls,
+    approval_ladder::ApprovalLadder, envelopes::BudgetEnvelopeSet,
+    failure_modes::FailureModeConfig, liveness::LivenessConfig, reputation::ReputationPolicy,
+    scoped_pause::ScopedPauseControls,
 };
 
 use crate::types::{Chain, TransactionType};
@@ -56,6 +57,8 @@ pub struct PolicyConfig {
     pub scoped_pause: ScopedPauseControls,
     /// External dependency freshness requirements.
     pub liveness_config: LivenessConfig,
+    /// Per-check failure handling (Enforce/Warn/Degrade/Skip) + fail-open bounds.
+    pub failure_modes: FailureModeConfig,
 }
 
 /// Per-recipient exposure rule.
@@ -121,6 +124,7 @@ impl Default for PolicyConfig {
             approval_ladder: None,
             scoped_pause: ScopedPauseControls::default(),
             liveness_config: LivenessConfig::default(),
+            failure_modes: FailureModeConfig::default(),
         }
     }
 }

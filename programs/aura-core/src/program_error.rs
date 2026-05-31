@@ -157,6 +157,34 @@ pub enum AuraCoreError {
     TooManyAssets,
     #[msg("attempted to release more than is reserved")]
     ReservationUnderflow,
+    #[msg("policy template config is incoherent")]
+    InvalidTemplateConfig,
+    #[msg("policy template is not shared")]
+    TemplateNotShared,
+    #[msg("parameterized override references an unknown policy field")]
+    UnknownPolicyVersion,
+    #[msg("fail-open budget exceeded for a softened check")]
+    FailOpenBudgetExceeded,
+    #[msg("scheduled intent is disabled")]
+    IntentDisabled,
+    #[msg("scheduled intent is not yet due")]
+    IntentNotDue,
+    #[msg("scheduled intent lifetime budget exhausted")]
+    IntentBudgetExhausted,
+    #[msg("scheduled intent run count exhausted")]
+    IntentRunsExhausted,
+    #[msg("scheduled intent has expired")]
+    IntentExpired,
+    #[msg("caller is not the authorized keeper")]
+    UnauthorizedKeeper,
+    #[msg("scheduled intent recurrence or budget is invalid")]
+    InvalidIntentConfig,
+    #[msg("trigger conditions are not satisfied")]
+    ConditionUnmet,
+    #[msg("conditional proposal expired before its conditions were met")]
+    ConditionExpired,
+    #[msg("too many trigger conditions")]
+    TooManyConditions,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

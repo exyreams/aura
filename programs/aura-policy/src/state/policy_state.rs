@@ -43,6 +43,34 @@ pub struct PolicyState {
     pub peak_day_spend_usd: u64,
     /// Per-recipient spend counters keyed by compact address hash.
     pub recipient_spend: Vec<RecipientSpendRecord>,
+    /// USD passed via Warn/Degrade in the current fail-open window.
+    pub fail_open_spent_usd: u64,
+    /// Count of softened transactions in the current fail-open window.
+    pub fail_open_count: u16,
+    /// Unix timestamp when the current fail-open window started (0 if uninitialized).
+    pub fail_open_window_start: i64,
+}
+
+impl PolicyState {
+    /// Rolls the fail-open window if `window_secs` has elapsed, returning the
+    /// in-window `(spent_usd, count)` to test new softening against.
+    pub fn fail_open_window(&mut self, now: i64, window_secs: i64) -> (u64, u16) {
+        if self.fail_open_window_start == 0 {
+            self.fail_open_window_start = now;
+        } else if window_secs > 0 && now.saturating_sub(self.fail_open_window_start) >= window_secs
+        {
+            self.fail_open_spent_usd = 0;
+            self.fail_open_count = 0;
+            self.fail_open_window_start = now;
+        }
+        (self.fail_open_spent_usd, self.fail_open_count)
+    }
+
+    /// Records a softened (Warn/Degrade) pass against the fail-open budget.
+    pub fn record_fail_open(&mut self, amount_usd: u64) {
+        self.fail_open_spent_usd = self.fail_open_spent_usd.saturating_add(amount_usd);
+        self.fail_open_count = self.fail_open_count.saturating_add(1);
+    }
 }
 
 impl PolicyState {

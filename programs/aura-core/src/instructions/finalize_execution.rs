@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
+    audit::{AuditEvent, AuditKind},
     constants::TREASURY_SEED,
     ext_cpi::{
         parse_message_approval_account, verify_message_approval, DWALLET_CPI_AUTHORITY_SEED,
@@ -9,6 +10,7 @@ use crate::{
         BudgetEnvelopeAccount, ExposureGroupAccount, ExternalLivenessAccount, SwarmPoolAccount,
         TreasuryAccount,
     },
+    program_events::emit_audit_events,
     state::DWALLET_DEVNET_PROGRAM_ID,
 };
 
@@ -55,16 +57,7 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         .liveness_config
         .require_dwallet_freshness
     {
-        let liveness = ctx
-            .accounts
-            .external_liveness
-            .as_ref()
-            .ok_or_else(|| error!(crate::AuraCoreError::ExternalDependencyStale))?;
-        require!(
-            liveness.treasury == ctx.accounts.treasury.key(),
-            crate::AuraCoreError::InvalidExternalAccountData
-        );
-        liveness.require_dwallet_fresh(now)?;
+        enforce_dwallet_liveness(&ctx, now)?;
     }
     if let Some(pool) = &ctx.accounts.swarm_pool {
         if let Some(swarm) = &ctx.accounts.treasury.swarm {
@@ -199,6 +192,68 @@ fn verify_live_signature(
     .map_err(crate::map_treasury_error)?;
 
     Ok((pending.amount_usd, pending.decision.next_state.clone()))
+}
+
+/// Applies the configured `dwallet_liveness` failure mode to the dWallet
+/// freshness gate. `Enforce` reverts on staleness (the prior behavior); `Skip`
+/// bypasses the gate; `Warn`/`Degrade` proceed when fail-open is configured
+/// (`max_fail_open_usd > 0`), emitting a `CheckDegraded` audit event.
+fn enforce_dwallet_liveness(ctx: &Context<FinalizeExecution>, now: i64) -> Result<()> {
+    use aura_policy::CheckMode;
+
+    let fm = &ctx.accounts.treasury.policy_config.failure_modes;
+    let mode = CheckMode::from_code(fm.dwallet_liveness).unwrap_or(CheckMode::Enforce);
+    let softenable =
+        matches!(mode, CheckMode::Warn | CheckMode::Degrade) && fm.max_fail_open_usd > 0;
+    let soften_kind = if mode == CheckMode::Warn {
+        AuditKind::CheckWarned
+    } else {
+        AuditKind::CheckDegraded
+    };
+
+    if mode == CheckMode::Skip {
+        return Ok(());
+    }
+
+    let Some(liveness) = ctx.accounts.external_liveness.as_ref() else {
+        // No freshness account supplied.
+        if softenable {
+            emit_softened(ctx, soften_kind, "dwallet_liveness account absent", now);
+            return Ok(());
+        }
+        return Err(error!(crate::AuraCoreError::ExternalDependencyStale));
+    };
+    require!(
+        liveness.treasury == ctx.accounts.treasury.key(),
+        crate::AuraCoreError::InvalidExternalAccountData
+    );
+
+    if ExternalLivenessAccount::fresh(
+        liveness.dwallet_last_verified_at,
+        liveness.max_staleness_secs,
+        now,
+    ) {
+        return Ok(());
+    }
+
+    // Stale dWallet liveness.
+    match mode {
+        CheckMode::Warn | CheckMode::Degrade if softenable => {
+            emit_softened(ctx, soften_kind, "dwallet_liveness stale", now);
+            Ok(())
+        }
+        CheckMode::Warn | CheckMode::Degrade => {
+            Err(error!(crate::AuraCoreError::FailOpenBudgetExceeded))
+        }
+        _ => Err(error!(crate::AuraCoreError::ExternalDependencyStale)),
+    }
+}
+
+fn emit_softened(ctx: &Context<FinalizeExecution>, kind: AuditKind, detail: &str, now: i64) {
+    emit_audit_events(
+        ctx.accounts.treasury.key(),
+        &[AuditEvent::new(kind, detail, now)],
+    );
 }
 
 fn dwallet_finalization_paused(treasury: &TreasuryAccount, now: i64) -> bool {

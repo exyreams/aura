@@ -33,10 +33,13 @@ pub mod types;
 pub mod violations;
 
 pub use config::{
-    build_policy_preset, is_fresh, required_approval_level, AnomalyAction, AnomalyConfig,
-    ApprovalLadder, ApprovalLevel, BudgetEnvelope, BudgetEnvelopeScope, BudgetEnvelopeSet,
-    CooldownConfig, ExternalDependency, LivenessConfig, PauseScope, PolicyConfig, PolicyPresetKind,
-    RecipientLimit, ReputationPolicy, ScopedPauseControls, ScopedPauseEntry, TransactionTypeScope,
+    build_policy_preset, evaluate_conditions, is_fresh, required_approval_level,
+    validate_policy_config, AnomalyAction, AnomalyConfig, ApprovalLadder, ApprovalLevel,
+    BudgetEnvelope, BudgetEnvelopeScope, BudgetEnvelopeSet, CheckMode, Condition,
+    ConditionCombinator, ConditionContext, ConditionKind, CooldownConfig, ExternalDependency,
+    FailureModeConfig, LivenessConfig, PauseScope, PolicyConfig, PolicyConfigInvariant,
+    PolicyPresetKind, RecipientLimit, ReputationPolicy, ScopedPauseControls, ScopedPauseEntry,
+    SoftenableCheck, TransactionTypeScope,
 };
 pub use context::{PolicyEvaluationContext, TransactionContext};
 pub use decision::{

@@ -316,6 +316,65 @@ pub struct PolicyConfigRecord {
     #[max_len(8)]
     pub scoped_pause_entries: Vec<ScopedPauseEntryRecord>,
     pub liveness_config: LivenessConfigRecord,
+    pub failure_modes: FailureModeConfigRecord,
+}
+
+/// Serialized form of `FailureModeConfig` (each `CheckMode` as a `u8` code).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct FailureModeConfigRecord {
+    pub quote_freshness: u8,
+    pub counterparty_risk: u8,
+    pub slippage: u8,
+    pub anomaly: u8,
+    pub balance_oracle_stale: u8,
+    pub compliance_oracle: u8,
+    pub encrypt_liveness: u8,
+    pub dwallet_liveness: u8,
+    pub max_fail_open_usd: u64,
+    pub fail_open_window_secs: i64,
+    pub fail_open_budget_usd: u64,
+    pub fail_open_max_per_window: u16,
+    pub stale_fallback_limit_usd: u64,
+}
+
+impl FailureModeConfigRecord {
+    pub fn from_domain(domain: &FailureModeConfig) -> Self {
+        Self {
+            quote_freshness: domain.quote_freshness.code(),
+            counterparty_risk: domain.counterparty_risk.code(),
+            slippage: domain.slippage.code(),
+            anomaly: domain.anomaly.code(),
+            balance_oracle_stale: domain.balance_oracle_stale.code(),
+            compliance_oracle: domain.compliance_oracle.code(),
+            encrypt_liveness: domain.encrypt_liveness.code(),
+            dwallet_liveness: domain.dwallet_liveness.code(),
+            max_fail_open_usd: domain.max_fail_open_usd,
+            fail_open_window_secs: domain.fail_open_window_secs,
+            fail_open_budget_usd: domain.fail_open_budget_usd,
+            fail_open_max_per_window: domain.fail_open_max_per_window,
+            stale_fallback_limit_usd: domain.stale_fallback_limit_usd,
+        }
+    }
+
+    pub fn to_domain(&self) -> FailureModeConfig {
+        // Unknown codes default to the safe `Enforce` mode.
+        let mode = |code: u8| CheckMode::from_code(code).unwrap_or(CheckMode::Enforce);
+        FailureModeConfig {
+            quote_freshness: mode(self.quote_freshness),
+            counterparty_risk: mode(self.counterparty_risk),
+            slippage: mode(self.slippage),
+            anomaly: mode(self.anomaly),
+            balance_oracle_stale: mode(self.balance_oracle_stale),
+            compliance_oracle: mode(self.compliance_oracle),
+            encrypt_liveness: mode(self.encrypt_liveness),
+            dwallet_liveness: mode(self.dwallet_liveness),
+            max_fail_open_usd: self.max_fail_open_usd,
+            fail_open_window_secs: self.fail_open_window_secs,
+            fail_open_budget_usd: self.fail_open_budget_usd,
+            fail_open_max_per_window: self.fail_open_max_per_window,
+            stale_fallback_limit_usd: self.stale_fallback_limit_usd,
+        }
+    }
 }
 
 impl PolicyConfigRecord {
@@ -365,6 +424,7 @@ impl PolicyConfigRecord {
                 .map(ScopedPauseEntryRecord::from_domain)
                 .collect(),
             liveness_config: LivenessConfigRecord::from_domain(&domain.liveness_config),
+            failure_modes: FailureModeConfigRecord::from_domain(&domain.failure_modes),
         }
     }
 
@@ -421,6 +481,7 @@ impl PolicyConfigRecord {
                     .expect("scoped pause records must decode"),
             },
             liveness_config: self.liveness_config.to_domain(),
+            failure_modes: self.failure_modes.to_domain(),
         }
     }
 }
@@ -500,6 +561,9 @@ pub struct PolicyStateRecord {
     pub peak_day_spend_usd: u64,
     #[max_len(32)]
     pub recipient_spend: Vec<RecipientSpendRecordAccount>,
+    pub fail_open_spent_usd: u64,
+    pub fail_open_count: u16,
+    pub fail_open_window_start: i64,
 }
 
 impl PolicyStateRecord {
@@ -522,6 +586,9 @@ impl PolicyStateRecord {
                 .iter()
                 .map(RecipientSpendRecordAccount::from_domain)
                 .collect(),
+            fail_open_spent_usd: domain.fail_open_spent_usd,
+            fail_open_count: domain.fail_open_count,
+            fail_open_window_start: domain.fail_open_window_start,
         }
     }
 
@@ -544,6 +611,9 @@ impl PolicyStateRecord {
                 .iter()
                 .map(RecipientSpendRecordAccount::to_domain)
                 .collect(),
+            fail_open_spent_usd: self.fail_open_spent_usd,
+            fail_open_count: self.fail_open_count,
+            fail_open_window_start: self.fail_open_window_start,
         }
     }
 }

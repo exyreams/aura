@@ -11,6 +11,7 @@ pub mod batch_execution;
 pub mod budget_envelopes;
 pub mod cancel_pending;
 pub mod collect_override_signature;
+pub mod conditional;
 pub mod configure_confidential_guardrails;
 pub mod configure_multisig;
 pub mod configure_swarm;
@@ -30,11 +31,13 @@ pub mod policy_history;
 pub mod policy_receipts;
 pub mod policy_services;
 pub mod policy_simulation;
+pub mod policy_templates;
 pub mod propose_confidential_transaction;
 pub mod propose_override;
 pub mod propose_transaction;
 pub mod register_dwallet;
 pub mod request_policy_decryption;
+pub mod scheduled_intents;
 pub mod scoped_pause;
 pub mod session_keys;
 pub mod snapshots;
@@ -90,6 +93,15 @@ pub(crate) use cancel_pending::__cpi_client_accounts_cancel_pending;
 pub use collect_override_signature::CollectOverrideSignature;
 pub(crate) use collect_override_signature::__client_accounts_collect_override_signature;
 pub(crate) use collect_override_signature::__cpi_client_accounts_collect_override_signature;
+pub use conditional::{
+    CloseConditionalProposal, ConditionalProposalArgs, ProposeConditionalTransaction, TryTrigger,
+};
+pub(crate) use conditional::{
+    __client_accounts_close_conditional_proposal,
+    __client_accounts_propose_conditional_transaction, __client_accounts_try_trigger,
+    __cpi_client_accounts_close_conditional_proposal,
+    __cpi_client_accounts_propose_conditional_transaction, __cpi_client_accounts_try_trigger,
+};
 pub use configure_confidential_guardrails::ConfigureConfidentialGuardrails;
 pub(crate) use configure_confidential_guardrails::__client_accounts_configure_confidential_guardrails;
 pub(crate) use configure_confidential_guardrails::__cpi_client_accounts_configure_confidential_guardrails;
@@ -177,6 +189,16 @@ pub use policy_simulation::{SimulatePolicy, SimulatePolicyArgs};
 pub(crate) use policy_simulation::{
     __client_accounts_simulate_policy, __cpi_client_accounts_simulate_policy,
 };
+pub use policy_templates::{
+    ApplyPolicyTemplate, ClosePolicyTemplate, CreatePolicyTemplate, CreatePolicyTemplateArgs,
+    ManagePolicyTemplate, ParameterizedOverrides, UpdatePolicyTemplateArgs,
+};
+pub(crate) use policy_templates::{
+    __client_accounts_apply_policy_template, __client_accounts_close_policy_template,
+    __client_accounts_create_policy_template, __client_accounts_manage_policy_template,
+    __cpi_client_accounts_apply_policy_template, __cpi_client_accounts_close_policy_template,
+    __cpi_client_accounts_create_policy_template, __cpi_client_accounts_manage_policy_template,
+};
 pub(crate) use propose_confidential_transaction::__client_accounts_propose_confidential_transaction;
 pub(crate) use propose_confidential_transaction::__cpi_client_accounts_propose_confidential_transaction;
 pub use propose_confidential_transaction::{
@@ -194,6 +216,16 @@ pub use register_dwallet::{RegisterDwallet, RegisterDwalletArgs};
 pub use request_policy_decryption::RequestPolicyDecryption;
 pub(crate) use request_policy_decryption::__client_accounts_request_policy_decryption;
 pub(crate) use request_policy_decryption::__cpi_client_accounts_request_policy_decryption;
+pub use scheduled_intents::{
+    CloseScheduledIntent, CreateScheduledIntent, ExecuteScheduledIntent, ManageScheduledIntent,
+    ScheduledIntentArgs,
+};
+pub(crate) use scheduled_intents::{
+    __client_accounts_close_scheduled_intent, __client_accounts_create_scheduled_intent,
+    __client_accounts_execute_scheduled_intent, __client_accounts_manage_scheduled_intent,
+    __cpi_client_accounts_close_scheduled_intent, __cpi_client_accounts_create_scheduled_intent,
+    __cpi_client_accounts_execute_scheduled_intent, __cpi_client_accounts_manage_scheduled_intent,
+};
 pub use scoped_pause::{SetScopedPause, SetScopedPauseArgs};
 pub(crate) use scoped_pause::{
     __client_accounts_set_scoped_pause, __cpi_client_accounts_set_scoped_pause,

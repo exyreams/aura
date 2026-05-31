@@ -1,5 +1,8 @@
 use crate::{
-    config::{required_approval_level, AnomalyAction, ApprovalLevel, PolicyConfig},
+    config::{
+        required_approval_level, AnomalyAction, ApprovalLevel, CheckMode, PolicyConfig,
+        SoftenableCheck,
+    },
     context::{PolicyEvaluationContext, TransactionContext},
     decision::{PolicyDecision, RiskFactor, RuleOutcome},
     helpers::{
@@ -10,6 +13,64 @@ use crate::{
     types::Chain,
     violations::ViolationCode,
 };
+
+/// Resolves a failed *softenable* check against its configured [`CheckMode`].
+///
+/// Returns `true` when the caller must deny (Enforce, an over-clamp Degrade, or
+/// an exhausted fail-open budget), and `false` when the transaction may proceed
+/// (Warn / in-clamp Degrade / Skip), recording the appropriate trace entry and
+/// consuming the fail-open budget. Defaulting every check to `Enforce` makes
+/// this behave exactly like the previous bare `deny()` short-circuit.
+#[allow(clippy::too_many_arguments)]
+fn deny_after_softening(
+    check: SoftenableCheck,
+    rule_name: &'static str,
+    detail: String,
+    config: &PolicyConfig,
+    amount_usd: u64,
+    now: i64,
+    state: &mut PolicyState,
+    trace: &mut Vec<RuleOutcome>,
+) -> bool {
+    let fm = &config.failure_modes;
+    match fm.mode_for(check) {
+        CheckMode::Enforce => {
+            trace.push(RuleOutcome::failed(rule_name, detail));
+            true
+        }
+        CheckMode::Skip => {
+            trace.push(RuleOutcome::skipped(rule_name, detail));
+            false
+        }
+        mode @ (CheckMode::Warn | CheckMode::Degrade) => {
+            if mode == CheckMode::Degrade && amount_usd > fm.stale_fallback_limit_usd {
+                trace.push(RuleOutcome::failed(
+                    rule_name,
+                    format!(
+                        "{detail} (exceeds degrade clamp {})",
+                        fm.stale_fallback_limit_usd
+                    ),
+                ));
+                return true;
+            }
+            let (spent, count) = state.fail_open_window(now, fm.fail_open_window_secs);
+            if !fm.fail_open_allows(amount_usd, spent, count) {
+                trace.push(RuleOutcome::failed(
+                    rule_name,
+                    format!("{detail} (fail-open budget exhausted)"),
+                ));
+                return true;
+            }
+            state.record_fail_open(amount_usd);
+            if mode == CheckMode::Degrade {
+                trace.push(RuleOutcome::degraded(rule_name, detail));
+            } else {
+                trace.push(RuleOutcome::warned(rule_name, detail));
+            }
+            false
+        }
+    }
+}
 
 pub const REG_FLAG_CTR_THRESHOLD: u8 = 0b0000_0001;
 pub const REG_FLAG_CROSS_BORDER: u8 = 0b0000_0010;
@@ -258,25 +319,32 @@ pub fn evaluate_transaction(
     if let (Some(expected), Some(actual)) = (tx.expected_output_usd, tx.actual_output_usd) {
         let computed_slippage_bps = slippage_bps(expected, actual);
         if computed_slippage_bps > config.max_slippage_bps {
-            trace.push(RuleOutcome::failed(
+            if deny_after_softening(
+                SoftenableCheck::Slippage,
                 "slippage_limit",
                 format!("{computed_slippage_bps} > {}", config.max_slippage_bps),
+                config,
+                tx.amount_usd,
+                tx.current_timestamp,
+                &mut state,
+                &mut trace,
+            ) {
+                return deny(
+                    state,
+                    ViolationCode::SlippageExceeded,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "slippage_limit",
+                format!("{computed_slippage_bps} <= {}", config.max_slippage_bps),
             ));
-            return deny(
-                state,
-                ViolationCode::SlippageExceeded,
-                effective_daily_limit_usd,
-                trace,
-                risk_score,
-                risk_factors,
-                regulatory_flags,
-            );
         }
-
-        trace.push(RuleOutcome::passed(
-            "slippage_limit",
-            format!("{computed_slippage_bps} <= {}", config.max_slippage_bps),
-        ));
     } else {
         trace.push(RuleOutcome::passed(
             "slippage_limit",
@@ -288,25 +356,32 @@ pub fn evaluate_transaction(
         (config.max_quote_age_secs, tx.quote_age_secs)
     {
         if quote_age_secs > max_quote_age_secs {
-            trace.push(RuleOutcome::failed(
+            if deny_after_softening(
+                SoftenableCheck::QuoteFreshness,
                 "quote_freshness",
                 format!("{quote_age_secs}s > {max_quote_age_secs}s"),
+                config,
+                tx.amount_usd,
+                tx.current_timestamp,
+                &mut state,
+                &mut trace,
+            ) {
+                return deny(
+                    state,
+                    ViolationCode::QuoteStale,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "quote_freshness",
+                format!("{quote_age_secs}s <= {max_quote_age_secs}s"),
             ));
-            return deny(
-                state,
-                ViolationCode::QuoteStale,
-                effective_daily_limit_usd,
-                trace,
-                risk_score,
-                risk_factors,
-                regulatory_flags,
-            );
         }
-
-        trace.push(RuleOutcome::passed(
-            "quote_freshness",
-            format!("{quote_age_secs}s <= {max_quote_age_secs}s"),
-        ));
     } else {
         trace.push(RuleOutcome::passed(
             "quote_freshness",
@@ -319,25 +394,32 @@ pub fn evaluate_transaction(
         tx.counterparty_risk_score,
     ) {
         if counterparty_risk_score > max_counterparty_risk_score {
-            trace.push(RuleOutcome::failed(
+            if deny_after_softening(
+                SoftenableCheck::CounterpartyRisk,
                 "counterparty_risk",
                 format!("{counterparty_risk_score} > {max_counterparty_risk_score}"),
+                config,
+                tx.amount_usd,
+                tx.current_timestamp,
+                &mut state,
+                &mut trace,
+            ) {
+                return deny(
+                    state,
+                    ViolationCode::CounterpartyRisk,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "counterparty_risk",
+                format!("{counterparty_risk_score} <= {max_counterparty_risk_score}"),
             ));
-            return deny(
-                state,
-                ViolationCode::CounterpartyRisk,
-                effective_daily_limit_usd,
-                trace,
-                risk_score,
-                risk_factors,
-                regulatory_flags,
-            );
         }
-
-        trace.push(RuleOutcome::passed(
-            "counterparty_risk",
-            format!("{counterparty_risk_score} <= {max_counterparty_risk_score}"),
-        ));
     } else {
         trace.push(RuleOutcome::passed(
             "counterparty_risk",
@@ -712,25 +794,32 @@ pub fn evaluate_public_precheck(
     if let (Some(expected), Some(actual)) = (tx.expected_output_usd, tx.actual_output_usd) {
         let computed_slippage_bps = slippage_bps(expected, actual);
         if computed_slippage_bps > config.max_slippage_bps {
-            trace.push(RuleOutcome::failed(
+            if deny_after_softening(
+                SoftenableCheck::Slippage,
                 "slippage_limit",
                 format!("{computed_slippage_bps} > {}", config.max_slippage_bps),
+                config,
+                tx.amount_usd,
+                tx.current_timestamp,
+                &mut state,
+                &mut trace,
+            ) {
+                return deny(
+                    state,
+                    ViolationCode::SlippageExceeded,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "slippage_limit",
+                format!("{computed_slippage_bps} <= {}", config.max_slippage_bps),
             ));
-            return deny(
-                state,
-                ViolationCode::SlippageExceeded,
-                effective_daily_limit_usd,
-                trace,
-                risk_score,
-                risk_factors,
-                regulatory_flags,
-            );
         }
-
-        trace.push(RuleOutcome::passed(
-            "slippage_limit",
-            format!("{computed_slippage_bps} <= {}", config.max_slippage_bps),
-        ));
     } else {
         trace.push(RuleOutcome::passed(
             "slippage_limit",
@@ -742,25 +831,32 @@ pub fn evaluate_public_precheck(
         (config.max_quote_age_secs, tx.quote_age_secs)
     {
         if quote_age_secs > max_quote_age_secs {
-            trace.push(RuleOutcome::failed(
+            if deny_after_softening(
+                SoftenableCheck::QuoteFreshness,
                 "quote_freshness",
                 format!("{quote_age_secs}s > {max_quote_age_secs}s"),
+                config,
+                tx.amount_usd,
+                tx.current_timestamp,
+                &mut state,
+                &mut trace,
+            ) {
+                return deny(
+                    state,
+                    ViolationCode::QuoteStale,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "quote_freshness",
+                format!("{quote_age_secs}s <= {max_quote_age_secs}s"),
             ));
-            return deny(
-                state,
-                ViolationCode::QuoteStale,
-                effective_daily_limit_usd,
-                trace,
-                risk_score,
-                risk_factors,
-                regulatory_flags,
-            );
         }
-
-        trace.push(RuleOutcome::passed(
-            "quote_freshness",
-            format!("{quote_age_secs}s <= {max_quote_age_secs}s"),
-        ));
     } else {
         trace.push(RuleOutcome::passed(
             "quote_freshness",
@@ -773,25 +869,32 @@ pub fn evaluate_public_precheck(
         tx.counterparty_risk_score,
     ) {
         if counterparty_risk_score > max_counterparty_risk_score {
-            trace.push(RuleOutcome::failed(
+            if deny_after_softening(
+                SoftenableCheck::CounterpartyRisk,
                 "counterparty_risk",
                 format!("{counterparty_risk_score} > {max_counterparty_risk_score}"),
+                config,
+                tx.amount_usd,
+                tx.current_timestamp,
+                &mut state,
+                &mut trace,
+            ) {
+                return deny(
+                    state,
+                    ViolationCode::CounterpartyRisk,
+                    effective_daily_limit_usd,
+                    trace,
+                    risk_score,
+                    risk_factors,
+                    regulatory_flags,
+                );
+            }
+        } else {
+            trace.push(RuleOutcome::passed(
+                "counterparty_risk",
+                format!("{counterparty_risk_score} <= {max_counterparty_risk_score}"),
             ));
-            return deny(
-                state,
-                ViolationCode::CounterpartyRisk,
-                effective_daily_limit_usd,
-                trace,
-                risk_score,
-                risk_factors,
-                regulatory_flags,
-            );
         }
-
-        trace.push(RuleOutcome::passed(
-            "counterparty_risk",
-            format!("{counterparty_risk_score} <= {max_counterparty_risk_score}"),
-        ));
     } else {
         trace.push(RuleOutcome::passed(
             "counterparty_risk",
