@@ -26,6 +26,10 @@ path = "src/bin/admin.rs"
 name = "wallet"
 path = "src/bin/wallet.rs"
 
+[[bin]]
+name = "hardening"
+path = "src/bin/hardening.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"

@@ -1,4 +1,4 @@
-//! Standalone devnet check for all 16 doc-01 CRUD-completion instructions.
+//! Standalone devnet check for account lifecycle completion instructions.
 //!
 //! Runs without the Ika/Encrypt pre-alpha networks - only `aura-core` + devnet
 //! RPC. For each new instruction it performs the required setup (create the
@@ -651,6 +651,6 @@ fn main() -> anyhow::Result<()> {
     )?;
     println!("[16] close_external_liveness (init -> close)");
 
-    println!("\nall 16 doc-01 instructions verified on devnet.");
+    println!("\nall 16 account lifecycle instructions verified on devnet.");
     Ok(())
 }

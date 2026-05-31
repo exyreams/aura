@@ -92,6 +92,7 @@ pub async fn run() -> anyhow::Result<()> {
                 parent_treasury: None,
                 budget_envelope: None,
                 exposure_group: None,
+                dwallet_state: None,
             }
             .to_account_metas(None),
             data: instruction::ProposeTransaction {
@@ -107,6 +108,11 @@ pub async fn run() -> anyhow::Result<()> {
                     counterparty_risk_score: Some(10),
                     recipient_or_contract: payer.pubkey().to_string(),
                     sanctions_proof: Vec::new(),
+                    asset_id: None,
+                    native_amount: None,
+                    decimals: None,
+                    gas_native_amount: None,
+                    gas_asset_id: None,
                 },
             }
             .data(),

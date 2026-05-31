@@ -107,6 +107,7 @@ pub(super) async fn scenario_cancel_pending(
             accounts: accounts::CancelPending {
                 owner: payer.pubkey(),
                 treasury,
+                dwallet_state: None,
             }
             .to_account_metas(None),
             data: instruction::CancelPending {
@@ -332,6 +333,7 @@ pub(super) async fn scenario_pause_resume(
             accounts: accounts::CancelPending {
                 owner: payer.pubkey(),
                 treasury,
+                dwallet_state: None,
             }
             .to_account_metas(None),
             data: instruction::CancelPending {

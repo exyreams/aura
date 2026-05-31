@@ -1,4 +1,4 @@
-//! Treasury administration smoke scenarios (doc 01 — CRUD completion).
+//! Treasury administration smoke scenarios for account lifecycle completion.
 //!
 //! Exercises the in-treasury update/delete instructions against devnet and
 //! asserts the resulting domain state. Standalone-PDA edits (operator role, fee

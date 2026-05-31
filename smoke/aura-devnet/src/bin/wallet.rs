@@ -1,4 +1,4 @@
-//! Standalone devnet check for all 14 doc-02 wallet-runtime instructions.
+//! Standalone devnet check for all wallet-runtime instructions.
 //!
 //! Runs without the Ika/Encrypt pre-alpha networks - only `aura-core` + devnet
 //! RPC. Registers an Ethereum dWallet, initializes its separate runtime
@@ -515,6 +515,6 @@ fn main() -> anyhow::Result<()> {
     );
     println!("    remove_dwallet -> runtime account closed");
 
-    println!("\nall 14 doc-02 wallet-runtime instructions verified on devnet.");
+    println!("\nall 14 wallet-runtime instructions verified on devnet.");
     Ok(())
 }
