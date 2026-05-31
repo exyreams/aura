@@ -123,8 +123,10 @@ optionally forked from a built-in preset, and applied (optionally parameterized)
 
 ## Scheduled intents
 
-On-chain standing orders (payroll / DCA / sweeps) in a `ScheduledIntent` PDA. Each run is gated by the
-**same** policy + failure-mode path as an interactive proposal, plus optional **trigger conditions**
+On-chain standing orders (payroll / DCA / sweeps) in a `ScheduledIntent` PDA. Each due run is gated by the
+**same** policy + failure-mode path as an interactive proposal, then promoted into the normal pending
+proposal/sign/finalize lifecycle. Schedule counters and lifetime spend are settled when `finalize_execution`
+receives the matching scheduled intent account. Optional **trigger conditions** can gate each run
 (price / time-window / balance / oracle flag, combined with AND/OR).
 
 | Instruction | Description | |
@@ -132,8 +134,9 @@ On-chain standing orders (payroll / DCA / sweeps) in a `ScheduledIntent` PDA. Ea
 | `create_scheduled_intent` | Create a recurring intent with recurrence, per-run/total budget, and conditions. | <New /> |
 | `update_scheduled_intent` | Edit the recurrence / budget / payload / conditions. | <New /> |
 | `pause_scheduled_intent` / `resume_scheduled_intent` | Toggle execution on/off. | <New /> |
-| `close_scheduled_intent` | Close an intent and reclaim rent. | <New /> |
-| `execute_scheduled_intent` | Run a due slot (keeper or permissionless); uses the on-chain clock, advances the schedule. | <New /> |
+| `close_scheduled_intent` | Close an intent and reclaim rent, unless a promoted run is still in flight. | <New /> |
+| `clear_scheduled_intent_in_flight` | Owner-gated recovery for an abandoned promoted run after its proposal is no longer pending. | <New /> |
+| `execute_scheduled_intent` | Run a due slot (keeper or permissionless); uses the on-chain clock and promotes an approved run into a pending proposal. | <New /> |
 
 ## Governance & rotation
 
