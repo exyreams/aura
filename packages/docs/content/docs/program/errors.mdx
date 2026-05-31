@@ -68,6 +68,22 @@ latest instructions.
 | 6038 | `SessionKeyScopeViolation` | Session key out of scope for the proposal. |
 | 6039 | `AccountStillActive` | Closing an account that is still in use. |
 
+## dWallet runtime
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6061 | `DWalletNotActive` | Outbound reservation on a dWallet that is not `Active`. <New /> |
+| 6062 | `DWalletFrozen` | Outbound reservation on a frozen dWallet. <New /> |
+| 6063 | `DWalletHasActiveProposal` | Removing a dWallet with a pending proposal on its chain. <New /> |
+| 6064 | `DWalletLimitExceeded` | Reservation exceeds the per-dWallet per-tx or daily cap. <New /> |
+| 6065 | `DWalletNotEmpty` | Removing a dWallet that still holds a balance or reservation. <New /> |
+| 6066 | `DefaultChainInUse` | Removing the dWallet that is the treasury's default chain. <New /> |
+| 6067 | `AssetNotTracked` | Settling/feeding an asset not on the ledger. <New /> |
+| 6068 | `InsufficientWalletBalance` | Reservation exceeds available (unreserved) balance. <New /> |
+| 6069 | `BalanceStale` | A dWallet asset balance is past its freshness window. <New /> |
+| 6070 | `TooManyAssets` | The per-dWallet asset ledger is full (max 16). <New /> |
+| 6071 | `ReservationUnderflow` | Releasing/settling more than is currently reserved. <New /> |
+
 ## Governance, state & data
 
 | Code | Name | Trigger |

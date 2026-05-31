@@ -27,7 +27,24 @@ seeds = [ b"treasury", owner, agent_id ]
 
 The on-chain record (`TreasuryAccount`) is the serialized form; instructions deserialize it into the
 `AgentTreasury` domain object, mutate that, and write it back. The audit trail is emitted as events rather
-than persisted in the account.
+than persisted in the account. A `default_chain` field marks the treasury's preferred ("primary") execution
+chain (set via `set_default_chain`).
+
+## DWalletAccount
+
+Each registered dWallet has its own **runtime account** — one PDA per `(treasury, chain)` — holding the
+controls, multi-asset ledger, and spend reservation that don't fit inside the size-capped treasury account.
+It is created by `init_dwallet_state` and closed by `remove_dwallet`.
+
+```
+seeds = [ b"dwallet_state", treasury, chain_code ]
+```
+
+It stores the lifecycle `status` (active / frozen / retiring / retired), optional per-tx + daily USD limits
+and a rolling spend counter, the controlling authority + CPI authority seed (rotation `epoch`), an optional
+label, a reservation total, and an asset ledger (up to 16 rows of native amount, USD value, decimals, and an
+optional price feed). The treasury keeps only a cached aggregate balance per dWallet, kept in sync via
+`reconcile_dwallet_balance`.
 
 ## Auxiliary accounts
 
