@@ -296,6 +296,7 @@ impl AuraClient {
             parent_treasury: None,
             budget_envelope: None,
             exposure_group: None,
+            dwallet_state: None,
         };
         self.with_program_id(instructions::execution::propose_transaction(accounts, args))
     }
@@ -470,7 +471,11 @@ impl AuraClient {
         treasury: Pubkey,
         now: i64,
     ) -> Instruction {
-        let accounts = aura_core::accounts::CancelPending { owner, treasury };
+        let accounts = aura_core::accounts::CancelPending {
+            owner,
+            treasury,
+            dwallet_state: None,
+        };
         self.with_program_id(instructions::treasury::cancel_pending(accounts, now))
     }
 
@@ -1859,6 +1864,7 @@ mod tests {
             dwallet_program: None,
             dwallet_coordinator: None,
             external_liveness: None,
+            dwallet_state: None,
             system_program: SYSTEM_PROGRAM_ID,
         };
 

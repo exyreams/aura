@@ -62,6 +62,7 @@ mod tests {
             parent_treasury: None,
             budget_envelope: None,
             exposure_group: None,
+            dwallet_state: None,
         };
         let ix = execution::propose_transaction(
             accounts,
@@ -77,10 +78,15 @@ mod tests {
                 counterparty_risk_score: None,
                 recipient_or_contract: "dest".to_string(),
                 sanctions_proof: Vec::new(),
+                asset_id: None,
+                native_amount: None,
+                decimals: None,
+                gas_native_amount: None,
+                gas_asset_id: None,
             },
         );
         assert_eq!(ix.program_id, aura_core::ID);
-        assert_eq!(ix.accounts.len(), 9);
+        assert_eq!(ix.accounts.len(), 10);
         assert!(!ix.data.is_empty());
     }
 
