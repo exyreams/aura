@@ -3,12 +3,16 @@ use aura_policy::TransactionContext;
 
 use crate::{
     constants::TREASURY_SEED,
-    instructions::sync_treasury_account,
+    instructions::{
+        sync_treasury_account, sync_treasury_pending_account,
+        wallet_transfers::{reserve_transfer_details, validate_transfer_details},
+    },
     program_accounts::{
         chain_from_code, sha256_address, transaction_type_from_code, verify_merkle_inclusion,
-        AddressListAccount, BudgetEnvelopeAccount, ComplianceOracleAccount, ExposureGroupAccount,
-        SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
+        AddressListAccount, BudgetEnvelopeAccount, ComplianceOracleAccount, DWalletAccount,
+        ExposureGroupAccount, SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
     },
+    state::TransferDetails,
 };
 
 /// Instruction data for `propose_transaction`.
@@ -37,6 +41,26 @@ pub struct ProposeTransactionArgs {
     /// Merkle proof proving the recipient is present in the sanctions root.
     /// Empty when sanctions checking is disabled or the root is a direct leaf.
     pub sanctions_proof: Vec<[u8; 32]>,
+    /// Optional chain-native transfer payload. When set, proposal creation
+    /// reserves the matching dWallet runtime account and finalization must
+    /// settle that account.
+    pub asset_id: Option<String>,
+    pub native_amount: Option<u128>,
+    pub decimals: Option<u8>,
+    pub gas_native_amount: Option<u128>,
+    pub gas_asset_id: Option<String>,
+}
+
+impl ProposeTransactionArgs {
+    pub fn transfer_details(&self) -> TransferDetails {
+        TransferDetails {
+            asset_id: self.asset_id.clone(),
+            native_amount: self.native_amount,
+            decimals: self.decimals,
+            gas_native_amount: self.gas_native_amount,
+            gas_asset_id: self.gas_asset_id.clone(),
+        }
+    }
 }
 
 #[derive(Accounts)]
@@ -56,6 +80,8 @@ pub struct ProposeTransaction<'info> {
     pub parent_treasury: Option<Box<Account<'info, TreasuryAccount>>>,
     pub budget_envelope: Option<Box<Account<'info, BudgetEnvelopeAccount>>>,
     pub exposure_group: Option<Box<Account<'info, ExposureGroupAccount>>>,
+    #[account(mut)]
+    pub dwallet_state: Option<Box<Account<'info, DWalletAccount>>>,
 }
 
 /// Proposes a public (non-confidential) transaction.
@@ -65,6 +91,8 @@ pub struct ProposeTransaction<'info> {
 /// `execute_pending` can be called immediately after this instruction.
 pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -> Result<()> {
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    let transfer = args.transfer_details();
+    validate_transfer_details(&transfer)?;
     let authority = ctx.accounts.ai_authority.key();
     let signer = if let Some(session) = ctx.accounts.session_key_account.as_mut() {
         require!(
@@ -203,8 +231,37 @@ pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -
         recipient_or_contract: Some(args.recipient_or_contract.clone()),
     };
 
-    crate::propose_transaction(&mut domain, &signer, tx, args.recipient_or_contract)
-        .map_err(crate::map_treasury_error)?;
+    let proposal_id = crate::propose_transaction_with_transfer(
+        &mut domain,
+        &signer,
+        tx,
+        args.recipient_or_contract,
+        transfer.clone(),
+    )
+    .map_err(crate::map_treasury_error)?;
 
-    sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
+    let reserved = domain
+        .active_pending()
+        .is_some_and(|pending| pending.proposal_id == proposal_id && pending.decision.approved);
+    if reserved && transfer.requires_wallet_settlement() {
+        let dwallet_state = ctx
+            .accounts
+            .dwallet_state
+            .as_mut()
+            .ok_or_else(|| error!(crate::AuraCoreError::DWalletNotConfigured))?;
+        reserve_transfer_details(
+            dwallet_state,
+            ctx.accounts.treasury.key(),
+            args.target_chain,
+            args.amount_usd,
+            &transfer,
+            args.current_timestamp,
+        )?;
+    }
+
+    if transfer.requires_wallet_settlement() {
+        sync_treasury_pending_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
+    } else {
+        sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.current_timestamp)
+    }
 }

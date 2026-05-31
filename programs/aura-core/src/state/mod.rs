@@ -37,6 +37,7 @@ pub use dwallet::{
 pub use fees::ProtocolFees;
 pub use pending::{
     PendingDecryptionRequest, PendingSignatureRequest, PendingTransaction, ProposalStatus,
+    TransferDetails,
 };
 pub use receipt::ExecutionReceipt;
 pub use reputation::AgentReputation;

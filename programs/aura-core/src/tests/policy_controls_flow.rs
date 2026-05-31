@@ -1,11 +1,15 @@
 use anchor_lang::prelude::Pubkey;
-use aura_policy::{ApprovalLadder, ApprovalLevel, Chain, TransactionContext, TransactionType};
+use aura_policy::{
+    ApprovalLadder, ApprovalLevel, Chain, CheckMode, PolicyConfig, PolicyState, TransactionContext,
+    TransactionType,
+};
 
 use crate::{
     approve_pending_execution, enforce_pending_approval,
+    instructions::external_liveness::{enforce_liveness_gate, LivenessGate},
     program_accounts::{
         role_permissions, BudgetEnvelopeAccount, ExposureGroupAccount, ExternalLivenessAccount,
-        OperatorRoleAccount,
+        OperatorRoleAccount, PolicyConfigRecord, PolicyStateRecord,
     },
     propose_transaction, TreasuryError,
 };
@@ -368,4 +372,83 @@ fn external_liveness_boundary_requires_positive_recent_timestamp() {
     assert!(!ExternalLivenessAccount::fresh(0, 10, 1));
     assert!(ExternalLivenessAccount::fresh(100, 10, 110));
     assert!(!ExternalLivenessAccount::fresh(100, 10, 111));
+}
+
+fn stale_liveness(treasury_key: Pubkey) -> ExternalLivenessAccount {
+    ExternalLivenessAccount {
+        bump: 1,
+        treasury: treasury_key,
+        encrypt_last_verified_at: 100,
+        dwallet_last_verified_at: 100,
+        balance_oracle_last_verified_at: 100,
+        compliance_oracle_last_verified_at: 100,
+        max_staleness_secs: 10,
+        updated_by: Pubkey::new_unique(),
+    }
+}
+
+#[test]
+fn liveness_gate_warn_allows_within_fail_open_budget() {
+    let treasury_key = Pubkey::new_unique();
+    let mut config = PolicyConfig::default();
+    config.failure_modes.encrypt_liveness = CheckMode::Warn;
+    config.failure_modes.max_fail_open_usd = 1_000;
+    config.failure_modes.fail_open_budget_usd = 1_000;
+    config.failure_modes.fail_open_max_per_window = 1;
+
+    let softened = enforce_liveness_gate(
+        treasury_key,
+        &PolicyConfigRecord::from_domain(&config),
+        &PolicyStateRecord::from_domain(&PolicyState::default()),
+        Some(&stale_liveness(treasury_key)),
+        LivenessGate::Encrypt,
+        500,
+        111,
+    )
+    .expect("warn mode allows stale liveness inside fail-open budget");
+
+    assert!(softened);
+}
+
+#[test]
+fn liveness_gate_force_enforces_when_fail_open_amount_cap_is_exceeded() {
+    let treasury_key = Pubkey::new_unique();
+    let mut config = PolicyConfig::default();
+    config.failure_modes.dwallet_liveness = CheckMode::Degrade;
+    config.failure_modes.max_fail_open_usd = 100;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+
+    assert!(enforce_liveness_gate(
+        treasury_key,
+        &PolicyConfigRecord::from_domain(&config),
+        &PolicyStateRecord::from_domain(&PolicyState::default()),
+        Some(&stale_liveness(treasury_key)),
+        LivenessGate::DWallet,
+        500,
+        111,
+    )
+    .is_err());
+}
+
+#[test]
+fn liveness_gate_degrade_respects_fallback_clamp() {
+    let treasury_key = Pubkey::new_unique();
+    let mut config = PolicyConfig::default();
+    config.failure_modes.dwallet_liveness = CheckMode::Degrade;
+    config.failure_modes.max_fail_open_usd = 10_000;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+    config.failure_modes.stale_fallback_limit_usd = 100;
+
+    assert!(enforce_liveness_gate(
+        treasury_key,
+        &PolicyConfigRecord::from_domain(&config),
+        &PolicyStateRecord::from_domain(&PolicyState::default()),
+        Some(&stale_liveness(treasury_key)),
+        LivenessGate::DWallet,
+        500,
+        111,
+    )
+    .is_err());
 }

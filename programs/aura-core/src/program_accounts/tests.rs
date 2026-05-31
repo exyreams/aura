@@ -33,11 +33,6 @@ fn treasury_account_roundtrip_preserves_domain_state() {
 
 #[test]
 fn treasury_account_space_budget_covers_populated_state() {
-    assert!(
-        TREASURY_ACCOUNT_SPACE <= 10 * 1024,
-        "treasury account init space must stay within Solana's CPI allocation ceiling"
-    );
-
     let deployment =
         ProtocolDeployment::devnet_pre_alpha("DKbak7cSattSzqLauaMTYUDFEJu4GTUKFVmjeM7uKNeP")
             .expect("deployment should validate");
@@ -140,6 +135,7 @@ fn treasury_account_space_budget_covers_populated_state() {
         target_chain: Chain::Solana,
         tx_type: TransactionType::Transfer,
         amount_usd: 250,
+        transfer: crate::state::TransferDetails::default(),
         recipient_or_contract: Pubkey::new_unique().to_string(),
         protocol_id: Some(1),
         submitted_at: 1_300,

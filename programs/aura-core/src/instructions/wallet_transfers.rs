@@ -5,7 +5,7 @@ use crate::{
     constants::{BALANCE_STALE_THRESHOLD_SECS, DWALLET_STATE_SEED, TREASURY_SEED},
     instructions::sync_treasury_account,
     program_accounts::{chain_from_code, DWalletAccount, TreasuryAccount},
-    state::DWalletStatus,
+    state::{DWalletStatus, TransferDetails},
     AuraCoreError,
 };
 
@@ -41,6 +41,379 @@ fn assert_spend_authority(treasury: &TreasuryAccount, signer: Pubkey) -> Result<
     Ok(())
 }
 
+pub(crate) fn validate_transfer_details(transfer: &TransferDetails) -> Result<()> {
+    if transfer.is_legacy() {
+        return Ok(());
+    }
+
+    let valid_asset = transfer
+        .asset_id
+        .as_deref()
+        .is_some_and(|asset| !asset.is_empty() && asset.len() <= 64);
+    require!(valid_asset, AuraCoreError::AssetNotTracked);
+    require!(
+        transfer.native_amount.is_some_and(|amount| amount > 0),
+        AuraCoreError::InsufficientWalletBalance
+    );
+    require!(
+        transfer.decimals.is_some(),
+        AuraCoreError::InvalidExternalAccountData
+    );
+
+    let gas_set = transfer.gas_native_amount.is_some() || transfer.gas_asset_id.is_some();
+    if gas_set {
+        require!(
+            transfer.gas_native_amount.is_some_and(|amount| amount > 0),
+            AuraCoreError::InsufficientWalletBalance
+        );
+        let valid_gas_asset = transfer
+            .gas_asset_id
+            .as_deref()
+            .is_some_and(|asset| !asset.is_empty() && asset.len() <= 64);
+        require!(valid_gas_asset, AuraCoreError::AssetNotTracked);
+    }
+
+    Ok(())
+}
+
+pub(crate) fn reserve_transfer_details(
+    dwallet_state: &mut Account<'_, DWalletAccount>,
+    treasury: Pubkey,
+    chain: u8,
+    amount_usd: u64,
+    transfer: &TransferDetails,
+    now: i64,
+) -> Result<()> {
+    validate_transfer_details(transfer)?;
+    if transfer.is_legacy() {
+        return Ok(());
+    }
+
+    require!(
+        dwallet_state.treasury == treasury && dwallet_state.chain == chain,
+        AuraCoreError::InvalidExternalAccountData
+    );
+
+    ensure_outbound_ready_account(dwallet_state)?;
+    ensure_fresh_account(dwallet_state, now)?;
+    require!(
+        within_limits_account(dwallet_state, amount_usd, now),
+        AuraCoreError::DWalletLimitExceeded
+    );
+    ensure_native_assets_available_account(dwallet_state, transfer)?;
+    require!(
+        amount_usd <= available_usd_account(dwallet_state),
+        AuraCoreError::InsufficientWalletBalance
+    );
+    dwallet_state.reserved_usd = dwallet_state.reserved_usd.saturating_add(amount_usd);
+    Ok(())
+}
+
+pub(crate) fn settle_transfer_details(
+    dwallet_state: &mut Account<'_, DWalletAccount>,
+    treasury: Pubkey,
+    chain: u8,
+    amount_usd: u64,
+    transfer: &TransferDetails,
+    now: i64,
+) -> Result<u64> {
+    validate_transfer_details(transfer)?;
+    require!(
+        !transfer.is_legacy(),
+        AuraCoreError::InvalidExternalAccountData
+    );
+    require!(
+        dwallet_state.treasury == treasury && dwallet_state.chain == chain,
+        AuraCoreError::InvalidExternalAccountData
+    );
+
+    require!(
+        dwallet_state.reserved_usd >= amount_usd,
+        AuraCoreError::ReservationUnderflow
+    );
+    debit_native_assets_account(dwallet_state, transfer, amount_usd)?;
+    dwallet_state.reserved_usd = dwallet_state.reserved_usd.saturating_sub(amount_usd);
+    record_spend_account(dwallet_state, amount_usd, now);
+    Ok(total_usd_account(dwallet_state))
+}
+
+pub(crate) fn release_transfer_reservation(
+    dwallet_state: &mut Account<'_, DWalletAccount>,
+    treasury: Pubkey,
+    chain: u8,
+    amount_usd: u64,
+    transfer: &TransferDetails,
+) -> Result<()> {
+    validate_transfer_details(transfer)?;
+    if transfer.is_legacy() {
+        return Ok(());
+    }
+
+    require!(
+        dwallet_state.treasury == treasury && dwallet_state.chain == chain,
+        AuraCoreError::InvalidExternalAccountData
+    );
+    require!(
+        dwallet_state.reserved_usd >= amount_usd,
+        AuraCoreError::ReservationUnderflow
+    );
+    dwallet_state.reserved_usd = dwallet_state.reserved_usd.saturating_sub(amount_usd);
+    Ok(())
+}
+
+fn ensure_outbound_ready_account(state: &DWalletAccount) -> Result<()> {
+    match state.status {
+        1 => Ok(()),
+        2 | 3 => err!(AuraCoreError::DWalletFrozen),
+        _ => err!(AuraCoreError::DWalletNotActive),
+    }
+}
+
+fn ensure_fresh_account(state: &DWalletAccount, now: i64) -> Result<()> {
+    if let Some(freshest) = state.assets.iter().map(|asset| asset.updated_at).max() {
+        require!(
+            now.saturating_sub(freshest) <= BALANCE_STALE_THRESHOLD_SECS,
+            AuraCoreError::BalanceStale
+        );
+    }
+    Ok(())
+}
+
+fn total_usd_account(state: &DWalletAccount) -> u64 {
+    state
+        .assets
+        .iter()
+        .fold(0u64, |acc, asset| acc.saturating_add(asset.usd_value))
+}
+
+fn available_usd_account(state: &DWalletAccount) -> u64 {
+    total_usd_account(state).saturating_sub(state.reserved_usd)
+}
+
+fn effective_spent_today_account(state: &DWalletAccount, now: i64) -> u64 {
+    if now.saturating_sub(state.spend_window_start) >= 86_400 {
+        0
+    } else {
+        state.spent_today_usd
+    }
+}
+
+fn within_limits_account(state: &DWalletAccount, amount_usd: u64, now: i64) -> bool {
+    if let Some(per_tx) = state.per_tx_limit_usd {
+        if amount_usd > per_tx {
+            return false;
+        }
+    }
+    if let Some(daily) = state.daily_limit_usd {
+        if effective_spent_today_account(state, now).saturating_add(amount_usd) > daily {
+            return false;
+        }
+    }
+    true
+}
+
+fn record_spend_account(state: &mut DWalletAccount, amount_usd: u64, now: i64) {
+    if now.saturating_sub(state.spend_window_start) >= 86_400 {
+        state.spent_today_usd = 0;
+        state.spend_window_start = now;
+    }
+    state.spent_today_usd = state.spent_today_usd.saturating_add(amount_usd);
+}
+
+fn ensure_native_assets_available_account(
+    state: &DWalletAccount,
+    transfer: &TransferDetails,
+) -> Result<()> {
+    let asset_id = transfer
+        .asset_id
+        .as_deref()
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let native_amount = transfer
+        .native_amount
+        .ok_or_else(|| error!(AuraCoreError::InsufficientWalletBalance))?;
+    let gas_asset_id = transfer.gas_asset_id.as_deref();
+    let gas_native_amount = transfer.gas_native_amount.unwrap_or(0);
+
+    let asset = state
+        .assets
+        .iter()
+        .find(|entry| entry.asset_id == asset_id)
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let required_main = if gas_asset_id == Some(asset_id) {
+        native_amount.saturating_add(gas_native_amount)
+    } else {
+        native_amount
+    };
+    require!(
+        asset.native_amount >= required_main,
+        AuraCoreError::InsufficientWalletBalance
+    );
+
+    if let Some(gas_asset_id) = gas_asset_id.filter(|gas| *gas != asset_id) {
+        let gas_asset = state
+            .assets
+            .iter()
+            .find(|entry| entry.asset_id == gas_asset_id)
+            .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+        require!(
+            gas_asset.native_amount >= gas_native_amount,
+            AuraCoreError::InsufficientWalletBalance
+        );
+    }
+
+    Ok(())
+}
+
+fn debit_native_assets_account(
+    state: &mut DWalletAccount,
+    transfer: &TransferDetails,
+    amount_usd: u64,
+) -> Result<()> {
+    ensure_native_assets_available_account(state, transfer)?;
+    let asset_id = transfer
+        .asset_id
+        .as_deref()
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let native_amount = transfer
+        .native_amount
+        .ok_or_else(|| error!(AuraCoreError::InsufficientWalletBalance))?;
+    let gas_asset_id = transfer.gas_asset_id.as_deref();
+    let gas_native_amount = transfer.gas_native_amount.unwrap_or(0);
+
+    let asset = state
+        .assets
+        .iter_mut()
+        .find(|entry| entry.asset_id == asset_id)
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let debit_main = if gas_asset_id == Some(asset_id) {
+        native_amount.saturating_add(gas_native_amount)
+    } else {
+        native_amount
+    };
+    asset.native_amount = asset.native_amount.saturating_sub(debit_main);
+    asset.usd_value = asset.usd_value.saturating_sub(amount_usd);
+
+    if let Some(gas_asset_id) = gas_asset_id.filter(|gas| *gas != asset_id) {
+        let gas_asset = state
+            .assets
+            .iter_mut()
+            .find(|entry| entry.asset_id == gas_asset_id)
+            .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+        gas_asset.native_amount = gas_asset.native_amount.saturating_sub(gas_native_amount);
+    }
+
+    Ok(())
+}
+
+fn ensure_outbound_ready(state: &crate::state::DWalletState) -> Result<()> {
+    if !state.status.permits_outbound() {
+        return Err(match state.status {
+            DWalletStatus::Frozen | DWalletStatus::FrozenOut => {
+                error!(AuraCoreError::DWalletFrozen)
+            }
+            _ => error!(AuraCoreError::DWalletNotActive),
+        });
+    }
+    Ok(())
+}
+
+fn ensure_fresh(state: &crate::state::DWalletState, now: i64) -> Result<()> {
+    if let Some(freshest) = state.assets.iter().map(|asset| asset.updated_at).max() {
+        require!(
+            now.saturating_sub(freshest) <= BALANCE_STALE_THRESHOLD_SECS,
+            AuraCoreError::BalanceStale
+        );
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+fn ensure_native_assets_available(
+    state: &crate::state::DWalletState,
+    transfer: &TransferDetails,
+) -> Result<()> {
+    let asset_id = transfer
+        .asset_id
+        .as_deref()
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let native_amount = transfer
+        .native_amount
+        .ok_or_else(|| error!(AuraCoreError::InsufficientWalletBalance))?;
+    let gas_asset_id = transfer.gas_asset_id.as_deref();
+    let gas_native_amount = transfer.gas_native_amount.unwrap_or(0);
+
+    let asset = state
+        .assets
+        .iter()
+        .find(|entry| entry.asset_id == asset_id)
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let required_main = if gas_asset_id == Some(asset_id) {
+        native_amount.saturating_add(gas_native_amount)
+    } else {
+        native_amount
+    };
+    require!(
+        asset.native_amount >= required_main,
+        AuraCoreError::InsufficientWalletBalance
+    );
+
+    if let Some(gas_asset_id) = gas_asset_id.filter(|gas| *gas != asset_id) {
+        let gas_asset = state
+            .assets
+            .iter()
+            .find(|entry| entry.asset_id == gas_asset_id)
+            .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+        require!(
+            gas_asset.native_amount >= gas_native_amount,
+            AuraCoreError::InsufficientWalletBalance
+        );
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+fn debit_native_assets(
+    state: &mut crate::state::DWalletState,
+    transfer: &TransferDetails,
+    amount_usd: u64,
+) -> Result<()> {
+    ensure_native_assets_available(state, transfer)?;
+    let asset_id = transfer
+        .asset_id
+        .as_deref()
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let native_amount = transfer
+        .native_amount
+        .ok_or_else(|| error!(AuraCoreError::InsufficientWalletBalance))?;
+    let gas_asset_id = transfer.gas_asset_id.as_deref();
+    let gas_native_amount = transfer.gas_native_amount.unwrap_or(0);
+
+    let asset = state
+        .assets
+        .iter_mut()
+        .find(|entry| entry.asset_id == asset_id)
+        .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+    let debit_main = if gas_asset_id == Some(asset_id) {
+        native_amount.saturating_add(gas_native_amount)
+    } else {
+        native_amount
+    };
+    asset.native_amount = asset.native_amount.saturating_sub(debit_main);
+    asset.usd_value = asset.usd_value.saturating_sub(amount_usd);
+
+    if let Some(gas_asset_id) = gas_asset_id.filter(|gas| *gas != asset_id) {
+        let gas_asset = state
+            .assets
+            .iter_mut()
+            .find(|entry| entry.asset_id == gas_asset_id)
+            .ok_or_else(|| error!(AuraCoreError::AssetNotTracked))?;
+        gas_asset.native_amount = gas_asset.native_amount.saturating_sub(gas_native_amount);
+    }
+
+    Ok(())
+}
+
 /// Reserves `amount_usd` of available balance ahead of an outbound proposal.
 ///
 /// Enforces that the dWallet is outbound-capable (`Active`), the amount is
@@ -56,21 +429,8 @@ pub fn reserve_dwallet_spend(
     assert_spend_authority(&ctx.accounts.treasury, ctx.accounts.authority.key())?;
     let mut state = ctx.accounts.dwallet_state.to_domain()?;
 
-    if !state.status.permits_outbound() {
-        return Err(match state.status {
-            DWalletStatus::Frozen | DWalletStatus::FrozenOut => {
-                error!(AuraCoreError::DWalletFrozen)
-            }
-            _ => error!(AuraCoreError::DWalletNotActive),
-        });
-    }
-    // Don't commit funds against a valuation that has gone stale.
-    if let Some(freshest) = state.assets.iter().map(|asset| asset.updated_at).max() {
-        require!(
-            now.saturating_sub(freshest) <= BALANCE_STALE_THRESHOLD_SECS,
-            AuraCoreError::BalanceStale
-        );
-    }
+    ensure_outbound_ready(&state)?;
+    ensure_fresh(&state, now)?;
     require!(
         state.within_limits(amount_usd, now),
         AuraCoreError::DWalletLimitExceeded
@@ -162,4 +522,96 @@ pub fn release_dwallet_spend(
         now,
     );
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aura_policy::Chain;
+
+    use crate::state::{AssetBalance, DWalletState};
+
+    fn asset(asset_id: &str, native_amount: u128, usd_value: u64) -> AssetBalance {
+        AssetBalance {
+            asset_id: asset_id.to_string(),
+            symbol: asset_id.to_uppercase(),
+            decimals: 6,
+            native_amount,
+            usd_value,
+            updated_at: 1_000,
+            feed: None,
+        }
+    }
+
+    fn state() -> DWalletState {
+        DWalletState {
+            treasury: Pubkey::new_unique().to_string(),
+            chain: Chain::Ethereum,
+            status: DWalletStatus::Active,
+            daily_limit_usd: Some(2_000),
+            per_tx_limit_usd: Some(1_000),
+            spent_today_usd: 0,
+            spend_window_start: 1_000,
+            authority: Pubkey::new_unique().to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            label: None,
+            assets: vec![asset("usdc", 1_000, 1_000), asset("eth", 50, 100)],
+            reserved_usd: 500,
+            epoch: 0,
+        }
+    }
+
+    #[test]
+    fn transfer_details_check_main_asset_and_gas_balance() {
+        let state = state();
+        let transfer = TransferDetails {
+            asset_id: Some("usdc".to_string()),
+            native_amount: Some(400),
+            decimals: Some(6),
+            gas_native_amount: Some(10),
+            gas_asset_id: Some("eth".to_string()),
+        };
+        ensure_native_assets_available(&state, &transfer).expect("asset and gas are covered");
+
+        let oversized = TransferDetails {
+            native_amount: Some(1_001),
+            ..transfer.clone()
+        };
+        assert!(ensure_native_assets_available(&state, &oversized).is_err());
+
+        let missing_gas = TransferDetails {
+            gas_asset_id: Some("matic".to_string()),
+            ..transfer
+        };
+        assert!(ensure_native_assets_available(&state, &missing_gas).is_err());
+    }
+
+    #[test]
+    fn debit_transfer_details_spends_main_asset_and_gas() {
+        let mut state = state();
+        let transfer = TransferDetails {
+            asset_id: Some("usdc".to_string()),
+            native_amount: Some(400),
+            decimals: Some(6),
+            gas_native_amount: Some(10),
+            gas_asset_id: Some("eth".to_string()),
+        };
+
+        debit_native_assets(&mut state, &transfer, 500).expect("covered transfer debits");
+
+        let usdc = state
+            .assets
+            .iter()
+            .find(|asset| asset.asset_id == "usdc")
+            .expect("usdc tracked");
+        assert_eq!(usdc.native_amount, 600);
+        assert_eq!(usdc.usd_value, 500);
+
+        let eth = state
+            .assets
+            .iter()
+            .find(|asset| asset.asset_id == "eth")
+            .expect("eth tracked");
+        assert_eq!(eth.native_amount, 40);
+    }
 }

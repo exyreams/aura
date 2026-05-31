@@ -1,4 +1,4 @@
-//! Tests for doc 05 — scheduled intents (recurrence + amount surface).
+//! Tests for scheduled intents (recurrence + amount surface).
 //!
 //! The CRUD/execute instruction wrappers run on a standalone `ScheduledIntent`
 //! PDA and route execution through `evaluate_transaction` (verified by
@@ -29,6 +29,8 @@ fn intent(kind: u8, catch_up: bool) -> ScheduledIntent {
         per_run_limit_usd: 10_000,
         total_budget_usd: None,
         spent_usd: 0,
+        in_flight_proposal_id: None,
+        in_flight_usd: 0,
         recipients: Vec::new(),
         amount_usd: 500,
         skip_on_deny: false,
@@ -82,4 +84,47 @@ fn no_catch_up_jumps_to_next_future_slot() {
     assert_eq!(skipped, 3);
     assert_eq!(intent.missed_runs, 3);
     assert_eq!(intent.runs_completed, 1);
+}
+
+#[test]
+fn settlement_moves_in_flight_run_to_spent_budget() {
+    let mut intent = intent(0, false);
+    intent.mark_run_in_flight(42, 500);
+
+    intent
+        .settle_in_flight_run(42, 500, 1_000)
+        .expect("matching promoted proposal settles");
+
+    assert_eq!(intent.in_flight_proposal_id, None);
+    assert_eq!(intent.in_flight_usd, 0);
+    assert_eq!(intent.spent_usd, 500);
+    assert_eq!(intent.runs_completed, 1);
+    assert_eq!(intent.next_run_at, 1_000 + 86_400);
+}
+
+#[test]
+fn clear_in_flight_run_releases_without_spending_or_advancing() {
+    let mut intent = intent(0, false);
+    intent.mark_run_in_flight(42, 500);
+
+    intent
+        .clear_in_flight_run(42)
+        .expect("matching abandoned proposal can be cleared");
+
+    assert_eq!(intent.in_flight_proposal_id, None);
+    assert_eq!(intent.in_flight_usd, 0);
+    assert_eq!(intent.spent_usd, 0);
+    assert_eq!(intent.runs_completed, 0);
+    assert_eq!(intent.next_run_at, 1_000);
+    assert_eq!(intent.last_run_at, 0);
+}
+
+#[test]
+fn clear_in_flight_run_rejects_wrong_proposal_id() {
+    let mut intent = intent(0, false);
+    intent.mark_run_in_flight(42, 500);
+
+    assert!(intent.clear_in_flight_run(41).is_err());
+    assert_eq!(intent.in_flight_proposal_id, Some(42));
+    assert_eq!(intent.in_flight_usd, 500);
 }

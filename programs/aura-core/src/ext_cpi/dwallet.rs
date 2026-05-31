@@ -681,6 +681,7 @@ mod tests {
             target_chain: aura_policy::Chain::Ethereum,
             tx_type: aura_policy::TransactionType::Transfer,
             amount_usd: 1_000,
+            transfer: crate::state::TransferDetails::default(),
             recipient_or_contract: "0xrecipient".to_string(),
             protocol_id: None,
             submitted_at: 1,
@@ -826,6 +827,45 @@ mod tests {
         assert_eq!(
             built.message_digest_hex,
             hex::encode(keccak_message_digest(&built.message))
+        );
+    }
+
+    #[test]
+    fn asset_aware_transfer_changes_signed_message() {
+        let mut pending = sample_pending();
+        let dwallet = DWalletReference {
+            dwallet_id: "dw-2".to_string(),
+            chain: aura_policy::Chain::Ethereum,
+            address: "0xdwallet".to_string(),
+            balance_usd: 1,
+            balance_updated_at: 0,
+            balance_oracle: None,
+            authority: "authority".to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            dwallet_account: Some(Pubkey::new_unique().to_string()),
+            authorized_user_pubkey: Some(Pubkey::new_unique().to_string()),
+            message_metadata_digest: Some(hex::encode([0x55u8; 32])),
+            public_key_hex: Some(hex::encode([0x44u8; 32])),
+            curve: crate::state::DWalletCurve::Secp256k1,
+            signature_scheme: SignatureScheme::EcdsaKeccak256,
+        };
+        let legacy_message = build_chain_message(&pending, &dwallet);
+
+        pending.transfer = crate::state::TransferDetails {
+            asset_id: Some("usdc".to_string()),
+            native_amount: Some(1_000_000),
+            decimals: Some(6),
+            gas_native_amount: Some(21_000),
+            gas_asset_id: Some("eth".to_string()),
+        };
+        let asset_message = build_chain_message(&pending, &dwallet);
+
+        assert_ne!(legacy_message, asset_message);
+        assert!(asset_message.contains("asset=usdc"));
+        assert!(asset_message.contains("gas_asset=eth"));
+        assert_ne!(
+            keccak_message_digest(&legacy_message),
+            keccak_message_digest(&asset_message)
         );
     }
 

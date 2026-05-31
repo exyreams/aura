@@ -189,10 +189,11 @@ pub fn propose_conditional_transaction(
         proposal.conditions = args.conditions.clone();
         proposal.combinator = args.combinator;
         proposal.status = proposal_status_code(if met {
-            ProposalStatus::Executed
+            ProposalStatus::Triggered
         } else {
             ProposalStatus::AwaitingCondition
         });
+        proposal.promoted_proposal_id = None;
     }
 
     if met {
@@ -205,13 +206,14 @@ pub fn propose_conditional_transaction(
             &args.recipient_or_contract,
             args.now,
         )?;
-        crate::propose_transaction(
+        let promoted_proposal_id = crate::propose_transaction(
             &mut domain,
             &ai_authority.to_string(),
             tx,
             args.recipient_or_contract,
         )
         .map_err(crate::map_treasury_error)?;
+        ctx.accounts.conditional_proposal.promoted_proposal_id = Some(promoted_proposal_id);
         sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)?;
     }
     Ok(())
@@ -273,10 +275,12 @@ pub fn try_trigger(ctx: Context<TryTrigger>) -> Result<()> {
     let recipient = proposal.recipient_or_contract.clone();
 
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-    crate::propose_transaction(&mut domain, &ai_authority, tx, recipient)
-        .map_err(crate::map_treasury_error)?;
+    let promoted_proposal_id =
+        crate::propose_transaction(&mut domain, &ai_authority, tx, recipient)
+            .map_err(crate::map_treasury_error)?;
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)?;
-    ctx.accounts.conditional_proposal.status = proposal_status_code(ProposalStatus::Executed);
+    ctx.accounts.conditional_proposal.status = proposal_status_code(ProposalStatus::Triggered);
+    ctx.accounts.conditional_proposal.promoted_proposal_id = Some(promoted_proposal_id);
     Ok(())
 }
 

@@ -2,14 +2,14 @@
 //!
 //! A `ScheduledIntent` decides *when* a recurring spend is due and tracks its
 //! recurrence budget; `execute_scheduled_intent` runs each due slot through the
-//! **same** `evaluate_transaction` policy + failure-mode path as an interactive
-//! proposal — it never bypasses policy. Fund settlement (reserve → debit) is
-//! driven afterward through the standard dWallet-transfer instructions.
+//! **same** proposal policy + failure-mode path as an interactive proposal. An
+//! approved due slot is promoted into normal pending execution; policy counters
+//! are committed only by the standard finalize path.
 
 use anchor_lang::prelude::*;
 use aura_policy::{
     evaluate_conditions, evaluate_transaction, ConditionCombinator, ConditionContext,
-    PolicyEvaluationContext, TransactionContext,
+    TransactionContext,
 };
 
 use crate::{
@@ -152,6 +152,8 @@ pub fn create_scheduled_intent(
     intent.per_run_limit_usd = args.per_run_limit_usd;
     intent.total_budget_usd = args.total_budget_usd;
     intent.spent_usd = 0;
+    intent.in_flight_proposal_id = None;
+    intent.in_flight_usd = 0;
     intent.recipients = args.recipients;
     intent.amount_usd = args.amount_usd;
     intent.skip_on_deny = args.skip_on_deny;
@@ -232,8 +234,68 @@ pub struct CloseScheduledIntent<'info> {
     pub scheduled_intent: Box<Account<'info, ScheduledIntent>>,
 }
 
-pub fn close_scheduled_intent(_ctx: Context<CloseScheduledIntent>) -> Result<()> {
+pub fn close_scheduled_intent(ctx: Context<CloseScheduledIntent>) -> Result<()> {
+    require!(
+        ctx.accounts
+            .scheduled_intent
+            .in_flight_proposal_id
+            .is_none(),
+        AuraCoreError::PendingTransactionExists
+    );
     Ok(())
+}
+
+#[derive(Accounts)]
+pub struct ClearScheduledIntentInFlight<'info> {
+    pub owner: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [TREASURY_SEED, treasury.owner.as_ref(), treasury.agent_id.as_bytes()],
+        bump = treasury.bump,
+        constraint = treasury.owner == owner.key() @ AuraCoreError::UnauthorizedOwner
+    )]
+    pub treasury: Box<Account<'info, TreasuryAccount>>,
+    #[account(
+        mut,
+        seeds = [SCHEDULED_INTENT_SEED, treasury.key().as_ref(), &scheduled_intent.intent_id.to_le_bytes()],
+        bump = scheduled_intent.bump,
+        constraint = scheduled_intent.treasury == treasury.key() @ AuraCoreError::InvalidExternalAccountData
+    )]
+    pub scheduled_intent: Box<Account<'info, ScheduledIntent>>,
+}
+
+pub fn clear_scheduled_intent_in_flight(
+    ctx: Context<ClearScheduledIntentInFlight>,
+    proposal_id: u64,
+    now: i64,
+) -> Result<()> {
+    require!(
+        ctx.accounts.scheduled_intent.in_flight_proposal_id == Some(proposal_id),
+        AuraCoreError::InvalidProposalStatus
+    );
+
+    let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    domain.sync_pending_front();
+    let still_pending = domain
+        .pending_queue
+        .iter()
+        .any(|pending| pending.proposal_id == proposal_id);
+    require!(!still_pending, AuraCoreError::PendingTransactionExists);
+
+    let intent_id = ctx.accounts.scheduled_intent.intent_id;
+    let released_usd = ctx.accounts.scheduled_intent.in_flight_usd;
+    ctx.accounts
+        .scheduled_intent
+        .clear_in_flight_run(proposal_id)?;
+    domain.audit_trail.record(
+        AuditKind::ConfigChangeExecuted,
+        format!(
+            "scheduled intent {intent_id} released abandoned in-flight proposal {proposal_id} ({released_usd} usd)"
+        ),
+        now,
+    );
+
+    sync_treasury_account(&mut ctx.accounts.treasury, &domain, now)
 }
 
 #[derive(Accounts)]
@@ -312,6 +374,10 @@ pub fn execute_scheduled_intent(ctx: Context<ExecuteScheduledIntent>) -> Result<
     // Eligibility gates.
     require!(intent.enabled, AuraCoreError::IntentDisabled);
     require!(now >= intent.next_run_at, AuraCoreError::IntentNotDue);
+    require!(
+        intent.in_flight_proposal_id.is_none(),
+        AuraCoreError::PendingTransactionExists
+    );
     if let Some(end_at) = intent.end_at {
         require!(now <= end_at, AuraCoreError::IntentExpired);
     }
@@ -335,7 +401,11 @@ pub fn execute_scheduled_intent(ctx: Context<ExecuteScheduledIntent>) -> Result<
     );
     if let Some(budget) = intent.total_budget_usd {
         require!(
-            intent.spent_usd.saturating_add(run_amount) <= budget,
+            intent
+                .spent_usd
+                .saturating_add(intent.in_flight_usd)
+                .saturating_add(run_amount)
+                <= budget,
             AuraCoreError::IntentBudgetExhausted
         );
     }
@@ -358,24 +428,33 @@ pub fn execute_scheduled_intent(ctx: Context<ExecuteScheduledIntent>) -> Result<
         recipient_or_contract: recipient,
     };
 
-    // Run the SAME policy + failure-mode path as an interactive proposal.
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let decision = evaluate_transaction(
         &domain.policy_config,
         &domain.policy_state,
-        &PolicyEvaluationContext::from(tx),
+        &domain.policy_context(tx.clone()),
     );
 
     let intent = &mut ctx.accounts.scheduled_intent;
     if decision.approved {
-        domain.policy_state = decision.next_state;
-        intent.spent_usd = intent.spent_usd.saturating_add(run_amount);
-        let skipped = intent.advance_after_run(now);
+        let ai_authority = domain.ai_authority.clone();
+        let promoted_proposal_id = crate::propose_transaction(
+            &mut domain,
+            &ai_authority,
+            tx,
+            intent
+                .recipients
+                .first()
+                .map(|r| r.address.clone())
+                .unwrap_or_default(),
+        )
+        .map_err(crate::map_treasury_error)?;
+        intent.mark_run_in_flight(promoted_proposal_id, run_amount);
         domain.audit_trail.record(
-            AuditKind::ProposalExecuted,
+            AuditKind::ProposalCreated,
             format!(
-                "scheduled intent {} run {} approved ({run_amount} usd, {skipped} slots skipped)",
-                intent.intent_id, intent.runs_completed
+                "scheduled intent {} promoted run to proposal {} ({run_amount} usd)",
+                intent.intent_id, promoted_proposal_id
             ),
             now,
         );

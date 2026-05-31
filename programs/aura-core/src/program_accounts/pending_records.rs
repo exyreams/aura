@@ -114,6 +114,40 @@ impl ComplianceMetadataRecord {
     }
 }
 
+/// Serialized form of optional chain-native transfer metadata.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct TransferDetailsRecord {
+    #[max_len(64)]
+    pub asset_id: Option<String>,
+    pub native_amount: Option<u128>,
+    pub decimals: Option<u8>,
+    pub gas_native_amount: Option<u128>,
+    #[max_len(64)]
+    pub gas_asset_id: Option<String>,
+}
+
+impl TransferDetailsRecord {
+    pub fn from_domain(domain: &TransferDetails) -> Self {
+        Self {
+            asset_id: domain.asset_id.clone(),
+            native_amount: domain.native_amount,
+            decimals: domain.decimals,
+            gas_native_amount: domain.gas_native_amount,
+            gas_asset_id: domain.gas_asset_id.clone(),
+        }
+    }
+
+    pub fn to_domain(&self) -> TransferDetails {
+        TransferDetails {
+            asset_id: self.asset_id.clone(),
+            native_amount: self.native_amount,
+            decimals: self.decimals,
+            gas_native_amount: self.gas_native_amount,
+            gas_asset_id: self.gas_asset_id.clone(),
+        }
+    }
+}
+
 /// Serialized form of `PendingTransaction`.
 /// `target_chain`, `tx_type`, and `status` are stored as `u8` codes.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
@@ -131,6 +165,7 @@ pub struct PendingProposalRecord {
     pub target_chain: u8,
     pub tx_type: u8,
     pub amount_usd: u64,
+    pub transfer: TransferDetailsRecord,
     #[max_len(128)]
     pub recipient_or_contract: String,
     pub protocol_id: Option<u8>,
@@ -163,6 +198,7 @@ impl PendingProposalRecord {
             target_chain: chain_code(domain.target_chain),
             tx_type: transaction_type_code(domain.tx_type),
             amount_usd: domain.amount_usd,
+            transfer: TransferDetailsRecord::from_domain(&domain.transfer),
             recipient_or_contract: domain.recipient_or_contract.clone(),
             protocol_id: domain.protocol_id,
             submitted_at: domain.submitted_at,
@@ -203,6 +239,7 @@ impl PendingProposalRecord {
             target_chain: chain_from_code(self.target_chain)?,
             tx_type: transaction_type_from_code(self.tx_type)?,
             amount_usd: self.amount_usd,
+            transfer: self.transfer.to_domain(),
             recipient_or_contract: self.recipient_or_contract.clone(),
             protocol_id: self.protocol_id,
             submitted_at: self.submitted_at,

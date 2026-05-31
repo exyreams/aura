@@ -1,4 +1,4 @@
-//! Tests for doc 02 — wallet runtime (controls + balances), domain surface.
+//! Tests for wallet runtime controls and balances (domain surface).
 //!
 //! The instruction wrappers (init/status/limits/label/rotate/remove + the
 //! balance ops) operate on a separate `DWalletAccount` PDA and are verified by

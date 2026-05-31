@@ -7,9 +7,10 @@ use anchor_lang::{
 };
 use aura_policy::PolicyDecision;
 use encrypt_solana_types::cpi::EncryptCpi;
-use sha2::Digest;
+use sha2::{Digest, Sha256};
+use std::fmt::{self, Write};
 
-use crate::{execution::hash_message, TreasuryError};
+use crate::TreasuryError;
 
 type TreasuryResult<T> = std::result::Result<T, TreasuryError>;
 
@@ -72,6 +73,25 @@ const DR_FHE_TYPE: usize = 98;
 const DR_TOTAL_LEN: usize = 99;
 const DR_BYTES_WRITTEN: usize = 103;
 const DR_HEADER_END: usize = 107;
+
+struct Sha256Writer(Sha256);
+
+impl Sha256Writer {
+    fn new() -> Self {
+        Self(Sha256::new())
+    }
+
+    fn finish_hex(self) -> String {
+        hex::encode(self.0.finalize())
+    }
+}
+
+impl Write for Sha256Writer {
+    fn write_str(&mut self, value: &str) -> fmt::Result {
+        self.0.update(value.as_bytes());
+        Ok(())
+    }
+}
 
 /// The result of a successful FHE graph evaluation via the Encrypt program.
 ///
@@ -247,31 +267,39 @@ impl OnchainDecryptionRequest<'_> {
 /// hashes it with `hash_message`. Used to bind the off-chain decision to the
 /// on-chain ciphertext so that `confirm_policy_decryption` can detect tampering.
 pub fn decision_digest(decision: &PolicyDecision) -> String {
-    let trace = decision
-        .trace
-        .iter()
-        .map(|outcome| {
-            format!(
-                "{}:{}:{}",
-                outcome.rule_name, outcome.passed, outcome.detail
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("|");
-
-    let state = format!(
-        "{}:{}:{}:{}:{:?}",
+    let mut writer = Sha256Writer::new();
+    write!(
+        writer,
+        "{}:{}:{}:",
+        decision.approved, decision.violation, decision.effective_daily_limit_usd
+    )
+    .expect("writing to sha256 cannot fail");
+    write!(
+        writer,
+        "{}:{}:{}:{}:{:?}:",
         decision.next_state.spent_today_usd,
         decision.next_state.last_reset_timestamp,
         decision.next_state.hourly_spent_usd,
         decision.next_state.hourly_bucket_started_at,
         decision.next_state.recent_amounts
-    );
+    )
+    .expect("writing to sha256 cannot fail");
 
-    hash_message(&format!(
-        "{}:{}:{}:{}:{}",
-        decision.approved, decision.violation, decision.effective_daily_limit_usd, state, trace
-    ))
+    for (index, outcome) in decision.trace.iter().enumerate() {
+        if index > 0 {
+            writer
+                .write_char('|')
+                .expect("writing to sha256 cannot fail");
+        }
+        write!(
+            writer,
+            "{}:{}:{}",
+            outcome.rule_name, outcome.passed, outcome.detail
+        )
+        .expect("writing to sha256 cannot fail");
+    }
+
+    writer.finish_hex()
 }
 
 /// Parses a raw `Ciphertext` account from the Encrypt program.
@@ -665,10 +693,7 @@ mod tests {
         assert_eq!(parsed.ciphertext_digest, [0x44; 32]);
         assert_eq!(parsed.fhe_type, 3);
         assert_eq!(parsed.status(), DecryptionStatus::Ready);
-        assert_eq!(
-            parsed.plaintext.as_deref(),
-            Some(42u64.to_le_bytes().as_slice())
-        );
+        assert_eq!(parsed.plaintext, Some(42u64.to_le_bytes().as_slice()));
     }
 
     #[test]

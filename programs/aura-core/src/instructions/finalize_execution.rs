@@ -1,17 +1,19 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    audit::{AuditEvent, AuditKind},
-    constants::TREASURY_SEED,
+    constants::{SCHEDULED_INTENT_SEED, TREASURY_SEED},
     ext_cpi::{
         parse_message_approval_account, verify_message_approval, DWALLET_CPI_AUTHORITY_SEED,
     },
-    program_accounts::{
-        BudgetEnvelopeAccount, ExposureGroupAccount, ExternalLivenessAccount, SwarmPoolAccount,
-        TreasuryAccount,
+    instructions::{
+        external_liveness::{enforce_liveness_gate, LivenessGate},
+        wallet_transfers::settle_transfer_details,
     },
-    program_events::emit_audit_events,
-    state::DWALLET_DEVNET_PROGRAM_ID,
+    program_accounts::{
+        BudgetEnvelopeAccount, DWalletAccount, ExposureGroupAccount, ExternalLivenessAccount,
+        PolicyStateRecord, ScheduledIntent, SwarmPoolAccount, TreasuryAccount,
+    },
+    state::{TransferDetails, DWALLET_DEVNET_PROGRAM_ID},
 };
 
 #[derive(Accounts)]
@@ -33,6 +35,15 @@ pub struct FinalizeExecution<'info> {
     #[account(mut)]
     pub exposure_group: Option<Box<Account<'info, ExposureGroupAccount>>>,
     pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
+    #[account(mut)]
+    pub dwallet_state: Option<Box<Account<'info, DWalletAccount>>>,
+    #[account(
+        mut,
+        seeds = [SCHEDULED_INTENT_SEED, treasury.key().as_ref(), &scheduled_intent.intent_id.to_le_bytes()],
+        bump = scheduled_intent.bump,
+        constraint = scheduled_intent.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub scheduled_intent: Option<Box<Account<'info, ScheduledIntent>>>,
 }
 
 /// Finalizes an approved pending transaction by verifying the dWallet signature
@@ -50,15 +61,33 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         !dwallet_finalization_paused(&ctx.accounts.treasury, now),
         crate::AuraCoreError::ExecutionScopePaused
     );
-    if ctx
+    let liveness_softening = if ctx
         .accounts
         .treasury
         .policy_config
         .liveness_config
         .require_dwallet_freshness
     {
-        enforce_dwallet_liveness(&ctx, now)?;
-    }
+        enforce_liveness_gate(
+            ctx.accounts.treasury.key(),
+            &ctx.accounts.treasury.policy_config,
+            &ctx.accounts.treasury.policy_state,
+            ctx.accounts
+                .external_liveness
+                .as_deref()
+                .map(|value| &**value),
+            LivenessGate::DWallet,
+            ctx.accounts
+                .treasury
+                .pending_queue
+                .first()
+                .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?
+                .amount_usd,
+            now,
+        )?
+    } else {
+        false
+    };
     if let Some(pool) = &ctx.accounts.swarm_pool {
         if let Some(swarm) = &ctx.accounts.treasury.swarm {
             require!(
@@ -67,7 +96,25 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
             );
         }
     }
-    let (finalized_amount_usd, next_policy_state) = verify_live_signature(&ctx, now)?;
+    let (
+        finalized_proposal_id,
+        finalized_amount_usd,
+        mut next_policy_state,
+        transfer,
+        target_chain,
+    ) = verify_live_signature(&ctx, now)?;
+    if liveness_softening {
+        record_liveness_fail_open(
+            &mut next_policy_state,
+            finalized_amount_usd,
+            now,
+            ctx.accounts
+                .treasury
+                .policy_config
+                .failure_modes
+                .fail_open_window_secs,
+        );
+    }
     let treasury_key = ctx.accounts.treasury.key();
     if let Some(pool) = &mut ctx.accounts.swarm_pool {
         pool.record_spend(treasury_key, finalized_amount_usd, now);
@@ -84,6 +131,29 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         group.assert_available(finalized_amount_usd, now)?;
         group.record_spend(finalized_amount_usd, now);
     }
+    if let Some(intent) = &mut ctx.accounts.scheduled_intent {
+        intent.settle_in_flight_run(finalized_proposal_id, finalized_amount_usd, now)?;
+    }
+    let settled_wallet_total = if transfer.requires_wallet_settlement() {
+        let dwallet_state = ctx
+            .accounts
+            .dwallet_state
+            .as_mut()
+            .ok_or_else(|| error!(crate::AuraCoreError::DWalletNotConfigured))?;
+        Some((
+            target_chain,
+            settle_transfer_details(
+                dwallet_state,
+                treasury_key,
+                target_chain,
+                finalized_amount_usd,
+                &transfer,
+                now,
+            )?,
+        ))
+    } else {
+        None
+    };
 
     let treasury = &mut ctx.accounts.treasury;
     treasury.updated_at = now;
@@ -110,6 +180,16 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
             .total_swarm_spent_usd
             .saturating_add(finalized_amount_usd);
     }
+    if let Some((chain, total_usd)) = settled_wallet_total {
+        if let Some(dwallet) = treasury
+            .dwallets
+            .iter_mut()
+            .find(|dwallet| dwallet.chain == chain)
+        {
+            dwallet.balance_usd = total_usd;
+            dwallet.balance_updated_at = now;
+        }
+    }
     if !treasury.pending_queue.is_empty() {
         treasury.pending_queue.remove(0);
     }
@@ -121,7 +201,13 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
 fn verify_live_signature(
     ctx: &Context<FinalizeExecution>,
     now: i64,
-) -> Result<(u64, crate::program_accounts::PolicyStateRecord)> {
+) -> Result<(
+    u64,
+    u64,
+    crate::program_accounts::PolicyStateRecord,
+    TransferDetails,
+    u8,
+)> {
     let pending = ctx
         .accounts
         .treasury
@@ -191,69 +277,25 @@ fn verify_live_signature(
     )
     .map_err(crate::map_treasury_error)?;
 
-    Ok((pending.amount_usd, pending.decision.next_state.clone()))
+    Ok((
+        pending.proposal_id,
+        pending.amount_usd,
+        pending.decision.next_state.clone(),
+        pending.transfer.to_domain(),
+        pending.target_chain,
+    ))
 }
 
-/// Applies the configured `dwallet_liveness` failure mode to the dWallet
-/// freshness gate. `Enforce` reverts on staleness (the prior behavior); `Skip`
-/// bypasses the gate; `Warn`/`Degrade` proceed when fail-open is configured
-/// (`max_fail_open_usd > 0`), emitting a `CheckDegraded` audit event.
-fn enforce_dwallet_liveness(ctx: &Context<FinalizeExecution>, now: i64) -> Result<()> {
-    use aura_policy::CheckMode;
-
-    let fm = &ctx.accounts.treasury.policy_config.failure_modes;
-    let mode = CheckMode::from_code(fm.dwallet_liveness).unwrap_or(CheckMode::Enforce);
-    let softenable =
-        matches!(mode, CheckMode::Warn | CheckMode::Degrade) && fm.max_fail_open_usd > 0;
-    let soften_kind = if mode == CheckMode::Warn {
-        AuditKind::CheckWarned
-    } else {
-        AuditKind::CheckDegraded
-    };
-
-    if mode == CheckMode::Skip {
-        return Ok(());
-    }
-
-    let Some(liveness) = ctx.accounts.external_liveness.as_ref() else {
-        // No freshness account supplied.
-        if softenable {
-            emit_softened(ctx, soften_kind, "dwallet_liveness account absent", now);
-            return Ok(());
-        }
-        return Err(error!(crate::AuraCoreError::ExternalDependencyStale));
-    };
-    require!(
-        liveness.treasury == ctx.accounts.treasury.key(),
-        crate::AuraCoreError::InvalidExternalAccountData
-    );
-
-    if ExternalLivenessAccount::fresh(
-        liveness.dwallet_last_verified_at,
-        liveness.max_staleness_secs,
-        now,
-    ) {
-        return Ok(());
-    }
-
-    // Stale dWallet liveness.
-    match mode {
-        CheckMode::Warn | CheckMode::Degrade if softenable => {
-            emit_softened(ctx, soften_kind, "dwallet_liveness stale", now);
-            Ok(())
-        }
-        CheckMode::Warn | CheckMode::Degrade => {
-            Err(error!(crate::AuraCoreError::FailOpenBudgetExceeded))
-        }
-        _ => Err(error!(crate::AuraCoreError::ExternalDependencyStale)),
-    }
-}
-
-fn emit_softened(ctx: &Context<FinalizeExecution>, kind: AuditKind, detail: &str, now: i64) {
-    emit_audit_events(
-        ctx.accounts.treasury.key(),
-        &[AuditEvent::new(kind, detail, now)],
-    );
+fn record_liveness_fail_open(
+    next_policy_state: &mut PolicyStateRecord,
+    amount_usd: u64,
+    now: i64,
+    window_secs: i64,
+) {
+    let mut state = next_policy_state.to_domain();
+    state.fail_open_window(now, window_secs);
+    state.record_fail_open(amount_usd);
+    *next_policy_state = PolicyStateRecord::from_domain(&state);
 }
 
 fn dwallet_finalization_paused(treasury: &TreasuryAccount, now: i64) -> bool {

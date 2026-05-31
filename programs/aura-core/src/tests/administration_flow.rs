@@ -1,4 +1,4 @@
-//! Tests for doc 01 — CRUD completion (domain-level surface).
+//! Tests for account lifecycle completion (domain-level surface).
 //!
 //! Instruction wrappers that only edit standalone PDAs (operator role, fee
 //! recipient, session key, address list, exposure group, swarm pool) are

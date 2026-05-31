@@ -217,12 +217,14 @@ pub use request_policy_decryption::RequestPolicyDecryption;
 pub(crate) use request_policy_decryption::__client_accounts_request_policy_decryption;
 pub(crate) use request_policy_decryption::__cpi_client_accounts_request_policy_decryption;
 pub use scheduled_intents::{
-    CloseScheduledIntent, CreateScheduledIntent, ExecuteScheduledIntent, ManageScheduledIntent,
-    ScheduledIntentArgs,
+    ClearScheduledIntentInFlight, CloseScheduledIntent, CreateScheduledIntent,
+    ExecuteScheduledIntent, ManageScheduledIntent, ScheduledIntentArgs,
 };
 pub(crate) use scheduled_intents::{
-    __client_accounts_close_scheduled_intent, __client_accounts_create_scheduled_intent,
-    __client_accounts_execute_scheduled_intent, __client_accounts_manage_scheduled_intent,
+    __client_accounts_clear_scheduled_intent_in_flight, __client_accounts_close_scheduled_intent,
+    __client_accounts_create_scheduled_intent, __client_accounts_execute_scheduled_intent,
+    __client_accounts_manage_scheduled_intent,
+    __cpi_client_accounts_clear_scheduled_intent_in_flight,
     __cpi_client_accounts_close_scheduled_intent, __cpi_client_accounts_create_scheduled_intent,
     __cpi_client_accounts_execute_scheduled_intent, __cpi_client_accounts_manage_scheduled_intent,
 };
@@ -322,6 +324,7 @@ fn sync_treasury_pending_account_with_events(
     emit_proposal: bool,
 ) -> Result<()> {
     account.updated_at = updated_at;
+    account.next_proposal_id = domain.next_proposal_id;
     account.execution_paused = domain.execution_paused;
     account.agent_state = lifecycle_state_code(domain.agent_state);
     account.confidential_guardrails = domain
@@ -329,15 +332,19 @@ fn sync_treasury_pending_account_with_events(
         .as_ref()
         .map(ConfidentialGuardrailsRecord::from_domain);
 
-    let pending = domain
-        .active_pending()
-        .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
-    let pending_record = PendingProposalRecord::from_domain(pending)?;
-    if account.pending_queue.is_empty() {
-        account.pending_queue.push(pending_record);
+    account.pending_queue = if domain.pending_queue.is_empty() {
+        let pending = domain
+            .pending
+            .as_ref()
+            .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
+        vec![PendingProposalRecord::from_domain(pending)?]
     } else {
-        account.pending_queue[0] = pending_record;
-    }
+        domain
+            .pending_queue
+            .iter()
+            .map(PendingProposalRecord::from_domain)
+            .collect::<Result<Vec<_>>>()?
+    };
 
     emit_audit_events(account.key(), domain.audit_trail.events());
     if emit_proposal {

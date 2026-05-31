@@ -48,9 +48,11 @@ fn reputation_policy_scales_the_daily_limit() {
 
 #[test]
 fn rolling_weekly_and_monthly_limits_block_projected_spend() {
-    let mut state = PolicyState::default();
-    state.daily_buckets = [100, 100, 100, 100, 100, 100, 100];
-    state.thirty_day_spent_usd = 900;
+    let state = PolicyState {
+        daily_buckets: [100, 100, 100, 100, 100, 100, 100],
+        thirty_day_spent_usd: 900,
+        ..PolicyState::default()
+    };
     let config = PolicyConfig {
         weekly_limit_usd: Some(750),
         monthly_limit_usd: Some(1_200),

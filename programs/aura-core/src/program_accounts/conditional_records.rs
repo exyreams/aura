@@ -16,9 +16,12 @@ pub struct ConditionalProposal {
     pub bump: u8,
     pub treasury: Pubkey,
     pub proposal_id: u64,
-    /// `proposal_status_code`: `AwaitingCondition` while parked, `Executed` once
-    /// promoted, `Expired`/`Cancelled` otherwise.
+    /// `proposal_status_code`: `AwaitingCondition` while parked, `Triggered`
+    /// once promoted into normal pending execution, `Expired`/`Cancelled`
+    /// otherwise.
     pub status: u8,
+    /// Pending proposal id created when this conditional request is promoted.
+    pub promoted_proposal_id: Option<u64>,
     /// AI authority that submitted this proposal (authorizes promotion).
     pub ai_authority: Pubkey,
     pub amount_usd: u64,

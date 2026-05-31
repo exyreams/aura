@@ -22,6 +22,37 @@ pub enum ProposalStatus {
     /// Submitted with trigger conditions that are not yet met; parked until a
     /// `try_trigger` finds them satisfied (or the TTL expires).
     AwaitingCondition,
+    /// Trigger conditions were satisfied and the request was promoted into the
+    /// normal pending execution queue. It is not finalized yet.
+    Triggered,
+}
+
+/// Optional chain-native transfer payload bound to a proposal.
+///
+/// Legacy proposals leave every field `None` and keep the historical USD-only
+/// message format. When any field is set, the proposal digest and dWallet
+/// message also bind the concrete asset/native amount/gas payload.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TransferDetails {
+    pub asset_id: Option<String>,
+    pub native_amount: Option<u128>,
+    pub decimals: Option<u8>,
+    pub gas_native_amount: Option<u128>,
+    pub gas_asset_id: Option<String>,
+}
+
+impl TransferDetails {
+    pub fn is_legacy(&self) -> bool {
+        self.asset_id.is_none()
+            && self.native_amount.is_none()
+            && self.decimals.is_none()
+            && self.gas_native_amount.is_none()
+            && self.gas_asset_id.is_none()
+    }
+
+    pub fn requires_wallet_settlement(&self) -> bool {
+        !self.is_legacy()
+    }
 }
 
 /// Tracks an in-flight decryption request submitted to the Encrypt network.
@@ -84,6 +115,8 @@ pub struct PendingTransaction {
     pub tx_type: TransactionType,
     /// Transaction amount in USD.
     pub amount_usd: u64,
+    /// Optional chain-native asset/gas payload.
+    pub transfer: TransferDetails,
     /// Destination address or contract on the target chain.
     pub recipient_or_contract: String,
     /// Optional DeFi protocol identifier for whitelist checks.

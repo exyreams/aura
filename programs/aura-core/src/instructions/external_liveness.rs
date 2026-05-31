@@ -6,14 +6,147 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    audit::AuditKind,
+    audit::{AuditEvent, AuditKind},
     constants::{EXTERNAL_LIVENESS_SEED, TREASURY_SEED},
     instructions::sync_treasury_account,
     program_accounts::{
-        role_permissions, ExternalLivenessAccount, OperatorRoleAccount, TreasuryAccount,
-        EXTERNAL_LIVENESS_SPACE,
+        role_permissions, ExternalLivenessAccount, OperatorRoleAccount, PolicyConfigRecord,
+        PolicyStateRecord, TreasuryAccount, EXTERNAL_LIVENESS_SPACE,
     },
+    program_events::emit_audit_events,
 };
+
+/// External dependency whose freshness can be required by an instruction.
+#[derive(Clone, Copy)]
+pub enum LivenessGate {
+    Encrypt,
+    DWallet,
+    BalanceOracle,
+    ComplianceOracle,
+}
+
+impl LivenessGate {
+    fn mode_code(self, config: &PolicyConfigRecord) -> u8 {
+        match self {
+            Self::Encrypt => config.failure_modes.encrypt_liveness,
+            Self::DWallet => config.failure_modes.dwallet_liveness,
+            Self::BalanceOracle => config.failure_modes.balance_oracle_stale,
+            Self::ComplianceOracle => config.failure_modes.compliance_oracle,
+        }
+    }
+
+    fn last_verified_at(self, liveness: &ExternalLivenessAccount) -> i64 {
+        match self {
+            Self::Encrypt => liveness.encrypt_last_verified_at,
+            Self::DWallet => liveness.dwallet_last_verified_at,
+            Self::BalanceOracle => liveness.balance_oracle_last_verified_at,
+            Self::ComplianceOracle => liveness.compliance_oracle_last_verified_at,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Encrypt => "encrypt_liveness",
+            Self::DWallet => "dwallet_liveness",
+            Self::BalanceOracle => "balance_oracle_stale",
+            Self::ComplianceOracle => "compliance_oracle",
+        }
+    }
+}
+
+/// Applies the configured failure mode for an external freshness gate.
+///
+/// Returns `true` when a stale/missing dependency was softened under Warn or
+/// Degrade. The caller decides where to persist the fail-open counter, because
+/// proposal-time and finalize-time paths commit policy state differently.
+pub fn enforce_liveness_gate(
+    treasury_key: Pubkey,
+    policy_config: &PolicyConfigRecord,
+    policy_state: &PolicyStateRecord,
+    liveness: Option<&ExternalLivenessAccount>,
+    gate: LivenessGate,
+    amount_usd: u64,
+    now: i64,
+) -> Result<bool> {
+    use aura_policy::CheckMode;
+
+    let mode = CheckMode::from_code(gate.mode_code(policy_config)).unwrap_or(CheckMode::Enforce);
+    if mode == CheckMode::Skip {
+        return Ok(false);
+    }
+    let soften_kind = if mode == CheckMode::Warn {
+        AuditKind::CheckWarned
+    } else {
+        AuditKind::CheckDegraded
+    };
+
+    let Some(liveness) = liveness else {
+        return soften_or_revert(
+            treasury_key,
+            policy_config,
+            policy_state,
+            amount_usd,
+            mode,
+            soften_kind,
+            format!("{} account absent", gate.label()),
+            now,
+        );
+    };
+    require!(
+        liveness.treasury == treasury_key,
+        crate::AuraCoreError::InvalidExternalAccountData
+    );
+
+    if ExternalLivenessAccount::fresh(
+        gate.last_verified_at(liveness),
+        liveness.max_staleness_secs,
+        now,
+    ) {
+        return Ok(false);
+    }
+
+    soften_or_revert(
+        treasury_key,
+        policy_config,
+        policy_state,
+        amount_usd,
+        mode,
+        soften_kind,
+        format!("{} stale", gate.label()),
+        now,
+    )
+}
+
+fn soften_or_revert(
+    treasury_key: Pubkey,
+    policy_config: &PolicyConfigRecord,
+    policy_state: &PolicyStateRecord,
+    amount_usd: u64,
+    mode: aura_policy::CheckMode,
+    soften_kind: AuditKind,
+    detail: String,
+    now: i64,
+) -> Result<bool> {
+    use aura_policy::CheckMode;
+
+    match mode {
+        CheckMode::Warn | CheckMode::Degrade => {
+            let fm = policy_config.failure_modes.to_domain();
+            if mode == CheckMode::Degrade && amount_usd > fm.stale_fallback_limit_usd {
+                return Err(error!(crate::AuraCoreError::FailOpenBudgetExceeded));
+            }
+            let mut state = policy_state.to_domain();
+            let (spent, count) = state.fail_open_window(now, fm.fail_open_window_secs);
+            require!(
+                fm.fail_open_allows(amount_usd, spent, count),
+                crate::AuraCoreError::FailOpenBudgetExceeded
+            );
+            emit_audit_events(treasury_key, &[AuditEvent::new(soften_kind, detail, now)]);
+            Ok(true)
+        }
+        _ => Err(error!(crate::AuraCoreError::ExternalDependencyStale)),
+    }
+}
 
 /// Instruction data for `init_external_liveness`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

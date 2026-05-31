@@ -12,7 +12,7 @@ use crate::{
     ext_cpi::decision_digest,
     state::{
         AgentTreasury, ExecutionReceipt, PendingDecryptionRequest, PendingSignatureRequest,
-        PendingTransaction, ProposalStatus,
+        PendingTransaction, ProposalStatus, TransferDetails,
     },
 };
 
@@ -46,8 +46,24 @@ pub fn evaluate_batch_preview(
 pub fn propose_transaction(
     treasury: &mut AgentTreasury,
     ai_signer: &str,
+    tx: TransactionContext,
+    recipient_or_contract: impl Into<String>,
+) -> Result<u64, TreasuryError> {
+    propose_transaction_with_transfer(
+        treasury,
+        ai_signer,
+        tx,
+        recipient_or_contract,
+        TransferDetails::default(),
+    )
+}
+
+pub fn propose_transaction_with_transfer(
+    treasury: &mut AgentTreasury,
+    ai_signer: &str,
     mut tx: TransactionContext,
     recipient_or_contract: impl Into<String>,
+    transfer: TransferDetails,
 ) -> Result<u64, TreasuryError> {
     if ai_signer != treasury.ai_authority {
         return Err(TreasuryError::UnauthorizedAi);
@@ -79,6 +95,7 @@ pub fn propose_transaction(
         amount_usd,
         submitted_at,
         &policy_output_digest,
+        &transfer,
     );
 
     let approval = pending_approval_requirements(treasury, &decision, amount_usd, submitted_at);
@@ -95,6 +112,7 @@ pub fn propose_transaction(
         target_chain,
         tx_type,
         amount_usd,
+        transfer,
         recipient_or_contract,
         protocol_id,
         submitted_at,
@@ -139,10 +157,30 @@ pub fn propose_transaction(
 pub fn propose_confidential_transaction(
     treasury: &mut AgentTreasury,
     ai_signer: &str,
+    tx: TransactionContext,
+    recipient_or_contract: impl Into<String>,
+    amount_ciphertext_account: &str,
+    policy_output_ciphertext_account: &str,
+) -> Result<u64, TreasuryError> {
+    propose_confidential_transaction_with_transfer(
+        treasury,
+        ai_signer,
+        tx,
+        recipient_or_contract,
+        amount_ciphertext_account,
+        policy_output_ciphertext_account,
+        TransferDetails::default(),
+    )
+}
+
+pub fn propose_confidential_transaction_with_transfer(
+    treasury: &mut AgentTreasury,
+    ai_signer: &str,
     mut tx: TransactionContext,
     recipient_or_contract: impl Into<String>,
     amount_ciphertext_account: &str,
     policy_output_ciphertext_account: &str,
+    transfer: TransferDetails,
 ) -> Result<u64, TreasuryError> {
     if ai_signer != treasury.ai_authority {
         return Err(TreasuryError::UnauthorizedAi);
@@ -192,6 +230,7 @@ pub fn propose_confidential_transaction(
         amount_usd,
         submitted_at,
         &policy_output_digest,
+        &transfer,
     );
 
     let approval = pending_approval_requirements(treasury, &decision, amount_usd, submitted_at);
@@ -210,6 +249,7 @@ pub fn propose_confidential_transaction(
         target_chain,
         tx_type,
         amount_usd,
+        transfer,
         recipient_or_contract,
         protocol_id,
         submitted_at,

@@ -1,4 +1,4 @@
-//! Tests for doc 03 — policy templates (record + parameterization surface).
+//! Tests for policy templates (record + parameterization surface).
 //!
 //! The CRUD/apply instruction wrappers operate on a standalone `PolicyTemplate`
 //! PDA and are verified by compilation + account constraints + the on-chain

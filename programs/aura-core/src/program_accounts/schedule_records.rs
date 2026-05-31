@@ -64,7 +64,14 @@ pub struct ScheduledIntent {
     pub per_run_limit_usd: u64,
     /// Optional lifetime budget across all runs.
     pub total_budget_usd: Option<u64>,
+    /// USD finalized through the normal pending/finalize flow.
     pub spent_usd: u64,
+    /// Pending proposal created by the most recent approved run, if it has not
+    /// finalized yet.
+    pub in_flight_proposal_id: Option<u64>,
+    /// USD committed to the in-flight proposal above. Counts against lifetime
+    /// budget until the finalize hook moves it to `spent_usd`.
+    pub in_flight_usd: u64,
     #[max_len(8)]
     pub recipients: Vec<ScheduleRecipient>,
     /// Fixed USD per run for single-recipient kinds (Transfer / DcaBuy / Sweep).
@@ -113,5 +120,45 @@ impl ScheduledIntent {
             self.missed_runs = self.missed_runs.saturating_add(skipped);
             skipped
         }
+    }
+
+    /// Marks an approved scheduled slot as promoted into the ordinary pending
+    /// execution queue.
+    pub fn mark_run_in_flight(&mut self, proposal_id: u64, amount_usd: u64) {
+        self.in_flight_proposal_id = Some(proposal_id);
+        self.in_flight_usd = amount_usd;
+    }
+
+    /// Records settlement of the in-flight run after normal finalization.
+    pub fn settle_in_flight_run(
+        &mut self,
+        proposal_id: u64,
+        amount_usd: u64,
+        now: i64,
+    ) -> Result<()> {
+        require!(
+            self.in_flight_proposal_id == Some(proposal_id) && self.in_flight_usd >= amount_usd,
+            AuraCoreError::InvalidProposalStatus
+        );
+        self.in_flight_usd = self.in_flight_usd.saturating_sub(amount_usd);
+        if self.in_flight_usd == 0 {
+            self.in_flight_proposal_id = None;
+        }
+        self.spent_usd = self.spent_usd.saturating_add(amount_usd);
+        self.advance_after_run(now);
+        Ok(())
+    }
+
+    /// Releases an abandoned promoted run without spending budget or advancing
+    /// the schedule. The instruction layer only calls this after confirming the
+    /// referenced proposal is no longer pending.
+    pub fn clear_in_flight_run(&mut self, proposal_id: u64) -> Result<()> {
+        require!(
+            self.in_flight_proposal_id == Some(proposal_id),
+            AuraCoreError::InvalidProposalStatus
+        );
+        self.in_flight_proposal_id = None;
+        self.in_flight_usd = 0;
+        Ok(())
     }
 }

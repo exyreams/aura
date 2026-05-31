@@ -8,10 +8,14 @@ use crate::{
         approve_message_via_cpi, build_message_approval_request, parse_runtime_pubkey,
         pending_signature_request_from_live, DWALLET_CPI_AUTHORITY_SEED,
     },
-    instructions::sync_treasury_account,
+    instructions::{
+        external_liveness::{enforce_liveness_gate, LivenessGate},
+        sync_treasury_account,
+        wallet_transfers::release_transfer_reservation,
+    },
     program_accounts::{
-        proposal_status_code, ExternalLivenessAccount, PendingSignatureRequestRecord,
-        TreasuryAccount,
+        chain_code, proposal_status_code, DWalletAccount, ExternalLivenessAccount,
+        PendingSignatureRequestRecord, TreasuryAccount,
     },
     program_events::emit_execution_event,
     state::{ProposalStatus, SignatureScheme},
@@ -41,6 +45,8 @@ pub struct ExecutePending<'info> {
     /// CHECK: DWalletCoordinator PDA on the dWallet program. Required for approve_message flows.
     pub dwallet_coordinator: Option<UncheckedAccount<'info>>,
     pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
+    #[account(mut)]
+    pub dwallet_state: Option<Box<Account<'info, DWalletAccount>>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -57,7 +63,31 @@ pub struct ExecutePending<'info> {
 pub fn handler(mut ctx: Context<ExecutePending>, now: i64) -> Result<()> {
     let signature = {
         let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-        expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
+        let pending_before_expiry = domain.active_pending().cloned();
+        match expire_pending_transaction(domain.as_mut(), now) {
+            Ok(()) => {}
+            Err(crate::TreasuryError::PendingTransactionExpired) => {
+                if let Some(pending) = pending_before_expiry
+                    .filter(|pending| pending.transfer.requires_wallet_settlement())
+                {
+                    let dwallet_state = ctx
+                        .accounts
+                        .dwallet_state
+                        .as_mut()
+                        .ok_or_else(|| error!(crate::AuraCoreError::DWalletNotConfigured))?;
+                    release_transfer_reservation(
+                        dwallet_state,
+                        ctx.accounts.treasury.key(),
+                        chain_code(pending.target_chain),
+                        pending.amount_usd,
+                        &pending.transfer,
+                    )?;
+                }
+                sync_treasury_account(&mut ctx.accounts.treasury, domain.as_ref(), now)?;
+                return Ok(());
+            }
+            Err(error) => return Err(crate::map_treasury_error(error)),
+        }
         let pending = domain
             .pending
             .as_ref()
@@ -99,16 +129,22 @@ pub fn handler(mut ctx: Context<ExecutePending>, now: i64) -> Result<()> {
             .liveness_config
             .require_dwallet_freshness
         {
-            let liveness = ctx
-                .accounts
-                .external_liveness
-                .as_ref()
-                .ok_or_else(|| error!(crate::AuraCoreError::ExternalDependencyStale))?;
-            require!(
-                liveness.treasury == ctx.accounts.treasury.key(),
-                crate::AuraCoreError::InvalidExternalAccountData
-            );
-            liveness.require_dwallet_fresh(now)?;
+            enforce_liveness_gate(
+                ctx.accounts.treasury.key(),
+                &ctx.accounts.treasury.policy_config,
+                &ctx.accounts.treasury.policy_state,
+                ctx.accounts
+                    .external_liveness
+                    .as_deref()
+                    .map(|value| &**value),
+                LivenessGate::DWallet,
+                domain
+                    .pending
+                    .as_ref()
+                    .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?
+                    .amount_usd,
+                now,
+            )?;
         }
         enforce_pending_approval(
             domain

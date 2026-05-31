@@ -49,15 +49,16 @@ use instructions::{
     __client_accounts_apply_policy_preset, __client_accounts_apply_policy_template,
     __client_accounts_approve_pending_execution, __client_accounts_attest_policy,
     __client_accounts_cancel_pending, __client_accounts_check_invariants,
-    __client_accounts_check_policy_cpi, __client_accounts_close_activity_log,
-    __client_accounts_close_address_list, __client_accounts_close_conditional_proposal,
-    __client_accounts_close_exposure_group, __client_accounts_close_external_liveness,
-    __client_accounts_close_fee_vault, __client_accounts_close_health_score,
-    __client_accounts_close_policy_history, __client_accounts_close_policy_template,
-    __client_accounts_close_scheduled_intent, __client_accounts_close_session_key,
-    __client_accounts_close_snapshot, __client_accounts_close_swarm_pool,
-    __client_accounts_collect_fees, __client_accounts_collect_override_signature,
-    __client_accounts_configure_approval_ladder, __client_accounts_configure_budget_envelope,
+    __client_accounts_check_policy_cpi, __client_accounts_clear_scheduled_intent_in_flight,
+    __client_accounts_close_activity_log, __client_accounts_close_address_list,
+    __client_accounts_close_conditional_proposal, __client_accounts_close_exposure_group,
+    __client_accounts_close_external_liveness, __client_accounts_close_fee_vault,
+    __client_accounts_close_health_score, __client_accounts_close_policy_history,
+    __client_accounts_close_policy_template, __client_accounts_close_scheduled_intent,
+    __client_accounts_close_session_key, __client_accounts_close_snapshot,
+    __client_accounts_close_swarm_pool, __client_accounts_collect_fees,
+    __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
+    __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
@@ -92,6 +93,7 @@ use instructions::{
     __cpi_client_accounts_apply_policy_template, __cpi_client_accounts_approve_pending_execution,
     __cpi_client_accounts_attest_policy, __cpi_client_accounts_cancel_pending,
     __cpi_client_accounts_check_invariants, __cpi_client_accounts_check_policy_cpi,
+    __cpi_client_accounts_clear_scheduled_intent_in_flight,
     __cpi_client_accounts_close_activity_log, __cpi_client_accounts_close_address_list,
     __cpi_client_accounts_close_conditional_proposal, __cpi_client_accounts_close_exposure_group,
     __cpi_client_accounts_close_external_liveness, __cpi_client_accounts_close_fee_vault,
@@ -664,6 +666,14 @@ pub mod aura_core {
         instructions::scheduled_intents::close_scheduled_intent(ctx)
     }
 
+    pub fn clear_scheduled_intent_in_flight(
+        ctx: Context<ClearScheduledIntentInFlight>,
+        proposal_id: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::scheduled_intents::clear_scheduled_intent_in_flight(ctx, proposal_id, now)
+    }
+
     pub fn execute_scheduled_intent(ctx: Context<ExecuteScheduledIntent>) -> Result<()> {
         instructions::scheduled_intents::execute_scheduled_intent(ctx)
     }
@@ -876,7 +886,8 @@ pub use execution::{
     evaluate_batch_preview, expire_pending_transaction, finalize_signed_pending,
     generate_proposal_digest, hash_message, keccak_message_digest, keccak_message_digest_hex,
     mark_pending_decryption_request, mark_signature_requested, propose_confidential_transaction,
-    propose_transaction,
+    propose_confidential_transaction_with_transfer, propose_transaction,
+    propose_transaction_with_transfer,
 };
 pub use ext_cpi::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex, decrypt_u64,

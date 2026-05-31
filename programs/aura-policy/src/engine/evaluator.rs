@@ -552,6 +552,10 @@ pub fn evaluate_transaction(
             let (mean, std_dev) = compute_stats_integer(&state.recent_amounts);
             let z_score = z_score_bps(tx.amount_usd, mean, std_dev);
             if z_score > anomaly_cfg.z_score_threshold_bps {
+                let detail = format!(
+                    "z-score {}bps > {}bps",
+                    z_score, anomaly_cfg.z_score_threshold_bps
+                );
                 risk_score = risk_score.max(85);
                 risk_factors.push(RiskFactor {
                     name: "anomaly_detection".to_string(),
@@ -561,14 +565,36 @@ pub fn evaluate_transaction(
                         z_score, anomaly_cfg.z_score_threshold_bps, mean, std_dev
                     ),
                 });
-                trace.push(RuleOutcome::failed(
-                    "anomaly_detection",
-                    format!(
-                        "z-score {}bps > {}bps",
-                        z_score, anomaly_cfg.z_score_threshold_bps
+                let deny_anomaly = match anomaly_cfg.action {
+                    AnomalyAction::Deny => deny_after_softening(
+                        SoftenableCheck::Anomaly,
+                        "anomaly_detection",
+                        detail,
+                        config,
+                        tx.amount_usd,
+                        tx.current_timestamp,
+                        &mut state,
+                        &mut trace,
                     ),
-                ));
-                if anomaly_cfg.action == AnomalyAction::Deny {
+                    AnomalyAction::FlagForReview | AnomalyAction::RequireGuardianCosign => {
+                        if config.failure_modes.anomaly == CheckMode::Enforce {
+                            trace.push(RuleOutcome::warned("anomaly_detection", detail));
+                            false
+                        } else {
+                            deny_after_softening(
+                                SoftenableCheck::Anomaly,
+                                "anomaly_detection",
+                                detail,
+                                config,
+                                tx.amount_usd,
+                                tx.current_timestamp,
+                                &mut state,
+                                &mut trace,
+                            )
+                        }
+                    }
+                };
+                if deny_anomaly {
                     return deny(
                         state,
                         ViolationCode::AnomalyDetected,

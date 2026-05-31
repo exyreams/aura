@@ -25,7 +25,7 @@ use crate::{
         DWalletCurve, DWalletReference, DeadMansSwitch, GuardianChangeAction, PendingAiRotation,
         PendingConfigChange, PendingDecryptionRequest, PendingGuardianChange,
         PendingSignatureRequest, PendingTransaction, ProposalStatus, ProtocolDeployment,
-        ProtocolFees, SignatureScheme,
+        ProtocolFees, SignatureScheme, TransferDetails,
     },
 };
 

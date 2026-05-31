@@ -7,7 +7,10 @@ use crate::{
         parse_ciphertext_account, AuraEncryptContext, ENCRYPT_CPI_AUTHORITY_SEED,
         ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
     },
-    instructions::sync_treasury_account,
+    instructions::{
+        external_liveness::{enforce_liveness_gate, LivenessGate},
+        sync_treasury_account,
+    },
     program_accounts::{
         chain_from_code, transaction_type_from_code, ExternalLivenessAccount, TreasuryAccount,
     },
@@ -98,24 +101,28 @@ pub fn handler(
         ),
         crate::AuraCoreError::ExecutionScopePaused
     );
-    if ctx
+    let liveness_softening = if ctx
         .accounts
         .treasury
         .policy_config
         .liveness_config
         .require_encrypt_freshness
     {
-        let liveness = ctx
-            .accounts
-            .external_liveness
-            .as_ref()
-            .ok_or_else(|| error!(crate::AuraCoreError::ExternalDependencyStale))?;
-        require!(
-            liveness.treasury == ctx.accounts.treasury.key(),
-            crate::AuraCoreError::InvalidExternalAccountData
-        );
-        liveness.require_encrypt_fresh(args.current_timestamp)?;
-    }
+        enforce_liveness_gate(
+            ctx.accounts.treasury.key(),
+            &ctx.accounts.treasury.policy_config,
+            &ctx.accounts.treasury.policy_state,
+            ctx.accounts
+                .external_liveness
+                .as_deref()
+                .map(|value| &**value),
+            LivenessGate::Encrypt,
+            args.amount_usd,
+            args.current_timestamp,
+        )?
+    } else {
+        false
+    };
     let guardrails = ctx
         .accounts
         .treasury
@@ -197,6 +204,20 @@ pub fn handler(
         &policy_output_ciphertext_account,
     )
     .map_err(crate::map_treasury_error)?;
+    if liveness_softening {
+        let fail_open_window_secs = domain.policy_config.failure_modes.fail_open_window_secs;
+        if let Some(pending) = domain.active_pending_mut() {
+            pending
+                .decision
+                .next_state
+                .fail_open_window(args.current_timestamp, fail_open_window_secs);
+            pending
+                .decision
+                .next_state
+                .record_fail_open(args.amount_usd);
+        }
+        domain.sync_pending_front();
+    }
     let should_execute_fhe = domain
         .pending
         .as_ref()

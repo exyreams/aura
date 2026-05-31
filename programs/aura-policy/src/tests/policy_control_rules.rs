@@ -1,9 +1,10 @@
 use crate::{
     config::{
         evaluate_conditions, is_fresh, required_approval_level, validate_policy_config,
-        ApprovalLadder, ApprovalLevel, BudgetEnvelope, BudgetEnvelopeScope, BudgetEnvelopeSet,
-        CheckMode, Condition, ConditionCombinator, ConditionContext, ConditionKind, PauseScope,
-        PolicyConfigInvariant, PolicyPresetKind, ScopedPauseControls, ScopedPauseEntry,
+        AnomalyAction, AnomalyConfig, ApprovalLadder, ApprovalLevel, BudgetEnvelope,
+        BudgetEnvelopeScope, BudgetEnvelopeSet, CheckMode, Condition, ConditionCombinator,
+        ConditionContext, ConditionKind, PauseScope, PolicyConfigInvariant, PolicyPresetKind,
+        ScopedPauseControls, ScopedPauseEntry,
     },
     context::PolicyEvaluationContext,
     decision::{explain_decision, rule_outcome_bitmap},
@@ -81,7 +82,7 @@ fn conditions_evaluate_each_kind() {
         window_end: 2_000,
         negate: false,
     };
-    assert!(evaluate_conditions(&ctx, &[win.clone()], all));
+    assert!(evaluate_conditions(&ctx, std::slice::from_ref(&win), all));
 }
 
 #[test]
@@ -233,6 +234,61 @@ fn fail_open_budget_force_enforces_above_cap() {
     assert_eq!(decision.violation, ViolationCode::QuoteStale);
 }
 
+fn anomaly_test_config(action: AnomalyAction) -> PolicyConfig {
+    PolicyConfig {
+        anomaly_config: Some(AnomalyConfig {
+            enabled: true,
+            z_score_threshold_bps: 1_000,
+            min_sample_size: 3,
+            action,
+        }),
+        ..PolicyConfig::default()
+    }
+}
+
+fn anomaly_state() -> PolicyState {
+    PolicyState {
+        recent_amounts: vec![90, 100, 110],
+        ..PolicyState::default()
+    }
+}
+
+#[test]
+fn anomaly_deny_can_be_softened_by_failure_mode() {
+    let mut config = anomaly_test_config(AnomalyAction::Deny);
+    config.failure_modes.anomaly = CheckMode::Warn;
+    config.failure_modes.max_fail_open_usd = 10_000;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+
+    let mut tx = base_tx();
+    tx.amount_usd = 500;
+    let decision = evaluate_transaction(&config, &anomaly_state(), &tx.into());
+
+    assert!(decision.approved);
+    assert_eq!(decision.next_state.fail_open_count, 1);
+    assert!(decision
+        .trace
+        .iter()
+        .any(|o| o.rule_name == "anomaly_detection" && o.detail.starts_with("[warn]")));
+}
+
+#[test]
+fn anomaly_deny_still_force_enforces_when_fail_open_budget_is_exhausted() {
+    let mut config = anomaly_test_config(AnomalyAction::Deny);
+    config.failure_modes.anomaly = CheckMode::Warn;
+    config.failure_modes.max_fail_open_usd = 100;
+    config.failure_modes.fail_open_budget_usd = 10_000;
+    config.failure_modes.fail_open_max_per_window = 5;
+
+    let mut tx = base_tx();
+    tx.amount_usd = 500;
+    let decision = evaluate_transaction(&config, &anomaly_state(), &tx.into());
+
+    assert!(!decision.approved);
+    assert_eq!(decision.violation, ViolationCode::AnomalyDetected);
+}
+
 #[test]
 fn always_enforce_per_tx_limit_ignores_failure_modes() {
     // Even with every softenable check skipped, the hard per-tx cap still denies.
@@ -274,23 +330,27 @@ fn validate_policy_config_rejects_incoherent_configs() {
     );
 
     // non-monotonic approval ladder
-    let mut cfg = PolicyConfig::default();
-    cfg.approval_ladder = Some(ApprovalLadder {
-        guardian_above_usd: 5_000,
-        multisig_above_usd: 1_000,
-        timelock_above_usd: 10_000,
-        deny_above_usd: 20_000,
-        ..ApprovalLadder::default()
-    });
+    let cfg = PolicyConfig {
+        approval_ladder: Some(ApprovalLadder {
+            guardian_above_usd: 5_000,
+            multisig_above_usd: 1_000,
+            timelock_above_usd: 10_000,
+            deny_above_usd: 20_000,
+            ..ApprovalLadder::default()
+        }),
+        ..PolicyConfig::default()
+    };
     assert_eq!(
         validate_policy_config(&cfg),
         Err(PolicyConfigInvariant::LadderNonMonotonic)
     );
 
     // velocity below per_tx
-    let mut cfg = PolicyConfig::default();
-    cfg.per_tx_limit_usd = 1_000;
-    cfg.velocity_limit_usd = 500;
+    let cfg = PolicyConfig {
+        per_tx_limit_usd: 1_000,
+        velocity_limit_usd: 500,
+        ..PolicyConfig::default()
+    };
     assert_eq!(
         validate_policy_config(&cfg),
         Err(PolicyConfigInvariant::VelocityBelowPerTx)
