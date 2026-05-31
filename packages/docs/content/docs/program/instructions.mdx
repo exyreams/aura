@@ -93,7 +93,7 @@ reservation — kept out of the size-capped treasury account.
 
 | Instruction | Description | |
 |---|---|---|
-| `apply_policy_preset` | Apply a built-in policy preset. | |
+| `apply_policy_preset` | Apply a built-in policy preset (10 kinds; coherence-validated). | |
 | `propose_config_change` | Stage a timelocked policy-config change. | |
 | `execute_config_change` | Execute a staged config change after the timelock. | |
 | `veto_config_change` | Guardian veto of a staged config change. | |
@@ -103,6 +103,37 @@ reservation — kept out of the size-capped treasury account.
 | `remove_budget_envelope` | Remove a budget envelope (refused while a matching proposal is pending). | <New /> |
 | `set_recipient_limit` | Add/update a per-recipient daily + per-tx exposure cap. | <New /> |
 | `remove_recipient_limit` | Remove a per-recipient limit. | <New /> |
+
+The `PolicyConfig` also carries a **failure-mode** map (`Enforce` / `Warn` / `Degrade` / `Skip` per
+softenable check, with a bounded fail-open budget). Hard money caps, pauses, approvals, sanctions, and
+frozen wallets are always enforced and have no softening field.
+
+## Policy templates
+
+User-authored, reusable policy postures stored in a standalone `PolicyTemplate` PDA — coherence-validated,
+optionally forked from a built-in preset, and applied (optionally parameterized) across treasuries.
+
+| Instruction | Description | |
+|---|---|---|
+| `create_policy_template` | Author a template from a config or fork a built-in preset (validated). | <New /> |
+| `update_policy_template` | Overwrite the config/metadata and bump the version (re-validated). | <New /> |
+| `close_policy_template` | Close a template and reclaim rent. | <New /> |
+| `apply_policy_template` | Apply a template's config to a treasury (shared templates allow foreign owners). | <New /> |
+| `apply_policy_template_parameterized` | Apply with overrides (bps scaling / limit overrides) without mutating the template. | <New /> |
+
+## Scheduled intents
+
+On-chain standing orders (payroll / DCA / sweeps) in a `ScheduledIntent` PDA. Each run is gated by the
+**same** policy + failure-mode path as an interactive proposal, plus optional **trigger conditions**
+(price / time-window / balance / oracle flag, combined with AND/OR).
+
+| Instruction | Description | |
+|---|---|---|
+| `create_scheduled_intent` | Create a recurring intent with recurrence, per-run/total budget, and conditions. | <New /> |
+| `update_scheduled_intent` | Edit the recurrence / budget / payload / conditions. | <New /> |
+| `pause_scheduled_intent` / `resume_scheduled_intent` | Toggle execution on/off. | <New /> |
+| `close_scheduled_intent` | Close an intent and reclaim rent. | <New /> |
+| `execute_scheduled_intent` | Run a due slot (keeper or permissionless); uses the on-chain clock, advances the schedule. | <New /> |
 
 ## Governance & rotation
 

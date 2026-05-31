@@ -84,6 +84,25 @@ latest instructions.
 | 6070 | `TooManyAssets` | The per-dWallet asset ledger is full (max 16). <New /> |
 | 6071 | `ReservationUnderflow` | Releasing/settling more than is currently reserved. <New /> |
 
+## Templates, failure modes, schedules & conditions
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6072 | `InvalidTemplateConfig` | Template/preset config fails coherence validation. <New /> |
+| 6073 | `TemplateNotShared` | Applying a non-shared template owned by another. <New /> |
+| 6074 | `UnknownPolicyVersion` | Parameterized override is invalid (e.g. zero scale). <New /> |
+| 6075 | `FailOpenBudgetExceeded` | A softened check exceeded its fail-open budget. <New /> |
+| 6076 | `IntentDisabled` | Executing a paused scheduled intent. <New /> |
+| 6077 | `IntentNotDue` | Executing a scheduled intent before its next slot. <New /> |
+| 6078 | `IntentBudgetExhausted` | Per-run or lifetime budget exhausted. <New /> |
+| 6079 | `IntentRunsExhausted` | The intent's run count cap is reached. <New /> |
+| 6080 | `IntentExpired` | The intent passed its `end_at`. <New /> |
+| 6081 | `UnauthorizedKeeper` | Caller is not the intent's authorized keeper. <New /> |
+| 6082 | `InvalidIntentConfig` | Invalid recurrence / budget / condition config. <New /> |
+| 6083 | `ConditionUnmet` | Trigger conditions are not satisfied. <New /> |
+| 6084 | `ConditionExpired` | A conditional proposal expired unmet. <New /> |
+| 6085 | `TooManyConditions` | More than the per-item condition cap. <New /> |
+
 ## Governance, state & data
 
 | Code | Name | Trigger |

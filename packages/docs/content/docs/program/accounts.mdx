@@ -70,6 +70,8 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | `AttestationAccount` | `[b"policy_attestation", …]` | Policy attestation |
 | `BatchProposalAccount` | `[b"batch_proposal", …]` | Batch proposal preview |
 | `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
+| `PolicyTemplate` | `[b"policy_template", owner, template_id]` | Reusable, validated policy posture (apply across treasuries) |
+| `ScheduledIntent` | `[b"scheduled_intent", treasury, intent_id]` | Recurring standing order (payroll / DCA / sweep) with conditions |
 
 ## External program accounts
 
