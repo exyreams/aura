@@ -22,6 +22,10 @@ path = "src/bin/policy.rs"
 name = "admin"
 path = "src/bin/admin.rs"
 
+[[bin]]
+name = "wallet"
+path = "src/bin/wallet.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"

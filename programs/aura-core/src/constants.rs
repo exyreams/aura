@@ -27,6 +27,10 @@ pub const MAX_TRACE_RULE_NAME_LEN: usize = 32;
 pub const MAX_TRACE_DETAIL_LEN: usize = 128;
 /// Maximum number of dWallets that can be registered on one treasury (one per chain).
 pub const MAX_DWALLETS: usize = 8;
+/// PDA seed for the per-dWallet runtime account: `[seed, treasury, &[chain_code]]`.
+pub const DWALLET_STATE_SEED: &[u8] = b"dwallet_state";
+/// Maximum asset balances tracked per dWallet.
+pub const MAX_ASSETS_PER_WALLET: usize = 16;
 /// Maximum number of guardians in an emergency multisig.
 pub const MAX_GUARDIANS: usize = 10;
 /// Maximum byte length of a swarm ID string.
@@ -37,7 +41,7 @@ pub const MAX_SWARM_MEMBERS: usize = 16;
 pub const MAX_SWARM_MEMBER_LEN: usize = 64;
 
 /// Current treasury account schema version after the advanced feature upgrade.
-pub const CURRENT_SCHEMA_VERSION: u8 = 2;
+pub const CURRENT_SCHEMA_VERSION: u8 = 3;
 /// Maximum pending proposals stored in the multi-slot queue.
 pub const MAX_PENDING_QUEUE_DEPTH: usize = 3;
 /// Activity log PDA seed.

@@ -40,6 +40,9 @@ pub mod session_keys;
 pub mod snapshots;
 pub mod swarm_pool;
 pub mod treasury_admin;
+pub mod wallet_balances;
+pub mod wallet_controls;
+pub mod wallet_transfers;
 
 pub use activity_log::{CloseActivityLog, InitActivityLog};
 pub(crate) use activity_log::{
@@ -225,6 +228,17 @@ pub(crate) use treasury_admin::{
     __client_accounts_owner_treasury, __client_accounts_trigger_dead_mans_switch,
     __client_accounts_veto_config_change, __cpi_client_accounts_owner_treasury,
     __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_veto_config_change,
+};
+pub use wallet_controls::{DwalletControl, InitDwalletState, RemoveDwallet, SetDefaultChain};
+pub(crate) use wallet_controls::{
+    __client_accounts_dwallet_control, __client_accounts_init_dwallet_state,
+    __client_accounts_remove_dwallet, __client_accounts_set_default_chain,
+    __cpi_client_accounts_dwallet_control, __cpi_client_accounts_init_dwallet_state,
+    __cpi_client_accounts_remove_dwallet, __cpi_client_accounts_set_default_chain,
+};
+pub use wallet_transfers::DwalletSpend;
+pub(crate) use wallet_transfers::{
+    __client_accounts_dwallet_spend, __cpi_client_accounts_dwallet_spend,
 };
 
 use anchor_lang::prelude::*;

@@ -104,6 +104,8 @@ pub struct AgentTreasury {
     pub multisig: Option<EmergencyMultisig>,
     /// Optional swarm shared-pool configuration.
     pub swarm: Option<AgentSwarm>,
+    /// Preferred execution chain ("primary"), used when a proposal omits one.
+    pub default_chain: Option<Chain>,
 }
 
 impl AgentTreasury {
@@ -165,7 +167,29 @@ impl AgentTreasury {
             protocol_fees: ProtocolFees::default(),
             multisig: None,
             swarm: None,
+            default_chain: None,
         }
+    }
+
+    /// Sets (or clears) the preferred execution chain. Returns
+    /// `DefaultChainNotRegistered` if `chain` has no registered dWallet.
+    pub fn set_default_chain(
+        &mut self,
+        chain: Option<Chain>,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        if let Some(chain) = chain {
+            if !self.dwallets.contains_key(&chain) {
+                return Err(crate::TreasuryError::DWalletNotConfigured(chain));
+            }
+        }
+        self.default_chain = chain;
+        self.audit_trail.record(
+            AuditKind::ConfigChangeExecuted,
+            "default execution chain updated",
+            now,
+        );
+        Ok(())
     }
 
     /// Registers a dWallet for `chain` using the chain's default curve and

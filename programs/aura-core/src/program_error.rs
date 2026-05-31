@@ -135,6 +135,28 @@ pub enum AuraCoreError {
     RecipientLimitNotFound,
     #[msg("address list entry not found")]
     AddressListEntryNotFound,
+    #[msg("dwallet is not active")]
+    DWalletNotActive,
+    #[msg("dwallet is frozen")]
+    DWalletFrozen,
+    #[msg("dwallet has an active pending proposal on this chain")]
+    DWalletHasActiveProposal,
+    #[msg("per-wallet spending limit exceeded")]
+    DWalletLimitExceeded,
+    #[msg("dwallet still holds a balance")]
+    DWalletNotEmpty,
+    #[msg("default chain is in use")]
+    DefaultChainInUse,
+    #[msg("asset is not tracked on this dwallet")]
+    AssetNotTracked,
+    #[msg("insufficient available wallet balance")]
+    InsufficientWalletBalance,
+    #[msg("dwallet balance is stale")]
+    BalanceStale,
+    #[msg("dwallet asset ledger is full")]
+    TooManyAssets,
+    #[msg("attempted to release more than is reserved")]
+    ReservationUnderflow,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

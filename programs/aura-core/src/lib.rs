@@ -56,62 +56,68 @@ use instructions::{
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
-    __client_accounts_create_treasury, __client_accounts_execute_pending,
+    __client_accounts_create_treasury, __client_accounts_dwallet_control,
+    __client_accounts_dwallet_spend, __client_accounts_execute_pending,
     __client_accounts_finalize_execution, __client_accounts_grant_operator_role,
     __client_accounts_init_activity_log, __client_accounts_init_address_list,
-    __client_accounts_init_exposure_group, __client_accounts_init_external_liveness,
-    __client_accounts_init_fee_vault, __client_accounts_init_health_score,
-    __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
-    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
-    __client_accounts_join_swarm, __client_accounts_manage_address_list,
-    __client_accounts_manage_exposure_group, __client_accounts_manage_swarm,
-    __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
-    __client_accounts_pause_execution, __client_accounts_propose_batch,
-    __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
-    __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
-    __client_accounts_refresh_external_liveness, __client_accounts_register_dwallet,
-    __client_accounts_remove_budget_envelope, __client_accounts_request_policy_decryption,
+    __client_accounts_init_dwallet_state, __client_accounts_init_exposure_group,
+    __client_accounts_init_external_liveness, __client_accounts_init_fee_vault,
+    __client_accounts_init_health_score, __client_accounts_init_policy_history,
+    __client_accounts_init_swarm_pool, __client_accounts_issue_session_key,
+    __client_accounts_join_exposure_group, __client_accounts_join_swarm,
+    __client_accounts_manage_address_list, __client_accounts_manage_exposure_group,
+    __client_accounts_manage_swarm, __client_accounts_migrate_treasury,
+    __client_accounts_owner_treasury, __client_accounts_pause_execution,
+    __client_accounts_propose_batch, __client_accounts_propose_confidential_transaction,
+    __client_accounts_propose_override, __client_accounts_propose_transaction,
+    __client_accounts_refresh_dwallet_balance, __client_accounts_refresh_external_liveness,
+    __client_accounts_register_dwallet, __client_accounts_remove_budget_envelope,
+    __client_accounts_remove_dwallet, __client_accounts_request_policy_decryption,
     __client_accounts_revoke_operator_role, __client_accounts_revoke_session_key,
-    __client_accounts_set_scoped_pause, __client_accounts_simulate_policy,
-    __client_accounts_take_snapshot, __client_accounts_trigger_dead_mans_switch,
-    __client_accounts_update_fee_recipient, __client_accounts_update_health_score,
-    __client_accounts_update_operator_role, __client_accounts_update_session_key,
-    __client_accounts_veto_config_change, __client_accounts_write_policy_receipt,
-    __cpi_client_accounts_apply_policy_preset, __cpi_client_accounts_approve_pending_execution,
-    __cpi_client_accounts_attest_policy, __cpi_client_accounts_cancel_pending,
-    __cpi_client_accounts_check_invariants, __cpi_client_accounts_check_policy_cpi,
-    __cpi_client_accounts_close_activity_log, __cpi_client_accounts_close_address_list,
-    __cpi_client_accounts_close_exposure_group, __cpi_client_accounts_close_external_liveness,
-    __cpi_client_accounts_close_fee_vault, __cpi_client_accounts_close_health_score,
-    __cpi_client_accounts_close_policy_history, __cpi_client_accounts_close_session_key,
-    __cpi_client_accounts_close_snapshot, __cpi_client_accounts_close_swarm_pool,
-    __cpi_client_accounts_collect_fees, __cpi_client_accounts_collect_override_signature,
+    __client_accounts_set_default_chain, __client_accounts_set_scoped_pause,
+    __client_accounts_simulate_policy, __client_accounts_take_snapshot,
+    __client_accounts_trigger_dead_mans_switch, __client_accounts_update_fee_recipient,
+    __client_accounts_update_health_score, __client_accounts_update_operator_role,
+    __client_accounts_update_session_key, __client_accounts_veto_config_change,
+    __client_accounts_write_policy_receipt, __cpi_client_accounts_apply_policy_preset,
+    __cpi_client_accounts_approve_pending_execution, __cpi_client_accounts_attest_policy,
+    __cpi_client_accounts_cancel_pending, __cpi_client_accounts_check_invariants,
+    __cpi_client_accounts_check_policy_cpi, __cpi_client_accounts_close_activity_log,
+    __cpi_client_accounts_close_address_list, __cpi_client_accounts_close_exposure_group,
+    __cpi_client_accounts_close_external_liveness, __cpi_client_accounts_close_fee_vault,
+    __cpi_client_accounts_close_health_score, __cpi_client_accounts_close_policy_history,
+    __cpi_client_accounts_close_session_key, __cpi_client_accounts_close_snapshot,
+    __cpi_client_accounts_close_swarm_pool, __cpi_client_accounts_collect_fees,
+    __cpi_client_accounts_collect_override_signature,
     __cpi_client_accounts_configure_approval_ladder,
     __cpi_client_accounts_configure_budget_envelope,
     __cpi_client_accounts_configure_confidential_guardrails,
     __cpi_client_accounts_configure_liveness_guardrails, __cpi_client_accounts_configure_multisig,
     __cpi_client_accounts_configure_swarm, __cpi_client_accounts_confirm_policy_decryption,
-    __cpi_client_accounts_create_treasury, __cpi_client_accounts_execute_pending,
+    __cpi_client_accounts_create_treasury, __cpi_client_accounts_dwallet_control,
+    __cpi_client_accounts_dwallet_spend, __cpi_client_accounts_execute_pending,
     __cpi_client_accounts_finalize_execution, __cpi_client_accounts_grant_operator_role,
     __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
-    __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_init_external_liveness,
-    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
-    __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
-    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
-    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
-    __cpi_client_accounts_manage_exposure_group, __cpi_client_accounts_manage_swarm,
-    __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
-    __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
-    __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
-    __cpi_client_accounts_propose_transaction, __cpi_client_accounts_refresh_dwallet_balance,
-    __cpi_client_accounts_refresh_external_liveness, __cpi_client_accounts_register_dwallet,
-    __cpi_client_accounts_remove_budget_envelope, __cpi_client_accounts_request_policy_decryption,
+    __cpi_client_accounts_init_dwallet_state, __cpi_client_accounts_init_exposure_group,
+    __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_init_fee_vault,
+    __cpi_client_accounts_init_health_score, __cpi_client_accounts_init_policy_history,
+    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_issue_session_key,
+    __cpi_client_accounts_join_exposure_group, __cpi_client_accounts_join_swarm,
+    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_manage_exposure_group,
+    __cpi_client_accounts_manage_swarm, __cpi_client_accounts_migrate_treasury,
+    __cpi_client_accounts_owner_treasury, __cpi_client_accounts_pause_execution,
+    __cpi_client_accounts_propose_batch, __cpi_client_accounts_propose_confidential_transaction,
+    __cpi_client_accounts_propose_override, __cpi_client_accounts_propose_transaction,
+    __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_refresh_external_liveness,
+    __cpi_client_accounts_register_dwallet, __cpi_client_accounts_remove_budget_envelope,
+    __cpi_client_accounts_remove_dwallet, __cpi_client_accounts_request_policy_decryption,
     __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_revoke_session_key,
-    __cpi_client_accounts_set_scoped_pause, __cpi_client_accounts_simulate_policy,
-    __cpi_client_accounts_take_snapshot, __cpi_client_accounts_trigger_dead_mans_switch,
-    __cpi_client_accounts_update_fee_recipient, __cpi_client_accounts_update_health_score,
-    __cpi_client_accounts_update_operator_role, __cpi_client_accounts_update_session_key,
-    __cpi_client_accounts_veto_config_change, __cpi_client_accounts_write_policy_receipt,
+    __cpi_client_accounts_set_default_chain, __cpi_client_accounts_set_scoped_pause,
+    __cpi_client_accounts_simulate_policy, __cpi_client_accounts_take_snapshot,
+    __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_update_fee_recipient,
+    __cpi_client_accounts_update_health_score, __cpi_client_accounts_update_operator_role,
+    __cpi_client_accounts_update_session_key, __cpi_client_accounts_veto_config_change,
+    __cpi_client_accounts_write_policy_receipt,
 };
 
 declare_id!("auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce");
@@ -129,6 +135,174 @@ pub mod aura_core {
         args: RegisterDwalletArgs,
     ) -> Result<()> {
         instructions::register_dwallet::handler(ctx, args)
+    }
+
+    pub fn init_dwallet_state(ctx: Context<InitDwalletState>, chain: u8, now: i64) -> Result<()> {
+        instructions::wallet_controls::init_dwallet_state(ctx, chain, now)
+    }
+
+    pub fn set_dwallet_status(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        status_code: u8,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_controls::set_dwallet_status(ctx, chain, status_code, now)
+    }
+
+    pub fn set_dwallet_limits(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        daily_limit_usd: Option<u64>,
+        per_tx_limit_usd: Option<u64>,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_controls::set_dwallet_limits(
+            ctx,
+            chain,
+            daily_limit_usd,
+            per_tx_limit_usd,
+            now,
+        )
+    }
+
+    pub fn set_dwallet_label(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        label: Option<String>,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_controls::set_dwallet_label(ctx, chain, label, now)
+    }
+
+    pub fn rotate_dwallet_authority(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        new_authority: Pubkey,
+        new_cpi_authority_seed: String,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_controls::rotate_dwallet_authority(
+            ctx,
+            chain,
+            new_authority,
+            new_cpi_authority_seed,
+            now,
+        )
+    }
+
+    pub fn set_default_chain(
+        ctx: Context<SetDefaultChain>,
+        chain: Option<u8>,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_controls::set_default_chain(ctx, chain, now)
+    }
+
+    pub fn remove_dwallet(ctx: Context<RemoveDwallet>, chain: u8, now: i64) -> Result<()> {
+        instructions::wallet_controls::remove_dwallet(ctx, chain, now)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn refresh_asset_balance(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        asset_id: String,
+        symbol: String,
+        decimals: u8,
+        native_amount: u128,
+        usd_value: u64,
+        feed: Option<Pubkey>,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_balances::refresh_asset_balance(
+            ctx,
+            chain,
+            asset_id,
+            symbol,
+            decimals,
+            native_amount,
+            usd_value,
+            feed,
+            now,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_deposit(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        asset_id: String,
+        symbol: String,
+        decimals: u8,
+        native_amount: u128,
+        usd_value: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_balances::record_deposit(
+            ctx,
+            chain,
+            asset_id,
+            symbol,
+            decimals,
+            native_amount,
+            usd_value,
+            now,
+        )
+    }
+
+    pub fn set_asset_feed(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        asset_id: String,
+        feed: Option<Pubkey>,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_balances::set_asset_feed(ctx, chain, asset_id, feed, now)
+    }
+
+    pub fn reconcile_dwallet_balance(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_balances::reconcile_dwallet_balance(ctx, chain, now)
+    }
+
+    pub fn reserve_dwallet_spend(
+        ctx: Context<DwalletSpend>,
+        chain: u8,
+        amount_usd: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_transfers::reserve_dwallet_spend(ctx, chain, amount_usd, now)
+    }
+
+    pub fn settle_dwallet_spend(
+        ctx: Context<DwalletSpend>,
+        chain: u8,
+        amount_usd: u64,
+        asset_id: String,
+        native_amount: u128,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_transfers::settle_dwallet_spend(
+            ctx,
+            chain,
+            amount_usd,
+            asset_id,
+            native_amount,
+            now,
+        )
+    }
+
+    pub fn release_dwallet_spend(
+        ctx: Context<DwalletSpend>,
+        chain: u8,
+        amount_usd: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::wallet_transfers::release_dwallet_spend(ctx, chain, amount_usd, now)
     }
 
     pub fn configure_confidential_guardrails(

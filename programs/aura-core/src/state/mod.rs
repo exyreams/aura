@@ -31,7 +31,9 @@ pub use deployment::{
     DeploymentCluster, ProtocolDeployment, DWALLET_DEVNET_GRPC_ENDPOINT, DWALLET_DEVNET_PROGRAM_ID,
     ENCRYPT_DEVNET_GRPC_ENDPOINT, ENCRYPT_DEVNET_PROGRAM_ID,
 };
-pub use dwallet::{DWalletCurve, DWalletReference, SignatureScheme};
+pub use dwallet::{
+    AssetBalance, DWalletCurve, DWalletReference, DWalletState, DWalletStatus, SignatureScheme,
+};
 pub use fees::ProtocolFees;
 pub use pending::{
     PendingDecryptionRequest, PendingSignatureRequest, PendingTransaction, ProposalStatus,

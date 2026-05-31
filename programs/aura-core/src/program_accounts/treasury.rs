@@ -61,6 +61,9 @@ pub struct TreasuryAccount {
     pub pending_queue: Vec<PendingProposalRecord>,
     pub multisig: Option<MultisigConfigRecord>,
     pub swarm: Option<SwarmConfigRecord>,
+    /// Preferred execution chain ("primary"). Appended last so pre-v3 accounts
+    /// read it back as `None` from the zero-padded allocation.
+    pub default_chain: Option<u8>,
 }
 
 impl TreasuryAccount {
@@ -143,6 +146,7 @@ impl TreasuryAccount {
                 .as_ref()
                 .map(SwarmConfigRecord::from_domain)
                 .transpose()?,
+            default_chain: domain.default_chain.map(chain_code),
         })
     }
 
@@ -222,6 +226,7 @@ impl TreasuryAccount {
             .as_ref()
             .map(SwarmConfigRecord::from_domain)
             .transpose()?;
+        self.default_chain = domain.default_chain.map(chain_code);
         Ok(())
     }
 
@@ -311,6 +316,7 @@ impl TreasuryAccount {
             .as_ref()
             .map(SwarmConfigRecord::to_domain)
             .transpose()?;
+        treasury.default_chain = self.default_chain.map(chain_from_code).transpose()?;
 
         if let Some(swarm) = &treasury.swarm {
             treasury.policy_config.shared_pool_limit_usd = Some(swarm.shared_pool_limit_usd);

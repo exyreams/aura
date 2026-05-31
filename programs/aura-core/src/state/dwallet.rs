@@ -148,3 +148,169 @@ impl DWalletReference {
         now.saturating_sub(self.balance_updated_at) > BALANCE_STALE_THRESHOLD_SECS
     }
 }
+
+/// Lifecycle state of a registered dWallet.
+///
+/// `Active` is required to enter the propose path; the frozen/retiring/retired
+/// states reject new outbound spends. Lives in the separate `DWalletAccount`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DWalletStatus {
+    /// Registered but runtime fields not yet configured — cannot sign.
+    Provisioning,
+    /// Fully configured — may propose + sign.
+    Active,
+    /// Graduated freeze: deposits/reconcile allowed, no outbound signing.
+    FrozenOut,
+    /// Hard freeze: no signing of any kind.
+    Frozen,
+    /// Draining only; no new outbound, pending allowed to settle.
+    Retiring,
+    /// Removed from the active set (record kept until closed).
+    Retired,
+}
+
+impl DWalletStatus {
+    /// Whether this status permits a new outbound proposal.
+    pub fn permits_outbound(self) -> bool {
+        matches!(self, Self::Active)
+    }
+}
+
+/// A single asset balance held by a dWallet.
+///
+/// Stored in the per-dWallet `DWalletAccount`; the treasury keeps only the
+/// aggregate `balance_usd` cache. `native_amount` is the raw on-chain unit
+/// count; `usd_value` is the priced value used by policy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssetBalance {
+    pub asset_id: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub native_amount: u128,
+    pub usd_value: u64,
+    pub updated_at: i64,
+    pub feed: Option<String>,
+}
+
+/// The rich per-dWallet runtime state.
+///
+/// Persisted in its own `DWalletAccount` PDA (`[b"dwallet_state", treasury,
+/// chain]`) rather than inline in the treasury, which is hard-capped at 10 KiB.
+/// `AgentTreasury.dwallets` keeps the lightweight `DWalletReference`; this holds
+/// the controls (status, limits, counters, authority, label) and the multi-asset
+/// balance ledger.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DWalletState {
+    pub treasury: String,
+    pub chain: Chain,
+    pub status: DWalletStatus,
+    pub daily_limit_usd: Option<u64>,
+    pub per_tx_limit_usd: Option<u64>,
+    pub spent_today_usd: u64,
+    pub spend_window_start: i64,
+    pub authority: String,
+    pub cpi_authority_seed: String,
+    pub label: Option<String>,
+    pub assets: Vec<AssetBalance>,
+    pub reserved_usd: u64,
+    /// Encrypt/oracle epoch marker for the asset feeds.
+    pub epoch: u64,
+}
+
+impl DWalletState {
+    /// Aggregate USD value across all tracked assets.
+    pub fn total_usd(&self) -> u64 {
+        self.assets
+            .iter()
+            .fold(0u64, |acc, asset| acc.saturating_add(asset.usd_value))
+    }
+
+    /// Spendable USD = aggregate minus reserved.
+    pub fn available_usd(&self) -> u64 {
+        self.total_usd().saturating_sub(self.reserved_usd)
+    }
+
+    /// Per-wallet spent-today, treating the counter as 0 once its window rolled.
+    pub fn effective_spent_today(&self, now: i64) -> u64 {
+        if now.saturating_sub(self.spend_window_start) >= 86_400 {
+            0
+        } else {
+            self.spent_today_usd
+        }
+    }
+
+    /// Whether `amount_usd` is within the per-wallet per-tx and daily caps.
+    pub fn within_limits(&self, amount_usd: u64, now: i64) -> bool {
+        if let Some(per_tx) = self.per_tx_limit_usd {
+            if amount_usd > per_tx {
+                return false;
+            }
+        }
+        if let Some(daily) = self.daily_limit_usd {
+            if self.effective_spent_today(now).saturating_add(amount_usd) > daily {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Increments the per-wallet daily spend counter, rolling the window first.
+    pub fn record_spend(&mut self, amount_usd: u64, now: i64) {
+        if now.saturating_sub(self.spend_window_start) >= 86_400 {
+            self.spent_today_usd = 0;
+            self.spend_window_start = now;
+        }
+        self.spent_today_usd = self.spent_today_usd.saturating_add(amount_usd);
+    }
+
+    /// Reserves `amount_usd` against available balance. Returns `false` if
+    /// available balance can't cover it.
+    pub fn reserve(&mut self, amount_usd: u64) -> bool {
+        if amount_usd > self.available_usd() {
+            return false;
+        }
+        self.reserved_usd = self.reserved_usd.saturating_add(amount_usd);
+        true
+    }
+
+    /// Releases a previously reserved amount.
+    pub fn release(&mut self, amount_usd: u64) {
+        self.reserved_usd = self.reserved_usd.saturating_sub(amount_usd);
+    }
+
+    /// Inserts or replaces an asset balance keyed by `asset_id`.
+    pub fn upsert_asset(&mut self, asset: AssetBalance) -> Result<(), crate::TreasuryError> {
+        if let Some(existing) = self
+            .assets
+            .iter_mut()
+            .find(|entry| entry.asset_id == asset.asset_id)
+        {
+            *existing = asset;
+            return Ok(());
+        }
+        if self.assets.len() >= crate::constants::MAX_ASSETS_PER_WALLET {
+            return Err(crate::TreasuryError::InvalidAccountData(
+                "asset ledger is full".to_string(),
+            ));
+        }
+        self.assets.push(asset);
+        Ok(())
+    }
+
+    /// Sets/clears the price feed on a tracked asset. Errors if untracked.
+    pub fn set_asset_feed(
+        &mut self,
+        asset_id: &str,
+        feed: Option<String>,
+    ) -> Result<(), crate::TreasuryError> {
+        let asset = self
+            .assets
+            .iter_mut()
+            .find(|entry| entry.asset_id == asset_id)
+            .ok_or_else(|| {
+                crate::TreasuryError::InvalidAccountData("asset not tracked".to_string())
+            })?;
+        asset.feed = feed;
+        Ok(())
+    }
+}

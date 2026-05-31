@@ -70,3 +70,145 @@ impl DWalletRecord {
         })
     }
 }
+
+/// Fixed allocation for a `DWalletAccount` (well under the 10 KiB CPI ceiling).
+pub const DWALLET_STATE_SPACE: usize = 8 + DWalletAccount::INIT_SPACE;
+
+/// One asset balance row inside a `DWalletAccount`.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct AssetBalanceRecord {
+    #[max_len(64)]
+    pub asset_id: String,
+    #[max_len(16)]
+    pub symbol: String,
+    pub decimals: u8,
+    pub native_amount: u128,
+    pub usd_value: u64,
+    pub updated_at: i64,
+    pub feed: Option<Pubkey>,
+}
+
+/// Per-dWallet runtime account, seeded by
+/// `[b"dwallet_state", treasury, &[chain_code]]`. Holds the controls + the
+/// multi-asset ledger that don't fit inline in the 10 KiB treasury account.
+#[account]
+#[derive(InitSpace)]
+pub struct DWalletAccount {
+    pub bump: u8,
+    pub treasury: Pubkey,
+    pub chain: u8,
+    pub status: u8,
+    pub daily_limit_usd: Option<u64>,
+    pub per_tx_limit_usd: Option<u64>,
+    pub spent_today_usd: u64,
+    pub spend_window_start: i64,
+    pub authority: Pubkey,
+    #[max_len(48)]
+    pub cpi_authority_seed: String,
+    #[max_len(32)]
+    pub label: Option<String>,
+    #[max_len(16)]
+    pub assets: Vec<AssetBalanceRecord>,
+    pub reserved_usd: u64,
+    pub epoch: u64,
+}
+
+/// Maps a `DWalletStatus` to its `u8` storage code.
+pub fn dwallet_status_code(status: crate::state::DWalletStatus) -> u8 {
+    use crate::state::DWalletStatus::*;
+    match status {
+        Provisioning => 0,
+        Active => 1,
+        FrozenOut => 2,
+        Frozen => 3,
+        Retiring => 4,
+        Retired => 5,
+    }
+}
+
+/// Decodes a `u8` storage code into a `DWalletStatus`.
+pub fn dwallet_status_from_code(code: u8) -> Result<crate::state::DWalletStatus> {
+    use crate::state::DWalletStatus::*;
+    Ok(match code {
+        0 => Provisioning,
+        1 => Active,
+        2 => FrozenOut,
+        3 => Frozen,
+        4 => Retiring,
+        5 => Retired,
+        _ => return err!(crate::AuraCoreError::InvalidStateTransition),
+    })
+}
+
+impl AssetBalanceRecord {
+    pub fn from_domain(asset: &crate::state::AssetBalance) -> Result<Self> {
+        Ok(Self {
+            asset_id: asset.asset_id.clone(),
+            symbol: asset.symbol.clone(),
+            decimals: asset.decimals,
+            native_amount: asset.native_amount,
+            usd_value: asset.usd_value,
+            updated_at: asset.updated_at,
+            feed: asset.feed.as_deref().map(parse_pubkey).transpose()?,
+        })
+    }
+
+    pub fn to_domain(&self) -> crate::state::AssetBalance {
+        crate::state::AssetBalance {
+            asset_id: self.asset_id.clone(),
+            symbol: self.symbol.clone(),
+            decimals: self.decimals,
+            native_amount: self.native_amount,
+            usd_value: self.usd_value,
+            updated_at: self.updated_at,
+            feed: self.feed.map(|key| key.to_string()),
+        }
+    }
+}
+
+impl DWalletAccount {
+    /// Serialize a `DWalletState` domain object into this account (preserves `bump`).
+    pub fn apply_domain(&mut self, state: &crate::state::DWalletState) -> Result<()> {
+        self.treasury = parse_pubkey(&state.treasury)?;
+        self.chain = chain_code(state.chain);
+        self.status = dwallet_status_code(state.status);
+        self.daily_limit_usd = state.daily_limit_usd;
+        self.per_tx_limit_usd = state.per_tx_limit_usd;
+        self.spent_today_usd = state.spent_today_usd;
+        self.spend_window_start = state.spend_window_start;
+        self.authority = parse_pubkey(&state.authority)?;
+        self.cpi_authority_seed = state.cpi_authority_seed.clone();
+        self.label = state.label.clone();
+        self.assets = state
+            .assets
+            .iter()
+            .map(AssetBalanceRecord::from_domain)
+            .collect::<Result<Vec<_>>>()?;
+        self.reserved_usd = state.reserved_usd;
+        self.epoch = state.epoch;
+        Ok(())
+    }
+
+    /// Deserialize this account into a `DWalletState` domain object.
+    pub fn to_domain(&self) -> Result<crate::state::DWalletState> {
+        Ok(crate::state::DWalletState {
+            treasury: self.treasury.to_string(),
+            chain: chain_from_code(self.chain)?,
+            status: dwallet_status_from_code(self.status)?,
+            daily_limit_usd: self.daily_limit_usd,
+            per_tx_limit_usd: self.per_tx_limit_usd,
+            spent_today_usd: self.spent_today_usd,
+            spend_window_start: self.spend_window_start,
+            authority: self.authority.to_string(),
+            cpi_authority_seed: self.cpi_authority_seed.clone(),
+            label: self.label.clone(),
+            assets: self
+                .assets
+                .iter()
+                .map(AssetBalanceRecord::to_domain)
+                .collect(),
+            reserved_usd: self.reserved_usd,
+            epoch: self.epoch,
+        })
+    }
+}
