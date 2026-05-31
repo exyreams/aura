@@ -24,6 +24,9 @@
 //! - `constants/`    — field length limits and collection caps
 #![allow(unexpected_cfgs)]
 #![allow(clippy::diverging_sub_expression)]
+// Some instruction handlers (and Anchor's generated dispatch glue) take many
+// arguments; bundling every one into an args struct isn't worth the churn.
+#![allow(clippy::too_many_arguments)]
 #![forbid(unsafe_code)]
 
 use anchor_lang::prelude::*;

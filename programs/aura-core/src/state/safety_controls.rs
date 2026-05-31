@@ -109,8 +109,9 @@ pub struct DeadMansSwitch {
     pub recovery_authority: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AgentLifecycleState {
+    #[default]
     Provisioning,
     Active,
     Suspended,
@@ -121,12 +122,6 @@ pub enum AgentLifecycleState {
 impl AgentLifecycleState {
     pub fn permits_new_proposals(self) -> bool {
         self == Self::Active
-    }
-}
-
-impl Default for AgentLifecycleState {
-    fn default() -> Self {
-        Self::Provisioning
     }
 }
 
