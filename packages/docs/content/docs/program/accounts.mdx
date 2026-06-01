@@ -28,7 +28,9 @@ seeds = [ b"treasury", owner, agent_id ]
 The on-chain record (`TreasuryAccount`) is the serialized form; instructions deserialize it into the
 `AgentTreasury` domain object, mutate that, and write it back. The audit trail is emitted as events rather
 than persisted in the account. A `default_chain` field marks the treasury's preferred ("primary") execution
-chain (set via `set_default_chain`).
+chain (set via `set_default_chain`). Pending proposals can carry optional asset/native/gas transfer metadata;
+the treasury stores that metadata so the proposal digest, dWallet message, cancellation, expiry, and
+finalization paths all agree on the same concrete asset payload.
 
 ## DWalletAccount
 
@@ -71,7 +73,8 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | `BatchProposalAccount` | `[b"batch_proposal", …]` | Batch proposal preview |
 | `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
 | `PolicyTemplate` | `[b"policy_template", owner, template_id]` | Reusable, validated policy posture (apply across treasuries) |
-| `ScheduledIntent` | `[b"scheduled_intent", treasury, intent_id]` | Recurring standing order (payroll / DCA / sweep) with conditions |
+| `ScheduledIntent` | `[b"scheduled_intent", treasury, intent_id]` | Recurring standing order with conditions plus in-flight promoted-proposal tracking |
+| `ConditionalProposal` | `[b"conditional_proposal", treasury, proposal_id]` | Parked conditional proposal that records the promoted pending proposal after trigger |
 
 ## External program accounts
 

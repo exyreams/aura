@@ -71,15 +71,20 @@ reservation — kept out of the size-capped treasury account.
 
 ## Proposals & execution
 
+Public proposals can be legacy USD-only or **asset-aware**. When `asset_id`, `native_amount`,
+`decimals`, or gas fields are provided, the proposal digest and dWallet message bind that concrete
+asset payload. Approved asset-aware proposals reserve the matching `DWalletAccount`; cancellation,
+expiry, and finalization release or settle that reservation.
+
 | Instruction | Description | |
 |---|---|---|
-| `propose_transaction` | Submit a public proposal; runs the policy engine. | |
-| `propose_confidential_transaction` | Submit a confidential (FHE) proposal. | |
+| `propose_transaction` | Submit a public proposal; runs the policy engine and optionally reserves an asset-aware dWallet transfer. | |
+| `propose_confidential_transaction` | Submit a confidential (FHE) proposal, with optional asset-aware transfer binding. | |
 | `propose_batch` | Preview/propose a batch of transactions. | |
 | `approve_pending_execution` | Satisfy an approval-ladder level on a pending proposal. | |
-| `execute_pending` | Advance a pending proposal toward execution. | |
-| `finalize_execution` | Verify the dWallet signature and finalize. | |
-| `cancel_pending` | Owner cancels the pending proposal. | |
+| `execute_pending` | Advance a pending proposal toward execution; expired proposals persist cleanup and release any asset reservation. | |
+| `finalize_execution` | Verify the dWallet signature, settle scheduled-intent counters when supplied, and settle any asset-aware wallet ledger. | |
+| `cancel_pending` | Owner cancels the pending proposal and releases any matching asset-aware reservation. | |
 
 ## Confidential (FHE)
 
@@ -137,6 +142,19 @@ receives the matching scheduled intent account. Optional **trigger conditions** 
 | `close_scheduled_intent` | Close an intent and reclaim rent, unless a promoted run is still in flight. | <New /> |
 | `clear_scheduled_intent_in_flight` | Owner-gated recovery for an abandoned promoted run after its proposal is no longer pending. | <New /> |
 | `execute_scheduled_intent` | Run a due slot (keeper or permissionless); uses the on-chain clock and promotes an approved run into a pending proposal. | <New /> |
+
+## Conditional proposals
+
+Conditional proposals are parked until their trigger conditions pass. A successful trigger promotes the
+request into the normal pending proposal flow and records `Triggered`; it does **not** mark the request
+executed. Signing, finalization, cancellation, and expiry still happen through the ordinary pending
+instructions.
+
+| Instruction | Description | |
+|---|---|---|
+| `propose_conditional_transaction` | Park a proposal behind price, time-window, balance, or oracle-flag conditions. | <New /> |
+| `try_trigger` | Keeper/caller checks conditions and promotes a satisfied proposal into the pending queue. | <New /> |
+| `close_conditional_proposal` | Close the conditional proposal after it is expired, cancelled, or no longer has a promoted pending proposal. | <New /> |
 
 ## Governance & rotation
 
