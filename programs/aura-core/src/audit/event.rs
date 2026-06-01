@@ -82,6 +82,13 @@ pub enum AuditKind {
     CheckWarned,
     /// Emitted when a softenable check was allowed under `Degrade`/`Skip`.
     CheckDegraded,
+    /// Emitted when an owner sets or updates a per-chain recovery destination.
+    RecoveryDestinationSet,
+    /// Emitted when `break_glass_recover` creates an emergency sweep proposal.
+    BreakGlassRecovered,
+    /// Emitted when `break_glass_transfer_authority` hands dWallet ownership
+    /// to a new authority via CPI.
+    CustodyTransferred,
 }
 
 impl Display for AuditKind {
@@ -124,6 +131,9 @@ impl Display for AuditKind {
             Self::BalanceRefreshed => "balance_refreshed",
             Self::CheckWarned => "check_warned",
             Self::CheckDegraded => "check_degraded",
+            Self::RecoveryDestinationSet => "recovery_destination_set",
+            Self::BreakGlassRecovered => "break_glass_recovered",
+            Self::CustodyTransferred => "custody_transferred",
         };
 
         write!(f, "{label}")

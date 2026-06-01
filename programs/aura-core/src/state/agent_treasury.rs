@@ -10,6 +10,7 @@ use crate::{
         audit_lifecycle_label, check_circuit_breaker_auto_resume,
         ensure_valid_lifecycle_transition, register_circuit_breaker_violation, AgentLifecycleState,
         CircuitBreakerState, DeadMansSwitch, PendingAiRotation, PendingConfigChange,
+        RecoveryDestination,
     },
     state::{
         AgentReputation, AgentSwarm, ConfidentialGuardrails, DWalletCurve, DWalletReference,
@@ -106,6 +107,9 @@ pub struct AgentTreasury {
     pub swarm: Option<AgentSwarm>,
     /// Preferred execution chain ("primary"), used when a proposal omits one.
     pub default_chain: Option<Chain>,
+    /// Per-chain cold-wallet addresses used as the sole permitted destination
+    /// when `break_glass_recover` sweeps dWallet funds in an emergency.
+    pub recovery_destinations: Vec<RecoveryDestination>,
 }
 
 impl AgentTreasury {
@@ -168,6 +172,7 @@ impl AgentTreasury {
             multisig: None,
             swarm: None,
             default_chain: None,
+            recovery_destinations: Vec::new(),
         }
     }
 
@@ -816,6 +821,56 @@ impl AgentTreasury {
         self.audit_trail.record(
             AuditKind::EmergencyShutdown,
             format!("emergency shutdown initiated, recovery: {recovery_pubkey}"),
+            now,
+        );
+        Ok(())
+    }
+
+    /// Returns the recovery destination registered for `chain`, if any.
+    pub fn get_recovery_destination(&self, chain: Chain) -> Option<&RecoveryDestination> {
+        self.recovery_destinations.iter().find(|d| d.chain == chain)
+    }
+
+    /// Sets or updates the recovery destination for `chain`.
+    ///
+    /// First registration is immediate. Subsequent changes are gated by
+    /// `locked_until`: if the current timestamp is before that value the
+    /// destination is locked and the call returns `TimelockNotElapsed`.
+    /// Registering during an active emergency shutdown is always rejected
+    /// (`RecoveryDestinationImmutable`) to prevent an attacker from
+    /// redirecting the sweep in a crisis.
+    pub fn set_recovery_destination(
+        &mut self,
+        chain: Chain,
+        address: String,
+        now: i64,
+        lock_duration_secs: i64,
+    ) -> Result<(), crate::errors::TreasuryError> {
+        if self.shutdown_initiated_at.is_some() {
+            return Err(crate::errors::TreasuryError::RecoveryDestinationImmutable);
+        }
+        if let Some(existing) = self
+            .recovery_destinations
+            .iter_mut()
+            .find(|d| d.chain == chain)
+        {
+            if now < existing.locked_until {
+                return Err(crate::errors::TreasuryError::RecoveryTimelockActive);
+            }
+            existing.address = address.clone();
+            existing.registered_at = now;
+            existing.locked_until = now.saturating_add(lock_duration_secs);
+        } else {
+            self.recovery_destinations.push(RecoveryDestination {
+                chain,
+                address: address.clone(),
+                registered_at: now,
+                locked_until: now.saturating_add(lock_duration_secs),
+            });
+        }
+        self.audit_trail.record(
+            AuditKind::RecoveryDestinationSet,
+            format!("recovery destination set for {chain}: {address}"),
             now,
         );
         Ok(())

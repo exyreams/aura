@@ -25,8 +25,8 @@ use crate::{
         ConfigChangeKind, DWalletCurve, DWalletReference, DeadMansSwitch, GuardianChangeAction,
         OracleFeed, OracleProvider, PendingAiRotation, PendingConfigChange,
         PendingDecryptionRequest, PendingGuardianChange, PendingSignatureRequest,
-        PendingTransaction, ProposalStatus, ProtocolDeployment, ProtocolFees, SignatureScheme,
-        TransferDetails,
+        PendingTransaction, ProposalStatus, ProtocolDeployment, ProtocolFees, RecoveryDestination,
+        SignatureScheme, TransferDetails,
     },
 };
 

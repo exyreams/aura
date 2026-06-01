@@ -64,6 +64,10 @@ pub struct TreasuryAccount {
     /// Preferred execution chain ("primary"). Appended last so pre-v3 accounts
     /// read it back as `None` from the zero-padded allocation.
     pub default_chain: Option<u8>,
+    /// Per-chain cold-wallet recovery destinations. Appended after default_chain
+    /// so existing accounts deserialize this as an empty Vec.
+    #[max_len(8)]
+    pub recovery_destinations: Vec<RecoveryDestinationRecord>,
 }
 
 impl TreasuryAccount {
@@ -147,6 +151,11 @@ impl TreasuryAccount {
                 .map(SwarmConfigRecord::from_domain)
                 .transpose()?,
             default_chain: domain.default_chain.map(chain_code),
+            recovery_destinations: domain
+                .recovery_destinations
+                .iter()
+                .map(RecoveryDestinationRecord::from_domain)
+                .collect(),
         })
     }
 
@@ -227,6 +236,11 @@ impl TreasuryAccount {
             .map(SwarmConfigRecord::from_domain)
             .transpose()?;
         self.default_chain = domain.default_chain.map(chain_code);
+        self.recovery_destinations = domain
+            .recovery_destinations
+            .iter()
+            .map(RecoveryDestinationRecord::from_domain)
+            .collect();
         Ok(())
     }
 
@@ -336,6 +350,11 @@ impl TreasuryAccount {
             .map(SwarmConfigRecord::to_domain)
             .transpose()?;
         treasury.default_chain = self.default_chain.map(chain_from_code).transpose()?;
+        treasury.recovery_destinations = self
+            .recovery_destinations
+            .iter()
+            .map(RecoveryDestinationRecord::to_domain)
+            .collect::<Result<Vec<_>>>()?;
         if let Some(swarm) = &treasury.swarm {
             treasury.policy_config.shared_pool_limit_usd = Some(swarm.shared_pool_limit_usd);
         }

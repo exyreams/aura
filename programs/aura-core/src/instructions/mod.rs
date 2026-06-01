@@ -37,6 +37,7 @@ pub mod policy_templates;
 pub mod propose_confidential_transaction;
 pub mod propose_override;
 pub mod propose_transaction;
+pub mod recovery;
 pub mod register_dwallet;
 pub mod request_policy_decryption;
 pub mod scheduled_intents;
@@ -227,6 +228,15 @@ pub(crate) use propose_override::__cpi_client_accounts_propose_override;
 pub(crate) use propose_transaction::__client_accounts_propose_transaction;
 pub(crate) use propose_transaction::__cpi_client_accounts_propose_transaction;
 pub use propose_transaction::{ProposeTransaction, ProposeTransactionArgs};
+pub use recovery::{
+    BreakGlassRecover, BreakGlassRecoverArgs, BreakGlassTransferAuthority,
+    BreakGlassTransferAuthorityArgs, RecoveryConfig, RegisterRecoveryDestinationArgs,
+};
+pub(crate) use recovery::{
+    __client_accounts_break_glass_recover, __client_accounts_break_glass_transfer_authority,
+    __client_accounts_recovery_config, __cpi_client_accounts_break_glass_recover,
+    __cpi_client_accounts_break_glass_transfer_authority, __cpi_client_accounts_recovery_config,
+};
 pub(crate) use register_dwallet::__client_accounts_register_dwallet;
 pub(crate) use register_dwallet::__cpi_client_accounts_register_dwallet;
 pub use register_dwallet::{RegisterDwallet, RegisterDwalletArgs};

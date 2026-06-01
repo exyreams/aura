@@ -331,6 +331,9 @@ pub fn audit_kind_code(kind: &AuditKind) -> u8 {
         AuditKind::BalanceRefreshed => 34,
         AuditKind::CheckWarned => 35,
         AuditKind::CheckDegraded => 36,
+        AuditKind::RecoveryDestinationSet => 37,
+        AuditKind::BreakGlassRecovered => 38,
+        AuditKind::CustodyTransferred => 39,
     }
 }
 

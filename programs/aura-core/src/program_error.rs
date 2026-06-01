@@ -207,6 +207,16 @@ pub enum AuraCoreError {
     SettlementReorged,
     #[msg("chain profile is not registered or enabled")]
     ChainProfileNotRegistered,
+    #[msg("no recovery destination registered for this chain")]
+    NoRecoveryDestination,
+    #[msg("recovery destination is locked; wait for the timelock to elapse")]
+    RecoveryTimelockActive,
+    #[msg("break-glass preconditions not met: treasury is not in shutdown or activation window has not elapsed")]
+    RecoveryPreconditionNotMet,
+    #[msg("recovery destination cannot be changed while an emergency shutdown is active")]
+    RecoveryDestinationImmutable,
+    #[msg("caller is not authorized to initiate a recovery operation")]
+    UnauthorizedRecovery,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.
@@ -264,5 +274,14 @@ pub fn map_treasury_error(error: TreasuryError) -> anchor_lang::error::Error {
         TreasuryError::ParentLimitExceeded => error!(AuraCoreError::ParentLimitExceeded),
         TreasuryError::RecipientRejected => error!(AuraCoreError::RecipientBlacklisted),
         TreasuryError::AnomalyDetected => error!(AuraCoreError::AnomalyDetected),
+        TreasuryError::NoRecoveryDestination => error!(AuraCoreError::NoRecoveryDestination),
+        TreasuryError::RecoveryTimelockActive => error!(AuraCoreError::RecoveryTimelockActive),
+        TreasuryError::RecoveryPreconditionNotMet => {
+            error!(AuraCoreError::RecoveryPreconditionNotMet)
+        }
+        TreasuryError::RecoveryDestinationImmutable => {
+            error!(AuraCoreError::RecoveryDestinationImmutable)
+        }
+        TreasuryError::UnauthorizedRecovery => error!(AuraCoreError::UnauthorizedRecovery),
     }
 }

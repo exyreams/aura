@@ -1,6 +1,35 @@
 use super::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct RecoveryDestinationRecord {
+    pub chain: u8,
+    #[max_len(128)]
+    pub address: String,
+    pub registered_at: i64,
+    pub locked_until: i64,
+}
+
+impl RecoveryDestinationRecord {
+    pub fn from_domain(domain: &RecoveryDestination) -> Self {
+        Self {
+            chain: chain_code(domain.chain),
+            address: domain.address.clone(),
+            registered_at: domain.registered_at,
+            locked_until: domain.locked_until,
+        }
+    }
+
+    pub fn to_domain(&self) -> Result<RecoveryDestination> {
+        Ok(RecoveryDestination {
+            chain: chain_from_code(self.chain)?,
+            address: self.address.clone(),
+            registered_at: self.registered_at,
+            locked_until: self.locked_until,
+        })
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct PendingAiRotationRecord {
     pub new_ai_authority: Pubkey,
     pub proposed_at: i64,

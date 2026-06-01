@@ -76,6 +76,19 @@ pub enum TreasuryError {
     RecipientRejected,
     /// Statistical anomaly was detected and configured to deny.
     AnomalyDetected,
+    /// No recovery destination has been registered for the requested chain.
+    NoRecoveryDestination,
+    /// The recovery destination is locked and cannot be changed until the
+    /// timelock elapses.
+    RecoveryTimelockActive,
+    /// Break-glass preconditions are not satisfied (treasury not in shutdown
+    /// or the post-shutdown activation window has not elapsed).
+    RecoveryPreconditionNotMet,
+    /// Attempt to change the recovery destination while an emergency shutdown
+    /// is active.
+    RecoveryDestinationImmutable,
+    /// The caller is not authorized to initiate a recovery operation.
+    UnauthorizedRecovery,
 }
 
 impl Display for TreasuryError {
@@ -133,6 +146,17 @@ impl Display for TreasuryError {
             Self::ParentLimitExceeded => write!(f, "parent treasury limit exceeded"),
             Self::RecipientRejected => write!(f, "recipient rejected by address controls"),
             Self::AnomalyDetected => write!(f, "anomaly detected in transaction pattern"),
+            Self::NoRecoveryDestination => {
+                write!(f, "no recovery destination registered for chain")
+            }
+            Self::RecoveryTimelockActive => write!(f, "recovery destination is locked"),
+            Self::RecoveryPreconditionNotMet => {
+                write!(f, "break-glass preconditions not satisfied")
+            }
+            Self::RecoveryDestinationImmutable => {
+                write!(f, "recovery destination cannot be changed during shutdown")
+            }
+            Self::UnauthorizedRecovery => write!(f, "unauthorized recovery operation"),
         }
     }
 }

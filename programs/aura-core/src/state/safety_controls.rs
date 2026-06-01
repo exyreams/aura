@@ -1,4 +1,4 @@
-use aura_policy::PolicyConfig;
+use aura_policy::{Chain, PolicyConfig};
 
 use crate::{
     constants::{AI_ROTATION_TIMELOCK_SECS, CONFIG_CHANGE_TIMELOCK_SECS},
@@ -247,4 +247,20 @@ pub fn audit_lifecycle_label(state: AgentLifecycleState) -> &'static str {
         AgentLifecycleState::Decommissioning => "decommissioning",
         AgentLifecycleState::Decommissioned => "decommissioned",
     }
+}
+
+/// A pre-registered cold-wallet address on a specific chain used as the sole
+/// permitted destination when `break_glass_recover` sweeps funds out.
+///
+/// `locked_until` prevents an attacker who steals the owner key from
+/// immediately redirecting break-glass recovery to themselves: a new
+/// registration is locked for `RECOVERY_DESTINATION_TIMELOCK_SECS` before it
+/// can be changed again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoveryDestination {
+    pub chain: Chain,
+    pub address: String,
+    pub registered_at: i64,
+    /// The earliest timestamp at which this entry may be overwritten.
+    pub locked_until: i64,
 }

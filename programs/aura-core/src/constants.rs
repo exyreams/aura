@@ -122,3 +122,9 @@ pub const DEFAULT_DEAD_MANS_SWITCH_THRESHOLD_SECS: i64 = 90 * 86_400;
 pub const BALANCE_STALE_THRESHOLD_SECS: i64 = 3_600;
 /// Minimum time between snapshots.
 pub const SNAPSHOT_MIN_INTERVAL_SECS: i64 = 6 * 3_600;
+/// How long a recovery destination is locked after being set (prevents
+/// an attacker who steals the owner key from immediately redirecting recovery).
+pub const RECOVERY_DESTINATION_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
+/// Minimum elapsed time after `emergency_shutdown` before `break_glass_recover`
+/// can be called (gives the legitimate owner a reaction window).
+pub const RECOVERY_ACTIVATION_SECS: i64 = 3_600;

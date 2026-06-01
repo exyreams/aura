@@ -48,7 +48,8 @@ pub use instructions::*;
 use instructions::{
     __client_accounts_abandon_proposal, __client_accounts_apply_policy_preset,
     __client_accounts_apply_policy_template, __client_accounts_approve_pending_execution,
-    __client_accounts_attest_policy, __client_accounts_cancel_pending,
+    __client_accounts_attest_policy, __client_accounts_break_glass_recover,
+    __client_accounts_break_glass_transfer_authority, __client_accounts_cancel_pending,
     __client_accounts_check_invariants, __client_accounts_check_policy_cpi,
     __client_accounts_clear_scheduled_intent_in_flight, __client_accounts_close_activity_log,
     __client_accounts_close_address_list, __client_accounts_close_conditional_proposal,
@@ -80,23 +81,25 @@ use instructions::{
     __client_accounts_pause_execution, __client_accounts_propose_batch,
     __client_accounts_propose_conditional_transaction,
     __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
-    __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
-    __client_accounts_refresh_external_liveness, __client_accounts_refresh_verified_asset_balance,
-    __client_accounts_register_chain_profile, __client_accounts_register_dwallet,
-    __client_accounts_remove_budget_envelope, __client_accounts_remove_dwallet,
-    __client_accounts_request_policy_decryption, __client_accounts_resubmit_proposal,
-    __client_accounts_revoke_operator_role, __client_accounts_revoke_session_key,
-    __client_accounts_set_default_chain, __client_accounts_set_scoped_pause,
-    __client_accounts_simulate_policy, __client_accounts_take_snapshot,
-    __client_accounts_trigger_dead_mans_switch, __client_accounts_try_trigger,
-    __client_accounts_update_chain_profile, __client_accounts_update_fee_recipient,
-    __client_accounts_update_health_score, __client_accounts_update_operator_role,
-    __client_accounts_update_session_key, __client_accounts_veto_config_change,
-    __client_accounts_write_policy_receipt, __cpi_client_accounts_abandon_proposal,
-    __cpi_client_accounts_apply_policy_preset, __cpi_client_accounts_apply_policy_template,
-    __cpi_client_accounts_approve_pending_execution, __cpi_client_accounts_attest_policy,
-    __cpi_client_accounts_cancel_pending, __cpi_client_accounts_check_invariants,
-    __cpi_client_accounts_check_policy_cpi, __cpi_client_accounts_clear_scheduled_intent_in_flight,
+    __client_accounts_propose_transaction, __client_accounts_recovery_config,
+    __client_accounts_refresh_dwallet_balance, __client_accounts_refresh_external_liveness,
+    __client_accounts_refresh_verified_asset_balance, __client_accounts_register_chain_profile,
+    __client_accounts_register_dwallet, __client_accounts_remove_budget_envelope,
+    __client_accounts_remove_dwallet, __client_accounts_request_policy_decryption,
+    __client_accounts_resubmit_proposal, __client_accounts_revoke_operator_role,
+    __client_accounts_revoke_session_key, __client_accounts_set_default_chain,
+    __client_accounts_set_scoped_pause, __client_accounts_simulate_policy,
+    __client_accounts_take_snapshot, __client_accounts_trigger_dead_mans_switch,
+    __client_accounts_try_trigger, __client_accounts_update_chain_profile,
+    __client_accounts_update_fee_recipient, __client_accounts_update_health_score,
+    __client_accounts_update_operator_role, __client_accounts_update_session_key,
+    __client_accounts_veto_config_change, __client_accounts_write_policy_receipt,
+    __cpi_client_accounts_abandon_proposal, __cpi_client_accounts_apply_policy_preset,
+    __cpi_client_accounts_apply_policy_template, __cpi_client_accounts_approve_pending_execution,
+    __cpi_client_accounts_attest_policy, __cpi_client_accounts_break_glass_recover,
+    __cpi_client_accounts_break_glass_transfer_authority, __cpi_client_accounts_cancel_pending,
+    __cpi_client_accounts_check_invariants, __cpi_client_accounts_check_policy_cpi,
+    __cpi_client_accounts_clear_scheduled_intent_in_flight,
     __cpi_client_accounts_close_activity_log, __cpi_client_accounts_close_address_list,
     __cpi_client_accounts_close_conditional_proposal, __cpi_client_accounts_close_exposure_group,
     __cpi_client_accounts_close_external_liveness, __cpi_client_accounts_close_fee_vault,
@@ -128,8 +131,8 @@ use instructions::{
     __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
     __cpi_client_accounts_propose_conditional_transaction,
     __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
-    __cpi_client_accounts_propose_transaction, __cpi_client_accounts_refresh_dwallet_balance,
-    __cpi_client_accounts_refresh_external_liveness,
+    __cpi_client_accounts_propose_transaction, __cpi_client_accounts_recovery_config,
+    __cpi_client_accounts_refresh_dwallet_balance, __cpi_client_accounts_refresh_external_liveness,
     __cpi_client_accounts_refresh_verified_asset_balance,
     __cpi_client_accounts_register_chain_profile, __cpi_client_accounts_register_dwallet,
     __cpi_client_accounts_remove_budget_envelope, __cpi_client_accounts_remove_dwallet,
@@ -159,6 +162,27 @@ pub mod aura_core {
         args: RegisterDwalletArgs,
     ) -> Result<()> {
         instructions::register_dwallet::handler(ctx, args)
+    }
+
+    pub fn register_recovery_destination(
+        ctx: Context<RecoveryConfig>,
+        args: RegisterRecoveryDestinationArgs,
+    ) -> Result<()> {
+        instructions::recovery::register_recovery_destination(ctx, args)
+    }
+
+    pub fn break_glass_recover(
+        ctx: Context<BreakGlassRecover>,
+        args: BreakGlassRecoverArgs,
+    ) -> Result<()> {
+        instructions::recovery::break_glass_recover(ctx, args)
+    }
+
+    pub fn break_glass_transfer_authority(
+        ctx: Context<BreakGlassTransferAuthority>,
+        args: BreakGlassTransferAuthorityArgs,
+    ) -> Result<()> {
+        instructions::recovery::break_glass_transfer_authority(ctx, args)
     }
 
     pub fn register_chain_profile(
