@@ -1,14 +1,14 @@
-//! Devnet smoke checks for features 07 (oracle integration) and 08 (multichain architecture).
+//! Devnet smoke checks for oracle integration and multichain architecture.
 //!
-//! 07 coverage: `set_asset_oracle_feed` stores a verified feed descriptor on a tracked
+//! Oracle coverage: `set_asset_oracle_feed` stores a verified feed descriptor on a tracked
 //! asset; `refresh_verified_asset_balance` reads the feed account, runs the oracle adapter,
 //! and updates the asset row.  The RawLegacy path is used here so no live Pyth/Switchboard
 //! account is needed — the feed account is a freshly created 8-byte system account.
 //!
-//! 08 coverage: `register_chain_profile` and `update_chain_profile` manage the custom-chain
-//! registry PDA.  `propose_transaction` with EVM chain-binding fields (evm_chain_id, nonce,
-//! gas) exercises the replay-protection digest path and the recipient-address validator.
-//! `abandon_proposal` cancels a chain-bound pending proposal.
+//! Multichain coverage: `register_chain_profile` and `update_chain_profile` manage the
+//! custom-chain registry PDA.  `propose_transaction` with EVM chain-binding fields
+//! (evm_chain_id, nonce, gas) exercises the replay-protection digest path and the
+//! recipient-address validator.  `abandon_proposal` cancels a chain-bound pending proposal.
 //!
 //! Not smoke-tested here (require Ika dWallet `finalize_execution` to reach Signed status):
 //!   mark_settlement_broadcast, confirm_settlement, resubmit_proposal.
@@ -123,7 +123,7 @@ fn setup_eth_dwallet(
 // ── Feature 07: Oracle integration ──────────────────────────────────────────
 
 fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
-    println!("\n[07] oracle integration — set_asset_oracle_feed + refresh_verified_asset_balance");
+    println!("\n[oracle] set_asset_oracle_feed + refresh_verified_asset_balance");
     let treasury = create_active_treasury(rpc, payer, "om-oracle", seed)?;
     let dwallet_state = setup_eth_dwallet(rpc, payer, treasury, seed + 2)?;
     let owner = payer.pubkey();
@@ -252,14 +252,14 @@ fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
     );
     println!("  ok refresh_verified_asset_balance (RawLegacy, native=500_000_000, usd=0 from zero feed)");
 
-    println!("  [07] oracle integration checks passed");
+    println!("  oracle integration checks passed");
     Ok(())
 }
 
 // ── Feature 08a: Chain profile registry ─────────────────────────────────────
 
 fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
-    println!("\n[08a] chain profiles — register_chain_profile + update_chain_profile");
+    println!("\n[chain profiles] register_chain_profile + update_chain_profile");
     let chain_profile = pda(&[CHAIN_PROFILE_SEED, &[CUSTOM_CHAIN]], &ID).0;
 
     // register_chain_profile — custom EVM-like chain (code 100, chain_id 9999).
@@ -343,14 +343,14 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
     );
     println!("  ok update_chain_profile (confirmations_required -> 6)");
 
-    println!("  [08a] chain profile checks passed");
+    println!("  chain profile checks passed");
     Ok(())
 }
 
 // ── Feature 08b: Chain binding + abandon ────────────────────────────────────
 
 fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
-    println!("\n[08b] chain binding — propose_transaction with EVM binding + abandon_proposal");
+    println!("\n[chain binding] propose_transaction with EVM binding + abandon_proposal");
     let treasury = create_active_treasury(rpc, payer, "om-chain", seed + 500)?;
 
     // propose_transaction with full EVM chain-binding fields.
@@ -464,7 +464,7 @@ fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) ->
     );
     println!("  ok abandon_proposal clears chain-bound pending slot");
 
-    println!("  [08b] chain binding + abandon checks passed");
+    println!("  chain binding + abandon checks passed");
     Ok(())
 }
 

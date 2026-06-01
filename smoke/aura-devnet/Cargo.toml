@@ -34,6 +34,10 @@ path = "src/bin/hardening.rs"
 name = "oracle_multichain"
 path = "src/bin/oracle_multichain.rs"
 
+[[bin]]
+name = "recovery"
+path = "src/bin/recovery.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"
