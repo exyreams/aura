@@ -45,8 +45,16 @@ seeds = [ b"dwallet_state", treasury, chain_code ]
 It stores the lifecycle `status` (active / frozen / retiring / retired), optional per-tx + daily USD limits
 and a rolling spend counter, the controlling authority + CPI authority seed (rotation `epoch`), an optional
 label, a reservation total, and an asset ledger (up to 16 rows of native amount, USD value, decimals, and an
-optional price feed). The treasury keeps only a cached aggregate balance per dWallet, kept in sync via
-`reconcile_dwallet_balance`.
+optional price feed account). The feed account can be refreshed through the raw legacy path or through the
+verified oracle adapter (`set_asset_oracle_feed` + `refresh_verified_asset_balance`), which validates the
+stored feed account, owner program, publish time, confidence interval, and exponent before updating USD
+value. When `require_balance_oracle_freshness` is enabled, raw legacy balance and condition feeds are refused.
+The treasury keeps only a cached aggregate balance per dWallet, kept in sync via `reconcile_dwallet_balance`.
+
+Pending proposals may also store `ChainExecutionBinding` fields in the treasury queue. Those fields bind
+EVM replay data, Bitcoin UTXO/sighash data, or Solana blockhash/message data into the dWallet signed
+message and keep chain-bound proposals open until `confirm_settlement` observes the required confirmations.
+Failed broadcasts can be resubmitted with fresh replay fields or abandoned to release wallet reservations.
 
 ## Auxiliary accounts
 
@@ -55,6 +63,7 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | Account | Seeds | Purpose |
 |---|---|---|
 | `FeeVaultAccount` | `[b"fee_vault", treasury]` | Protocol fee recipient + accrual counters |
+| `ChainProfileAccount` | `[b"chain_profile", chain_code]` | Chain metadata for custom/built-in chain codes: address format, replay scheme, curve/scheme, gas asset, finality model, and confirmations |
 | `SwarmPoolAccount` | `[b"swarm_pool", swarm_id_hash]` | Shared spend pool across treasuries |
 | `ExposureGroupAccount` | `[b"exposure_group", authority, group_id]` | Cross-treasury daily exposure cap |
 | `OperatorRoleAccount` | `[b"operator_role", treasury, operator]` | Scoped operator permission bitmap |

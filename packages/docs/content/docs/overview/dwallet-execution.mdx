@@ -56,7 +56,14 @@ await aura.dwallet.register({
 
 ## Execution Flow
 
-<Mermaid chart="sequenceDiagram;participant Agent as AI Agent;participant Core as aura-core;participant Policy as aura-policy;participant DWallet as Ika dWallet;Agent->>Core: propose_transaction(amount_usd=250, target_chain=2, recipient=0x...);Core->>Policy: evaluate_transaction() — all rules pass;Core->>Core: store PendingTransaction { status: Pending };Note over Core,DWallet: Operator drives execution...;Operator->>Core: execute_pending(dwallet, message_approval, cpi_authority, ...);Core->>DWallet: CPI — approve_message(dwallet_id, message_digest, signature_scheme_code);DWallet->>DWallet: verify AURA cpi_authority is authorized;DWallet-->>Core: MessageApproval PDA populated;Operator->>Core: finalize_execution(message_approval, ...);Core->>Core: verify signature, close PendingTransaction, update counters;Core-->>Agent: ProposalFinalized event;Agent->>Ethereum: broadcast signed transaction" />
+<Mermaid chart="sequenceDiagram;participant Agent as AI Agent;participant Core as aura-core;participant Policy as aura-policy;participant DWallet as Ika dWallet;participant Chain as Target chain;Agent->>Core: propose_transaction(amount_usd=250, target_chain=2, recipient=0x..., chain binding);Core->>Policy: evaluate_transaction() - all rules pass;Core->>Core: store PendingTransaction { status: Proposed };Note over Core,DWallet: Operator drives execution...;Operator->>Core: execute_pending(dwallet, message_approval, cpi_authority, ...);Core->>DWallet: CPI - approve_message(dwallet_id, message_digest, signature_scheme_code);DWallet->>DWallet: verify AURA cpi_authority is authorized;DWallet-->>Core: MessageApproval PDA populated;Operator->>Core: finalize_execution(message_approval, ...);Core->>Core: verify signature; chain-bound proposal becomes Signed;Operator->>Chain: broadcast signed transaction;Operator->>Core: confirm_settlement(confirmations_observed);Core->>Core: debit reserved wallet balance and update policy counters;Core-->>Agent: Proposal settled" />
+
+For legacy proposals with no chain binding, `finalize_execution` keeps the original behavior and closes the
+proposal once the signature is verified. For chain-bound proposals, settlement is explicit: the signed digest
+commits to replay-protection fields, `mark_settlement_broadcast` records the target-chain tx hash after relay,
+and `confirm_settlement` is the point where wallet reservations, scheduled intent counters, and policy counters
+are finally applied. Failed or reorged broadcasts can be `resubmit_proposal` with fresh replay fields or
+`abandon_proposal` to release the reservation.
 
 ## `execute_pending` Accounts
 
@@ -116,13 +123,34 @@ Bitcoin transactions above `bitcoin_manual_review_threshold_usd` (default: `5_00
 | `exposure_group` | Optional — updated after finalization if group is configured |
 | `external_liveness` | Optional — freshness check if `liveness_config` requires it |
 
+## `confirm_settlement` Accounts
+
+| Account | Purpose |
+|---|---|
+| `operator` | Owner or AI authority confirming the target-chain settlement |
+| `treasury` | Treasury PDA containing the signed pending proposal |
+| `swarm_pool` | Optional - updated when the proposal consumes shared swarm budget |
+| `budget_envelope` | Optional - updated when the proposal consumes a scoped budget |
+| `exposure_group` | Optional - updated when the proposal counts against a cross-treasury exposure group |
+| `dwallet_state` | Optional - required when the proposal reserved a chain-native asset transfer |
+| `scheduled_intent` | Optional - settled when the signed proposal was promoted from a scheduled intent |
+
+## ChainProfileAccount
+
+Custom chain codes require a `ChainProfileAccount` at `[b"chain_profile", chain_code]`. The profile stores
+address format, replay scheme, finality model, curve/scheme, native gas asset, optional EVM chain id, and
+required confirmation depth. Built-in chains have defaults, but a profile may still be supplied to override
+settlement or replay policy.
+
 ## Security Properties
 
 | Property | Guarantee |
 |---|---|
 | Key never exposed | Agent receives signed bytes, not the private key |
 | Authorization gated | Only `aura-core`'s `cpi_authority` PDA can request co-signs |
-| Per-chain isolation | Each chain has its own `DwalletRecord` |
+| Per-chain isolation | Each chain has its own `DwalletRecord`; chain-bound proposals also bind native replay fields |
+| Settlement gate | Chain-bound proposals are not counted as settled until `confirm_settlement` reaches the required confirmations |
+| Failure handling | Reorged or failed broadcasts can be re-signed with fresh replay data or abandoned with reservations released |
 | Audit trail | Every `execute_pending` and `finalize_execution` emits on-chain events |
 | Revocable | Owner can deregister a dWallet record at any time |
 | Liveness checks | `LivenessConfig.require_dwallet_freshness` can require a fresh `ExternalLiveness` record |
