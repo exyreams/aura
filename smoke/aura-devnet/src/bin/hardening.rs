@@ -88,6 +88,16 @@ fn proposal_args(now: i64, amount_usd: u64, recipient: &str) -> ProposeTransacti
         decimals: None,
         gas_native_amount: None,
         gas_asset_id: None,
+        evm_chain_id: None,
+        replay_nonce: None,
+        gas_limit: None,
+        max_fee_native: None,
+        calldata_hash: None,
+        utxo_set_hash: None,
+        sighash_type: None,
+        solana_recent_blockhash: None,
+        solana_message_hash: None,
+        confirmations_required: None,
     }
 }
 
@@ -113,6 +123,7 @@ fn propose_public(
                 budget_envelope: None,
                 exposure_group: None,
                 dwallet_state,
+                chain_profile: None,
             }
             .to_account_metas(None),
             instruction::ProposeTransaction { args }.data(),
@@ -405,6 +416,11 @@ fn run_conditional_trigger(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyho
                     conditions: vec![ConditionRecord {
                         kind: 2,
                         feed: None,
+                        oracle_provider: 255,
+                        oracle_program_id: None,
+                        oracle_max_staleness_secs: 0,
+                        oracle_max_confidence_bps: 0,
+                        oracle_expo_expected: None,
                         threshold: 0,
                         window_start: start,
                         window_end: end,

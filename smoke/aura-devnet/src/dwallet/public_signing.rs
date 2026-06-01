@@ -93,6 +93,7 @@ pub async fn run() -> anyhow::Result<()> {
                 budget_envelope: None,
                 exposure_group: None,
                 dwallet_state: None,
+                chain_profile: None,
             }
             .to_account_metas(None),
             data: instruction::ProposeTransaction {
@@ -113,6 +114,16 @@ pub async fn run() -> anyhow::Result<()> {
                     decimals: None,
                     gas_native_amount: None,
                     gas_asset_id: None,
+                    evm_chain_id: None,
+                    replay_nonce: None,
+                    gas_limit: None,
+                    max_fee_native: None,
+                    calldata_hash: None,
+                    utxo_set_hash: None,
+                    sighash_type: None,
+                    solana_recent_blockhash: None,
+                    solana_message_hash: None,
+                    confirmations_required: None,
                 },
             }
             .data(),

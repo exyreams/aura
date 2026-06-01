@@ -30,6 +30,10 @@ path = "src/bin/wallet.rs"
 name = "hardening"
 path = "src/bin/hardening.rs"
 
+[[bin]]
+name = "oracle_multichain"
+path = "src/bin/oracle_multichain.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"
