@@ -46,54 +46,57 @@ pub mod state;
 pub use instructions::*;
 #[allow(unused_imports)]
 use instructions::{
-    __client_accounts_apply_policy_preset, __client_accounts_apply_policy_template,
-    __client_accounts_approve_pending_execution, __client_accounts_attest_policy,
-    __client_accounts_cancel_pending, __client_accounts_check_invariants,
-    __client_accounts_check_policy_cpi, __client_accounts_clear_scheduled_intent_in_flight,
-    __client_accounts_close_activity_log, __client_accounts_close_address_list,
-    __client_accounts_close_conditional_proposal, __client_accounts_close_exposure_group,
-    __client_accounts_close_external_liveness, __client_accounts_close_fee_vault,
-    __client_accounts_close_health_score, __client_accounts_close_policy_history,
-    __client_accounts_close_policy_template, __client_accounts_close_scheduled_intent,
-    __client_accounts_close_session_key, __client_accounts_close_snapshot,
-    __client_accounts_close_swarm_pool, __client_accounts_collect_fees,
-    __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
-    __client_accounts_configure_budget_envelope,
+    __client_accounts_abandon_proposal, __client_accounts_apply_policy_preset,
+    __client_accounts_apply_policy_template, __client_accounts_approve_pending_execution,
+    __client_accounts_attest_policy, __client_accounts_cancel_pending,
+    __client_accounts_check_invariants, __client_accounts_check_policy_cpi,
+    __client_accounts_clear_scheduled_intent_in_flight, __client_accounts_close_activity_log,
+    __client_accounts_close_address_list, __client_accounts_close_conditional_proposal,
+    __client_accounts_close_exposure_group, __client_accounts_close_external_liveness,
+    __client_accounts_close_fee_vault, __client_accounts_close_health_score,
+    __client_accounts_close_policy_history, __client_accounts_close_policy_template,
+    __client_accounts_close_scheduled_intent, __client_accounts_close_session_key,
+    __client_accounts_close_snapshot, __client_accounts_close_swarm_pool,
+    __client_accounts_collect_fees, __client_accounts_collect_override_signature,
+    __client_accounts_configure_approval_ladder, __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
-    __client_accounts_create_policy_template, __client_accounts_create_scheduled_intent,
-    __client_accounts_create_treasury, __client_accounts_dwallet_control,
-    __client_accounts_dwallet_spend, __client_accounts_execute_pending,
-    __client_accounts_execute_scheduled_intent, __client_accounts_finalize_execution,
-    __client_accounts_grant_operator_role, __client_accounts_init_activity_log,
-    __client_accounts_init_address_list, __client_accounts_init_dwallet_state,
-    __client_accounts_init_exposure_group, __client_accounts_init_external_liveness,
-    __client_accounts_init_fee_vault, __client_accounts_init_health_score,
-    __client_accounts_init_policy_history, __client_accounts_init_swarm_pool,
-    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
-    __client_accounts_join_swarm, __client_accounts_manage_address_list,
-    __client_accounts_manage_exposure_group, __client_accounts_manage_policy_template,
-    __client_accounts_manage_scheduled_intent, __client_accounts_manage_swarm,
+    __client_accounts_confirm_settlement, __client_accounts_create_policy_template,
+    __client_accounts_create_scheduled_intent, __client_accounts_create_treasury,
+    __client_accounts_dwallet_control, __client_accounts_dwallet_spend,
+    __client_accounts_execute_pending, __client_accounts_execute_scheduled_intent,
+    __client_accounts_finalize_execution, __client_accounts_grant_operator_role,
+    __client_accounts_init_activity_log, __client_accounts_init_address_list,
+    __client_accounts_init_dwallet_state, __client_accounts_init_exposure_group,
+    __client_accounts_init_external_liveness, __client_accounts_init_fee_vault,
+    __client_accounts_init_health_score, __client_accounts_init_policy_history,
+    __client_accounts_init_swarm_pool, __client_accounts_issue_session_key,
+    __client_accounts_join_exposure_group, __client_accounts_join_swarm,
+    __client_accounts_manage_address_list, __client_accounts_manage_exposure_group,
+    __client_accounts_manage_policy_template, __client_accounts_manage_scheduled_intent,
+    __client_accounts_manage_swarm, __client_accounts_mark_settlement_broadcast,
     __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
     __client_accounts_pause_execution, __client_accounts_propose_batch,
     __client_accounts_propose_conditional_transaction,
     __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_refresh_dwallet_balance,
-    __client_accounts_refresh_external_liveness, __client_accounts_register_dwallet,
+    __client_accounts_refresh_external_liveness, __client_accounts_refresh_verified_asset_balance,
+    __client_accounts_register_chain_profile, __client_accounts_register_dwallet,
     __client_accounts_remove_budget_envelope, __client_accounts_remove_dwallet,
-    __client_accounts_request_policy_decryption, __client_accounts_revoke_operator_role,
-    __client_accounts_revoke_session_key, __client_accounts_set_default_chain,
-    __client_accounts_set_scoped_pause, __client_accounts_simulate_policy,
-    __client_accounts_take_snapshot, __client_accounts_trigger_dead_mans_switch,
-    __client_accounts_try_trigger, __client_accounts_update_fee_recipient,
+    __client_accounts_request_policy_decryption, __client_accounts_resubmit_proposal,
+    __client_accounts_revoke_operator_role, __client_accounts_revoke_session_key,
+    __client_accounts_set_default_chain, __client_accounts_set_scoped_pause,
+    __client_accounts_simulate_policy, __client_accounts_take_snapshot,
+    __client_accounts_trigger_dead_mans_switch, __client_accounts_try_trigger,
+    __client_accounts_update_chain_profile, __client_accounts_update_fee_recipient,
     __client_accounts_update_health_score, __client_accounts_update_operator_role,
     __client_accounts_update_session_key, __client_accounts_veto_config_change,
-    __client_accounts_write_policy_receipt, __cpi_client_accounts_apply_policy_preset,
-    __cpi_client_accounts_apply_policy_template, __cpi_client_accounts_approve_pending_execution,
-    __cpi_client_accounts_attest_policy, __cpi_client_accounts_cancel_pending,
-    __cpi_client_accounts_check_invariants, __cpi_client_accounts_check_policy_cpi,
-    __cpi_client_accounts_clear_scheduled_intent_in_flight,
+    __client_accounts_write_policy_receipt, __cpi_client_accounts_abandon_proposal,
+    __cpi_client_accounts_apply_policy_preset, __cpi_client_accounts_apply_policy_template,
+    __cpi_client_accounts_approve_pending_execution, __cpi_client_accounts_attest_policy,
+    __cpi_client_accounts_cancel_pending, __cpi_client_accounts_check_invariants,
+    __cpi_client_accounts_check_policy_cpi, __cpi_client_accounts_clear_scheduled_intent_in_flight,
     __cpi_client_accounts_close_activity_log, __cpi_client_accounts_close_address_list,
     __cpi_client_accounts_close_conditional_proposal, __cpi_client_accounts_close_exposure_group,
     __cpi_client_accounts_close_external_liveness, __cpi_client_accounts_close_fee_vault,
@@ -107,31 +110,35 @@ use instructions::{
     __cpi_client_accounts_configure_confidential_guardrails,
     __cpi_client_accounts_configure_liveness_guardrails, __cpi_client_accounts_configure_multisig,
     __cpi_client_accounts_configure_swarm, __cpi_client_accounts_confirm_policy_decryption,
-    __cpi_client_accounts_create_policy_template, __cpi_client_accounts_create_scheduled_intent,
-    __cpi_client_accounts_create_treasury, __cpi_client_accounts_dwallet_control,
-    __cpi_client_accounts_dwallet_spend, __cpi_client_accounts_execute_pending,
-    __cpi_client_accounts_execute_scheduled_intent, __cpi_client_accounts_finalize_execution,
-    __cpi_client_accounts_grant_operator_role, __cpi_client_accounts_init_activity_log,
-    __cpi_client_accounts_init_address_list, __cpi_client_accounts_init_dwallet_state,
-    __cpi_client_accounts_init_exposure_group, __cpi_client_accounts_init_external_liveness,
-    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
-    __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_swarm_pool,
-    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
-    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
-    __cpi_client_accounts_manage_exposure_group, __cpi_client_accounts_manage_policy_template,
-    __cpi_client_accounts_manage_scheduled_intent, __cpi_client_accounts_manage_swarm,
+    __cpi_client_accounts_confirm_settlement, __cpi_client_accounts_create_policy_template,
+    __cpi_client_accounts_create_scheduled_intent, __cpi_client_accounts_create_treasury,
+    __cpi_client_accounts_dwallet_control, __cpi_client_accounts_dwallet_spend,
+    __cpi_client_accounts_execute_pending, __cpi_client_accounts_execute_scheduled_intent,
+    __cpi_client_accounts_finalize_execution, __cpi_client_accounts_grant_operator_role,
+    __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
+    __cpi_client_accounts_init_dwallet_state, __cpi_client_accounts_init_exposure_group,
+    __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_init_fee_vault,
+    __cpi_client_accounts_init_health_score, __cpi_client_accounts_init_policy_history,
+    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_issue_session_key,
+    __cpi_client_accounts_join_exposure_group, __cpi_client_accounts_join_swarm,
+    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_manage_exposure_group,
+    __cpi_client_accounts_manage_policy_template, __cpi_client_accounts_manage_scheduled_intent,
+    __cpi_client_accounts_manage_swarm, __cpi_client_accounts_mark_settlement_broadcast,
     __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
     __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
     __cpi_client_accounts_propose_conditional_transaction,
     __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
     __cpi_client_accounts_propose_transaction, __cpi_client_accounts_refresh_dwallet_balance,
-    __cpi_client_accounts_refresh_external_liveness, __cpi_client_accounts_register_dwallet,
+    __cpi_client_accounts_refresh_external_liveness,
+    __cpi_client_accounts_refresh_verified_asset_balance,
+    __cpi_client_accounts_register_chain_profile, __cpi_client_accounts_register_dwallet,
     __cpi_client_accounts_remove_budget_envelope, __cpi_client_accounts_remove_dwallet,
-    __cpi_client_accounts_request_policy_decryption, __cpi_client_accounts_revoke_operator_role,
-    __cpi_client_accounts_revoke_session_key, __cpi_client_accounts_set_default_chain,
-    __cpi_client_accounts_set_scoped_pause, __cpi_client_accounts_simulate_policy,
-    __cpi_client_accounts_take_snapshot, __cpi_client_accounts_trigger_dead_mans_switch,
-    __cpi_client_accounts_try_trigger, __cpi_client_accounts_update_fee_recipient,
+    __cpi_client_accounts_request_policy_decryption, __cpi_client_accounts_resubmit_proposal,
+    __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_revoke_session_key,
+    __cpi_client_accounts_set_default_chain, __cpi_client_accounts_set_scoped_pause,
+    __cpi_client_accounts_simulate_policy, __cpi_client_accounts_take_snapshot,
+    __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_try_trigger,
+    __cpi_client_accounts_update_chain_profile, __cpi_client_accounts_update_fee_recipient,
     __cpi_client_accounts_update_health_score, __cpi_client_accounts_update_operator_role,
     __cpi_client_accounts_update_session_key, __cpi_client_accounts_veto_config_change,
     __cpi_client_accounts_write_policy_receipt,
@@ -152,6 +159,20 @@ pub mod aura_core {
         args: RegisterDwalletArgs,
     ) -> Result<()> {
         instructions::register_dwallet::handler(ctx, args)
+    }
+
+    pub fn register_chain_profile(
+        ctx: Context<RegisterChainProfile>,
+        args: ChainProfileArgs,
+    ) -> Result<()> {
+        instructions::chain_profiles::register_chain_profile(ctx, args)
+    }
+
+    pub fn update_chain_profile(
+        ctx: Context<UpdateChainProfile>,
+        args: ChainProfileArgs,
+    ) -> Result<()> {
+        instructions::chain_profiles::update_chain_profile(ctx, args)
     }
 
     pub fn init_dwallet_state(ctx: Context<InitDwalletState>, chain: u8, now: i64) -> Result<()> {
@@ -278,6 +299,21 @@ pub mod aura_core {
         instructions::wallet_balances::set_asset_feed(ctx, chain, asset_id, feed, now)
     }
 
+    pub fn set_asset_oracle_feed(
+        ctx: Context<DwalletControl>,
+        chain: u8,
+        args: SetAssetOracleFeedArgs,
+    ) -> Result<()> {
+        instructions::wallet_balances::set_asset_oracle_feed(ctx, chain, args)
+    }
+
+    pub fn refresh_verified_asset_balance(
+        ctx: Context<RefreshVerifiedAssetBalance>,
+        args: RefreshVerifiedAssetBalanceArgs,
+    ) -> Result<()> {
+        instructions::wallet_balances::refresh_verified_asset_balance(ctx, args)
+    }
+
     pub fn reconcile_dwallet_balance(
         ctx: Context<DwalletControl>,
         chain: u8,
@@ -359,6 +395,35 @@ pub mod aura_core {
         now: i64,
     ) -> Result<()> {
         instructions::confirm_policy_decryption::handler(ctx, now)
+    }
+
+    pub fn confirm_settlement(
+        ctx: Context<ConfirmSettlement>,
+        args: ConfirmSettlementArgs,
+    ) -> Result<()> {
+        instructions::confirm_settlement::handler(ctx, args)
+    }
+
+    pub fn mark_settlement_broadcast(
+        ctx: Context<MarkSettlementBroadcast>,
+        args: MarkSettlementBroadcastArgs,
+    ) -> Result<()> {
+        instructions::confirm_settlement::mark_broadcast(ctx, args)
+    }
+
+    pub fn resubmit_proposal(
+        ctx: Context<ResubmitProposal>,
+        args: ResubmitProposalArgs,
+    ) -> Result<()> {
+        instructions::confirm_settlement::resubmit_proposal(ctx, args)
+    }
+
+    pub fn abandon_proposal(
+        ctx: Context<AbandonProposal>,
+        proposal_id: u64,
+        now: i64,
+    ) -> Result<()> {
+        instructions::confirm_settlement::abandon_proposal(ctx, proposal_id, now)
     }
 
     pub fn finalize_execution(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {

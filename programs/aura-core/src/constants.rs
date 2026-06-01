@@ -40,8 +40,8 @@ pub const MAX_SWARM_MEMBERS: usize = 16;
 /// Maximum byte length of a swarm member agent ID string.
 pub const MAX_SWARM_MEMBER_LEN: usize = 64;
 
-/// Current treasury account schema version after the advanced feature upgrade.
-pub const CURRENT_SCHEMA_VERSION: u8 = 4;
+/// Current treasury account schema version after oracle and chain-binding fields.
+pub const CURRENT_SCHEMA_VERSION: u8 = 5;
 /// Maximum pending proposals stored in the multi-slot queue.
 pub const MAX_PENDING_QUEUE_DEPTH: usize = 3;
 /// Activity log PDA seed.
@@ -58,6 +58,8 @@ pub const ADDRESS_LIST_SEED: &[u8] = b"address_list";
 pub const POLICY_HISTORY_SEED: &[u8] = b"policy_history";
 /// Protocol fee vault PDA seed.
 pub const FEE_VAULT_SEED: &[u8] = b"fee_vault";
+/// Chain profile PDA seed: `[seed, &[chain_code]]`.
+pub const CHAIN_PROFILE_SEED: &[u8] = b"chain_profile";
 /// Compliance oracle PDA seed.
 pub const COMPLIANCE_ORACLE_SEED: &[u8] = b"compliance_oracle";
 /// Health score PDA seed.

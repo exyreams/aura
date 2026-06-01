@@ -19,6 +19,7 @@ mod confidential;
 mod deployment;
 mod dwallet;
 mod fees;
+mod oracle;
 mod pending;
 mod receipt;
 mod reputation;
@@ -35,9 +36,10 @@ pub use dwallet::{
     AssetBalance, DWalletCurve, DWalletReference, DWalletState, DWalletStatus, SignatureScheme,
 };
 pub use fees::ProtocolFees;
+pub use oracle::{OracleFeed, OracleProvider};
 pub use pending::{
-    PendingDecryptionRequest, PendingSignatureRequest, PendingTransaction, ProposalStatus,
-    TransferDetails,
+    ChainExecutionBinding, PendingDecryptionRequest, PendingSignatureRequest, PendingTransaction,
+    ProposalStatus, TransferDetails,
 };
 pub use receipt::ExecutionReceipt;
 pub use reputation::AgentReputation;

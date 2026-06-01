@@ -112,20 +112,75 @@ fn write_transfer_details<W: Write>(writer: &mut W, transfer: &TransferDetails) 
         return Ok(());
     }
 
-    writer.write_str(":asset=")?;
-    writer.write_str(transfer.asset_id.as_deref().unwrap_or(""))?;
-    writer.write_str(":native=")?;
-    if let Some(value) = transfer.native_amount {
+    if transfer.has_asset_payload() {
+        writer.write_str(":asset=")?;
+        writer.write_str(transfer.asset_id.as_deref().unwrap_or(""))?;
+        writer.write_str(":native=")?;
+        if let Some(value) = transfer.native_amount {
+            write_hex_bytes(writer, &value.to_le_bytes())?;
+        }
+        writer.write_str(":decimals=")?;
+        if let Some(value) = transfer.decimals {
+            write_hex_bytes(writer, &[value])?;
+        }
+        writer.write_str(":gas_asset=")?;
+        writer.write_str(transfer.gas_asset_id.as_deref().unwrap_or(""))?;
+        writer.write_str(":gas_native=")?;
+        if let Some(value) = transfer.gas_native_amount {
+            write_hex_bytes(writer, &value.to_le_bytes())?;
+        }
+    }
+    write_chain_execution_binding(writer, transfer)?;
+    Ok(())
+}
+
+fn write_chain_execution_binding<W: Write>(
+    writer: &mut W,
+    transfer: &TransferDetails,
+) -> fmt::Result {
+    let binding = &transfer.execution_binding;
+    if binding.is_empty() {
+        return Ok(());
+    }
+
+    writer.write_str(":bind_evm_chain_id=")?;
+    if let Some(value) = binding.evm_chain_id {
         write_hex_bytes(writer, &value.to_le_bytes())?;
     }
-    writer.write_str(":decimals=")?;
-    if let Some(value) = transfer.decimals {
-        write_hex_bytes(writer, &[value])?;
+    writer.write_str(":bind_nonce=")?;
+    if let Some(value) = binding.replay_nonce {
+        write_hex_bytes(writer, &value.to_le_bytes())?;
     }
-    writer.write_str(":gas_asset=")?;
-    writer.write_str(transfer.gas_asset_id.as_deref().unwrap_or(""))?;
-    writer.write_str(":gas_native=")?;
-    if let Some(value) = transfer.gas_native_amount {
+    writer.write_str(":bind_gas_limit=")?;
+    if let Some(value) = binding.gas_limit {
+        write_hex_bytes(writer, &value.to_le_bytes())?;
+    }
+    writer.write_str(":bind_max_fee=")?;
+    if let Some(value) = binding.max_fee_native {
+        write_hex_bytes(writer, &value.to_le_bytes())?;
+    }
+    writer.write_str(":bind_calldata=")?;
+    if let Some(value) = binding.calldata_hash {
+        write_hex_bytes(writer, &value)?;
+    }
+    writer.write_str(":bind_utxo=")?;
+    if let Some(value) = binding.utxo_set_hash {
+        write_hex_bytes(writer, &value)?;
+    }
+    writer.write_str(":bind_sighash=")?;
+    if let Some(value) = binding.sighash_type {
+        write_hex_bytes(writer, &value.to_le_bytes())?;
+    }
+    writer.write_str(":bind_solana_blockhash=")?;
+    if let Some(value) = binding.solana_recent_blockhash {
+        write_hex_bytes(writer, &value)?;
+    }
+    writer.write_str(":bind_solana_message=")?;
+    if let Some(value) = binding.solana_message_hash {
+        write_hex_bytes(writer, &value)?;
+    }
+    writer.write_str(":bind_confirmations=")?;
+    if let Some(value) = binding.confirmations_required {
         write_hex_bytes(writer, &value.to_le_bytes())?;
     }
     Ok(())

@@ -1,10 +1,15 @@
 use anchor_lang::prelude::*;
+use aura_policy::Chain;
 
 use crate::{
     audit::AuditKind,
     constants::{BALANCE_STALE_THRESHOLD_SECS, DWALLET_STATE_SEED, TREASURY_SEED},
     instructions::sync_treasury_account,
-    program_accounts::{chain_from_code, DWalletAccount, TreasuryAccount},
+    program_accounts::{
+        chain_from_code, ChainProfileAccount, DWalletAccount, TreasuryAccount,
+        ADDRESS_FORMAT_BITCOIN, ADDRESS_FORMAT_CUSTOM, ADDRESS_FORMAT_EVM, ADDRESS_FORMAT_SOLANA,
+        REPLAY_SCHEME_EVM, REPLAY_SCHEME_SOLANA, REPLAY_SCHEME_UTXO,
+    },
     state::{DWalletStatus, TransferDetails},
     AuraCoreError,
 };
@@ -46,6 +51,10 @@ pub(crate) fn validate_transfer_details(transfer: &TransferDetails) -> Result<()
         return Ok(());
     }
 
+    if !transfer.has_asset_payload() {
+        return Ok(());
+    }
+
     let valid_asset = transfer
         .asset_id
         .as_deref()
@@ -74,6 +83,166 @@ pub(crate) fn validate_transfer_details(transfer: &TransferDetails) -> Result<()
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+pub(crate) fn validate_chain_execution_binding(
+    chain: Chain,
+    transfer: &TransferDetails,
+) -> Result<()> {
+    validate_chain_execution_binding_with_profile(chain, transfer, None)
+}
+
+pub(crate) fn validate_chain_execution_binding_with_profile(
+    chain: Chain,
+    transfer: &TransferDetails,
+    profile: Option<&ChainProfileAccount>,
+) -> Result<()> {
+    let binding = &transfer.execution_binding;
+    if binding.is_empty() {
+        return Ok(());
+    }
+    if binding
+        .confirmations_required
+        .is_some_and(|confirmations| confirmations == 0)
+    {
+        return err!(AuraCoreError::ChainReplayFieldsMissing);
+    }
+
+    let profile = ChainProfileView::for_chain(chain, profile)?;
+    match profile.replay_scheme {
+        REPLAY_SCHEME_EVM => {
+            require!(
+                binding.evm_chain_id == profile.evm_chain_id
+                    && binding.replay_nonce.is_some()
+                    && binding.gas_limit.is_some_and(|gas| gas > 0)
+                    && binding.max_fee_native.is_some_and(|fee| fee > 0),
+                AuraCoreError::ChainReplayFieldsMissing
+            );
+        }
+        REPLAY_SCHEME_UTXO => {
+            require!(
+                binding.utxo_set_hash.is_some() && binding.sighash_type.is_some(),
+                AuraCoreError::ChainReplayFieldsMissing
+            );
+        }
+        REPLAY_SCHEME_SOLANA => {
+            require!(
+                binding.solana_recent_blockhash.is_some() && binding.solana_message_hash.is_some(),
+                AuraCoreError::ChainReplayFieldsMissing
+            );
+        }
+        _ => return err!(AuraCoreError::ChainReplayFieldsMissing),
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+pub(crate) fn validate_recipient_for_chain(chain: Chain, recipient: &str) -> Result<()> {
+    validate_recipient_for_chain_with_profile(chain, None, recipient)
+}
+
+pub(crate) fn validate_recipient_for_chain_with_profile(
+    chain: Chain,
+    profile: Option<&ChainProfileAccount>,
+    recipient: &str,
+) -> Result<()> {
+    let profile = ChainProfileView::for_chain(chain, profile)?;
+    let valid = match profile.address_format {
+        ADDRESS_FORMAT_EVM => {
+            recipient.len() == 42
+                && recipient.starts_with("0x")
+                && recipient[2..].bytes().all(|byte| byte.is_ascii_hexdigit())
+        }
+        ADDRESS_FORMAT_BITCOIN => validate_bitcoin_like_address(recipient),
+        ADDRESS_FORMAT_SOLANA => bs58::decode(recipient)
+            .into_vec()
+            .is_ok_and(|decoded| decoded.len() == 32),
+        ADDRESS_FORMAT_CUSTOM => !recipient.is_empty() && recipient.len() <= 128,
+        _ => false,
+    };
+    require!(valid, AuraCoreError::RecipientAddressInvalidForChain);
+    Ok(())
+}
+
+pub(crate) fn profile_confirmations_required(
+    chain: Chain,
+    profile: Option<&ChainProfileAccount>,
+) -> Result<u16> {
+    Ok(ChainProfileView::for_chain(chain, profile)?.confirmations_required)
+}
+
+struct ChainProfileView {
+    address_format: u8,
+    replay_scheme: u8,
+    evm_chain_id: Option<u64>,
+    confirmations_required: u16,
+}
+
+impl ChainProfileView {
+    fn for_chain(chain: Chain, profile: Option<&ChainProfileAccount>) -> Result<Self> {
+        if let Some(profile) = profile {
+            profile.assert_valid_for(crate::program_accounts::chain_code(chain))?;
+            return Ok(Self {
+                address_format: profile.address_format,
+                replay_scheme: profile.replay_scheme,
+                evm_chain_id: profile.evm_chain_id,
+                confirmations_required: profile.confirmations_required,
+            });
+        }
+
+        match chain {
+            Chain::Bitcoin => Ok(Self {
+                address_format: ADDRESS_FORMAT_BITCOIN,
+                replay_scheme: REPLAY_SCHEME_UTXO,
+                evm_chain_id: None,
+                confirmations_required: 6,
+            }),
+            Chain::Ethereum => Ok(Self {
+                address_format: ADDRESS_FORMAT_EVM,
+                replay_scheme: REPLAY_SCHEME_EVM,
+                evm_chain_id: Some(1),
+                confirmations_required: 12,
+            }),
+            Chain::Solana => Ok(Self {
+                address_format: ADDRESS_FORMAT_SOLANA,
+                replay_scheme: REPLAY_SCHEME_SOLANA,
+                evm_chain_id: None,
+                confirmations_required: 1,
+            }),
+            Chain::Polygon => Ok(Self {
+                address_format: ADDRESS_FORMAT_EVM,
+                replay_scheme: REPLAY_SCHEME_EVM,
+                evm_chain_id: Some(137),
+                confirmations_required: 128,
+            }),
+            Chain::Arbitrum => Ok(Self {
+                address_format: ADDRESS_FORMAT_EVM,
+                replay_scheme: REPLAY_SCHEME_EVM,
+                evm_chain_id: Some(42_161),
+                confirmations_required: 20,
+            }),
+            Chain::Optimism => Ok(Self {
+                address_format: ADDRESS_FORMAT_EVM,
+                replay_scheme: REPLAY_SCHEME_EVM,
+                evm_chain_id: Some(10),
+                confirmations_required: 20,
+            }),
+            Chain::Custom(_) => err!(AuraCoreError::ChainProfileNotRegistered),
+        }
+    }
+}
+
+fn validate_bitcoin_like_address(address: &str) -> bool {
+    let len_ok = (26..=90).contains(&address.len());
+    let prefix_ok = address.starts_with("bc1")
+        || address.starts_with("tb1")
+        || address.starts_with('1')
+        || address.starts_with('3')
+        || address.starts_with('m')
+        || address.starts_with('n')
+        || address.starts_with('2');
+    len_ok && prefix_ok && address.bytes().all(|byte| byte.is_ascii_alphanumeric())
 }
 
 pub(crate) fn reserve_transfer_details(
@@ -570,6 +739,7 @@ mod tests {
             decimals: Some(6),
             gas_native_amount: Some(10),
             gas_asset_id: Some("eth".to_string()),
+            execution_binding: Default::default(),
         };
         ensure_native_assets_available(&state, &transfer).expect("asset and gas are covered");
 
@@ -595,6 +765,7 @@ mod tests {
             decimals: Some(6),
             gas_native_amount: Some(10),
             gas_asset_id: Some("eth".to_string()),
+            execution_binding: Default::default(),
         };
 
         debit_native_assets(&mut state, &transfer, 500).expect("covered transfer debits");
@@ -613,5 +784,31 @@ mod tests {
             .find(|asset| asset.asset_id == "eth")
             .expect("eth tracked");
         assert_eq!(eth.native_amount, 40);
+    }
+
+    #[test]
+    fn chain_binding_requires_replay_fields_and_valid_recipient() {
+        let mut transfer = TransferDetails {
+            execution_binding: crate::state::ChainExecutionBinding {
+                evm_chain_id: Some(1),
+                replay_nonce: Some(3),
+                gas_limit: Some(21_000),
+                max_fee_native: Some(1_000_000),
+                confirmations_required: Some(12),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        validate_chain_execution_binding(Chain::Ethereum, &transfer)
+            .expect("complete evm binding should pass");
+        validate_recipient_for_chain(
+            Chain::Ethereum,
+            "0x1111111111111111111111111111111111111111",
+        )
+        .expect("valid evm address");
+        assert!(validate_recipient_for_chain(Chain::Ethereum, "0xrecipient").is_err());
+
+        transfer.execution_binding.evm_chain_id = Some(10);
+        assert!(validate_chain_execution_binding(Chain::Ethereum, &transfer).is_err());
     }
 }

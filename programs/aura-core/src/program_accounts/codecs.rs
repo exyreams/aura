@@ -8,6 +8,7 @@ pub fn chain_code(chain: Chain) -> u8 {
         Chain::Polygon => 3,
         Chain::Arbitrum => 4,
         Chain::Optimism => 5,
+        Chain::Custom(code) => code,
     }
 }
 
@@ -90,6 +91,9 @@ pub fn proposal_status_code(status: ProposalStatus) -> u8 {
         ProposalStatus::Expired => 6,
         ProposalStatus::AwaitingCondition => 7,
         ProposalStatus::Triggered => 8,
+        ProposalStatus::Signed => 9,
+        ProposalStatus::Broadcast => 10,
+        ProposalStatus::Settled => 11,
     }
 }
 
@@ -102,6 +106,7 @@ pub fn chain_from_code(code: u8) -> Result<Chain> {
         3 => Ok(Chain::Polygon),
         4 => Ok(Chain::Arbitrum),
         5 => Ok(Chain::Optimism),
+        6..=254 => Ok(Chain::Custom(code)),
         _ => err!(AuraCoreError::InvalidChain),
     }
 }
@@ -263,6 +268,9 @@ pub(crate) fn proposal_status_from_code(code: u8) -> Result<ProposalStatus> {
         6 => Ok(ProposalStatus::Expired),
         7 => Ok(ProposalStatus::AwaitingCondition),
         8 => Ok(ProposalStatus::Triggered),
+        9 => Ok(ProposalStatus::Signed),
+        10 => Ok(ProposalStatus::Broadcast),
+        11 => Ok(ProposalStatus::Settled),
         _ => err!(AuraCoreError::InvalidProposalStatus),
     }
 }

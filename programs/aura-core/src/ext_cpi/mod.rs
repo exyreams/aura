@@ -13,6 +13,7 @@
 ///   decryption-request account parsing for Ika Encrypt
 mod dwallet;
 mod encrypt;
+mod oracle;
 
 pub use dwallet::{
     approve_message_via_cpi, build_message_approval_request, decode_digest_hex,
@@ -30,3 +31,5 @@ pub use encrypt::{
     OnchainCiphertext, OnchainDecryptionRequest, ENCRYPT_CPI_AUTHORITY_SEED,
     ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
 };
+
+pub use oracle::{native_to_usd_value, read_verified_price, VerifiedPrice};

@@ -17,6 +17,13 @@ pub struct ConditionRecord {
     pub kind: u8,
     /// Feed account whose value backs a price/oracle condition.
     pub feed: Option<Pubkey>,
+    /// `OracleProvider` code: 0 Pyth, 1 Switchboard, 255 RawLegacy.
+    pub oracle_provider: u8,
+    /// Owner program expected for trusted oracle accounts.
+    pub oracle_program_id: Option<Pubkey>,
+    pub oracle_max_staleness_secs: i64,
+    pub oracle_max_confidence_bps: u16,
+    pub oracle_expo_expected: Option<i32>,
     pub threshold: u64,
     pub window_start: i64,
     pub window_end: i64,
@@ -33,6 +40,43 @@ impl ConditionRecord {
             window_end: self.window_end,
             negate: self.negate,
         })
+    }
+
+    pub fn validate_oracle_descriptor(&self) -> Result<()> {
+        if !matches!(self.kind, 0 | 1 | 5) {
+            return Ok(());
+        }
+        require!(
+            self.feed.is_some(),
+            crate::AuraCoreError::InvalidExternalAccountData
+        );
+        let provider = OracleProvider::from_code(self.oracle_provider)
+            .ok_or_else(|| error!(crate::AuraCoreError::OracleProviderNotAllowed))?;
+        if provider.is_trusted() {
+            require!(
+                self.oracle_program_id.is_some()
+                    && self.oracle_max_staleness_secs > 0
+                    && self.oracle_max_confidence_bps > 0,
+                crate::AuraCoreError::OracleAccountInvalid
+            );
+        }
+        Ok(())
+    }
+
+    pub fn oracle_feed(&self) -> Result<Option<OracleFeed>> {
+        let Some(feed) = self.feed else {
+            return Ok(None);
+        };
+        let provider = OracleProvider::from_code(self.oracle_provider)
+            .ok_or_else(|| error!(crate::AuraCoreError::OracleProviderNotAllowed))?;
+        Ok(Some(OracleFeed {
+            provider,
+            account: feed.to_string(),
+            program_id: self.oracle_program_id.map(|key| key.to_string()),
+            max_staleness_secs: self.oracle_max_staleness_secs,
+            max_confidence_bps: self.oracle_max_confidence_bps,
+            expo_expected: self.oracle_expo_expected,
+        }))
     }
 }
 

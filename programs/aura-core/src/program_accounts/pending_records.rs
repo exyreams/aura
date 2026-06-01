@@ -116,6 +116,52 @@ impl ComplianceMetadataRecord {
 
 /// Serialized form of optional chain-native transfer metadata.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct ChainExecutionBindingRecord {
+    pub evm_chain_id: Option<u64>,
+    pub replay_nonce: Option<u64>,
+    pub gas_limit: Option<u64>,
+    pub max_fee_native: Option<u128>,
+    pub calldata_hash: Option<[u8; 32]>,
+    pub utxo_set_hash: Option<[u8; 32]>,
+    pub sighash_type: Option<u32>,
+    pub solana_recent_blockhash: Option<[u8; 32]>,
+    pub solana_message_hash: Option<[u8; 32]>,
+    pub confirmations_required: Option<u16>,
+}
+
+impl ChainExecutionBindingRecord {
+    pub fn from_domain(domain: &ChainExecutionBinding) -> Self {
+        Self {
+            evm_chain_id: domain.evm_chain_id,
+            replay_nonce: domain.replay_nonce,
+            gas_limit: domain.gas_limit,
+            max_fee_native: domain.max_fee_native,
+            calldata_hash: domain.calldata_hash,
+            utxo_set_hash: domain.utxo_set_hash,
+            sighash_type: domain.sighash_type,
+            solana_recent_blockhash: domain.solana_recent_blockhash,
+            solana_message_hash: domain.solana_message_hash,
+            confirmations_required: domain.confirmations_required,
+        }
+    }
+
+    pub fn to_domain(&self) -> ChainExecutionBinding {
+        ChainExecutionBinding {
+            evm_chain_id: self.evm_chain_id,
+            replay_nonce: self.replay_nonce,
+            gas_limit: self.gas_limit,
+            max_fee_native: self.max_fee_native,
+            calldata_hash: self.calldata_hash,
+            utxo_set_hash: self.utxo_set_hash,
+            sighash_type: self.sighash_type,
+            solana_recent_blockhash: self.solana_recent_blockhash,
+            solana_message_hash: self.solana_message_hash,
+            confirmations_required: self.confirmations_required,
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct TransferDetailsRecord {
     #[max_len(64)]
     pub asset_id: Option<String>,
@@ -124,6 +170,7 @@ pub struct TransferDetailsRecord {
     pub gas_native_amount: Option<u128>,
     #[max_len(64)]
     pub gas_asset_id: Option<String>,
+    pub execution_binding: ChainExecutionBindingRecord,
 }
 
 impl TransferDetailsRecord {
@@ -134,6 +181,7 @@ impl TransferDetailsRecord {
             decimals: domain.decimals,
             gas_native_amount: domain.gas_native_amount,
             gas_asset_id: domain.gas_asset_id.clone(),
+            execution_binding: ChainExecutionBindingRecord::from_domain(&domain.execution_binding),
         }
     }
 
@@ -144,6 +192,7 @@ impl TransferDetailsRecord {
             decimals: self.decimals,
             gas_native_amount: self.gas_native_amount,
             gas_asset_id: self.gas_asset_id.clone(),
+            execution_binding: self.execution_binding.to_domain(),
         }
     }
 }

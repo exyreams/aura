@@ -249,6 +249,15 @@ impl TreasuryAccount {
             deployment,
         ));
 
+        self.fill_domain_runtime(treasury.as_mut())?;
+        self.fill_domain_controls(treasury.as_mut())?;
+        self.fill_domain_relationships(treasury.as_mut())?;
+
+        Ok(treasury)
+    }
+
+    #[inline(never)]
+    fn fill_domain_runtime(&self, treasury: &mut AgentTreasury) -> Result<()> {
         treasury.dwallets = self
             .dwallets
             .iter()
@@ -271,9 +280,16 @@ impl TreasuryAccount {
         treasury.total_transactions = self.total_transactions;
         treasury.next_proposal_id = self.next_proposal_id;
         treasury.execution_paused = self.execution_paused;
-        treasury.agent_state = lifecycle_state_from_code(self.agent_state)?;
         treasury.pending_transaction_ttl_secs = self.pending_transaction_ttl_secs;
         treasury.current_policy_version = self.current_policy_version.max(1);
+        treasury.reputation = self.reputation.to_domain();
+        treasury.protocol_fees = self.fees.to_domain();
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn fill_domain_controls(&self, treasury: &mut AgentTreasury) -> Result<()> {
+        treasury.agent_state = lifecycle_state_from_code(self.agent_state)?;
         treasury.pending_ai_rotation = self
             .pending_ai_rotation
             .as_ref()
@@ -295,17 +311,20 @@ impl TreasuryAccount {
         treasury.high_risk_require_guardian = self.high_risk_require_guardian;
         treasury.last_large_tx_at = self.last_large_tx_at;
         treasury.last_large_tx_amount_usd = self.last_large_tx_amount_usd;
+        treasury.sanctions_check_enabled = self.sanctions_check_enabled;
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn fill_domain_relationships(&self, treasury: &mut AgentTreasury) -> Result<()> {
         treasury.parent_treasury = self.parent_treasury.clone();
         treasury.child_agents = self.child_agents.clone();
         treasury.child_spend_budget_usd = self.child_spend_budget_usd;
-        treasury.sanctions_check_enabled = self.sanctions_check_enabled;
         treasury.compliance_oracle = self.compliance_oracle.map(|key| key.to_string());
         treasury.shutdown_initiated_at = self.shutdown_initiated_at;
         treasury.shutdown_recovery_pubkey =
             self.shutdown_recovery_pubkey.map(|key| key.to_string());
         treasury.last_snapshot_at = self.last_snapshot_at;
-        treasury.reputation = self.reputation.to_domain();
-        treasury.protocol_fees = self.fees.to_domain();
         treasury.multisig = self
             .multisig
             .as_ref()
@@ -317,13 +336,11 @@ impl TreasuryAccount {
             .map(SwarmConfigRecord::to_domain)
             .transpose()?;
         treasury.default_chain = self.default_chain.map(chain_from_code).transpose()?;
-
         if let Some(swarm) = &treasury.swarm {
             treasury.policy_config.shared_pool_limit_usd = Some(swarm.shared_pool_limit_usd);
         }
         treasury.sync_pending_front();
-
-        Ok(treasury)
+        Ok(())
     }
 
     pub fn to_domain(&self) -> Result<AgentTreasury> {

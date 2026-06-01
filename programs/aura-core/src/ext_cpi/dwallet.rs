@@ -857,6 +857,7 @@ mod tests {
             decimals: Some(6),
             gas_native_amount: Some(21_000),
             gas_asset_id: Some("eth".to_string()),
+            execution_binding: Default::default(),
         };
         let asset_message = build_chain_message(&pending, &dwallet);
 
@@ -866,6 +867,47 @@ mod tests {
         assert_ne!(
             keccak_message_digest(&legacy_message),
             keccak_message_digest(&asset_message)
+        );
+    }
+
+    #[test]
+    fn chain_execution_binding_changes_signed_message() {
+        let mut pending = sample_pending();
+        let dwallet = DWalletReference {
+            dwallet_id: "dw-2".to_string(),
+            chain: aura_policy::Chain::Ethereum,
+            address: "0xdwallet".to_string(),
+            balance_usd: 1,
+            balance_updated_at: 0,
+            balance_oracle: None,
+            authority: "authority".to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            dwallet_account: Some(Pubkey::new_unique().to_string()),
+            authorized_user_pubkey: Some(Pubkey::new_unique().to_string()),
+            message_metadata_digest: Some(hex::encode([0x55u8; 32])),
+            public_key_hex: Some(hex::encode([0x44u8; 32])),
+            curve: crate::state::DWalletCurve::Secp256k1,
+            signature_scheme: SignatureScheme::EcdsaKeccak256,
+        };
+        let legacy_message = build_chain_message(&pending, &dwallet);
+
+        pending.transfer.execution_binding = crate::state::ChainExecutionBinding {
+            evm_chain_id: Some(1),
+            replay_nonce: Some(7),
+            gas_limit: Some(21_000),
+            max_fee_native: Some(2_000_000_000),
+            calldata_hash: Some([0xAB; 32]),
+            confirmations_required: Some(12),
+            ..Default::default()
+        };
+        let bound_message = build_chain_message(&pending, &dwallet);
+
+        assert_ne!(legacy_message, bound_message);
+        assert!(bound_message.contains("bind_evm_chain_id="));
+        assert!(bound_message.contains("bind_nonce="));
+        assert_ne!(
+            keccak_message_digest(&legacy_message),
+            keccak_message_digest(&bound_message)
         );
     }
 

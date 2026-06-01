@@ -179,9 +179,11 @@ pub fn handler(
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
 
+    let target_chain = chain_from_code(args.target_chain)?;
+
     let tx = TransactionContext {
         amount_usd: args.amount_usd,
-        target_chain: chain_from_code(args.target_chain)?,
+        target_chain,
         tx_type: transaction_type_from_code(args.tx_type)?,
         protocol_id: args.protocol_id,
         current_timestamp: args.current_timestamp,

@@ -5,14 +5,18 @@ use crate::{
     constants::TREASURY_SEED,
     instructions::{
         sync_treasury_account, sync_treasury_pending_account,
-        wallet_transfers::{reserve_transfer_details, validate_transfer_details},
+        wallet_transfers::{
+            profile_confirmations_required, reserve_transfer_details,
+            validate_chain_execution_binding_with_profile,
+            validate_recipient_for_chain_with_profile, validate_transfer_details,
+        },
     },
     program_accounts::{
         chain_from_code, sha256_address, transaction_type_from_code, verify_merkle_inclusion,
-        AddressListAccount, BudgetEnvelopeAccount, ComplianceOracleAccount, DWalletAccount,
-        ExposureGroupAccount, SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
+        AddressListAccount, BudgetEnvelopeAccount, ChainProfileAccount, ComplianceOracleAccount,
+        DWalletAccount, ExposureGroupAccount, SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
     },
-    state::TransferDetails,
+    state::{ChainExecutionBinding, TransferDetails},
 };
 
 /// Instruction data for `propose_transaction`.
@@ -49,6 +53,17 @@ pub struct ProposeTransactionArgs {
     pub decimals: Option<u8>,
     pub gas_native_amount: Option<u128>,
     pub gas_asset_id: Option<String>,
+    /// Optional EVM chain ID, UTXO nonce, or Solana blockhash-related binding data.
+    pub evm_chain_id: Option<u64>,
+    pub replay_nonce: Option<u64>,
+    pub gas_limit: Option<u64>,
+    pub max_fee_native: Option<u128>,
+    pub calldata_hash: Option<[u8; 32]>,
+    pub utxo_set_hash: Option<[u8; 32]>,
+    pub sighash_type: Option<u32>,
+    pub solana_recent_blockhash: Option<[u8; 32]>,
+    pub solana_message_hash: Option<[u8; 32]>,
+    pub confirmations_required: Option<u16>,
 }
 
 impl ProposeTransactionArgs {
@@ -59,6 +74,18 @@ impl ProposeTransactionArgs {
             decimals: self.decimals,
             gas_native_amount: self.gas_native_amount,
             gas_asset_id: self.gas_asset_id.clone(),
+            execution_binding: ChainExecutionBinding {
+                evm_chain_id: self.evm_chain_id,
+                replay_nonce: self.replay_nonce,
+                gas_limit: self.gas_limit,
+                max_fee_native: self.max_fee_native,
+                calldata_hash: self.calldata_hash,
+                utxo_set_hash: self.utxo_set_hash,
+                sighash_type: self.sighash_type,
+                solana_recent_blockhash: self.solana_recent_blockhash,
+                solana_message_hash: self.solana_message_hash,
+                confirmations_required: self.confirmations_required,
+            },
         }
     }
 }
@@ -82,6 +109,7 @@ pub struct ProposeTransaction<'info> {
     pub exposure_group: Option<Box<Account<'info, ExposureGroupAccount>>>,
     #[account(mut)]
     pub dwallet_state: Option<Box<Account<'info, DWalletAccount>>>,
+    pub chain_profile: Option<Box<Account<'info, ChainProfileAccount>>>,
 }
 
 /// Proposes a public (non-confidential) transaction.
@@ -91,8 +119,22 @@ pub struct ProposeTransaction<'info> {
 /// `execute_pending` can be called immediately after this instruction.
 pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -> Result<()> {
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
-    let transfer = args.transfer_details();
+    let mut transfer = args.transfer_details();
     validate_transfer_details(&transfer)?;
+    let target_chain = chain_from_code(args.target_chain)?;
+    let chain_profile = ctx.accounts.chain_profile.as_deref().map(|value| &**value);
+    if transfer.has_chain_binding() && transfer.execution_binding.confirmations_required.is_none() {
+        transfer.execution_binding.confirmations_required =
+            Some(profile_confirmations_required(target_chain, chain_profile)?);
+    }
+    if transfer.has_chain_binding() || transfer.requires_wallet_settlement() {
+        validate_recipient_for_chain_with_profile(
+            target_chain,
+            chain_profile,
+            &args.recipient_or_contract,
+        )?;
+    }
+    validate_chain_execution_binding_with_profile(target_chain, &transfer, chain_profile)?;
     let authority = ctx.accounts.ai_authority.key();
     let signer = if let Some(session) = ctx.accounts.session_key_account.as_mut() {
         require!(
@@ -220,7 +262,7 @@ pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -
 
     let tx = TransactionContext {
         amount_usd: args.amount_usd,
-        target_chain: chain_from_code(args.target_chain)?,
+        target_chain,
         tx_type: transaction_type_from_code(args.tx_type)?,
         protocol_id: args.protocol_id,
         current_timestamp: args.current_timestamp,

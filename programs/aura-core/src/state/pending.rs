@@ -25,6 +25,43 @@ pub enum ProposalStatus {
     /// Trigger conditions were satisfied and the request was promoted into the
     /// normal pending execution queue. It is not finalized yet.
     Triggered,
+    /// The dWallet network has signed the chain-native transaction payload.
+    Signed,
+    /// A relayer has broadcast the signed transaction to the target chain.
+    Broadcast,
+    /// The target chain settlement has reached the required confirmation depth.
+    Settled,
+}
+
+/// Optional chain-native replay-protection fields bound into the dWallet
+/// message digest.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ChainExecutionBinding {
+    pub evm_chain_id: Option<u64>,
+    pub replay_nonce: Option<u64>,
+    pub gas_limit: Option<u64>,
+    pub max_fee_native: Option<u128>,
+    pub calldata_hash: Option<[u8; 32]>,
+    pub utxo_set_hash: Option<[u8; 32]>,
+    pub sighash_type: Option<u32>,
+    pub solana_recent_blockhash: Option<[u8; 32]>,
+    pub solana_message_hash: Option<[u8; 32]>,
+    pub confirmations_required: Option<u16>,
+}
+
+impl ChainExecutionBinding {
+    pub fn is_empty(&self) -> bool {
+        self.evm_chain_id.is_none()
+            && self.replay_nonce.is_none()
+            && self.gas_limit.is_none()
+            && self.max_fee_native.is_none()
+            && self.calldata_hash.is_none()
+            && self.utxo_set_hash.is_none()
+            && self.sighash_type.is_none()
+            && self.solana_recent_blockhash.is_none()
+            && self.solana_message_hash.is_none()
+            && self.confirmations_required.is_none()
+    }
 }
 
 /// Optional chain-native transfer payload bound to a proposal.
@@ -39,19 +76,28 @@ pub struct TransferDetails {
     pub decimals: Option<u8>,
     pub gas_native_amount: Option<u128>,
     pub gas_asset_id: Option<String>,
+    pub execution_binding: ChainExecutionBinding,
 }
 
 impl TransferDetails {
     pub fn is_legacy(&self) -> bool {
-        self.asset_id.is_none()
-            && self.native_amount.is_none()
-            && self.decimals.is_none()
-            && self.gas_native_amount.is_none()
-            && self.gas_asset_id.is_none()
+        !self.has_asset_payload() && self.execution_binding.is_empty()
+    }
+
+    pub fn has_asset_payload(&self) -> bool {
+        self.asset_id.is_some()
+            || self.native_amount.is_some()
+            || self.decimals.is_some()
+            || self.gas_native_amount.is_some()
+            || self.gas_asset_id.is_some()
     }
 
     pub fn requires_wallet_settlement(&self) -> bool {
-        !self.is_legacy()
+        self.has_asset_payload()
+    }
+
+    pub fn has_chain_binding(&self) -> bool {
+        !self.execution_binding.is_empty()
     }
 }
 

@@ -10,10 +10,11 @@ use crate::{
         wallet_transfers::settle_transfer_details,
     },
     program_accounts::{
-        BudgetEnvelopeAccount, DWalletAccount, ExposureGroupAccount, ExternalLivenessAccount,
-        PolicyStateRecord, ScheduledIntent, SwarmPoolAccount, TreasuryAccount,
+        proposal_status_code, BudgetEnvelopeAccount, DWalletAccount, ExposureGroupAccount,
+        ExternalLivenessAccount, PolicyStateRecord, ScheduledIntent, SwarmPoolAccount,
+        TreasuryAccount,
     },
-    state::{TransferDetails, DWALLET_DEVNET_PROGRAM_ID},
+    state::{ProposalStatus, TransferDetails, DWALLET_DEVNET_PROGRAM_ID},
 };
 
 #[derive(Accounts)]
@@ -103,6 +104,10 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         transfer,
         target_chain,
     ) = verify_live_signature(&ctx, now)?;
+    if transfer.has_chain_binding() {
+        mark_chain_bound_signed(&mut ctx.accounts.treasury, now)?;
+        return Ok(());
+    }
     if liveness_softening {
         record_liveness_fail_open(
             &mut next_policy_state,
@@ -194,6 +199,17 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         treasury.pending_queue.remove(0);
     }
 
+    Ok(())
+}
+
+fn mark_chain_bound_signed(treasury: &mut TreasuryAccount, now: i64) -> Result<()> {
+    let pending = treasury
+        .pending_queue
+        .get_mut(0)
+        .ok_or_else(|| error!(crate::AuraCoreError::NoPendingTransaction))?;
+    pending.status = proposal_status_code(ProposalStatus::Signed);
+    pending.last_updated_at = now;
+    treasury.updated_at = now;
     Ok(())
 }
 

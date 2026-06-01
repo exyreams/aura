@@ -20,18 +20,20 @@ use crate::{
     governance::{EmergencyMultisig, OverrideProposal},
     program_error::{map_treasury_error, AuraCoreError},
     state::{
-        AgentLifecycleState, AgentReputation, AgentSwarm, AgentTreasury, CircuitBreakerConfig,
-        CircuitBreakerState, ComplianceMetadata, ConfidentialGuardrails, ConfigChangeKind,
-        DWalletCurve, DWalletReference, DeadMansSwitch, GuardianChangeAction, PendingAiRotation,
-        PendingConfigChange, PendingDecryptionRequest, PendingGuardianChange,
-        PendingSignatureRequest, PendingTransaction, ProposalStatus, ProtocolDeployment,
-        ProtocolFees, SignatureScheme, TransferDetails,
+        AgentLifecycleState, AgentReputation, AgentSwarm, AgentTreasury, ChainExecutionBinding,
+        CircuitBreakerConfig, CircuitBreakerState, ComplianceMetadata, ConfidentialGuardrails,
+        ConfigChangeKind, DWalletCurve, DWalletReference, DeadMansSwitch, GuardianChangeAction,
+        OracleFeed, OracleProvider, PendingAiRotation, PendingConfigChange,
+        PendingDecryptionRequest, PendingGuardianChange, PendingSignatureRequest,
+        PendingTransaction, ProposalStatus, ProtocolDeployment, ProtocolFees, SignatureScheme,
+        TransferDetails,
     },
 };
 
 mod attestation_records;
 mod auxiliary_accounts;
 mod batch_records;
+mod chain_profile_records;
 mod codecs;
 mod conditional_records;
 mod envelope_records;
@@ -50,6 +52,7 @@ mod wallet_records;
 pub use attestation_records::*;
 pub use auxiliary_accounts::*;
 pub use batch_records::*;
+pub use chain_profile_records::*;
 pub use codecs::*;
 pub use conditional_records::*;
 pub use envelope_records::*;

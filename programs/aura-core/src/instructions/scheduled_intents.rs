@@ -18,7 +18,7 @@ use crate::{
         MAX_CONDITIONS_PER_PROPOSAL, MAX_SCHEDULE_RECIPIENTS, MIN_INTENT_INTERVAL_SECS,
         SCHEDULED_INTENT_SEED, TREASURY_SEED,
     },
-    instructions::sync_treasury_account,
+    instructions::{conditional::condition_feed_value, sync_treasury_account},
     program_accounts::{
         chain_from_code, transaction_type_from_code, ConditionRecord, ScheduleRecipient,
         ScheduledIntent, TreasuryAccount, SCHEDULED_INTENT_SPACE,
@@ -78,12 +78,7 @@ impl ScheduledIntentArgs {
             AuraCoreError::TooManyConditions
         );
         for condition in &self.conditions {
-            // Price/oracle conditions (PriceBelow=0, PriceAbove=1, OracleFlag=5)
-            // must bind a concrete feed account, otherwise their value could be
-            // forged by a caller-supplied account at execute time.
-            if matches!(condition.kind, 0 | 1 | 5) {
-                require!(condition.feed.is_some(), AuraCoreError::InvalidIntentConfig);
-            }
+            condition.validate_oracle_descriptor()?;
         }
         // Chain / tx-type codes must be valid.
         chain_from_code(self.chain)?;
@@ -326,24 +321,16 @@ fn conditions_met(ctx: &Context<ExecuteScheduledIntent>, now: i64) -> Result<boo
         return Ok(true);
     }
 
-    let feed_value = if let Some(feed) = ctx.accounts.condition_feed.as_ref() {
-        // Every feed-bearing condition must reference exactly this account.
-        for condition in &intent.conditions {
-            if let Some(expected) = condition.feed {
-                require!(
-                    expected == feed.key(),
-                    AuraCoreError::InvalidExternalAccountData
-                );
-            }
-        }
-        let data = feed.try_borrow_data()?;
-        require!(data.len() >= 8, AuraCoreError::InvalidExternalAccountData);
-        let mut bytes = [0u8; 8];
-        bytes.copy_from_slice(&data[..8]);
-        Some(u64::from_le_bytes(bytes))
-    } else {
-        None
-    };
+    let feed_value = condition_feed_value(
+        &intent.conditions,
+        ctx.accounts.condition_feed.as_ref(),
+        now,
+        ctx.accounts
+            .treasury
+            .policy_config
+            .liveness_config
+            .require_balance_oracle_freshness,
+    )?;
 
     let condition_ctx = ConditionContext {
         now,

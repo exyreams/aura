@@ -37,6 +37,13 @@ pub fn refresh_dwallet_balance(
     now: i64,
 ) -> Result<()> {
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    require!(
+        !domain
+            .policy_config
+            .liveness_config
+            .require_balance_oracle_freshness,
+        AuraCoreError::TrustedOracleRequired
+    );
     let chain = chain_from_code(chain_code)?;
     let oracle_key = ctx.accounts.balance_oracle.key().to_string();
     let dwallet = domain

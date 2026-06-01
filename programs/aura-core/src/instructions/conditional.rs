@@ -13,6 +13,7 @@ use aura_policy::{evaluate_conditions, ConditionCombinator, ConditionContext, Tr
 
 use crate::{
     constants::{CONDITIONAL_PROPOSAL_SEED, MAX_CONDITIONS_PER_PROPOSAL, TREASURY_SEED},
+    ext_cpi::read_verified_price,
     instructions::sync_treasury_account,
     program_accounts::{
         chain_from_code, proposal_status_code, transaction_type_from_code, ConditionRecord,
@@ -43,16 +44,45 @@ fn validate_conditions(conditions: &[ConditionRecord]) -> Result<()> {
         AuraCoreError::TooManyConditions
     );
     for condition in conditions {
-        // Price/oracle kinds (0,1,5) must bind a concrete feed so the value
-        // cannot be forged by a caller-supplied account at trigger time.
-        if matches!(condition.kind, 0 | 1 | 5) {
-            require!(
-                condition.feed.is_some(),
-                AuraCoreError::InvalidExternalAccountData
-            );
-        }
+        condition.validate_oracle_descriptor()?;
     }
     Ok(())
+}
+
+/// Reads the single feed account referenced by all feed-backed conditions.
+pub(crate) fn condition_feed_value(
+    conditions: &[ConditionRecord],
+    feed: Option<&UncheckedAccount>,
+    now: i64,
+    trusted_required: bool,
+) -> Result<Option<u64>> {
+    let Some(feed) = feed else {
+        return Ok(None);
+    };
+    let oracle_feed = conditions
+        .iter()
+        .find(|condition| matches!(condition.kind, 0 | 1 | 5))
+        .ok_or_else(|| error!(AuraCoreError::InvalidExternalAccountData))?
+        .oracle_feed()?
+        .ok_or_else(|| error!(AuraCoreError::InvalidExternalAccountData))?;
+    for condition in conditions
+        .iter()
+        .filter(|condition| condition.feed.is_some())
+    {
+        let expected = condition
+            .feed
+            .ok_or_else(|| error!(AuraCoreError::InvalidExternalAccountData))?;
+        require!(
+            expected == feed.key(),
+            AuraCoreError::InvalidExternalAccountData
+        );
+        require!(
+            condition.oracle_feed()? == Some(oracle_feed.clone()),
+            AuraCoreError::InvalidExternalAccountData
+        );
+    }
+    let price = read_verified_price(&oracle_feed, &feed.to_account_info(), now, trusted_required)?;
+    Ok(Some(price.price_usd_e6))
 }
 
 /// Evaluates `conditions` against the (optional) bound feed account and `now`.
@@ -61,27 +91,12 @@ fn conditions_satisfied(
     combinator: u8,
     feed: Option<&UncheckedAccount>,
     now: i64,
+    trusted_required: bool,
 ) -> Result<bool> {
     if conditions.is_empty() {
         return Ok(true);
     }
-    let feed_value = if let Some(feed) = feed {
-        for condition in conditions {
-            if let Some(expected) = condition.feed {
-                require!(
-                    expected == feed.key(),
-                    AuraCoreError::InvalidExternalAccountData
-                );
-            }
-        }
-        let data = feed.try_borrow_data()?;
-        require!(data.len() >= 8, AuraCoreError::InvalidExternalAccountData);
-        let mut bytes = [0u8; 8];
-        bytes.copy_from_slice(&data[..8]);
-        Some(u64::from_le_bytes(bytes))
-    } else {
-        None
-    };
+    let feed_value = condition_feed_value(conditions, feed, now, trusted_required)?;
     let ctx = ConditionContext {
         now,
         available_usd: None,
@@ -171,6 +186,11 @@ pub fn propose_conditional_transaction(
         args.combinator,
         ctx.accounts.condition_feed.as_ref(),
         args.now,
+        ctx.accounts
+            .treasury
+            .policy_config
+            .liveness_config
+            .require_balance_oracle_freshness,
     )?;
 
     {
@@ -259,6 +279,11 @@ pub fn try_trigger(ctx: Context<TryTrigger>) -> Result<()> {
         proposal.combinator,
         ctx.accounts.condition_feed.as_ref(),
         now,
+        ctx.accounts
+            .treasury
+            .policy_config
+            .liveness_config
+            .require_balance_oracle_freshness,
     )?;
     require!(met, AuraCoreError::ConditionUnmet);
 

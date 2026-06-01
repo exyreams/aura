@@ -3,7 +3,6 @@ use std::fmt::{Display, Formatter};
 use aura_policy::Chain;
 
 use crate::constants::BALANCE_STALE_THRESHOLD_SECS;
-
 /// Elliptic curve used by a dWallet for key generation and signing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DWalletCurve {
@@ -138,9 +137,11 @@ impl DWalletReference {
         match chain {
             Chain::Solana => (DWalletCurve::Ed25519, SignatureScheme::EddsaSha512),
             Chain::Bitcoin => (DWalletCurve::Secp256k1, SignatureScheme::EcdsaDoubleSha256),
-            Chain::Ethereum | Chain::Polygon | Chain::Arbitrum | Chain::Optimism => {
-                (DWalletCurve::Secp256k1, SignatureScheme::EcdsaKeccak256)
-            }
+            Chain::Ethereum
+            | Chain::Polygon
+            | Chain::Arbitrum
+            | Chain::Optimism
+            | Chain::Custom(_) => (DWalletCurve::Secp256k1, SignatureScheme::EcdsaKeccak256),
         }
     }
 

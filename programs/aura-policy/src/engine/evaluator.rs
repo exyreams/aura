@@ -1196,5 +1196,6 @@ fn chain_code(chain: Chain) -> u8 {
         Chain::Polygon => 3,
         Chain::Arbitrum => 4,
         Chain::Optimism => 5,
+        Chain::Custom(code) => code,
     }
 }

@@ -185,6 +185,28 @@ pub enum AuraCoreError {
     ConditionExpired,
     #[msg("too many trigger conditions")]
     TooManyConditions,
+    #[msg("oracle price feed is stale")]
+    OracleStale,
+    #[msg("oracle confidence interval is too wide")]
+    OracleConfidenceTooWide,
+    #[msg("oracle provider is not trusted")]
+    UntrustedOracleProvider,
+    #[msg("a trusted oracle provider is required")]
+    TrustedOracleRequired,
+    #[msg("oracle account is invalid")]
+    OracleAccountInvalid,
+    #[msg("oracle provider is not allowed")]
+    OracleProviderNotAllowed,
+    #[msg("chain replay-protection fields are missing or invalid")]
+    ChainReplayFieldsMissing,
+    #[msg("recipient address is invalid for the target chain")]
+    RecipientAddressInvalidForChain,
+    #[msg("settlement has not been confirmed")]
+    SettlementNotConfirmed,
+    #[msg("settlement was reorged or failed")]
+    SettlementReorged,
+    #[msg("chain profile is not registered or enabled")]
+    ChainProfileNotRegistered,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

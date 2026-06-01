@@ -633,6 +633,7 @@ impl AgentTreasury {
         pending
     }
 
+    #[cfg(not(target_os = "solana"))]
     pub fn remove_pending_by_id(&mut self, proposal_id: u64) -> Option<PendingTransaction> {
         self.sync_pending_front();
         let idx = self

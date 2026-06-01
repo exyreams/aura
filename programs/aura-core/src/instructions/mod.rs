@@ -10,12 +10,14 @@ pub mod approval_ladder;
 pub mod batch_execution;
 pub mod budget_envelopes;
 pub mod cancel_pending;
+pub mod chain_profiles;
 pub mod collect_override_signature;
 pub mod conditional;
 pub mod configure_confidential_guardrails;
 pub mod configure_multisig;
 pub mod configure_swarm;
 pub mod confirm_policy_decryption;
+pub mod confirm_settlement;
 pub mod create_treasury;
 pub mod execute_pending;
 pub mod external_liveness;
@@ -90,6 +92,11 @@ pub(crate) use budget_envelopes::{
 pub use cancel_pending::CancelPending;
 pub(crate) use cancel_pending::__client_accounts_cancel_pending;
 pub(crate) use cancel_pending::__cpi_client_accounts_cancel_pending;
+pub use chain_profiles::{ChainProfileArgs, RegisterChainProfile, UpdateChainProfile};
+pub(crate) use chain_profiles::{
+    __client_accounts_register_chain_profile, __client_accounts_update_chain_profile,
+    __cpi_client_accounts_register_chain_profile, __cpi_client_accounts_update_chain_profile,
+};
 pub use collect_override_signature::CollectOverrideSignature;
 pub(crate) use collect_override_signature::__client_accounts_collect_override_signature;
 pub(crate) use collect_override_signature::__cpi_client_accounts_collect_override_signature;
@@ -114,6 +121,16 @@ pub use configure_swarm::{ConfigureSwarm, ConfigureSwarmArgs};
 pub use confirm_policy_decryption::ConfirmPolicyDecryption;
 pub(crate) use confirm_policy_decryption::__client_accounts_confirm_policy_decryption;
 pub(crate) use confirm_policy_decryption::__cpi_client_accounts_confirm_policy_decryption;
+pub use confirm_settlement::{
+    AbandonProposal, ConfirmSettlement, ConfirmSettlementArgs, MarkSettlementBroadcast,
+    MarkSettlementBroadcastArgs, ResubmitProposal, ResubmitProposalArgs,
+};
+pub(crate) use confirm_settlement::{
+    __client_accounts_abandon_proposal, __client_accounts_confirm_settlement,
+    __client_accounts_mark_settlement_broadcast, __client_accounts_resubmit_proposal,
+    __cpi_client_accounts_abandon_proposal, __cpi_client_accounts_confirm_settlement,
+    __cpi_client_accounts_mark_settlement_broadcast, __cpi_client_accounts_resubmit_proposal,
+};
 pub(crate) use create_treasury::__client_accounts_create_treasury;
 pub(crate) use create_treasury::__cpi_client_accounts_create_treasury;
 pub use create_treasury::{CreateTreasury, CreateTreasuryArgs};
@@ -262,6 +279,13 @@ pub(crate) use treasury_admin::{
     __client_accounts_owner_treasury, __client_accounts_trigger_dead_mans_switch,
     __client_accounts_veto_config_change, __cpi_client_accounts_owner_treasury,
     __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_veto_config_change,
+};
+pub use wallet_balances::{
+    RefreshVerifiedAssetBalance, RefreshVerifiedAssetBalanceArgs, SetAssetOracleFeedArgs,
+};
+pub(crate) use wallet_balances::{
+    __client_accounts_refresh_verified_asset_balance,
+    __cpi_client_accounts_refresh_verified_asset_balance,
 };
 pub use wallet_controls::{DwalletControl, InitDwalletState, RemoveDwallet, SetDefaultChain};
 pub(crate) use wallet_controls::{

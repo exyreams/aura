@@ -13,6 +13,7 @@ pub enum Chain {
     Polygon,
     Arbitrum,
     Optimism,
+    Custom(u8),
 }
 
 impl Display for Chain {
@@ -24,6 +25,7 @@ impl Display for Chain {
             Self::Polygon => "polygon",
             Self::Arbitrum => "arbitrum",
             Self::Optimism => "optimism",
+            Self::Custom(code) => return write!(f, "custom_{code}"),
         };
 
         write!(f, "{label}")
