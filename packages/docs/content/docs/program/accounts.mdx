@@ -2,6 +2,7 @@
 title: Accounts
 description: The treasury PDA and every auxiliary account, with their PDA seeds.
 icon: Database
+status: new
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -31,6 +32,12 @@ than persisted in the account. A `default_chain` field marks the treasury's pref
 chain (set via `set_default_chain`). Pending proposals can carry optional asset/native/gas transfer metadata;
 the treasury stores that metadata so the proposal digest, dWallet message, cancellation, expiry, and
 finalization paths all agree on the same concrete asset payload.
+
+A `recovery_destinations` list holds up to 8 per-chain cold-wallet addresses used exclusively by
+`break_glass_recover`. Each entry carries a `locked_until` timestamp: newly registered or updated
+addresses are locked for 48 hours to prevent an attacker who steals the owner key from immediately
+redirecting a recovery sweep. The field is appended at the end of the on-chain layout so existing
+accounts deserialize it as an empty list.
 
 ## DWalletAccount
 

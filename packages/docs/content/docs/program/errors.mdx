@@ -2,6 +2,7 @@
 title: Errors
 description: aura-core program error codes, names, and what triggers them.
 icon: TriangleAlert
+status: new
 ---
 
 `aura-core` returns Anchor errors from the `AuraCoreError` enum, starting at code **6000**. Domain-layer
@@ -118,6 +119,16 @@ latest instructions.
 | 6094 | `SettlementNotConfirmed` | Chain-bound proposal has not reached the required confirmation depth. <New /> |
 | 6095 | `SettlementReorged` | Settlement evidence indicates the broadcast failed or was reorged. <New /> |
 | 6096 | `ChainProfileNotRegistered` | Custom chain profile is missing, disabled, or mismatched. <New /> |
+
+## Custody recovery
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6097 | `NoRecoveryDestination` | `break_glass_recover` called but no recovery address registered for the chain. <New /> |
+| 6098 | `RecoveryTimelockActive` | Attempting to change a recovery destination before its lock window expires. <New /> |
+| 6099 | `RecoveryPreconditionNotMet` | Treasury is not in emergency shutdown, or the 1-hour post-shutdown activation window has not elapsed. <New /> |
+| 6100 | `RecoveryDestinationImmutable` | Attempting to change a recovery destination while an emergency shutdown is active. <New /> |
+| 6101 | `UnauthorizedRecovery` | Caller is not authorized to initiate a recovery operation. <New /> |
 
 ## Governance, state & data
 
