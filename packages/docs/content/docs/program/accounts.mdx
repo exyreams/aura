@@ -129,6 +129,7 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
 | `PolicyTemplate` | `[b"policy_template", owner, template_id]` | Reusable, validated policy posture (apply across treasuries) |
 | `BillingTemplate` | `[b"billing_template", owner, template_id]` | Reusable, validated fee posture (fork a `BillingProfileKind` or author one; apply across treasuries) |
+| `ConfidentialGuardrailsAccount` | `[b"confidential_guardrails", treasury]` | Expanded confidential posture: Encrypt epoch marker, enabled flag, and encrypted limit/counter ciphertext pointers (sidecar; treasury keeps a 3-pointer fallback) |
 | `ScheduledIntent` | `[b"scheduled_intent", treasury, intent_id]` | Recurring standing order with conditions plus in-flight promoted-proposal tracking |
 | `ConditionalProposal` | `[b"conditional_proposal", treasury, proposal_id]` | Parked conditional proposal that records the promoted pending proposal after trigger |
 
