@@ -114,7 +114,20 @@ curve/scheme, native gas asset, optional EVM chain id, finality model, and requi
 |---|---|---|
 | `configure_confidential_guardrails` | Set the encrypted daily/per-tx limit + spent-counter ciphertexts (treasury-embedded). | |
 | `request_policy_decryption` | Request decryption of the encrypted policy output. | |
-| `confirm_policy_decryption` | Verify the decrypted violation code and apply it. | |
+| `confirm_policy_decryption` | Verify the decrypted violation code and apply it (maps `5 → WeeklyLimit`). | <New /> |
+
+`propose_confidential_transaction` runs a scalar FHE graph over the encrypted limits. By default it enforces
+per-tx + daily. When the optional `weekly_limit_ciphertext` + `weekly_spent_ciphertext` accounts and the
+guardrails sidecar are supplied, it runs the **extended** graph, which also enforces the **weekly** limit
+under encryption and tracks the encrypted daily + weekly spent counters in update mode — returning a single
+combined violation code (`0` ok, `1` per-tx, `2` daily, `5` weekly). The sidecar must be enabled and its
+weekly pointers must match the supplied accounts. <New />
+
+<Callout title="Confidentiality scope">
+  The encrypted amount is not yet bound to the executed amount, and the encrypted spent counter is not read
+  back across the decryption boundary — both require Encrypt-network features (a plaintext commitment and an
+  exposed epoch) that the pre-alpha does not provide yet. Tracked for the decryption-boundary work.
+</Callout>
 
 ### Confidential guardrail lifecycle
 
