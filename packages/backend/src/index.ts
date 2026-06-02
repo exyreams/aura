@@ -86,7 +86,11 @@ function getMeta(requestId: string) {
 function resolveClientIp(request: IncomingMessage) {
   const forwarded = request.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.trim()) {
-    return forwarded.split(",")[0]?.trim() || request.socket.remoteAddress || "unknown";
+    return (
+      forwarded.split(",")[0]?.trim() ||
+      request.socket.remoteAddress ||
+      "unknown"
+    );
   }
   return request.socket.remoteAddress || "unknown";
 }
@@ -100,10 +104,15 @@ function isOriginAllowed(origin: string | undefined) {
 
 function applyCors(request: IncomingMessage, response: ServerResponse) {
   const originHeader =
-    typeof request.headers.origin === "string" ? request.headers.origin : undefined;
+    typeof request.headers.origin === "string"
+      ? request.headers.origin
+      : undefined;
 
   response.setHeader("vary", "Origin");
-  response.setHeader("access-control-expose-headers", "x-request-id, retry-after");
+  response.setHeader(
+    "access-control-expose-headers",
+    "x-request-id, retry-after",
+  );
   response.setHeader("access-control-allow-credentials", "true");
   response.setHeader("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
   response.setHeader(
@@ -153,7 +162,10 @@ function sendDownloadJson(
   response.setHeader("x-request-id", requestId);
   response.setHeader("cache-control", "no-store");
   response.setHeader("content-type", "application/json; charset=utf-8");
-  response.setHeader("content-disposition", `attachment; filename="${filename}"`);
+  response.setHeader(
+    "content-disposition",
+    `attachment; filename="${filename}"`,
+  );
   response.end(JSON.stringify(data, null, 2));
 }
 
@@ -274,10 +286,17 @@ const server = createServer(async (request, response) => {
 
   try {
     if (!isOriginAllowed(origin)) {
-      throw new ApiError(403, "ORIGIN_NOT_ALLOWED", `Origin ${origin} is not allowed.`);
+      throw new ApiError(
+        403,
+        "ORIGIN_NOT_ALLOWED",
+        `Origin ${origin} is not allowed.`,
+      );
     }
 
-    const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+    const url = new URL(
+      request.url,
+      `http://${request.headers.host || "localhost"}`,
+    );
     const pathname = url.pathname;
     const routeKey = `${request.method} ${pathname}`;
 
@@ -352,9 +371,14 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    const agentDownloadMatch = pathname.match(/^\/v1\/signers\/(\d+)\/download$/);
+    const agentDownloadMatch = pathname.match(
+      /^\/v1\/signers\/(\d+)\/download$/,
+    );
     if (request.method === "GET" && agentDownloadMatch?.[1]) {
-      const agent = getAgentKeypairById(authUser!, Number(agentDownloadMatch[1]));
+      const agent = getAgentKeypairById(
+        authUser!,
+        Number(agentDownloadMatch[1]),
+      );
       sendDownloadJson(
         response,
         requestId,
@@ -377,7 +401,10 @@ const server = createServer(async (request, response) => {
 
     // GET /v1/activity — no body needed, handle before ensureJsonRequest
     if (routeKey === "GET /v1/activity") {
-      const limit = Math.min(Number(url.searchParams.get("limit") ?? "50"), 100);
+      const limit = Math.min(
+        Number(url.searchParams.get("limit") ?? "50"),
+        100,
+      );
       const before = url.searchParams.get("before")
         ? Number(url.searchParams.get("before"))
         : undefined;
@@ -392,7 +419,8 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    ensureJsonRequest(request);    const body = await readJson(request);
+    ensureJsonRequest(request);
+    const body = await readJson(request);
 
     if (routeKey === "POST /v1/auth/login") {
       const result = await loginWithWallet(parseAuthLoginRequest(body));
@@ -402,13 +430,26 @@ const server = createServer(async (request, response) => {
     }
 
     if (routeKey === "POST /v1/signers") {
-      const result = createAgentKeypair(authUser!, parseCreateAgentRequest(body));
+      const result = createAgentKeypair(
+        authUser!,
+        parseCreateAgentRequest(body),
+      );
       // Fire-and-forget devnet airdrop so the agent can pay transaction fees
       if (config.defaultRpcUrl.includes("devnet")) {
-        const { Connection, PublicKey: SolPublicKey, LAMPORTS_PER_SOL } = await import("@solana/web3.js");
+        const {
+          Connection,
+          PublicKey: SolPublicKey,
+          LAMPORTS_PER_SOL,
+        } = await import("@solana/web3.js");
         const conn = new Connection(config.defaultRpcUrl, "confirmed");
-        conn.requestAirdrop(new SolPublicKey(result.agent.publicKey), 0.1 * LAMPORTS_PER_SOL)
-          .catch(() => { /* non-fatal — user can fund manually */ });
+        conn
+          .requestAirdrop(
+            new SolPublicKey(result.agent.publicKey),
+            0.1 * LAMPORTS_PER_SOL,
+          )
+          .catch(() => {
+            /* non-fatal — user can fund manually */
+          });
       }
       sendSuccess(response, 201, requestId, result);
       return;
@@ -429,7 +470,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await ensureBackendEncryptDeposit(serviceContext!, parseEnsureDepositRequest(body)),
+        await ensureBackendEncryptDeposit(
+          serviceContext!,
+          parseEnsureDepositRequest(body),
+        ),
       );
       return;
     }
@@ -439,7 +483,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await submitConfidentialProposal(serviceContext!, parseConfidentialProposalRequest(body)),
+        await submitConfidentialProposal(
+          serviceContext!,
+          parseConfidentialProposalRequest(body),
+        ),
       );
       return;
     }
@@ -449,7 +496,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await submitPublicProposal(serviceContext!, parsePublicProposalRequest(body)),
+        await submitPublicProposal(
+          serviceContext!,
+          parsePublicProposalRequest(body),
+        ),
       );
       return;
     }
@@ -459,7 +509,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await buildGenericProgramInstruction(serviceContext!, parseProgramInstructionRequest(body)),
+        await buildGenericProgramInstruction(
+          serviceContext!,
+          parseProgramInstructionRequest(body),
+        ),
       );
       return;
     }
@@ -469,7 +522,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await sendGenericProgramInstruction(serviceContext!, parseProgramInstructionRequest(body)),
+        await sendGenericProgramInstruction(
+          serviceContext!,
+          parseProgramInstructionRequest(body),
+        ),
       );
       return;
     }
@@ -479,7 +535,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await requestPolicyDecryptionService(serviceContext!, parseRequestDecryptionRequest(body)),
+        await requestPolicyDecryptionService(
+          serviceContext!,
+          parseRequestDecryptionRequest(body),
+        ),
       );
       return;
     }
@@ -489,7 +548,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await confirmPolicyDecryptionService(serviceContext!, parseConfirmDecryptionRequest(body)),
+        await confirmPolicyDecryptionService(
+          serviceContext!,
+          parseConfirmDecryptionRequest(body),
+        ),
       );
       return;
     }
@@ -499,7 +561,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await executePendingService(serviceContext!, parseExecutePendingRequest(body)),
+        await executePendingService(
+          serviceContext!,
+          parseExecutePendingRequest(body),
+        ),
       );
       return;
     }
@@ -509,7 +574,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await createDwalletService(serviceContext!, parseCreateDwalletRequest(body)),
+        await createDwalletService(
+          serviceContext!,
+          parseCreateDwalletRequest(body),
+        ),
       );
       return;
     }
@@ -520,11 +588,32 @@ const server = createServer(async (request, response) => {
         200,
         requestId,
         await triggerIkaSignService(serviceContext!, {
-          rpcUrl: body && typeof body === "object" ? (body as Record<string, unknown>)["rpcUrl"] as string | undefined : undefined,
-          programId: body && typeof body === "object" ? (body as Record<string, unknown>)["programId"] as string | undefined : undefined,
-          agentId: body && typeof body === "object" ? (body as Record<string, unknown>)["agentId"] as string | undefined : undefined,
-          treasury: body && typeof body === "object" ? (body as Record<string, unknown>)["treasury"] as string : "",
-          txSignature: body && typeof body === "object" ? (body as Record<string, unknown>)["txSignature"] as string : "",
+          rpcUrl:
+            body && typeof body === "object"
+              ? ((body as Record<string, unknown>)["rpcUrl"] as
+                  | string
+                  | undefined)
+              : undefined,
+          programId:
+            body && typeof body === "object"
+              ? ((body as Record<string, unknown>)["programId"] as
+                  | string
+                  | undefined)
+              : undefined,
+          agentId:
+            body && typeof body === "object"
+              ? ((body as Record<string, unknown>)["agentId"] as
+                  | string
+                  | undefined)
+              : undefined,
+          treasury:
+            body && typeof body === "object"
+              ? ((body as Record<string, unknown>)["treasury"] as string)
+              : "",
+          txSignature:
+            body && typeof body === "object"
+              ? ((body as Record<string, unknown>)["txSignature"] as string)
+              : "",
         }),
       );
       return;
@@ -548,14 +637,16 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        await finalizeExecutionService(serviceContext!, parseFinalizeExecutionRequest(body)),
+        await finalizeExecutionService(
+          serviceContext!,
+          parseFinalizeExecutionRequest(body),
+        ),
       );
       return;
     }
 
-    // ── Activity ──────────────────────────────────────────────────────────
-
-    // ── Wallet-signed registration ────────────────────────────────────────
+    // Activity
+    // Wallet-signed registration
 
     if (routeKey === "POST /v1/treasuries/register") {
       sendSuccess(
@@ -572,7 +663,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        registerGuardrails(serviceContext!, parseRegisterGuardrailsRequest(body)),
+        registerGuardrails(
+          serviceContext!,
+          parseRegisterGuardrailsRequest(body),
+        ),
       );
       return;
     }
@@ -582,7 +676,10 @@ const server = createServer(async (request, response) => {
         response,
         200,
         requestId,
-        registerDwalletOnTreasury(serviceContext!, parseRegisterDwalletRequest(body)),
+        registerDwalletOnTreasury(
+          serviceContext!,
+          parseRegisterDwalletRequest(body),
+        ),
       );
       return;
     }
@@ -598,9 +695,12 @@ const server = createServer(async (request, response) => {
     }
 
     if (routeKey === "POST /v1/activity/backfill") {
-      const perTreasury = body && typeof body === "object"
-        ? (body as Record<string, unknown>)["perTreasury"] as number | undefined
-        : undefined;
+      const perTreasury =
+        body && typeof body === "object"
+          ? ((body as Record<string, unknown>)["perTreasury"] as
+              | number
+              | undefined)
+          : undefined;
       sendSuccess(
         response,
         200,

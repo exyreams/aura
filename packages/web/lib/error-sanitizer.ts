@@ -22,7 +22,7 @@ interface ErrorRule {
 // catch-all so the inner pattern wins when both are present in the same string.
 // ---------------------------------------------------------------------------
 const ERROR_RULES: ErrorRule[] = [
-  // ── Wallet / signing ──────────────────────────────────────────────────────
+  // Wallet / signing
   {
     pattern: /user rejected|rejected the request|user denied/i,
     message: "Transaction cancelled by wallet.",
@@ -36,7 +36,7 @@ const ERROR_RULES: ErrorRule[] = [
     message: "Your wallet is locked. Unlock it and try again.",
   },
 
-  // ── Program-specific errors (check before generic simulation catch-all) ───
+  // Program-specific errors (check before generic simulation catch-all)
   {
     pattern: /UnauthorizedAi|unauthorized ai signer|0x1770/i,
     message:
@@ -80,7 +80,7 @@ const ERROR_RULES: ErrorRule[] = [
     message: "This proposal has expired. Create a new one.",
   },
 
-  // ── Funds / fees ──────────────────────────────────────────────────────────
+  // Funds / fees
   {
     pattern: /insufficient funds for rent/i,
     message: "Not enough SOL to cover rent. Top up your wallet and try again.",
@@ -96,7 +96,7 @@ const ERROR_RULES: ErrorRule[] = [
       "Not enough SOL in your wallet. Fund it with devnet SOL and try again.",
   },
 
-  // ── Transaction lifecycle ─────────────────────────────────────────────────
+  // Transaction lifecycle
   {
     pattern: /blockhash not found|blockhash.*expired/i,
     message:
@@ -127,7 +127,7 @@ const ERROR_RULES: ErrorRule[] = [
       "Transaction simulation failed. Check your wallet balance and try again.",
   },
 
-  // ── RPC / network ─────────────────────────────────────────────────────────
+  // RPC / network
   {
     pattern:
       /fetch.*fail|network.*error|econnrefused|enotfound|failed to fetch/i,
@@ -149,7 +149,7 @@ const ERROR_RULES: ErrorRule[] = [
       "RPC node error. Try switching to a different endpoint in Settings.",
   },
 
-  // ── Accounts / program ────────────────────────────────────────────────────
+  // Accounts / program
   {
     pattern: /account.*not found|could not find account|invalid.*account/i,
     message:
@@ -170,7 +170,7 @@ const ERROR_RULES: ErrorRule[] = [
       "Account owner mismatch. Ensure you are using the correct program ID.",
   },
 
-  // ── Agent ─────────────────────────────────────────────────────────────────
+  // Agent
   {
     pattern: /create and select an agent/i,
     message: "No agent selected. Create and select an agent first.",
@@ -184,7 +184,7 @@ const ERROR_RULES: ErrorRule[] = [
     message: "This agent is not authorized to act on this treasury.",
   },
 
-  // ── Ika / dWallet ─────────────────────────────────────────────────────────
+  // Ika / dWallet
   {
     pattern: /message approval not ready|approval.*not.*ready/i,
     message:
@@ -205,7 +205,7 @@ const ERROR_RULES: ErrorRule[] = [
     message: "Ika network is unavailable. Try again in a few moments.",
   },
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // Auth
   {
     pattern: /unauthorized|not authorized|forbidden/i,
     message: "You are not authorized to perform this action.",

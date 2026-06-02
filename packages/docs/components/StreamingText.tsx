@@ -47,7 +47,7 @@ export function StreamingText() {
         })}
       </div>
 
-      {/* ── Edge masks — sit above the text, fade it into the background ── */}
+      {/* Edge masks — sit above the text, fade it into the background */}
 
       {/* Top */}
       <div

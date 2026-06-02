@@ -171,7 +171,7 @@ details[open] summary .faq-icon {
   border-left-color: hsl(var(--fd-primary));
 }
 
-/* ─── Mermaid diagrams ─────────────────────────────────────────────────────── */
+/* Mermaid diagrams */
 
 .aura-mermaid {
   margin: 2rem 0;
@@ -188,7 +188,7 @@ details[open] summary .faq-icon {
   pointer-events: none;
 }
 
-/* ─── Mermaid modal ────────────────────────────────────────────────────────── */
+/* Mermaid modal */
 
 .mermaid-modal-backdrop {
   position: fixed;

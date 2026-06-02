@@ -35,7 +35,7 @@ import { cn, shortenAddress } from "@/lib/utils";
 type CatalogInstruction =
   InstructionCatalogResponse["domains"][number]["instructions"][number];
 
-// ── Well-known account descriptions ──────────────────────────────────────────
+// Well-known account descriptions
 const ACCOUNT_DESCRIPTIONS: Record<string, string> = {
   treasury: "The treasury PDA that owns the policy config and pending queue.",
   parent_treasury: "The parent treasury in a swarm hierarchy.",
@@ -83,7 +83,7 @@ const ACCOUNT_DESCRIPTIONS: Record<string, string> = {
   session_key: "The session key account for delegated signing.",
 };
 
-// ── Well-known arg descriptions ───────────────────────────────────────────────
+// Well-known arg descriptions
 const ARG_DESCRIPTIONS: Record<string, string> = {
   now: "Current Unix timestamp (seconds). Used for TTL and staleness checks.",
   chain_code:
@@ -145,7 +145,7 @@ function InfoIcon() {
   );
 }
 
-// ── Smart arg field ───────────────────────────────────────────────────────────
+// Smart arg field
 // Renders a single typed input for a flat arg value.
 // Returns null for complex types (vec, nested struct) — caller falls back to JSON.
 
@@ -413,7 +413,7 @@ export interface InstructionBuilderProps {
   schema: ProgramInstructionSchema;
 }
 
-// ── ArgEditor ─────────────────────────────────────────────────────────────────
+// ArgEditor
 // Renders structured per-field inputs for instruction arguments.
 // For a single "args: StructType" arg, flattens the struct fields.
 // Falls back to a JSON textarea for complex/nested types.
@@ -815,7 +815,7 @@ export function InstructionBuilder({ found, schema }: InstructionBuilderProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Instruction header ── */}
+      {/* Instruction header */}
       <div className="px-5 pt-5 pb-3 shrink-0">
         <span className="mono text-[10px] uppercase tracking-[0.3em] text-(--text-muted) mb-1 block">
           {found.domain.label}
@@ -837,7 +837,7 @@ export function InstructionBuilder({ found, schema }: InstructionBuilderProps) {
         </div>
       </div>
 
-      {/* ── Execution context strip ── */}
+      {/* Execution context strip */}
       <div className="px-5 pb-4 shrink-0">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs border border-border rounded-sm px-3 py-2">
           {/* Backend signer */}
@@ -912,7 +912,7 @@ export function InstructionBuilder({ found, schema }: InstructionBuilderProps) {
         </div>
       </div>
 
-      {/* ── Status strip (always visible, above scroll) ── */}
+      {/* Status strip (always visible, above scroll) */}
       {(formError || signature) && (
         <div className="px-5 pb-3 shrink-0 space-y-2">
           {formError && (
@@ -977,7 +977,7 @@ export function InstructionBuilder({ found, schema }: InstructionBuilderProps) {
         </div>
       )}
 
-      {/* ── Scrollable content ── */}
+      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-5 space-y-6">
           <section>

@@ -86,7 +86,7 @@ fn main() -> anyhow::Result<()> {
     println!("Payer:   {owner}");
     println!("Program: {ID}");
 
-    // ── [1] init_trust_identity + configure_trust_policy ─────────────────────
+    // [1] init_trust_identity + configure_trust_policy
 
     println!("\n[trust policy] init_trust_identity + configure_trust_policy");
     let treasury = create_active_treasury(&rpc, &payer, "ti-trust", seed)?;
@@ -120,7 +120,7 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(ti.trust_tier == 0, "tier should still be Trusted after configure");
     println!("  ok custom thresholds stored on TrustIdentityAccount (watch=30, lockdown=200)");
 
-    // ── [2] restore_trust (no-op on Trusted) ─────────────────────────────────
+    // [2] restore_trust (no-op on Trusted)
 
     println!("\n[trust policy] restore_trust is a no-op on Trusted tier");
     let sig = send_tx(
@@ -137,7 +137,7 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(ti.trust_tier == 0, "tier should remain Trusted");
     println!("  ok restore_trust on Trusted tier: no-op");
 
-    // ── [3] init_trust_identity + register_agent ─────────────────────────────
+    // [3] init_trust_identity + register_agent
 
     println!("\n[agent identity] register_agent");
     let treasury2 = create_active_treasury(&rpc, &payer, "ti-agent", seed + 100)?;
@@ -177,7 +177,7 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(agent.scope.daily_limit_usd == Some(5_000), "daily limit mismatch");
     println!("  ok agent {} registered (ETH-only, limit=5000 usd)", agent_key);
 
-    // ── [4] revoke_agent ──────────────────────────────────────────────────────
+    // [4] revoke_agent
 
     println!("\n[agent identity] revoke_agent");
     let sig = send_tx(
@@ -197,7 +197,7 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(!agent.enabled, "agent should be disabled after revoke");
     println!("  ok agent disabled after revoke_agent");
 
-    // ── [5] nominate_successor_owner ──────────────────────────────────────────
+    // [5] nominate_successor_owner
 
     println!("\n[ownership handover] nominate_successor_owner");
     let successor = Keypair::new().pubkey();

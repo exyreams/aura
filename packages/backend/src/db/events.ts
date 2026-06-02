@@ -4,19 +4,19 @@ import { agentKeypairs, events, treasuries } from "./schema.js";
 import type { AuthenticatedUser } from "../auth/index.js";
 
 export type EventKind =
-  // ── Lifecycle events we write directly (backend-signed or wallet-signed) ──
+  // Lifecycle events we write directly (backend-signed or wallet-signed)
   | "treasury_created"
   | "deposit_created"
-  | "guardrails_configured"           // maps to confidential_guardrails_configured on activity page
+  | "guardrails_configured" // maps to confidential_guardrails_configured on activity page
   | "dwallet_created"
   | "dwallet_registered"
-  | "proposal_submitted"              // maps to proposal_created
+  | "proposal_submitted" // maps to proposal_created
   | "confidential_proposal_submitted"
   | "decryption_requested"
-  | "decryption_confirmed"            // maps to decryption_verified
-  | "execution_submitted"             // maps to signature_requested / signature_committed
-  | "execution_finalized"             // maps to proposal_executed
-  // ── On-chain audit event kinds (emitted by the program, parsed from RPC logs) ──
+  | "decryption_confirmed" // maps to decryption_verified
+  | "execution_submitted" // maps to signature_requested / signature_committed
+  | "execution_finalized" // maps to proposal_executed
+  // On-chain audit event kinds (emitted by the program, parsed from RPC logs)
   // Proposal flow
   | "proposal_created"
   | "proposal_cancelled"
@@ -140,7 +140,10 @@ export function listEventsForUser(
       .all();
 
     const hasMore = rows.length > (opts?.limit ?? 50);
-    return { events: rows.slice(0, opts?.limit ?? 50).map(parseEvent), hasMore };
+    return {
+      events: rows.slice(0, opts?.limit ?? 50).map(parseEvent),
+      hasMore,
+    };
   }
 
   const targetAddresses = opts.treasury
@@ -148,12 +151,13 @@ export function listEventsForUser(
     : userTreasuryAddresses;
 
   // Build conditions: (treasury_address IN [...] OR wallet_address = user.wallet)
-  const addressCondition = targetAddresses.length > 0
-    ? or(
-        inArray(events.treasuryAddress, targetAddresses),
-        eq(events.walletAddress, user.wallet),
-      )
-    : eq(events.walletAddress, user.wallet);
+  const addressCondition =
+    targetAddresses.length > 0
+      ? or(
+          inArray(events.treasuryAddress, targetAddresses),
+          eq(events.walletAddress, user.wallet),
+        )
+      : eq(events.walletAddress, user.wallet);
 
   const conditions = [addressCondition];
   if (opts.before) conditions.push(lt(events.timestamp, opts.before));
@@ -257,7 +261,9 @@ function parseEvent(row: typeof events.$inferSelect) {
     status: row.status,
     approved: row.approved == null ? null : row.approved === 1,
     violation: row.violation,
-    meta: row.metaJson ? (JSON.parse(row.metaJson) as Record<string, unknown>) : null,
+    meta: row.metaJson
+      ? (JSON.parse(row.metaJson) as Record<string, unknown>)
+      : null,
     timestamp: row.timestamp,
   };
 }

@@ -120,7 +120,7 @@ fn main() -> anyhow::Result<()> {
     const RECOVERY_ADDR: &str = "0xCO1D000000000000000000000000000000000001";
     const REDIRECT_ADDR: &str = "0xEEEE000000000000000000000000000000000002";
 
-    // ── [1] register_recovery_destination ────────────────────────────────────
+    // [1] register_recovery_destination
 
     println!("\n[1] register_recovery_destination — first registration is immediate");
     let treasury = create_active_treasury(&rpc, &payer, "rec", seed)?;
@@ -140,7 +140,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("  ok recovery destination stored: {RECOVERY_ADDR}");
 
-    // ── [2] timelock rejects change within lock window ────────────────────────
+    // [2] timelock rejects change within lock window
 
     println!("\n[2] RecoveryTimelockActive — change within lock window is rejected on-chain");
     let redirect_result = register_recovery_destination(
@@ -167,7 +167,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("  ok RecoveryTimelockActive returned; original address preserved");
 
-    // ── [3] emergency_shutdown ────────────────────────────────────────────────
+    // [3] emergency_shutdown
 
     println!("\n[3] emergency_shutdown — treasury enters Decommissioning");
     let shutdown_now = seed + 10;
@@ -181,7 +181,7 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(domain.execution_paused, "execution not paused after shutdown");
     println!("  ok treasury in Decommissioning, execution_paused=true, shutdown_at={shutdown_now}");
 
-    // ── [4] registration blocked during shutdown ──────────────────────────────
+    // [4] registration blocked during shutdown
 
     println!("\n[4] RecoveryDestinationImmutable — registration blocked during active shutdown");
     let immutable_result = register_recovery_destination(
@@ -198,7 +198,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("  ok RecoveryDestinationImmutable returned during shutdown");
 
-    // ── [5] break_glass_recover ───────────────────────────────────────────────
+    // [5] break_glass_recover
 
     println!("\n[5] break_glass_recover — creates pending sweep after shutdown + activation window");
 

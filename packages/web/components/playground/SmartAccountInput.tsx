@@ -65,7 +65,7 @@ export function SmartAccountInput({
   const programId =
     settings.resolvedProgramId?.toBase58() ?? settings.programId;
 
-  // ── PDA-init accounts — derived by the program, not provided by the user ──
+  // PDA-init accounts — derived by the program, not provided by the user
   if (
     TREASURY_ACCOUNT_NAMES.has(name) &&
     instructionName &&
@@ -80,7 +80,7 @@ export function SmartAccountInput({
     );
   }
 
-  // ── Treasury accounts ──
+  // Treasury accounts
   if (TREASURY_ACCOUNT_NAMES.has(name)) {
     const treasuries = treasuriesQuery.data ?? [];
     const options = [
@@ -144,7 +144,7 @@ export function SmartAccountInput({
     );
   }
 
-  // ── Wallet / owner accounts ──
+  // Wallet / owner accounts
   if (WALLET_ACCOUNT_NAMES.has(name) && walletAddress) {
     const options = [
       {
@@ -204,7 +204,7 @@ export function SmartAccountInput({
     );
   }
 
-  // ── Agent / AI authority accounts ──
+  // Agent / AI authority accounts
   if (AGENT_ACCOUNT_NAMES.has(name) && agents.length > 0) {
     const options = [
       ...agents.map((a) => ({
@@ -263,7 +263,7 @@ export function SmartAccountInput({
     );
   }
 
-  // ── Program ID accounts ──
+  // Program ID accounts
   if (name === "caller_program" || name === "program") {
     return (
       <Input
@@ -276,7 +276,7 @@ export function SmartAccountInput({
     );
   }
 
-  // ── Default: plain input, with wallet quick-fill if connected ──
+  // Default: plain input, with wallet quick-fill if connected
   return (
     <div className="relative">
       <Input

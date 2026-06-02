@@ -78,7 +78,7 @@ export function useTreasury(treasury: string | undefined) {
   });
 }
 
-// ── Backend-sourced activity (replaces RPC polling) ───────────────────────
+// Backend-sourced activity (replaces RPC polling)
 
 export type { ActivityEvent } from "@/lib/aura-app";
 

@@ -1,5 +1,6 @@
 import BN from "bn.js";
-import bs58 from "bs58";import {
+import bs58 from "bs58";
+import {
   AURA_FEATURE_DOMAINS,
   AuraClient,
   type ProposeConfidentialTransactionArgs,
@@ -51,7 +52,12 @@ import {
   buildProgramInstruction,
   getProgramInstructionCatalog,
 } from "./program-instructions.js";
-import { insertEvent, listEventsForUser, type EventKind, updateProposalEvent } from "../db/events.js";
+import {
+  insertEvent,
+  listEventsForUser,
+  type EventKind,
+  updateProposalEvent,
+} from "../db/events.js";
 import { createLogger } from "../logger.js";
 
 const config = loadConfig();
@@ -117,9 +123,13 @@ function buildProposeArgs(input: {
     protocolId: input.protocolId ?? null,
     currentTimestamp: new BN(Math.floor(Date.now() / 1000)),
     expectedOutputUsd:
-      input.expectedOutputUsd !== undefined ? new BN(input.expectedOutputUsd) : null,
+      input.expectedOutputUsd !== undefined
+        ? new BN(input.expectedOutputUsd)
+        : null,
     actualOutputUsd:
-      input.actualOutputUsd !== undefined ? new BN(input.actualOutputUsd) : null,
+      input.actualOutputUsd !== undefined
+        ? new BN(input.actualOutputUsd)
+        : null,
     quoteAgeSecs:
       input.quoteAgeSecs !== undefined ? new BN(input.quoteAgeSecs) : null,
     counterpartyRiskScore: input.counterpartyRiskScore ?? null,
@@ -148,9 +158,13 @@ function buildConfidentialArgs(input: {
     protocolId: input.protocolId ?? null,
     currentTimestamp: new BN(Math.floor(Date.now() / 1000)),
     expectedOutputUsd:
-      input.expectedOutputUsd !== undefined ? new BN(input.expectedOutputUsd) : null,
+      input.expectedOutputUsd !== undefined
+        ? new BN(input.expectedOutputUsd)
+        : null,
     actualOutputUsd:
-      input.actualOutputUsd !== undefined ? new BN(input.actualOutputUsd) : null,
+      input.actualOutputUsd !== undefined
+        ? new BN(input.actualOutputUsd)
+        : null,
     quoteAgeSecs:
       input.quoteAgeSecs !== undefined ? new BN(input.quoteAgeSecs) : null,
     counterpartyRiskScore: input.counterpartyRiskScore ?? null,
@@ -197,17 +211,24 @@ export function getInstructionCatalog() {
   return getProgramInstructionCatalog();
 }
 
-export async function buildGenericProgramInstruction(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  instruction: string;
-  accounts: Record<string, unknown>;
-  args: Record<string, unknown> | unknown[];
-}) {
+export async function buildGenericProgramInstruction(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    instruction: string;
+    accounts: Record<string, unknown>;
+    args: Record<string, unknown> | unknown[];
+  },
+) {
   const { client, programId } = buildClient(input.rpcUrl, input.programId);
   const agent = input.agentId
-    ? await withAgentSigner(context.user, input.agentId, async (_keypair, record) => record)
+    ? await withAgentSigner(
+        context.user,
+        input.agentId,
+        async (_keypair, record) => record,
+      )
     : undefined;
   return await buildProgramInstruction(
     client,
@@ -218,21 +239,30 @@ export async function buildGenericProgramInstruction(context: ServiceContext, in
       rpcUrl: input.rpcUrl,
       programId: input.programId,
     },
-    { programId, defaultSigner: agent ? new PublicKey(agent.publicKey) : undefined },
+    {
+      programId,
+      defaultSigner: agent ? new PublicKey(agent.publicKey) : undefined,
+    },
   );
 }
 
-export async function sendGenericProgramInstruction(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  instruction: string;
-  accounts: Record<string, unknown>;
-  args: Record<string, unknown> | unknown[];
-  computeUnitLimit?: number;
-}) {
+export async function sendGenericProgramInstruction(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    instruction: string;
+    accounts: Record<string, unknown>;
+    args: Record<string, unknown> | unknown[];
+    computeUnitLimit?: number;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
-    const { connection, client, programId } = buildClient(input.rpcUrl, input.programId);
+    const { connection, client, programId } = buildClient(
+      input.rpcUrl,
+      input.programId,
+    );
     const built = await buildProgramInstruction(
       client,
       {
@@ -340,13 +370,19 @@ export async function encryptScalarValues(input: {
   };
 }
 
-export async function ensureBackendEncryptDeposit(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-}) {
+export async function ensureBackendEncryptDeposit(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair) => {
-    const { connection, programId } = buildClient(input.rpcUrl, input.programId);
+    const { connection, programId } = buildClient(
+      input.rpcUrl,
+      input.programId,
+    );
     const result = await ensureEncryptDeposit({
       connection,
       payer: agentKeypair,
@@ -367,24 +403,30 @@ export async function ensureBackendEncryptDeposit(context: ServiceContext, input
   });
 }
 
-export async function submitConfidentialProposal(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  amountUsd: number;
-  chain: number;
-  txType: number;
-  recipient: string;
-  protocolId?: number;
-  expectedOutputUsd?: number;
-  actualOutputUsd?: number;
-  quoteAgeSecs?: number;
-  counterpartyRiskScore?: number;
-  waitForOutput?: boolean;
-}) {
+export async function submitConfidentialProposal(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    amountUsd: number;
+    chain: number;
+    txType: number;
+    recipient: string;
+    protocolId?: number;
+    expectedOutputUsd?: number;
+    actualOutputUsd?: number;
+    quoteAgeSecs?: number;
+    counterpartyRiskScore?: number;
+    waitForOutput?: boolean;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
-    const { connection, programId, client } = buildClient(input.rpcUrl, input.programId);
+    const { connection, programId, client } = buildClient(
+      input.rpcUrl,
+      input.programId,
+    );
     const treasury = new PublicKey(input.treasury);
     ensureTreasuryRecord({ agent, treasuryAddress: treasury.toBase58() });
     const account = await client.getTreasuryAccount(treasury);
@@ -431,7 +473,9 @@ export async function submitConfidentialProposal(context: ServiceContext, input:
       const refreshed = await client.getTreasuryAccount(treasury);
       const pending = getActivePendingProposal(refreshed);
       if (pending) proposalId = pending.proposalId.toString();
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
     insertEvent({
       treasuryAddress: treasury.toBase58(),
       agentKeypairId: agent.id,
@@ -459,16 +503,22 @@ export async function submitConfidentialProposal(context: ServiceContext, input:
   });
 }
 
-export async function requestPolicyDecryptionService(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  ciphertext?: string;
-  wait?: boolean;
-}) {
+export async function requestPolicyDecryptionService(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    ciphertext?: string;
+    wait?: boolean;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
-    const { connection, programId, client } = buildClient(input.rpcUrl, input.programId);
+    const { connection, programId, client } = buildClient(
+      input.rpcUrl,
+      input.programId,
+    );
     const treasury = new PublicKey(input.treasury);
     ensureTreasuryRecord({ agent, treasuryAddress: treasury.toBase58() });
     const account = await client.getTreasuryAccount(treasury);
@@ -510,7 +560,8 @@ export async function requestPolicyDecryptionService(context: ServiceContext, in
       agentKeypairId: agent.id,
       kind: "decryption_requested",
       txSignature: signature,
-      proposalId: getActivePendingProposal(account)?.proposalId?.toString() ?? null,
+      proposalId:
+        getActivePendingProposal(account)?.proposalId?.toString() ?? null,
       meta: {
         requestAccount: requestSigner.publicKey.toBase58(),
         ciphertext: ciphertext.toBase58(),
@@ -527,13 +578,16 @@ export async function requestPolicyDecryptionService(context: ServiceContext, in
   });
 }
 
-export async function confirmPolicyDecryptionService(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  requestAccount?: string;
-}) {
+export async function confirmPolicyDecryptionService(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    requestAccount?: string;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
     const { connection, client } = buildClient(input.rpcUrl, input.programId);
     const treasury = new PublicKey(input.treasury);
@@ -560,7 +614,10 @@ export async function confirmPolicyDecryptionService(context: ServiceContext, in
     let violationCode: string | null = null;
     try {
       violationCode = (
-        await readU64Ciphertext(resolvePendingPolicyOutput(account), agentKeypair.publicKey)
+        await readU64Ciphertext(
+          resolvePendingPolicyOutput(account),
+          agentKeypair.publicKey,
+        )
       ).toString();
     } catch {
       violationCode = null;
@@ -570,7 +627,10 @@ export async function confirmPolicyDecryptionService(context: ServiceContext, in
       agentKeypairId: agent.id,
       kind: "decryption_confirmed",
       txSignature: signature,
-      proposalId: refreshedPending?.proposalId?.toString() ?? getActivePendingProposal(account)?.proposalId?.toString() ?? null,
+      proposalId:
+        refreshedPending?.proposalId?.toString() ??
+        getActivePendingProposal(account)?.proposalId?.toString() ??
+        null,
       approved: refreshedPending?.decision.approved ?? null,
       violation: refreshedPending?.decision.violation ?? null,
       meta: { requestAccount: requestAccount.toBase58(), violationCode },
@@ -596,16 +656,22 @@ export async function confirmPolicyDecryptionService(context: ServiceContext, in
   });
 }
 
-export async function executePendingService(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  wait?: boolean;
-  waitSigned?: boolean;
-}) {
+export async function executePendingService(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    wait?: boolean;
+    waitSigned?: boolean;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
-    const { connection, programId, client } = buildClient(input.rpcUrl, input.programId);
+    const { connection, programId, client } = buildClient(
+      input.rpcUrl,
+      input.programId,
+    );
     const treasury = new PublicKey(input.treasury);
     ensureTreasuryRecord({ agent, treasuryAddress: treasury.toBase58() });
     const account = await client.getTreasuryAccount(treasury);
@@ -644,7 +710,9 @@ export async function executePendingService(context: ServiceContext, input: {
       txSignature: signature,
       proposalId: pending.proposalId?.toString() ?? null,
       approved: pending.decision.approved,
-      violation: pending.decision.approved ? null : (pending.decision.violation ?? null),
+      violation: pending.decision.approved
+        ? null
+        : (pending.decision.violation ?? null),
       meta: {
         messageApproval: approvedAccounts?.messageApproval.toBase58() ?? null,
       },
@@ -665,11 +733,19 @@ export async function executePendingService(context: ServiceContext, input: {
       // the whole request. The client polls /v1/execution/status to know when
       // the signature lands.
       const triggerSign = async () => {
-        await waitForMessageApproval(connection, approvedAccounts.messageApproval, "pending", {
-          timeoutMs: 120_000,
-        });
+        await waitForMessageApproval(
+          connection,
+          approvedAccounts.messageApproval,
+          "pending",
+          {
+            timeoutMs: 120_000,
+          },
+        );
         const message = Buffer.from(
-          buildPendingMessage(approvedAccounts.pending, approvedAccounts.dwallet),
+          buildPendingMessage(
+            approvedAccounts.pending,
+            approvedAccounts.dwallet,
+          ),
           "utf8",
         );
         const dwalletKey = approvedAccounts.dwalletAccount.toBase58();
@@ -694,24 +770,36 @@ export async function executePendingService(context: ServiceContext, input: {
       if (input.waitSigned) {
         try {
           await triggerSign();
-          await waitForMessageApproval(connection, approvedAccounts.messageApproval, "signed", {
-            timeoutMs: 180_000,
-          });
+          await waitForMessageApproval(
+            connection,
+            approvedAccounts.messageApproval,
+            "signed",
+            {
+              timeoutMs: 180_000,
+            },
+          );
         } catch (err) {
           serviceLogger.warn("ika.sign.failed", { error: String(err) });
         }
       } else if (input.wait) {
         try {
           await triggerSign();
-          await waitForMessageApproval(connection, approvedAccounts.messageApproval, "signed", {
-            timeoutMs: 180_000,
-          });
+          await waitForMessageApproval(
+            connection,
+            approvedAccounts.messageApproval,
+            "signed",
+            {
+              timeoutMs: 180_000,
+            },
+          );
         } catch (err) {
           serviceLogger.warn("ika.sign.failed", { error: String(err) });
         }
       } else {
         // No waiting requested — fire sign in background and return immediately.
-        triggerSign().catch((err) => serviceLogger.warn("ika.sign.failed", { error: String(err) }));
+        triggerSign().catch((err) =>
+          serviceLogger.warn("ika.sign.failed", { error: String(err) }),
+        );
       }
     }
     const refreshed = await client.getTreasuryAccount(treasury);
@@ -724,13 +812,16 @@ export async function executePendingService(context: ServiceContext, input: {
   });
 }
 
-export async function triggerIkaSignService(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  txSignature: string;
-}) {
+export async function triggerIkaSignService(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    txSignature: string;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
     const { client } = buildClient(input.rpcUrl, input.programId);
     const treasury = new PublicKey(input.treasury);
@@ -738,9 +829,12 @@ export async function triggerIkaSignService(context: ServiceContext, input: {
     const account = await client.getTreasuryAccount(treasury);
     const pending = resolvePendingProposal(account);
     const approvedAccounts = pending.decision.approved
-      ? deriveApprovedExecutionAccounts(account, { auraProgramId: buildProgramId(input.programId) })
+      ? deriveApprovedExecutionAccounts(account, {
+          auraProgramId: buildProgramId(input.programId),
+        })
       : undefined;
-    if (!approvedAccounts) throw new Error("No approved pending proposal found.");
+    if (!approvedAccounts)
+      throw new Error("No approved pending proposal found.");
     const message = Buffer.from(
       buildPendingMessage(approvedAccounts.pending, approvedAccounts.dwallet),
       "utf8",
@@ -762,17 +856,23 @@ export async function triggerIkaSignService(context: ServiceContext, input: {
     } finally {
       signingSecret.fill(0);
     }
-    return { triggered: true, messageApproval: approvedAccounts.messageApproval.toBase58() };
+    return {
+      triggered: true,
+      messageApproval: approvedAccounts.messageApproval.toBase58(),
+    };
   });
 }
 
-export async function finalizeExecutionService(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  messageApproval?: string;
-}) {
+export async function finalizeExecutionService(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    messageApproval?: string;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
     const { client } = buildClient(input.rpcUrl, input.programId);
     const treasury = new PublicKey(input.treasury);
@@ -785,7 +885,9 @@ export async function finalizeExecutionService(context: ServiceContext, input: {
         ? new PublicKey(pending.signatureRequest.messageApprovalAccount)
         : undefined;
     if (!messageApproval) {
-      throw new Error("No message approval account is available for finalize_execution.");
+      throw new Error(
+        "No message approval account is available for finalize_execution.",
+      );
     }
     const signature = await client.finalizeExecution(
       agentKeypair,
@@ -836,14 +938,20 @@ export async function getMessageApprovalStatusService(input: {
   return { messageApproval: input.messageApproval, state };
 }
 
-export async function createDwalletService(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  ikaGrpcUrl?: string;
-}) {
+export async function createDwalletService(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    ikaGrpcUrl?: string;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
-    const { connection, programId } = buildClient(input.rpcUrl, input.programId);
+    const { connection, programId } = buildClient(
+      input.rpcUrl,
+      input.programId,
+    );
     const result = await provisionDwallet({
       connection,
       payer: agentKeypair,
@@ -881,21 +989,24 @@ export async function createDwalletService(context: ServiceContext, input: {
   });
 }
 
-export async function submitPublicProposal(context: ServiceContext, input: {
-  rpcUrl?: string;
-  programId?: string;
-  agentId?: string;
-  treasury: string;
-  amountUsd: number;
-  chain: number;
-  txType: number;
-  recipient: string;
-  protocolId?: number;
-  expectedOutputUsd?: number;
-  actualOutputUsd?: number;
-  quoteAgeSecs?: number;
-  counterpartyRiskScore?: number;
-}) {
+export async function submitPublicProposal(
+  context: ServiceContext,
+  input: {
+    rpcUrl?: string;
+    programId?: string;
+    agentId?: string;
+    treasury: string;
+    amountUsd: number;
+    chain: number;
+    txType: number;
+    recipient: string;
+    protocolId?: number;
+    expectedOutputUsd?: number;
+    actualOutputUsd?: number;
+    quoteAgeSecs?: number;
+    counterpartyRiskScore?: number;
+  },
+) {
   return await withRequestAgent(context, input, async (agentKeypair, agent) => {
     const { connection, client } = buildClient(input.rpcUrl, input.programId);
     const treasury = new PublicKey(input.treasury);
@@ -918,7 +1029,9 @@ export async function submitPublicProposal(context: ServiceContext, input: {
       const refreshed = await client.getTreasuryAccount(treasury);
       const pending = getActivePendingProposal(refreshed);
       if (pending) proposalId = pending.proposalId.toString();
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
     insertEvent({
       treasuryAddress: treasury.toBase58(),
       agentKeypairId: agent.id,
@@ -937,8 +1050,7 @@ export async function submitPublicProposal(context: ServiceContext, input: {
   });
 }
 
-
-// ── Activity service ──────────────────────────────────────────────────────
+// Activity service
 
 export function getActivity(
   context: ServiceContext,
@@ -957,7 +1069,7 @@ export function getActivity(
   });
 }
 
-// ── Wallet-signed registration endpoints ─────────────────────────────────
+// Wallet-signed registration endpoints
 
 import { eq } from "drizzle-orm";
 import { db } from "../db/client.js";
@@ -977,9 +1089,7 @@ export function registerTreasury(
   const agent = db
     .select()
     .from(agentKeypairs)
-    .where(
-      eq(agentKeypairs.userId, context.user.id),
-    )
+    .where(eq(agentKeypairs.userId, context.user.id))
     .all()
     .find((a) => a.agentId === input.agentId);
 

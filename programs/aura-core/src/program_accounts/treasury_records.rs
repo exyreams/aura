@@ -1,7 +1,7 @@
 use super::*;
 use crate::state::trust::TrustConfig;
 
-// ── Trust envelope ───────────────────────────────────────────────────────────
+// Trust envelope
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct TrustConfigRecord {
@@ -40,7 +40,7 @@ impl TrustConfigRecord {
     }
 }
 
-// ── Agent identity ───────────────────────────────────────────────────────────
+// Agent identity
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct AgentScopeRecord {

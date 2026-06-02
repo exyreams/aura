@@ -34,7 +34,7 @@ use crate::{
     AuraCoreError,
 };
 
-// ── Accounts ─────────────────────────────────────────────────────────────────
+// Accounts
 
 #[derive(Accounts)]
 pub struct RecoveryConfig<'info> {
@@ -81,7 +81,7 @@ pub struct BreakGlassTransferAuthority<'info> {
     pub dwallet_program: UncheckedAccount<'info>,
 }
 
-// ── Args ─────────────────────────────────────────────────────────────────────
+// Args
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RegisterRecoveryDestinationArgs {
@@ -106,7 +106,7 @@ pub struct BreakGlassTransferAuthorityArgs {
     pub now: i64,
 }
 
-// ── Handlers ─────────────────────────────────────────────────────────────────
+// Handlers
 
 /// Registers or updates the per-chain recovery destination.
 ///
@@ -301,7 +301,7 @@ pub fn break_glass_transfer_authority(
     sync_treasury_account(&mut ctx.accounts.treasury, &domain, args.now)
 }
 
-// ── Unit tests ────────────────────────────────────────────────────────────────
+// Unit tests
 
 #[cfg(test)]
 mod tests {

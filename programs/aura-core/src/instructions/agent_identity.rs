@@ -17,7 +17,7 @@ use crate::{
     AuraCoreError,
 };
 
-// ── Accounts ─────────────────────────────────────────────────────────────────
+// Accounts
 
 #[derive(Accounts)]
 pub struct AgentManage<'info> {
@@ -120,7 +120,7 @@ pub struct ExecuteOwnershipHandover<'info> {
     pub dwallet_program: UncheckedAccount<'info>,
 }
 
-// ── Args ─────────────────────────────────────────────────────────────────────
+// Args
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RegisterAgentArgs {
@@ -145,7 +145,7 @@ pub struct ExecuteHandoverArgs {
     pub now: i64,
 }
 
-// ── Handlers ─────────────────────────────────────────────────────────────────
+// Handlers
 
 pub fn register_agent(ctx: Context<AgentManage>, args: RegisterAgentArgs) -> Result<()> {
     require!(

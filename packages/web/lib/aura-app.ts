@@ -657,7 +657,7 @@ export function bigNumberToNumber(
   return Number(value.toString());
 }
 
-// ── Backend activity event → ParsedActivity mapping ──────────────────────────
+// Backend activity event → ParsedActivity mapping
 
 export interface ActivityEvent {
   id: number;
@@ -786,7 +786,7 @@ export function mapBackendEvents(events: ActivityEvent[]): ParsedActivity[] {
   });
 }
 
-// ── Grouped audit-trail view ──────────────────────────────────────────────────
+// Grouped audit-trail view
 
 // Proposal lifecycle event kind prefixes that belong inside a proposal group
 // and should not appear as standalone audit rows.

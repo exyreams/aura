@@ -249,7 +249,7 @@ pub fn audit_lifecycle_label(state: AgentLifecycleState) -> &'static str {
     }
 }
 
-// ── Agent identity ───────────────────────────────────────────────────────────
+// Agent identity
 
 /// Allowed-scope constraints for a secondary agent authority.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

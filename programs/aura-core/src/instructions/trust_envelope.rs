@@ -20,7 +20,7 @@ use crate::{
     AuraCoreError,
 };
 
-// ── Accounts ─────────────────────────────────────────────────────────────────
+// Accounts
 
 #[derive(Accounts)]
 pub struct InitTrustIdentity<'info> {
@@ -61,7 +61,7 @@ pub struct TrustEnvelopeConfig<'info> {
     pub trust_identity: Box<Account<'info, TrustIdentityAccount>>,
 }
 
-// ── Args ─────────────────────────────────────────────────────────────────────
+// Args
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ConfigureTrustPolicyArgs {
@@ -75,7 +75,7 @@ pub struct ConfigureTrustPolicyArgs {
     pub now: i64,
 }
 
-// ── Handlers ─────────────────────────────────────────────────────────────────
+// Handlers
 
 /// Creates the `TrustIdentityAccount` PDA for a treasury with default settings.
 pub fn init_trust_identity(ctx: Context<InitTrustIdentity>, now: i64) -> Result<()> {

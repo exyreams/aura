@@ -124,7 +124,7 @@ pub struct ProposeTransaction<'info> {
 /// pending transaction. No FHE evaluation or decryption step is needed;
 /// `execute_pending` can be called immediately after this instruction.
 pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -> Result<()> {
-    // ── Trust + identity checks (optional TrustIdentityAccount) ──────────────
+    // Trust + identity checks (optional TrustIdentityAccount)
     let ai_key = ctx.accounts.ai_authority.key().to_string();
     if let Some(ti) = ctx.accounts.trust_identity.as_mut() {
         ti.apply_trust_decay(args.current_timestamp);
