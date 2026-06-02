@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use aura_policy::{PauseScope, TransactionContext};
 
 use crate::{
-    constants::TREASURY_SEED,
+    constants::{CONFIDENTIAL_GUARDRAILS_SEED, TREASURY_SEED},
     ext_cpi::{
         parse_ciphertext_account, AuraEncryptContext, ENCRYPT_CPI_AUTHORITY_SEED,
         ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
@@ -12,7 +12,8 @@ use crate::{
         sync_treasury_account,
     },
     program_accounts::{
-        chain_from_code, transaction_type_from_code, ExternalLivenessAccount, TreasuryAccount,
+        chain_from_code, transaction_type_from_code, ConfidentialGuardrailsAccount,
+        ExternalLivenessAccount, TreasuryAccount,
     },
 };
 
@@ -79,6 +80,18 @@ pub struct ProposeConfidentialTransaction<'info> {
     /// CHECK: Encrypt event authority PDA.
     pub event_authority: UncheckedAccount<'info>,
     pub external_liveness: Option<Box<Account<'info, ExternalLivenessAccount>>>,
+    /// CHECK: optional Encrypt ciphertext for the encrypted weekly limit (enables the extended graph).
+    pub weekly_limit_ciphertext: Option<UncheckedAccount<'info>>,
+    /// CHECK: optional Encrypt ciphertext for the weekly-spent counter (update-mode target).
+    #[account(mut)]
+    pub weekly_spent_ciphertext: Option<UncheckedAccount<'info>>,
+    /// Optional confidential guardrails sidecar; required for the extended weekly path.
+    #[account(
+        seeds = [CONFIDENTIAL_GUARDRAILS_SEED, treasury.key().as_ref()],
+        bump = confidential_guardrails.bump,
+        constraint = confidential_guardrails.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub confidential_guardrails: Option<Box<Account<'info, ConfidentialGuardrailsAccount>>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -179,6 +192,31 @@ pub fn handler(
         return err!(crate::AuraCoreError::InvalidExternalAccountData);
     }
 
+    // Extended path: when the weekly ciphertexts and the guardrails sidecar
+    // are supplied, the weekly limit is also enforced under encryption. The
+    // sidecar must be enabled and its weekly pointers must match the accounts.
+    let enforce_weekly = match (
+        ctx.accounts.weekly_limit_ciphertext.as_ref(),
+        ctx.accounts.weekly_spent_ciphertext.as_ref(),
+        ctx.accounts.confidential_guardrails.as_ref(),
+    ) {
+        (Some(weekly_limit), Some(weekly_spent), Some(sidecar)) => {
+            require!(
+                sidecar.enabled,
+                crate::AuraCoreError::ConfidentialGuardrailsDisabled
+            );
+            validate_u64_ciphertext(weekly_limit, &expected_encrypt_program, true)?;
+            validate_u64_ciphertext(weekly_spent, &expected_encrypt_program, true)?;
+            require!(
+                Some(weekly_limit.key()) == sidecar.weekly_limit_ciphertext
+                    && Some(weekly_spent.key()) == sidecar.weekly_spent_ciphertext,
+                crate::AuraCoreError::InvalidExternalAccountData
+            );
+            true
+        }
+        _ => false,
+    };
+
     let target_chain = chain_from_code(args.target_chain)?;
 
     let tx = TransactionContext {
@@ -244,14 +282,34 @@ pub fn handler(
         cpi_authority_bump,
     };
 
-    aura_policy::execute_confidential_spend_guardrails_graph(
-        &encrypt_ctx,
-        ctx.accounts.daily_limit_ciphertext.to_account_info(),
-        ctx.accounts.per_tx_limit_ciphertext.to_account_info(),
-        ctx.accounts.spent_today_ciphertext.to_account_info(),
-        ctx.accounts.amount_ciphertext.to_account_info(),
-        ctx.accounts.policy_output_ciphertext.to_account_info(),
-    )?;
+    match (
+        enforce_weekly,
+        ctx.accounts.weekly_limit_ciphertext.as_ref(),
+        ctx.accounts.weekly_spent_ciphertext.as_ref(),
+    ) {
+        (true, Some(weekly_limit), Some(weekly_spent)) => {
+            aura_policy::execute_confidential_extended_spend_guardrails_graph(
+                &encrypt_ctx,
+                ctx.accounts.daily_limit_ciphertext.to_account_info(),
+                ctx.accounts.per_tx_limit_ciphertext.to_account_info(),
+                weekly_limit.to_account_info(),
+                ctx.accounts.spent_today_ciphertext.to_account_info(),
+                weekly_spent.to_account_info(),
+                ctx.accounts.amount_ciphertext.to_account_info(),
+                ctx.accounts.policy_output_ciphertext.to_account_info(),
+            )?;
+        }
+        _ => {
+            aura_policy::execute_confidential_spend_guardrails_graph(
+                &encrypt_ctx,
+                ctx.accounts.daily_limit_ciphertext.to_account_info(),
+                ctx.accounts.per_tx_limit_ciphertext.to_account_info(),
+                ctx.accounts.spent_today_ciphertext.to_account_info(),
+                ctx.accounts.amount_ciphertext.to_account_info(),
+                ctx.accounts.policy_output_ciphertext.to_account_info(),
+            )?;
+        }
+    }
     Ok(())
 }
 

@@ -21,6 +21,9 @@
 //! - `types/`      — `Chain` and `TransactionType` enums
 //! - `violations/` — `ViolationCode` enum
 #![forbid(unsafe_code)]
+// Multi-output FHE graphs expand (via `#[encrypt_fn]`) into CPI methods with one
+// argument per input/output ciphertext; bundling them isn't meaningful.
+#![allow(clippy::too_many_arguments)]
 
 pub mod config;
 pub mod context;
@@ -53,9 +56,11 @@ pub use engine::{
     REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
 };
 pub use graphs::{
-    advanced_policy_graph, batch_policy_graph, confidential_scalar_policy_graph,
-    confidential_spend_guardrails_graph_bytes, execute_confidential_spend_guardrails_graph,
-    transaction_policy_graph, PolicyGraphSpec,
+    advanced_policy_graph, batch_policy_graph, confidential_extended_scalar_policy_graph,
+    confidential_extended_spend_guardrails_graph_bytes, confidential_scalar_policy_graph,
+    confidential_spend_guardrails_graph_bytes,
+    execute_confidential_extended_spend_guardrails_graph,
+    execute_confidential_spend_guardrails_graph, transaction_policy_graph, PolicyGraphSpec,
 };
 pub use helpers::{
     active_hourly_limit, confidential_commitment, diff_policy_config, policy_config_hash,

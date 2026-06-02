@@ -137,6 +137,8 @@ pub struct ManageConfidentialGuardrails<'info> {
     pub weekly_limit_ciphertext: Option<UncheckedAccount<'info>>,
     /// CHECK: optional Encrypt ciphertext (spent-today counter).
     pub spent_today_ciphertext: Option<UncheckedAccount<'info>>,
+    /// CHECK: optional Encrypt ciphertext (weekly-spent counter).
+    pub weekly_spent_ciphertext: Option<UncheckedAccount<'info>>,
     /// CHECK: optional Encrypt ciphertext (hourly-spent counter).
     pub hourly_spent_ciphertext: Option<UncheckedAccount<'info>>,
     /// CHECK: optional Encrypt ciphertext (velocity-window counter).
@@ -185,6 +187,9 @@ pub fn reset_confidential_counters(
     if let Some(key) = validated_pointer(&ctx.accounts.spent_today_ciphertext, &program)? {
         ctx.accounts.guardrails.spent_today_ciphertext = Some(key);
     }
+    if let Some(key) = validated_pointer(&ctx.accounts.weekly_spent_ciphertext, &program)? {
+        ctx.accounts.guardrails.weekly_spent_ciphertext = Some(key);
+    }
     if let Some(key) = validated_pointer(&ctx.accounts.hourly_spent_ciphertext, &program)? {
         ctx.accounts.guardrails.hourly_spent_ciphertext = Some(key);
     }
@@ -215,6 +220,7 @@ fn apply_pointer_updates(ctx: &mut Context<ManageConfidentialGuardrails>, now: i
     set_if_present!(hourly_limit_ciphertext);
     set_if_present!(weekly_limit_ciphertext);
     set_if_present!(spent_today_ciphertext);
+    set_if_present!(weekly_spent_ciphertext);
     set_if_present!(hourly_spent_ciphertext);
     set_if_present!(velocity_window_ciphertext);
     ctx.accounts.guardrails.updated_at = now;

@@ -175,6 +175,10 @@ fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> R
                     pending.decision.approved = false;
                     pending.decision.violation = violation_code(ViolationCode::DailyLimit);
                 }
+                5 => {
+                    pending.decision.approved = false;
+                    pending.decision.violation = violation_code(ViolationCode::WeeklyLimit);
+                }
                 _ => return err!(crate::AuraCoreError::InvalidExternalAccountData),
             }
         }

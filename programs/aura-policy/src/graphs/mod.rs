@@ -21,7 +21,9 @@ mod transaction;
 pub use advanced::advanced_policy_graph;
 pub use batch::batch_policy_graph;
 pub use confidential::{
+    confidential_extended_scalar_policy_graph, confidential_extended_spend_guardrails_graph_bytes,
     confidential_scalar_policy_graph, confidential_spend_guardrails_graph_bytes,
+    execute_confidential_extended_spend_guardrails_graph,
     execute_confidential_spend_guardrails_graph,
 };
 pub use spec::PolicyGraphSpec;

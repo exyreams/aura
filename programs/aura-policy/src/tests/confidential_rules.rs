@@ -10,7 +10,11 @@ use encrypt_types::{
 use crate::{
     context::PolicyEvaluationContext,
     engine::evaluate_public_precheck,
-    graphs::{confidential_scalar_policy_graph, confidential_spend_guardrails_graph_bytes},
+    graphs::{
+        confidential_extended_scalar_policy_graph,
+        confidential_extended_spend_guardrails_graph_bytes, confidential_scalar_policy_graph,
+        confidential_spend_guardrails_graph_bytes,
+    },
     state::PolicyState,
     violations::ViolationCode,
 };
@@ -195,6 +199,57 @@ fn confidential_graph_surfaces_per_transaction_and_daily_violations() {
         ],
     );
     assert_eq!(daily_output, vec![2, 200]);
+}
+
+/// Six `EUint64` input types for the enhanced graph.
+fn extended_types() -> [FheType; 6] {
+    [FheType::EUint64; 6]
+}
+
+#[test]
+fn confidential_extended_approves_and_updates_daily_and_weekly() {
+    // daily=1000 per_tx=300 weekly=5000 spent_today=200 weekly_spent=1000 amount=250
+    let output = run_mock(
+        confidential_extended_spend_guardrails_graph_bytes,
+        &[1_000, 300, 5_000, 200, 1_000, 250],
+        &extended_types(),
+    );
+    // approved → both counters advance by the amount.
+    assert_eq!(output, vec![0, 450, 1_250]);
+}
+
+#[test]
+fn confidential_extended_surfaces_per_tx_daily_and_weekly_violations() {
+    // Per-tx: amount 350 > per_tx 300 → code 1, counters unchanged.
+    let per_tx = run_mock(
+        confidential_extended_spend_guardrails_graph_bytes,
+        &[1_000, 300, 5_000, 200, 1_000, 350],
+        &extended_types(),
+    );
+    assert_eq!(per_tx, vec![1, 200, 1_000]);
+
+    // Daily: projected daily 1100 > 1000 (per-tx ok) → code 2.
+    let daily = run_mock(
+        confidential_extended_spend_guardrails_graph_bytes,
+        &[1_000, 1_000, 5_000, 900, 1_000, 200],
+        &extended_types(),
+    );
+    assert_eq!(daily, vec![2, 900, 1_000]);
+
+    // Weekly: per-tx + daily ok, projected weekly 5100 > 5000 → code 5.
+    let weekly = run_mock(
+        confidential_extended_spend_guardrails_graph_bytes,
+        &[10_000, 10_000, 5_000, 0, 4_900, 200],
+        &extended_types(),
+    );
+    assert_eq!(weekly, vec![5, 0, 4_900]);
+}
+
+#[test]
+fn confidential_extended_spec_declares_three_outputs() {
+    let spec = confidential_extended_scalar_policy_graph();
+    assert_eq!(spec.outputs.len(), 3);
+    assert!(spec.uses_update_mode && spec.requires_decryption);
 }
 
 #[test]
