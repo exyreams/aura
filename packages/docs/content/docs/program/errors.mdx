@@ -154,6 +154,27 @@ latest instructions.
 | 6115 | `ApproverNotAuthorized` | Signer is neither the owner nor a registered guardian. <New /> |
 | 6116 | `ApprovalWeightInsufficient` | Weighted (summed-weight) approval quorum has not been reached. <New /> |
 
+## Policy versioning & canary
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6121 | `NoCandidatePolicy` | `promote_canary`/`discard_canary` called with no active candidate. <New /> |
+| 6122 | `CanaryAlreadyActive` | A candidate is already being trialed for this treasury. <New /> |
+| 6123 | `CanarySampleFloorNotMet` | `promote_canary` called before the candidate reached its sample floor. <New /> |
+
+A rollback to a version not present in the history ring, or one whose supplied
+candidate does not hash to the recorded fingerprint, returns `UnknownPolicyVersion` (6074); a
+candidate that fails coherence validation returns `InvalidTemplateConfig` (6072).
+
+## Monetization control plane
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6124 | `UnauthorizedProtocolAuthority` | Caller is not the protocol authority recorded on `ProtocolConfig`. <New /> |
+| 6125 | `InvalidProtocolConfig` | Fee exceeds the cap, integrator bounds are inverted, or the settlement asset is unknown. <New /> |
+| 6126 | `NoPendingProtocolUpdate` | `commit_protocol_config` called with no staged update. <New /> |
+| 6127 | `ProtocolUpdateTimelockActive` | `commit_protocol_config` called before the update timelock elapsed. <New /> |
+
 ## Custody recovery
 
 | Code | Name | Trigger |

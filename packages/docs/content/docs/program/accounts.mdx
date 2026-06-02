@@ -106,6 +106,7 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | Account | Seeds | Purpose |
 |---|---|---|
 | `FeeVaultAccount` | `[b"fee_vault", treasury]` | Protocol fee recipient + accrual counters |
+| `ProtocolConfigAccount` | `[b"protocol_config"]` | Global monetization singleton: protocol authority, non-bypassable fee floor, integrator bounds, settlement asset, timelocked pending update |
 | `ChainProfileAccount` | `[b"chain_profile", chain_code]` | Chain metadata for custom/built-in chain codes: address format, replay scheme, curve/scheme, gas asset, finality model, and confirmations |
 | `SwarmPoolAccount` | `[b"swarm_pool", swarm_id_hash]` | Shared spend pool across treasuries |
 | `ExposureGroupAccount` | `[b"exposure_group", authority, group_id]` | Cross-treasury daily exposure cap |
@@ -114,7 +115,8 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | `AddressListAccount` | `[b"address_list", treasury]` | Allow/deny recipient list |
 | `ExternalLivenessAccount` | `[b"external_liveness", treasury]` | Dependency freshness timestamps |
 | `BudgetEnvelopeAccount` | `[b"budget_envelope", treasury, envelope_id]` | Scoped (chain/category/protocol) budget |
-| `PolicyHistoryAccount` | `[b"policy_history", treasury]` | Ring of prior policy-config snapshots |
+| `PolicyHistoryAccount` | `[b"policy_history", treasury]` | Ring of prior policy-config snapshots; each snapshot digest commits to the full serialized config so a recorded version can be restored and verified on rollback |
+| `PolicyCanaryAccount` | `[b"policy_canary", treasury]` | Shadow candidate policy + agreement/divergence tallies scored against live traffic before promotion |
 | `SnapshotAccount` | `[b"treasury_snapshot", treasury, snapshot_index]` | Point-in-time treasury snapshot |
 | `HealthScoreAccount` | `[b"health_score", treasury]` | Treasury health metrics |
 | `ActivityLogAccount` | `[b"activity_log", treasury]` | On-chain activity ring buffer |

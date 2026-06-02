@@ -148,6 +148,23 @@ optionally forked from a built-in preset, and applied (optionally parameterized)
 | `apply_policy_template` | Apply a template's config to a treasury (shared templates allow foreign owners). | <New /> |
 | `apply_policy_template_parameterized` | Apply with overrides (bps scaling / limit overrides) without mutating the template. | <New /> |
 
+## Policy versioning, rollback & canary
+
+Make policy changes safe to ship and trivial to undo. `record_policy_snapshot` writes a full-config
+fingerprint into the `PolicyHistory` ring; `rollback_policy` restores a recorded version, and a canary
+trials a candidate against live traffic before promotion.
+
+| Instruction | Description | |
+|---|---|---|
+| `rollback_policy` | Restore a recorded version (caller supplies the full config; it must hash to the recorded fingerprint). Applies immediately when it does not loosen, otherwise stages through the config-change timelock. Always appended as a new forward version. | <New /> |
+| `start_canary` | Stage a candidate policy and begin scoring it against live proposals (validated; never enforced). | <New /> |
+| `promote_canary` | Promote the candidate into the enforced policy, record it as a new version, and close the canary (refused before the sample floor). | <New /> |
+| `discard_canary` | Drop the candidate and close the canary, leaving the enforced policy untouched. | <New /> |
+
+While a canary is enabled, `propose_transaction` accepts an optional `policy_canary` account: each proposal
+is scored a second time against the candidate (non-mutating) and the allow/deny + per-rule divergence is
+tallied on the canary account. The candidate is never enforced.
+
 ## Scheduled intents
 
 On-chain standing orders (payroll / DCA / sweeps) in a `ScheduledIntent` PDA. Each due run is gated by the
@@ -330,6 +347,19 @@ holds your keys" acceptable: the owner always has an agent-independent recovery 
 | `collect_fees` | Sweep accrued fees to the recipient. | |
 | `update_fee_recipient` | Change the protocol fee recipient. | <New /> |
 | `close_fee_vault` | Close the fee vault. | |
+
+## Monetization control plane
+
+The global `ProtocolConfig` singleton is the root of fee control: a protocol authority — distinct from any
+treasury owner — sets a **non-bypassable** per-transaction fee floor and the bounds within which integrators
+may charge. Fee computation reads the floor directly, so zeroing a treasury's own schedule cannot escape it.
+Economic changes are staged and applied behind a timelock.
+
+| Instruction | Description | |
+|---|---|---|
+| `init_protocol_config` | Bootstrap the `ProtocolConfig` singleton and set the protocol authority (callable once). | <New /> |
+| `update_protocol_config` | Stage an economic change (fee floor, creation fee, integrator bounds, recipient, settlement asset) behind the update timelock. | <New /> |
+| `commit_protocol_config` | Apply a staged change once its timelock has elapsed. | <New /> |
 
 ## External liveness
 
