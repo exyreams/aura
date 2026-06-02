@@ -64,6 +64,9 @@ pub(super) async fn scenario_cancel_pending(
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
         external_liveness: None,
+        weekly_limit_ciphertext: None,
+        weekly_spent_ciphertext: None,
+        confidential_guardrails: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -213,6 +216,9 @@ pub(super) async fn scenario_pause_resume(
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
         external_liveness: None,
+        weekly_limit_ciphertext: None,
+        weekly_spent_ciphertext: None,
+        confidential_guardrails: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -290,6 +296,9 @@ pub(super) async fn scenario_pause_resume(
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
         external_liveness: None,
+        weekly_limit_ciphertext: None,
+        weekly_spent_ciphertext: None,
+        confidential_guardrails: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);

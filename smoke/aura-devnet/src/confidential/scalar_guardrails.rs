@@ -21,7 +21,8 @@ use anchor_lang::{
 };
 use anyhow::{ensure, Context};
 use aura_core::{
-    accounts, instruction, ProposeConfidentialTransactionArgs, ENCRYPT_DEVNET_PROGRAM_ID, ID,
+    accounts, constants::CONFIDENTIAL_GUARDRAILS_SEED, instruction,
+    ProposeConfidentialTransactionArgs, ENCRYPT_DEVNET_PROGRAM_ID, ID,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::signature::{Keypair, Signer};
@@ -166,6 +167,9 @@ async fn run_confidential_scenario(
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
         external_liveness: None,
+        weekly_limit_ciphertext: None,
+        weekly_spent_ciphertext: None,
+        confidential_guardrails: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -299,6 +303,266 @@ async fn run_confidential_scenario(
     Ok(())
 }
 
+/// Weekly-enforcement denial: per-tx and daily pass, but the encrypted weekly
+/// limit is exceeded, so the extended graph returns violation_code 5 and the
+/// proposal is denied. Exercises the `propose_confidential` extended path +
+/// the confidential guardrails sidecar.
+#[allow(clippy::too_many_arguments)]
+async fn run_confidential_weekly_scenario(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    agent_id: &str,
+    encrypt_program: &Pubkey,
+    ep: &EncryptPdas,
+) -> anyhow::Result<()> {
+    println!("\nScenario '{agent_id}'  (weekly limit exceeded → deny)");
+    let created_at = now_unix();
+    let (treasury, _) = pda(
+        &[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()],
+        &ID,
+    );
+    let (guardrails, _) = pda(&[CONFIDENTIAL_GUARDRAILS_SEED, treasury.as_ref()], &ID);
+
+    // per-tx and daily are generous; the weekly limit (500) is the binding one.
+    let amount = 600u64;
+    println!("  Encrypting input ciphertexts...");
+    let daily_ct = encrypt_u64(10_000, &ID).await.context("encrypt daily")?;
+    let per_tx_ct = encrypt_u64(10_000, &ID).await.context("encrypt per_tx")?;
+    let spent_ct = encrypt_u64(0, &ID).await.context("encrypt spent_today")?;
+    let weekly_ct = encrypt_u64(500, &ID).await.context("encrypt weekly_limit")?;
+    let weekly_spent_ct = encrypt_u64(0, &ID).await.context("encrypt weekly_spent")?;
+    let amount_ct = encrypt_u64(amount, &ID).await.context("encrypt amount")?;
+
+    println!("  Waiting for input ciphertexts to be verified on-chain...");
+    for ct in [
+        &daily_ct,
+        &per_tx_ct,
+        &spent_ct,
+        &weekly_ct,
+        &weekly_spent_ct,
+        &amount_ct,
+    ] {
+        wait_for_ciphertext_verified(rpc, ct).context("input ciphertext not verified")?;
+    }
+
+    send_tx(
+        rpc,
+        payer,
+        vec![create_treasury_ix(
+            payer,
+            treasury,
+            agent_id,
+            created_at,
+            aura_policy::PolicyConfig {
+                daytime_hourly_limit_usd: 10_000,
+                nighttime_hourly_limit_usd: 10_000,
+                velocity_limit_usd: 10_000,
+                ..Default::default()
+            },
+        )],
+        &[],
+    )
+    .context("create_treasury failed")?;
+    activate_treasury(rpc, payer, treasury, created_at + 1).context("activate_treasury failed")?;
+
+    // Treasury-embedded guardrails (daily/per-tx/spent_today match in propose).
+    send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: accounts::ConfigureConfidentialGuardrails {
+                owner: payer.pubkey(),
+                treasury,
+                daily_limit_ciphertext: daily_ct,
+                per_tx_limit_ciphertext: per_tx_ct,
+                spent_today_ciphertext: spent_ct,
+            }
+            .to_account_metas(None),
+            data: instruction::ConfigureConfidentialGuardrails { now: created_at + 2 }.data(),
+        }],
+        &[],
+    )
+    .context("configure_confidential_guardrails failed")?;
+
+    // Sidecar: create it, then register the weekly limit + counter pointers.
+    send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: accounts::InitConfidentialGuardrails {
+                owner: payer.pubkey(),
+                treasury,
+                guardrails,
+                daily_limit_ciphertext: daily_ct,
+                per_tx_limit_ciphertext: per_tx_ct,
+                spent_today_ciphertext: spent_ct,
+                system_program: SYSTEM_PROGRAM_ID,
+            }
+            .to_account_metas(None),
+            data: instruction::InitConfidentialGuardrails { epoch_id: 1, now: created_at + 3 }
+                .data(),
+        }],
+        &[],
+    )
+    .context("init_confidential_guardrails failed")?;
+
+    send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: accounts::ManageConfidentialGuardrails {
+                owner: payer.pubkey(),
+                treasury,
+                guardrails,
+                daily_limit_ciphertext: None,
+                per_tx_limit_ciphertext: None,
+                velocity_limit_ciphertext: None,
+                hourly_limit_ciphertext: None,
+                weekly_limit_ciphertext: Some(weekly_ct),
+                spent_today_ciphertext: None,
+                weekly_spent_ciphertext: Some(weekly_spent_ct),
+                hourly_spent_ciphertext: None,
+                velocity_window_ciphertext: None,
+            }
+            .to_account_metas(None),
+            data: instruction::UpdateConfidentialGuardrails { now: created_at + 4 }.data(),
+        }],
+        &[],
+    )
+    .context("update_confidential_guardrails (weekly pointers) failed")?;
+
+    // Propose via the extended path (weekly accounts + sidecar supplied).
+    let policy_output = Keypair::new();
+    let mut propose_metas = accounts::ProposeConfidentialTransaction {
+        ai_authority: payer.pubkey(),
+        treasury,
+        daily_limit_ciphertext: daily_ct,
+        per_tx_limit_ciphertext: per_tx_ct,
+        spent_today_ciphertext: spent_ct,
+        amount_ciphertext: amount_ct,
+        policy_output_ciphertext: policy_output.pubkey(),
+        encrypt_program: *encrypt_program,
+        config: ep.config_pda,
+        deposit: ep.deposit_pda,
+        caller_program: ID,
+        cpi_authority: ep.cpi_authority,
+        network_encryption_key: ep.network_key_pda,
+        event_authority: ep.event_authority,
+        external_liveness: None,
+        weekly_limit_ciphertext: Some(weekly_ct),
+        weekly_spent_ciphertext: Some(weekly_spent_ct),
+        confidential_guardrails: Some(guardrails),
+        system_program: SYSTEM_PROGRAM_ID,
+    }
+    .to_account_metas(None);
+    mark_account_meta_signer(&mut propose_metas, policy_output.pubkey())?;
+
+    send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: propose_metas,
+            data: instruction::ProposeConfidentialTransaction {
+                args: ProposeConfidentialTransactionArgs {
+                    amount_usd: amount,
+                    target_chain: 2,
+                    tx_type: 0,
+                    protocol_id: None,
+                    current_timestamp: created_at + 5,
+                    expected_output_usd: None,
+                    actual_output_usd: None,
+                    quote_age_secs: None,
+                    counterparty_risk_score: None,
+                    recipient_or_contract: payer.pubkey().to_string(),
+                },
+            }
+            .data(),
+        }],
+        &[&policy_output],
+    )
+    .context("propose_confidential_transaction (extended) failed")?;
+
+    println!("  Waiting for FHE output ciphertext to be verified...");
+    wait_for_ciphertext_verified(rpc, &policy_output.pubkey())
+        .context("policy output ciphertext not verified")?;
+
+    let request_account = Keypair::new();
+    let mut req_metas = accounts::RequestPolicyDecryption {
+        operator: payer.pubkey(),
+        treasury,
+        request_account: request_account.pubkey(),
+        ciphertext: policy_output.pubkey(),
+        encrypt_program: *encrypt_program,
+        config: ep.config_pda,
+        deposit: ep.deposit_pda,
+        caller_program: ID,
+        cpi_authority: ep.cpi_authority,
+        network_encryption_key: ep.network_key_pda,
+        event_authority: ep.event_authority,
+        system_program: SYSTEM_PROGRAM_ID,
+    }
+    .to_account_metas(None);
+    mark_account_meta_signer(&mut req_metas, request_account.pubkey())?;
+
+    send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: req_metas,
+            data: instruction::RequestPolicyDecryption { now: created_at + 6 }.data(),
+        }],
+        &[&request_account],
+    )
+    .context("request_policy_decryption failed")?;
+
+    println!("  Waiting for decryption plaintext...");
+    wait_for_decryption_ready(rpc, &request_account.pubkey())
+        .context("decryption request did not complete")?;
+
+    send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: accounts::ConfirmPolicyDecryption {
+                operator: payer.pubkey(),
+                treasury,
+                request_account: request_account.pubkey(),
+            }
+            .to_account_metas(None),
+            data: instruction::ConfirmPolicyDecryption { now: created_at + 7 }.data(),
+        }],
+        &[],
+    )
+    .context("confirm_policy_decryption failed")?;
+
+    let domain = fetch_treasury_domain(rpc, &treasury)?;
+    let pending = domain
+        .pending
+        .clone()
+        .context("no pending proposal after confirm")?;
+    println!(
+        "  Decryption confirmed — approved={} violation={}",
+        pending.decision.approved, pending.decision.violation
+    );
+    ensure!(
+        !pending.decision.approved,
+        "weekly-over proposal should be denied"
+    );
+    ensure!(
+        pending.decision.violation == aura_policy::ViolationCode::WeeklyLimit,
+        "expected WeeklyLimit violation"
+    );
+    execute_denied(rpc, payer, treasury, created_at + 8).context("execute_pending (denial) failed")?;
+    println!("  Denied (weekly) proposal cleared.");
+    Ok(())
+}
+
 pub async fn run() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let rpc = devnet_rpc();
@@ -353,6 +617,16 @@ pub async fn run() -> anyhow::Result<()> {
     )
     .await?;
     println!("  ✓ Scenario B passed (approval + finalize)");
+
+    run_confidential_weekly_scenario(
+        &rpc,
+        &payer,
+        &format!("conf-weekly-{seed}"),
+        &encrypt_program,
+        &ep,
+    )
+    .await?;
+    println!("  ✓ Scenario C passed (weekly-limit denial via extended graph)");
 
     println!("\n✓ AURA devnet confidential smoke test passed.");
     Ok(())

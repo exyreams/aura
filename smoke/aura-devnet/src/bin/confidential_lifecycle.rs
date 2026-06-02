@@ -111,6 +111,7 @@ async fn main() -> anyhow::Result<()> {
                 hourly_limit_ciphertext: None,
                 weekly_limit_ciphertext: None,
                 spent_today_ciphertext: None,
+                weekly_spent_ciphertext: None,
                 hourly_spent_ciphertext: None,
                 velocity_window_ciphertext: None,
             }
@@ -144,6 +145,7 @@ async fn main() -> anyhow::Result<()> {
                 hourly_limit_ciphertext: None,
                 weekly_limit_ciphertext: None,
                 spent_today_ciphertext: Some(spent2),
+                weekly_spent_ciphertext: None,
                 hourly_spent_ciphertext: None,
                 velocity_window_ciphertext: None,
             }
