@@ -31,6 +31,7 @@ pub mod migration;
 pub mod operator_roles;
 pub mod pause_execution;
 pub mod policy_attestations;
+pub mod policy_canary;
 pub mod policy_history;
 pub mod policy_receipts;
 pub mod policy_services;
@@ -39,6 +40,7 @@ pub mod policy_templates;
 pub mod propose_confidential_transaction;
 pub mod propose_override;
 pub mod propose_transaction;
+pub mod protocol_config;
 pub mod recovery;
 pub mod register_dwallet;
 pub mod request_policy_decryption;
@@ -203,10 +205,20 @@ pub use policy_attestations::{AttestPolicy, AttestPolicyArgs};
 pub(crate) use policy_attestations::{
     __client_accounts_attest_policy, __cpi_client_accounts_attest_policy,
 };
-pub use policy_history::{ClosePolicyHistory, InitPolicyHistory};
+pub use policy_canary::{DiscardCanary, PromoteCanary, StartCanary};
+pub(crate) use policy_canary::{
+    __client_accounts_discard_canary, __client_accounts_promote_canary,
+    __client_accounts_start_canary, __cpi_client_accounts_discard_canary,
+    __cpi_client_accounts_promote_canary, __cpi_client_accounts_start_canary,
+};
+pub use policy_history::{
+    ClosePolicyHistory, InitPolicyHistory, RecordPolicySnapshot, RollbackPolicy,
+};
 pub(crate) use policy_history::{
     __client_accounts_close_policy_history, __client_accounts_init_policy_history,
+    __client_accounts_record_policy_snapshot, __client_accounts_rollback_policy,
     __cpi_client_accounts_close_policy_history, __cpi_client_accounts_init_policy_history,
+    __cpi_client_accounts_record_policy_snapshot, __cpi_client_accounts_rollback_policy,
 };
 pub use policy_receipts::{WritePolicyReceipt, WritePolicyReceiptArgs};
 pub(crate) use policy_receipts::{
@@ -242,6 +254,11 @@ pub(crate) use propose_override::__cpi_client_accounts_propose_override;
 pub(crate) use propose_transaction::__client_accounts_propose_transaction;
 pub(crate) use propose_transaction::__cpi_client_accounts_propose_transaction;
 pub use propose_transaction::{ProposeTransaction, ProposeTransactionArgs};
+pub use protocol_config::{InitProtocolConfig, ProtocolConfigArgs, ProtocolConfigAuthority};
+pub(crate) use protocol_config::{
+    __client_accounts_init_protocol_config, __client_accounts_protocol_config_authority,
+    __cpi_client_accounts_init_protocol_config, __cpi_client_accounts_protocol_config_authority,
+};
 pub use recovery::{
     BreakGlassRecover, BreakGlassRecoverArgs, BreakGlassTransferAuthority,
     BreakGlassTransferAuthorityArgs, RecoveryConfig, RegisterRecoveryDestinationArgs,

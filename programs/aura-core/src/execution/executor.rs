@@ -757,6 +757,7 @@ pub fn finalize_signed_pending(
     treasury: &mut AgentTreasury,
     signed_message: String,
     signature_hex: String,
+    protocol_floor_bps: u64,
     now: i64,
 ) -> Result<ExecutionReceipt, TreasuryError> {
     let pending = treasury
@@ -776,7 +777,11 @@ pub fn finalize_signed_pending(
         }
     }
 
-    let fee = treasury.protocol_fees.fee_for_amount(pending.amount_usd);
+    // The protocol floor is non-bypassable: a treasury that has zeroed its own
+    // schedule still pays at least `protocol_floor_bps`.
+    let fee = treasury
+        .protocol_fees
+        .fee_for_amount_with_floor(pending.amount_usd, protocol_floor_bps);
     treasury.policy_state = pending.decision.next_state.clone();
     treasury.total_transactions += 1;
     treasury.reputation.record_success(pending.amount_usd);

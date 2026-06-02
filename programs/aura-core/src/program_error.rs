@@ -259,6 +259,22 @@ pub enum AuraCoreError {
     AgentManifestLoosenTimelock,
     #[msg("invalid agent tripwire configuration")]
     InvalidAgentTripwires,
+    // Policy versioning, rollback & canary.
+    #[msg("no candidate policy is staged for this treasury")]
+    NoCandidatePolicy,
+    #[msg("a candidate policy is already being trialed")]
+    CanaryAlreadyActive,
+    #[msg("candidate has not collected the required number of samples")]
+    CanarySampleFloorNotMet,
+    // Monetization control plane.
+    #[msg("caller is not the protocol authority")]
+    UnauthorizedProtocolAuthority,
+    #[msg("protocol configuration values are invalid")]
+    InvalidProtocolConfig,
+    #[msg("no protocol configuration update is staged")]
+    NoPendingProtocolUpdate,
+    #[msg("protocol configuration update timelock has not elapsed")]
+    ProtocolUpdateTimelockActive,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

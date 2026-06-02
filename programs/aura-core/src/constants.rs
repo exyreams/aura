@@ -137,3 +137,16 @@ pub const OWNERSHIP_HANDOVER_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
 pub const AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
 /// PDA seed for the per-treasury trust + identity account.
 pub const TRUST_IDENTITY_SEED: &[u8] = b"trust_identity";
+/// PDA seed for the per-treasury shadow/canary policy candidate.
+pub const POLICY_CANARY_SEED: &[u8] = b"policy_canary";
+/// PDA seed for the global monetization control singleton.
+pub const PROTOCOL_CONFIG_SEED: &[u8] = b"protocol_config";
+/// Upper bound on the protocol transaction fee, in basis points (5%).
+pub const MAX_PROTOCOL_FEE_BPS: u64 = 500;
+/// Timelock that must elapse between staging and committing a protocol
+/// configuration update.
+pub const PROTOCOL_CONFIG_UPDATE_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
+/// Net risk-delta (bps) above which a policy rollback is treated as a
+/// loosening change and must route through the config-change timelock instead
+/// of applying immediately.
+pub const ROLLBACK_LOOSEN_RISK_THRESHOLD_BPS: i16 = 0;

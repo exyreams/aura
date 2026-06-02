@@ -24,4 +24,13 @@ impl ProtocolFees {
     pub fn fee_for_amount(&self, amount_usd: u64) -> u64 {
         amount_usd.saturating_mul(self.transaction_fee_bps) / 10_000
     }
+
+    /// Computes the transaction fee for `amount_usd` enforcing a non-bypassable
+    /// `floor_bps`. The treasury-editable `transaction_fee_bps` can only raise
+    /// the rate above the floor, never below it — so zeroing the treasury's own
+    /// schedule still pays `floor_bps`.
+    pub fn fee_for_amount_with_floor(&self, amount_usd: u64, floor_bps: u64) -> u64 {
+        let effective_bps = self.transaction_fee_bps.max(floor_bps);
+        amount_usd.saturating_mul(effective_bps) / 10_000
+    }
 }

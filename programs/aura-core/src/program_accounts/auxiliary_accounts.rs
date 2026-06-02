@@ -379,17 +379,11 @@ pub fn snapshot_policy_config(
     changed_by: Pubkey,
     now: i64,
 ) {
-    use sha2::{Digest, Sha256};
-
-    let digest_input = format!(
-        "{}:{}:{}:{}:{}:{:?}:{:?}",
-        config.daily_limit_usd,
-        config.per_tx_limit_usd,
-        config.daytime_hourly_limit_usd,
-        config.nighttime_hourly_limit_usd,
-        config.velocity_limit_usd,
-        config.weekly_limit_usd,
-        config.monthly_limit_usd
+    // The digest commits to the full serialized policy configuration, not just
+    // the headline scalar limits, so a recorded version can be restored and
+    // verified byte-for-byte against the caller-supplied candidate on rollback.
+    let digest = policy_config_hash(
+        &borsh::to_vec(&PolicyConfigRecord::from_domain(config)).unwrap_or_default(),
     );
     let snapshot = PolicySnapshotRecord {
         version: history.version_count.saturating_add(1),
@@ -400,7 +394,7 @@ pub fn snapshot_policy_config(
         daytime_hourly_limit_usd: config.daytime_hourly_limit_usd,
         nighttime_hourly_limit_usd: config.nighttime_hourly_limit_usd,
         velocity_limit_usd: config.velocity_limit_usd,
-        snapshot_digest: Sha256::digest(digest_input.as_bytes()).into(),
+        snapshot_digest: digest,
     };
 
     if history.snapshots.len() < 16 {

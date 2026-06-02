@@ -8,10 +8,10 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use anchor_lang::prelude::*;
 use aura_policy::{
-    AnomalyAction, AnomalyConfig, ApprovalLadder, BudgetEnvelope, BudgetEnvelopeScope,
-    BudgetEnvelopeSet, Chain, CheckMode, Condition, ConditionKind, CooldownConfig,
-    FailureModeConfig, LivenessConfig, PauseScope, PolicyConfig, PolicyDecision, PolicyState,
-    RecipientLimit, RecipientSpendRecord, ReputationPolicy, RiskFactor, RuleOutcome,
+    policy_config_hash, AnomalyAction, AnomalyConfig, ApprovalLadder, BudgetEnvelope,
+    BudgetEnvelopeScope, BudgetEnvelopeSet, Chain, CheckMode, Condition, ConditionKind,
+    CooldownConfig, FailureModeConfig, LivenessConfig, PauseScope, PolicyConfig, PolicyDecision,
+    PolicyState, RecipientLimit, RecipientSpendRecord, ReputationPolicy, RiskFactor, RuleOutcome,
     ScopedPauseControls, ScopedPauseEntry, TransactionType, ViolationCode,
 };
 
@@ -40,7 +40,9 @@ mod envelope_records;
 mod governance_records;
 mod liveness_records;
 mod pending_records;
+mod policy_canary_records;
 mod policy_records;
+mod protocol_config_records;
 mod receipt_records;
 mod role_records;
 mod schedule_records;
@@ -60,7 +62,9 @@ pub use envelope_records::*;
 pub use governance_records::*;
 pub use liveness_records::*;
 pub use pending_records::*;
+pub use policy_canary_records::*;
 pub use policy_records::*;
+pub use protocol_config_records::*;
 pub use receipt_records::*;
 pub use role_records::*;
 pub use schedule_records::*;

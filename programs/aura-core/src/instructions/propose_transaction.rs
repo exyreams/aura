@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-use aura_policy::TransactionContext;
+use aura_policy::{
+    evaluate_policy_without_spend_mutation, rule_outcome_bitmap, PolicyEvaluationContext,
+    TransactionContext,
+};
 
 use crate::{
     constants::TREASURY_SEED,
@@ -14,7 +17,8 @@ use crate::{
     program_accounts::{
         chain_from_code, sha256_address, transaction_type_from_code, verify_merkle_inclusion,
         AddressListAccount, BudgetEnvelopeAccount, ChainProfileAccount, ComplianceOracleAccount,
-        DWalletAccount, ExposureGroupAccount, SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
+        DWalletAccount, ExposureGroupAccount, PolicyCanaryAccount, SessionKeyAccount,
+        SwarmPoolAccount, TreasuryAccount,
     },
     state::{ChainExecutionBinding, TransferDetails},
     AuraCoreError,
@@ -116,6 +120,11 @@ pub struct ProposeTransaction<'info> {
     /// to `ai_authority`-only check with no tier enforcement.
     #[account(mut)]
     pub trust_identity: Option<Box<Account<'info, crate::program_accounts::TrustIdentityAccount>>>,
+    /// Optional shadow candidate. When enabled, the proposal is scored a second
+    /// time against the candidate and the divergence is tallied — the candidate
+    /// is never enforced.
+    #[account(mut)]
+    pub policy_canary: Option<Box<Account<'info, PolicyCanaryAccount>>>,
 }
 
 /// Proposes a public (non-confidential) transaction.
@@ -312,6 +321,13 @@ pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -
         recipient_or_contract: Some(args.recipient_or_contract.clone()),
     };
 
+    // Capture the pre-spend inputs the shadow evaluation needs before the
+    // enforced evaluation consumes them.
+    let canary_active = ctx.accounts.policy_canary.as_ref().is_some_and(|canary| {
+        canary.treasury == ctx.accounts.treasury.key() && canary.should_sample()
+    });
+    let canary_inputs = canary_active.then(|| (tx.clone(), domain.policy_state.clone()));
+
     let proposal_id = crate::propose_transaction_with_transfer(
         &mut domain,
         &signer,
@@ -320,6 +336,33 @@ pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -
         transfer.clone(),
     )
     .map_err(crate::map_treasury_error)?;
+
+    if let (Some((canary_tx, pre_state)), Some(canary)) =
+        (canary_inputs, ctx.accounts.policy_canary.as_mut())
+    {
+        if let Some(enforced) = domain
+            .active_pending()
+            .filter(|pending| pending.proposal_id == proposal_id)
+            .map(|pending| pending.decision.clone())
+        {
+            let context = PolicyEvaluationContext {
+                transaction: canary_tx,
+                reputation_score: Some(domain.reputation.score()),
+                shared_spent_usd: domain
+                    .swarm
+                    .as_ref()
+                    .map(|swarm| swarm.total_swarm_spent_usd),
+                tier_multiplier_bps: domain.tier_multiplier_bps,
+            };
+            let candidate = evaluate_policy_without_spend_mutation(
+                &canary.candidate.to_domain(),
+                &pre_state,
+                &context,
+            );
+            let divergence = rule_outcome_bitmap(&enforced) ^ rule_outcome_bitmap(&candidate);
+            canary.record_sample(enforced.approved, candidate.approved, divergence);
+        }
+    }
 
     let reserved = domain
         .active_pending()

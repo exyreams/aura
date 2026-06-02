@@ -108,7 +108,7 @@ fn reputation_adjusts_effective_daily_limit() {
     .expect("proposal should be stored");
 
     let (message, _) = request_signature_for_pending(&mut treasury, 43_240);
-    let receipt = finalize_signed_pending(&mut treasury, message, "ef".repeat(64), 43_260)
+    let receipt = finalize_signed_pending(&mut treasury, message, "ef".repeat(64), 0, 43_260)
         .expect("execution should succeed");
 
     assert!(receipt.approved);

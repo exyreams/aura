@@ -105,7 +105,7 @@ fn happy_path_propose_and_finalize_execution() {
 
     let (message, message_digest) = request_signature_for_pending(&mut treasury, 43_260);
     let receipt =
-        finalize_signed_pending(&mut treasury, message.clone(), "abcd".repeat(16), 43_261)
+        finalize_signed_pending(&mut treasury, message.clone(), "abcd".repeat(16), 0, 43_261)
             .expect("execution should finalize");
 
     assert_eq!(proposal_id, receipt.proposal_id);

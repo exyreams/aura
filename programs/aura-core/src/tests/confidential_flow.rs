@@ -148,7 +148,7 @@ fn confidential_execution_requires_verified_decryption_before_finalize() {
         .expect("approved confidential result should apply");
 
     let (message, _) = request_signature_for_pending(&mut treasury, 43_220);
-    let result = finalize_signed_pending(&mut treasury, message, "ab".repeat(64), 43_221);
+    let result = finalize_signed_pending(&mut treasury, message, "ab".repeat(64), 0, 43_221);
 
     assert!(matches!(result, Err(TreasuryError::DecryptionNotReady)));
     assert_eq!(
@@ -176,8 +176,9 @@ fn confidential_approved_flow_finalizes_after_verified_decryption() {
     );
 
     let (message, digest) = request_signature_for_pending(&mut treasury, 43_220);
-    let receipt = finalize_signed_pending(&mut treasury, message.clone(), "cd".repeat(64), 43_221)
-        .expect("execution should finalize");
+    let receipt =
+        finalize_signed_pending(&mut treasury, message.clone(), "cd".repeat(64), 0, 43_221)
+            .expect("execution should finalize");
 
     assert_eq!(receipt.proposal_id, proposal_id);
     assert_eq!(receipt.final_status, ProposalStatus::Executed);
