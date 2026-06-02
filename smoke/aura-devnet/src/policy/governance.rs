@@ -54,6 +54,8 @@ pub(super) async fn scenario_multisig_override(
                 args: ConfigureMultisigArgs {
                     required_signatures: 2,
                     guardians: vec![g1.pubkey(), g2.pubkey(), g3.pubkey()],
+                    guardian_weights: vec![],
+                    required_approval_weight: 0,
                     timestamp: created_at + 2,
                 },
             }
@@ -221,6 +223,8 @@ pub(super) async fn scenario_single_guardian_override(
                 args: ConfigureMultisigArgs {
                     required_signatures: 1,
                     guardians: vec![guardian.pubkey()],
+                    guardian_weights: vec![],
+                    required_approval_weight: 0,
                     timestamp: created_at + 1,
                 },
             }

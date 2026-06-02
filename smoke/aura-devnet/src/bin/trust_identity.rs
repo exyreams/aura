@@ -17,8 +17,10 @@
 
 use anchor_lang::{system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData, ToAccountMetas};
 use aura_core::{
-    accounts, constants::{OWNERSHIP_HANDOVER_TIMELOCK_SECS, TRUST_IDENTITY_SEED},
-    instruction, ConfigureTrustPolicyArgs, NominateSuccessorArgs, RegisterAgentArgs,
+    accounts,
+    constants::{AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS, OWNERSHIP_HANDOVER_TIMELOCK_SECS, TRUST_IDENTITY_SEED},
+    instruction, ConfigureMultisigArgs, ConfigureTrustPolicyArgs, NominateSuccessorArgs,
+    RegisterAgentArgs, SetAgentCapabilityArgs, SetAgentTripwiresArgs, TreasuryAccount,
     TrustIdentityAccount, ID,
 };
 use aura_devnet::{activate_treasury, create_treasury_ix, devnet_rpc, load_payer, now_unix, pda, send_tx};
@@ -76,6 +78,11 @@ fn init_trust_identity(rpc: &RpcClient, payer: &Keypair, treasury: Pubkey, now: 
 fn fetch_trust_identity(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TrustIdentityAccount> {
     let info = rpc.get_account(addr)?;
     Ok(TrustIdentityAccount::try_deserialize(&mut info.data.as_slice())?)
+}
+
+fn fetch_treasury(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TreasuryAccount> {
+    let info = rpc.get_account(addr)?;
+    Ok(TreasuryAccount::try_deserialize(&mut info.data.as_slice())?)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -238,7 +245,122 @@ fn main() -> anyhow::Result<()> {
         successor, OWNERSHIP_HANDOVER_TIMELOCK_SECS
     );
 
-    println!("\ntrust envelope + agent identity smoke checks passed on devnet.");
-    println!("Note: execute_ownership_handover requires a live dWallet CPI; covered by unit tests.");
+    // ── [6] multi-party authorization: weighted multisig storage ─────────────
+
+    println!("\n[multiparty] configure_multisig with weighted guardians");
+    let g1 = Keypair::new().pubkey();
+    let g2 = Keypair::new().pubkey();
+    let g3 = Keypair::new().pubkey();
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::ConfigureMultisig { owner, treasury }.to_account_metas(None),
+            instruction::ConfigureMultisig {
+                args: ConfigureMultisigArgs {
+                    required_signatures: 2,
+                    guardians: vec![g1, g2, g3],
+                    guardian_weights: vec![3, 1, 1], // treasurer-style weighting
+                    required_approval_weight: 4,
+                    timestamp: seed + 5,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    let acct = fetch_treasury(&rpc, &treasury)?;
+    let ms = acct.multisig.as_ref().ok_or_else(|| anyhow::anyhow!("multisig not stored"))?;
+    anyhow::ensure!(ms.required_approval_weight == 4, "required_approval_weight not stored");
+    anyhow::ensure!(
+        ms.guardians.iter().any(|g| g.key == g1 && g.weight == 3),
+        "weighted guardian not stored"
+    );
+    println!("  ok weighted multisig stored (required_weight=4, treasurer weight=3)");
+
+    // ── [7] agent capabilities: manifest + loosen timelock + tripwires ───────
+
+    println!("\n[capabilities] set_agent_capability (tighten) on registered agent");
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::AgentManage { owner, treasury: treasury2, trust_identity: trust_identity2 }
+                .to_account_metas(None),
+            instruction::SetAgentCapability {
+                args: SetAgentCapabilityArgs {
+                    key: agent_key,
+                    allowed_chains: vec![1u8],  // ETH only
+                    allowed_tx_types: vec![0u8], // Transfer only
+                    daily_limit_usd: Some(5_000),
+                    allowed_protocols: 0b101, // protocols 0 and 2
+                    allowed_instructions: 0,
+                    per_tx_limit_usd: Some(2_000),
+                    recipient_list: None,
+                    allowed_assets: None,
+                    active_window_start: None,
+                    active_window_end: None,
+                    now: seed + 110,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    let ti = fetch_trust_identity(&rpc, &trust_identity2)?;
+    let agent = ti.agents.iter().find(|a| a.key == agent_key).unwrap();
+    anyhow::ensure!(agent.scope.allowed_protocols == 0b101, "protocol bitmap not stored");
+    anyhow::ensure!(agent.scope.per_tx_limit_usd == Some(2_000), "per-tx cap not stored");
+    println!("  ok manifest tightened (protocols=0b101, per_tx=2000)");
+
+    println!("\n[capabilities] arm_capability_loosen sets the timelock");
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::AgentManage { owner, treasury: treasury2, trust_identity: trust_identity2 }
+                .to_account_metas(None),
+            instruction::ArmCapabilityLoosen { key: agent_key, now: seed + 111 }.data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    let ti = fetch_trust_identity(&rpc, &trust_identity2)?;
+    let agent = ti.agents.iter().find(|a| a.key == agent_key).unwrap();
+    anyhow::ensure!(
+        agent.loosen_unlock_at == seed + 111 + AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS,
+        "loosen timelock not armed"
+    );
+    println!("  ok loosen timelock armed (+{}s)", AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS);
+
+    println!("\n[capabilities] set_agent_tripwires stores custom weights");
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::TrustEnvelopeConfig { owner, treasury: treasury2, trust_identity: trust_identity2 }
+                .to_account_metas(None),
+            instruction::SetAgentTripwires {
+                args: SetAgentTripwiresArgs {
+                    policy_denial_weight: 15,
+                    anomaly_weight: 30,
+                    fail_open_abuse_weight: 50,
+                    approval_miss_weight: 7,
+                    now: seed + 112,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    let ti = fetch_trust_identity(&rpc, &trust_identity2)?;
+    anyhow::ensure!(ti.tripwire_config.policy_denial_weight == 15, "tripwire weight not stored");
+    println!("  ok tripwire weights stored (policy_denial=15)");
+
+    println!("\ntrust envelope + agent identity + multiparty + capabilities smoke checks passed on devnet.");
+    println!("Note: execute_ownership_handover and the full M-of-N approve→execute flow need a live dWallet CPI; covered by unit tests.");
     Ok(())
 }
