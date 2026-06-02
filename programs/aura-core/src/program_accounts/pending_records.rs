@@ -197,6 +197,36 @@ impl TransferDetailsRecord {
     }
 }
 
+/// Serialized form of `ApprovalRecord`.
+/// The approver is stored as a `Pubkey` rather than a string.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct ApprovalEntryRecord {
+    pub approver: Pubkey,
+    pub weight: u16,
+    pub level: u8,
+    pub at: i64,
+}
+
+impl ApprovalEntryRecord {
+    pub fn from_domain(domain: &crate::state::ApprovalRecord) -> Result<Self> {
+        Ok(Self {
+            approver: parse_pubkey(&domain.approver)?,
+            weight: domain.weight,
+            level: domain.level,
+            at: domain.at,
+        })
+    }
+
+    pub fn to_domain(&self) -> crate::state::ApprovalRecord {
+        crate::state::ApprovalRecord {
+            approver: self.approver.to_string(),
+            weight: self.weight,
+            level: self.level,
+            at: self.at,
+        }
+    }
+}
+
 /// Serialized form of `PendingTransaction`.
 /// `target_chain`, `tx_type`, and `status` are stored as `u8` codes.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
@@ -229,6 +259,8 @@ pub struct PendingProposalRecord {
     pub risk_score: u8,
     pub required_approval_level: u8,
     pub satisfied_approval_level: u8,
+    #[max_len(10)]
+    pub approvals: Vec<ApprovalEntryRecord>,
     pub earliest_execution_at: i64,
     pub requires_guardian_cosign: bool,
     pub policy_version: u32,
@@ -267,6 +299,11 @@ impl PendingProposalRecord {
             risk_score: domain.risk_score,
             required_approval_level: domain.required_approval_level,
             satisfied_approval_level: domain.satisfied_approval_level,
+            approvals: domain
+                .approvals
+                .iter()
+                .map(ApprovalEntryRecord::from_domain)
+                .collect::<Result<Vec<_>>>()?,
             earliest_execution_at: domain.earliest_execution_at,
             requires_guardian_cosign: domain.requires_guardian_cosign,
             policy_version: domain.policy_version,
@@ -309,6 +346,11 @@ impl PendingProposalRecord {
             risk_score: self.risk_score,
             required_approval_level: self.required_approval_level,
             satisfied_approval_level: self.satisfied_approval_level,
+            approvals: self
+                .approvals
+                .iter()
+                .map(ApprovalEntryRecord::to_domain)
+                .collect(),
             earliest_execution_at: self.earliest_execution_at,
             requires_guardian_cosign: self.requires_guardian_cosign,
             policy_version: self.policy_version,

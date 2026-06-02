@@ -20,9 +20,36 @@ pub struct EmergencyMultisig {
     pub pending_override: Option<OverrideProposal>,
     /// Pending guardian add/remove change awaiting quorum.
     pub pending_guardian_change: Option<PendingGuardianChange>,
+    /// Per-guardian voting weight, parallel to `guardians`. An empty vector (or
+    /// any guardian missing an entry) means every guardian has weight 1. Used
+    /// for weighted / role-based multi-party approval on the spend path.
+    pub guardian_weights: Vec<u16>,
+    /// Summed weight required to satisfy a `Multisig`-level approval. Zero means
+    /// fall back to plain `required_signatures` count quorum.
+    pub required_approval_weight: u16,
 }
 
 impl EmergencyMultisig {
+    /// Voting weight for `guardian`: its parallel `guardian_weights` entry, or
+    /// `1` when weights are unset. The owner (not in `guardians`) also counts 1.
+    pub fn weight_of(&self, guardian: &str) -> u16 {
+        match self.guardians.iter().position(|g| g == guardian) {
+            Some(idx) => self.guardian_weights.get(idx).copied().unwrap_or(1).max(1),
+            None => 1,
+        }
+    }
+
+    /// Returns `true` if `approvers` (distinct, pre-validated) meet the spend
+    /// approval quorum: summed weight ≥ `required_approval_weight` when weighted,
+    /// otherwise count ≥ `required_signatures`.
+    pub fn spend_quorum_met(&self, approvers: &[String]) -> bool {
+        if self.required_approval_weight > 0 {
+            let total: u32 = approvers.iter().map(|a| u32::from(self.weight_of(a))).sum();
+            total >= u32::from(self.required_approval_weight)
+        } else {
+            approvers.len() >= self.required_signatures
+        }
+    }
     /// Creates a new override proposal, replacing any existing one.
     ///
     /// The proposing guardian is automatically counted as the first signature.

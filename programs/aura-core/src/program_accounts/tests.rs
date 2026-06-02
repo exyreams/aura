@@ -121,6 +121,8 @@ fn treasury_account_space_budget_covers_populated_state() {
                 expiration: 1_500,
             }),
             pending_guardian_change: None,
+            guardian_weights: Vec::new(),
+            required_approval_weight: 0,
         },
         1_125,
     );
@@ -176,6 +178,7 @@ fn treasury_account_space_budget_covers_populated_state() {
         risk_score: 12,
         required_approval_level: 0,
         satisfied_approval_level: 0,
+        approvals: Vec::new(),
         earliest_execution_at: 0,
         requires_guardian_cosign: false,
         policy_version: 1,

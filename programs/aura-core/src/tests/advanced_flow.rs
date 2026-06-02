@@ -23,6 +23,8 @@ fn multisig_override_can_raise_daily_limit() {
         guardians: vec!["g1".to_string(), "g2".to_string(), "g3".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     multisig.propose("g1", 25_000, 1_700_000_000).unwrap();
@@ -316,6 +318,8 @@ fn lifecycle_deadman_guardian_rotation_and_shutdown_paths_work() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
     multisig
         .propose_guardian_change("g1", GuardianChangeAction::Add, "g3".to_string(), 200)

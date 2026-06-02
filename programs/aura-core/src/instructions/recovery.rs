@@ -235,6 +235,7 @@ pub fn break_glass_recover(
             risk_score: 0,
             required_approval_level: 0,
             satisfied_approval_level: 0,
+            approvals: Vec::new(),
             earliest_execution_at: 0,
             requires_guardian_cosign: false,
             policy_version: domain.current_policy_version,

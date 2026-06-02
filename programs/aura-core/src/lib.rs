@@ -215,6 +215,24 @@ pub mod aura_core {
         instructions::agent_identity::execute_ownership_handover(ctx, args)
     }
 
+    pub fn set_agent_capability(
+        ctx: Context<AgentManage>,
+        args: SetAgentCapabilityArgs,
+    ) -> Result<()> {
+        instructions::agent_capabilities::set_agent_capability(ctx, args)
+    }
+
+    pub fn arm_capability_loosen(ctx: Context<AgentManage>, key: Pubkey, now: i64) -> Result<()> {
+        instructions::agent_capabilities::arm_capability_loosen(ctx, key, now)
+    }
+
+    pub fn set_agent_tripwires(
+        ctx: Context<TrustEnvelopeConfig>,
+        args: SetAgentTripwiresArgs,
+    ) -> Result<()> {
+        instructions::agent_capabilities::set_agent_tripwires(ctx, args)
+    }
+
     pub fn register_recovery_destination(
         ctx: Context<RecoveryConfig>,
         args: RegisterRecoveryDestinationArgs,

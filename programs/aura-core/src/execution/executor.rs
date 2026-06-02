@@ -11,8 +11,8 @@ use crate::{
     execution::generate_proposal_digest,
     ext_cpi::decision_digest,
     state::{
-        AgentTreasury, ExecutionReceipt, PendingDecryptionRequest, PendingSignatureRequest,
-        PendingTransaction, ProposalStatus, TransferDetails,
+        AgentTreasury, ApprovalRecord, ExecutionReceipt, PendingDecryptionRequest,
+        PendingSignatureRequest, PendingTransaction, ProposalStatus, TransferDetails,
     },
 };
 
@@ -125,6 +125,7 @@ pub fn propose_transaction_with_transfer(
         risk_score: decision.risk_score,
         required_approval_level: approval.required_level,
         satisfied_approval_level: approval.satisfied_level,
+        approvals: Vec::new(),
         earliest_execution_at: approval.earliest_execution_at,
         requires_guardian_cosign,
         policy_version: treasury.current_policy_version,
@@ -262,6 +263,7 @@ pub fn propose_confidential_transaction_with_transfer(
         risk_score: decision.risk_score,
         required_approval_level: approval.required_level,
         satisfied_approval_level: approval.satisfied_level,
+        approvals: Vec::new(),
         earliest_execution_at: approval.earliest_execution_at,
         requires_guardian_cosign,
         policy_version: treasury.current_policy_version,
@@ -332,17 +334,40 @@ fn pending_approval_requirements(
     amount_usd: u64,
     submitted_at: i64,
 ) -> PendingApprovalRequirements {
-    let Some(ladder) = treasury.policy_config.approval_ladder else {
+    let base_level = treasury
+        .policy_config
+        .approval_ladder
+        .map(|ladder| {
+            required_approval_level(&ladder, amount_usd, u16::from(decision.risk_score) * 100)
+        })
+        .unwrap_or(ApprovalLevel::None);
+    let timelock_secs = treasury
+        .policy_config
+        .approval_ladder
+        .map(|ladder| ladder.timelock_secs)
+        .unwrap_or(0);
+
+    // Trust-tier composition: a Restricted (or worse) tier forces at least
+    // Multisig approval on every proposal, even below the amount threshold.
+    let level = if treasury.force_multisig_approval
+        && base_level < ApprovalLevel::Multisig
+        && base_level != ApprovalLevel::Deny
+    {
+        ApprovalLevel::Multisig
+    } else {
+        base_level
+    };
+
+    if level == ApprovalLevel::None {
         return PendingApprovalRequirements {
             required_level: ApprovalLevel::None.code(),
             satisfied_level: ApprovalLevel::None.code(),
             earliest_execution_at: 0,
         };
-    };
+    }
 
-    let level = required_approval_level(&ladder, amount_usd, u16::from(decision.risk_score) * 100);
     let earliest_execution_at = if level == ApprovalLevel::Timelock {
-        submitted_at.saturating_add(ladder.timelock_secs)
+        submitted_at.saturating_add(timelock_secs)
     } else {
         0
     };
@@ -360,6 +385,15 @@ fn pending_approval_requirements(
     }
 }
 
+/// Records a distinct approval against the active pending proposal and
+/// recomputes the satisfied approval level from the per-proposal tally.
+///
+/// This is the multi-party authorization core: a `Multisig`-level requirement
+/// is only marked satisfied once a quorum of **distinct** guardians (or summed
+/// guardian weight, for the weighted/role-based variant) approves — a single
+/// owner signature can no longer satisfy it. `Guardian`-level requirements are
+/// satisfied by any one authorized approval; `Timelock` is satisfied at
+/// proposal time and gated separately by `earliest_execution_at`.
 pub fn approve_pending_execution(
     treasury: &mut AgentTreasury,
     approver: &str,
@@ -368,12 +402,11 @@ pub fn approve_pending_execution(
     now: i64,
 ) -> Result<(), TreasuryError> {
     let owner = treasury.owner.clone();
-    let is_guardian = treasury.multisig.as_ref().is_some_and(|multisig| {
-        multisig
-            .guardians
-            .iter()
-            .any(|guardian| guardian == approver)
-    });
+    let multisig = treasury.multisig.clone();
+    let is_guardian = multisig
+        .as_ref()
+        .is_some_and(|m| m.guardians.iter().any(|guardian| guardian == approver));
+
     let pending = treasury
         .active_pending_mut()
         .ok_or(TreasuryError::NoPendingTransaction)?;
@@ -388,21 +421,59 @@ pub fn approve_pending_execution(
             "approval level exceeds pending requirement".to_string(),
         ));
     }
+    // Only the owner or a registered guardian may approve a spend.
     let authorized = match approval_level {
         ApprovalLevel::None => true,
-        ApprovalLevel::Guardian => approver == owner || is_guardian,
-        ApprovalLevel::Multisig | ApprovalLevel::Timelock => approver == owner,
+        ApprovalLevel::Guardian | ApprovalLevel::Multisig | ApprovalLevel::Timelock => {
+            approver == owner || is_guardian
+        }
         ApprovalLevel::Deny => false,
     };
     if !authorized {
-        return Err(TreasuryError::UnauthorizedGuardian);
+        return Err(TreasuryError::ApproverNotAuthorized);
     }
 
-    pending.satisfied_approval_level = pending.satisfied_approval_level.max(requested);
+    // Append a distinct approval to the per-proposal tally.
+    if approval_level != ApprovalLevel::None {
+        if pending.approvals.iter().any(|a| a.approver == approver) {
+            return Err(TreasuryError::DuplicateApprover);
+        }
+        let weight = multisig
+            .as_ref()
+            .map(|m| m.weight_of(approver))
+            .unwrap_or(1);
+        pending.approvals.push(ApprovalRecord {
+            approver: approver.to_string(),
+            weight,
+            level: requested,
+            at: now,
+        });
+    }
+
+    // Recompute the satisfied level from the distinct-approver tally.
+    let approvers: Vec<String> = pending
+        .approvals
+        .iter()
+        .map(|a| a.approver.clone())
+        .collect();
+    let count = approvers.len();
+    let quorum_met = match &multisig {
+        Some(m) => m.spend_quorum_met(&approvers),
+        // No multisig configured: a single owner/guardian approval stands in for
+        // the (unconfigurable) quorum, preserving pre-multisig behavior.
+        None => count >= 1,
+    };
+    let satisfied = if quorum_met {
+        ApprovalLevel::Multisig.code()
+    } else if count >= 1 {
+        ApprovalLevel::Guardian.code()
+    } else {
+        ApprovalLevel::None.code()
+    };
+    pending.satisfied_approval_level = pending.satisfied_approval_level.max(satisfied);
     pending.last_updated_at = now;
     let detail = format!(
-        "proposal {proposal_id} approval level {} satisfied by {approver}",
-        approval_level.code()
+        "proposal {proposal_id} approval {count} recorded by {approver} (level {requested}, quorum_met={quorum_met})"
     );
     treasury
         .audit_trail

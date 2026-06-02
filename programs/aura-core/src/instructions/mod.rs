@@ -5,6 +5,7 @@
 /// while this index re-exports the stable public instruction surface.
 pub mod activity_log;
 pub mod address_lists;
+pub mod agent_capabilities;
 pub mod agent_identity;
 pub mod apply_policy_preset;
 pub mod approval_ladder;
@@ -63,6 +64,7 @@ pub(crate) use address_lists::{
     __client_accounts_manage_address_list, __cpi_client_accounts_close_address_list,
     __cpi_client_accounts_init_address_list, __cpi_client_accounts_manage_address_list,
 };
+pub use agent_capabilities::{SetAgentCapabilityArgs, SetAgentTripwiresArgs};
 pub use agent_identity::{
     AgentManage, EmergencyRevokeAgent, ExecuteHandoverArgs, ExecuteOwnershipHandover,
     NominateSuccessorArgs, OwnershipHandover, RegisterAgentArgs,

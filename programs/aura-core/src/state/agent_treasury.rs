@@ -113,6 +113,10 @@ pub struct AgentTreasury {
     /// Transient trust-tier multiplier injected at instruction time from
     /// `TrustIdentityAccount`.  Not persisted to `TreasuryAccount`.
     pub tier_multiplier_bps: Option<u64>,
+    /// Transient flag: when the trust tier is `Restricted` or worse, every
+    /// proposal is forced to at least `Multisig` approval regardless of amount.
+    /// Injected at instruction time from `TrustIdentityAccount`; not persisted.
+    pub force_multisig_approval: bool,
 }
 
 impl AgentTreasury {
@@ -177,6 +181,7 @@ impl AgentTreasury {
             default_chain: None,
             recovery_destinations: Vec::new(),
             tier_multiplier_bps: None,
+            force_multisig_approval: false,
         }
     }
 

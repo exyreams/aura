@@ -241,6 +241,24 @@ pub enum AuraCoreError {
     RecoveryDestinationImmutable,
     #[msg("caller is not authorized to initiate a recovery operation")]
     UnauthorizedRecovery,
+    // Multi-party authorization. Appended to preserve existing codes.
+    #[msg("approver has already approved this proposal")]
+    DuplicateApprover,
+    #[msg("multi-party approval quorum has not been reached")]
+    ApprovalThresholdNotMet,
+    #[msg("signer is neither the owner nor a registered guardian")]
+    ApproverNotAuthorized,
+    #[msg("weighted approval quorum has not been reached")]
+    ApprovalWeightInsufficient,
+    // Agent capability manifest & tripwires.
+    #[msg("action falls outside the agent's capability manifest")]
+    AgentCapabilityExceeded,
+    #[msg("agent attempted a privileged instruction it lacks")]
+    ForbiddenInstructionForAgent,
+    #[msg("manifest loosening attempted before its timelock elapsed")]
+    AgentManifestLoosenTimelock,
+    #[msg("invalid agent tripwire configuration")]
+    InvalidAgentTripwires,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.
@@ -289,6 +307,12 @@ pub fn map_treasury_error(error: TreasuryError) -> anchor_lang::error::Error {
         TreasuryError::ApprovalLevelNotSatisfied => {
             error!(AuraCoreError::ApprovalLevelNotSatisfied)
         }
+        TreasuryError::DuplicateApprover => error!(AuraCoreError::DuplicateApprover),
+        TreasuryError::ApprovalThresholdNotMet => error!(AuraCoreError::ApprovalThresholdNotMet),
+        TreasuryError::ApproverNotAuthorized => error!(AuraCoreError::ApproverNotAuthorized),
+        TreasuryError::ApprovalWeightInsufficient => {
+            error!(AuraCoreError::ApprovalWeightInsufficient)
+        }
         TreasuryError::PendingExecutionTimelockActive => {
             error!(AuraCoreError::PendingExecutionTimelockActive)
         }
@@ -311,6 +335,16 @@ pub fn map_treasury_error(error: TreasuryError) -> anchor_lang::error::Error {
         TreasuryError::UnauthorizedHandover => error!(AuraCoreError::UnauthorizedHandover),
         TreasuryError::AgentAlreadyRegistered => error!(AuraCoreError::AgentAlreadyRegistered),
         TreasuryError::AgentNotFound => error!(AuraCoreError::AgentNotFound),
+        TreasuryError::AgentCapabilityExceeded => {
+            error!(AuraCoreError::AgentCapabilityExceeded)
+        }
+        TreasuryError::ForbiddenInstructionForAgent => {
+            error!(AuraCoreError::ForbiddenInstructionForAgent)
+        }
+        TreasuryError::AgentManifestLoosenTimelock => {
+            error!(AuraCoreError::AgentManifestLoosenTimelock)
+        }
+        TreasuryError::InvalidAgentTripwires => error!(AuraCoreError::InvalidAgentTripwires),
         TreasuryError::NoRecoveryDestination => error!(AuraCoreError::NoRecoveryDestination),
         TreasuryError::RecoveryTimelockActive => error!(AuraCoreError::RecoveryTimelockActive),
         TreasuryError::RecoveryPreconditionNotMet => {

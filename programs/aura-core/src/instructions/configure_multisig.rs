@@ -13,6 +13,12 @@ pub struct ConfigureMultisigArgs {
     pub required_signatures: u8,
     /// Public keys of all registered guardians.
     pub guardians: Vec<Pubkey>,
+    /// Optional per-guardian voting weights, parallel to `guardians`. Empty
+    /// means every guardian has weight 1 (plain M-of-N).
+    pub guardian_weights: Vec<u16>,
+    /// Summed weight required to satisfy a `Multisig`-level spend approval.
+    /// Zero falls back to the `required_signatures` count quorum.
+    pub required_approval_weight: u16,
     /// Unix timestamp used for the audit event.
     pub timestamp: i64,
 }
@@ -41,6 +47,23 @@ pub fn handler(ctx: Context<ConfigureMultisig>, args: ConfigureMultisigArgs) -> 
             && usize::from(args.required_signatures) <= args.guardians.len(),
         AuraCoreError::InvalidGuardianConfiguration
     );
+    // Weights, when supplied, must align 1:1 with guardians and the required
+    // weight must be reachable by the registered guardians' total weight.
+    require!(
+        args.guardian_weights.is_empty() || args.guardian_weights.len() == args.guardians.len(),
+        AuraCoreError::InvalidGuardianConfiguration
+    );
+    if args.required_approval_weight > 0 {
+        let total_weight: u32 = if args.guardian_weights.is_empty() {
+            args.guardians.len() as u32
+        } else {
+            args.guardian_weights.iter().map(|w| u32::from(*w)).sum()
+        };
+        require!(
+            u32::from(args.required_approval_weight) <= total_weight,
+            AuraCoreError::InvalidGuardianConfiguration
+        );
+    }
 
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     let multisig = EmergencyMultisig {
@@ -48,6 +71,8 @@ pub fn handler(ctx: Context<ConfigureMultisig>, args: ConfigureMultisigArgs) -> 
         guardians: args.guardians.iter().map(ToString::to_string).collect(),
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: args.guardian_weights.clone(),
+        required_approval_weight: args.required_approval_weight,
     };
     domain.attach_multisig(multisig, args.timestamp);
 

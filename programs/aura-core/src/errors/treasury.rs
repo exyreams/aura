@@ -62,6 +62,14 @@ pub enum TreasuryError {
     HighRiskTransactionRequiresGuardian,
     /// Approval ladder level has not been satisfied.
     ApprovalLevelNotSatisfied,
+    /// The same approver tried to approve a proposal twice.
+    DuplicateApprover,
+    /// Multi-party approval quorum (count) has not been reached.
+    ApprovalThresholdNotMet,
+    /// The signer is neither the owner nor a registered guardian.
+    ApproverNotAuthorized,
+    /// Weighted approval quorum (summed weight) has not been reached.
+    ApprovalWeightInsufficient,
     /// Pending execution timelock is still active.
     PendingExecutionTimelockActive,
     /// Execution is blocked by a scoped pause entry.
@@ -98,6 +106,14 @@ pub enum TreasuryError {
     AgentAlreadyRegistered,
     /// No agent with this key found.
     AgentNotFound,
+    /// A proposed action falls outside the agent's capability manifest.
+    AgentCapabilityExceeded,
+    /// The agent attempted a privileged instruction it is not granted.
+    ForbiddenInstructionForAgent,
+    /// A manifest loosening was attempted before its timelock elapsed.
+    AgentManifestLoosenTimelock,
+    /// The supplied agent tripwire configuration is invalid/incoherent.
+    InvalidAgentTripwires,
     /// No recovery destination has been registered for the requested chain.
     NoRecoveryDestination,
     /// The recovery destination is locked and cannot be changed until the
@@ -157,6 +173,16 @@ impl Display for TreasuryError {
             Self::ApprovalLevelNotSatisfied => {
                 write!(f, "approval ladder level has not been satisfied")
             }
+            Self::DuplicateApprover => write!(f, "approver has already approved this proposal"),
+            Self::ApprovalThresholdNotMet => {
+                write!(f, "multi-party approval quorum has not been reached")
+            }
+            Self::ApproverNotAuthorized => {
+                write!(f, "signer is neither the owner nor a registered guardian")
+            }
+            Self::ApprovalWeightInsufficient => {
+                write!(f, "weighted approval quorum has not been reached")
+            }
             Self::PendingExecutionTimelockActive => {
                 write!(f, "pending execution timelock is still active")
             }
@@ -183,6 +209,19 @@ impl Display for TreasuryError {
             Self::UnauthorizedHandover => write!(f, "not authorized to execute ownership handover"),
             Self::AgentAlreadyRegistered => write!(f, "agent with this key already registered"),
             Self::AgentNotFound => write!(f, "agent with this key not found"),
+            Self::AgentCapabilityExceeded => {
+                write!(f, "action falls outside the agent's capability manifest")
+            }
+            Self::ForbiddenInstructionForAgent => {
+                write!(f, "agent attempted a privileged instruction it lacks")
+            }
+            Self::AgentManifestLoosenTimelock => {
+                write!(
+                    f,
+                    "manifest loosening attempted before its timelock elapsed"
+                )
+            }
+            Self::InvalidAgentTripwires => write!(f, "invalid agent tripwire configuration"),
             Self::NoRecoveryDestination => {
                 write!(f, "no recovery destination registered for chain")
             }

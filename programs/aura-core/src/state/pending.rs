@@ -137,6 +137,26 @@ pub struct PendingSignatureRequest {
     pub requested_at: i64,
 }
 
+/// A single distinct approval recorded against a pending proposal.
+///
+/// Multi-party authorization tallies these per proposal: a quorum is reached
+/// when the count of distinct approvers meets `required_signatures` (plain
+/// M-of-N) or the summed `weight` meets `required_approval_weight`
+/// (weighted / role-based). `weight` is captured at approval time from the
+/// guardian's entry in `EmergencyMultisig` so later weight changes don't
+/// retroactively alter an already-collected tally.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApprovalRecord {
+    /// Pubkey (base58) of the guardian or owner who approved.
+    pub approver: String,
+    /// Voting weight this approver contributed (1 for plain M-of-N).
+    pub weight: u16,
+    /// `ApprovalLevel` code this approval was supplied at.
+    pub level: u8,
+    /// Unix timestamp the approval was recorded.
+    pub at: i64,
+}
+
 /// The single in-flight proposal on an agent treasury.
 ///
 /// At most one `PendingTransaction` exists at a time. It progresses through
@@ -189,6 +209,8 @@ pub struct PendingTransaction {
     pub required_approval_level: u8,
     /// Highest approval ladder level that has been satisfied.
     pub satisfied_approval_level: u8,
+    /// Distinct approvals collected for this proposal (multi-party / M-of-N).
+    pub approvals: Vec<ApprovalRecord>,
     /// Earliest Unix timestamp at which execution may proceed. Zero means immediate.
     pub earliest_execution_at: i64,
     /// Whether execution requires a guardian co-signature.

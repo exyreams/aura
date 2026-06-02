@@ -39,17 +39,17 @@ pub use dwallet::{
 pub use fees::ProtocolFees;
 pub use oracle::{OracleFeed, OracleProvider};
 pub use pending::{
-    ChainExecutionBinding, PendingDecryptionRequest, PendingSignatureRequest, PendingTransaction,
-    ProposalStatus, TransferDetails,
+    ApprovalRecord, ChainExecutionBinding, PendingDecryptionRequest, PendingSignatureRequest,
+    PendingTransaction, ProposalStatus, TransferDetails,
 };
 pub use receipt::ExecutionReceipt;
 pub use reputation::AgentReputation;
 pub use safety_controls::{
-    AgentAuthority, AgentLifecycleState, AgentScope, CircuitBreakerConfig, CircuitBreakerState,
-    ComplianceMetadata, ConfigChangeKind, DeadMansSwitch, GuardianChangeAction, PendingAiRotation,
-    PendingConfigChange, PendingGuardianChange, PendingOwnershipHandover, RecoveryDestination,
-    REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD, REG_FLAG_HIGH_RISK_COUNTERPARTY,
-    REG_FLAG_REQUIRES_KYC,
+    AgentAuthority, AgentLifecycleState, AgentScope, AgentStats, CircuitBreakerConfig,
+    CircuitBreakerState, ComplianceMetadata, ConfigChangeKind, DeadMansSwitch,
+    GuardianChangeAction, PendingAiRotation, PendingConfigChange, PendingGuardianChange,
+    PendingOwnershipHandover, RecoveryDestination, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
+    REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
 };
 pub use swarm::AgentSwarm;
 pub use trust::{BehaviorSignalKind, TrustConfig, TrustTier};

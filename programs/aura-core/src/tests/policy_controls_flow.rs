@@ -11,7 +11,7 @@ use crate::{
         role_permissions, BudgetEnvelopeAccount, ExposureGroupAccount, ExternalLivenessAccount,
         OperatorRoleAccount, PolicyConfigRecord, PolicyStateRecord,
     },
-    propose_transaction, TreasuryError,
+    propose_transaction, EmergencyMultisig, TreasuryError,
 };
 
 use super::proposal_flow::treasury;
@@ -451,4 +451,132 @@ fn liveness_gate_degrade_respects_fallback_clamp() {
         111,
     )
     .is_err());
+}
+
+// Multi-party authorization on the spend path.
+
+fn multisig_ladder() -> ApprovalLadder {
+    ApprovalLadder {
+        guardian_above_usd: 100,
+        multisig_above_usd: 200,
+        timelock_above_usd: 1_000,
+        deny_above_usd: 50_000,
+        risk_guardian_bps: 8_000,
+        risk_multisig_bps: 9_000,
+        risk_timelock_bps: 10_000,
+        timelock_secs: 60,
+    }
+}
+
+#[test]
+fn multisig_level_requires_distinct_guardian_quorum_not_one_owner() {
+    let mut treasury = treasury();
+    treasury.policy_config.approval_ladder = Some(multisig_ladder());
+    let owner = treasury.owner.clone();
+    treasury.attach_multisig(
+        EmergencyMultisig {
+            required_signatures: 3,
+            guardians: vec!["g1".to_string(), "g2".to_string(), "g3".to_string()],
+            pending_override: None,
+            pending_guardian_change: None,
+            guardian_weights: Vec::new(),
+            required_approval_weight: 0,
+        },
+        43_000,
+    );
+    let ai = treasury.ai_authority.clone();
+    propose_transaction(&mut treasury, &ai, tx(250, 43_200), "0xrecipient")
+        .expect("proposal should be queued");
+    assert_eq!(
+        treasury.pending.as_ref().unwrap().required_approval_level,
+        ApprovalLevel::Multisig.code()
+    );
+
+    // One owner signature is not enough now — it only reaches Guardian level.
+    approve_pending_execution(&mut treasury, &owner, 1, ApprovalLevel::Multisig, 43_210)
+        .expect("owner approval recorded");
+    assert!(matches!(
+        enforce_pending_approval(treasury.pending.as_ref().unwrap(), 43_211),
+        Err(TreasuryError::ApprovalLevelNotSatisfied)
+    ));
+
+    // A non-guardian cannot approve; a duplicate approver is rejected.
+    assert!(matches!(
+        approve_pending_execution(
+            &mut treasury,
+            "stranger",
+            1,
+            ApprovalLevel::Multisig,
+            43_212
+        ),
+        Err(TreasuryError::ApproverNotAuthorized)
+    ));
+    assert!(matches!(
+        approve_pending_execution(&mut treasury, &owner, 1, ApprovalLevel::Multisig, 43_213),
+        Err(TreasuryError::DuplicateApprover)
+    ));
+
+    // Second distinct approval: still short of 3.
+    approve_pending_execution(&mut treasury, "g1", 1, ApprovalLevel::Multisig, 43_214)
+        .expect("g1 approval recorded");
+    assert!(enforce_pending_approval(treasury.pending.as_ref().unwrap(), 43_215).is_err());
+
+    // Third distinct approval reaches quorum; execution is unblocked.
+    approve_pending_execution(&mut treasury, "g2", 1, ApprovalLevel::Multisig, 43_216)
+        .expect("g2 approval recorded reaches quorum");
+    enforce_pending_approval(treasury.pending.as_ref().unwrap(), 43_217)
+        .expect("3-of-N quorum satisfied");
+}
+
+#[test]
+fn weighted_quorum_lets_a_heavy_guardian_plus_one_meet_the_bar() {
+    let mut treasury = treasury();
+    treasury.policy_config.approval_ladder = Some(multisig_ladder());
+    treasury.attach_multisig(
+        EmergencyMultisig {
+            required_signatures: 99, // count quorum unreachable; weight governs
+            guardians: vec!["treasurer".to_string(), "g1".to_string(), "g2".to_string()],
+            pending_override: None,
+            pending_guardian_change: None,
+            guardian_weights: vec![3, 1, 1],
+            required_approval_weight: 4,
+        },
+        43_000,
+    );
+    let ai = treasury.ai_authority.clone();
+    propose_transaction(&mut treasury, &ai, tx(250, 43_200), "0xrecipient")
+        .expect("proposal should be queued");
+
+    // Two light guardians (weight 1 + 1 = 2) fall short of the weight bar of 4.
+    approve_pending_execution(&mut treasury, "g1", 1, ApprovalLevel::Multisig, 43_210).unwrap();
+    approve_pending_execution(&mut treasury, "g2", 1, ApprovalLevel::Multisig, 43_211).unwrap();
+    assert!(enforce_pending_approval(treasury.pending.as_ref().unwrap(), 43_212).is_err());
+
+    // The treasurer (weight 3) tips the summed weight to 5 ≥ 4.
+    approve_pending_execution(
+        &mut treasury,
+        "treasurer",
+        1,
+        ApprovalLevel::Multisig,
+        43_213,
+    )
+    .unwrap();
+    enforce_pending_approval(treasury.pending.as_ref().unwrap(), 43_214)
+        .expect("weighted quorum satisfied");
+}
+
+#[test]
+fn restricted_trust_tier_forces_multisig_below_amount_threshold() {
+    let mut treasury = treasury();
+    treasury.policy_config.approval_ladder = Some(multisig_ladder());
+    // A tiny amount that would normally need no approval at all.
+    treasury.force_multisig_approval = true;
+    let ai = treasury.ai_authority.clone();
+    propose_transaction(&mut treasury, &ai, tx(10, 43_200), "0xrecipient")
+        .expect("proposal should be queued");
+    assert_eq!(
+        treasury.pending.as_ref().unwrap().required_approval_level,
+        ApprovalLevel::Multisig.code(),
+        "Restricted tier should force Multisig even on a $10 spend"
+    );
 }

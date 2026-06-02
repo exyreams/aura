@@ -132,5 +132,8 @@ pub const RECOVERY_ACTIVATION_SECS: i64 = 3_600;
 pub const MAX_AGENTS: usize = 8;
 /// Timelock before an ownership handover can be executed.
 pub const OWNERSHIP_HANDOVER_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
+/// Timelock that must elapse (after `arm_capability_loosen`) before an agent
+/// capability manifest may be *loosened*. Tightening is always immediate.
+pub const AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
 /// PDA seed for the per-treasury trust + identity account.
 pub const TRUST_IDENTITY_SEED: &[u8] = b"trust_identity";

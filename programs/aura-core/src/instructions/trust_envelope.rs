@@ -89,6 +89,7 @@ pub fn init_trust_identity(ctx: Context<InitTrustIdentity>, now: i64) -> Result<
     ti.trust_config = TrustConfigRecord::from_domain(&TrustConfig::default());
     ti.agents = Vec::new();
     ti.pending_ownership_handover = None;
+    ti.tripwire_config = crate::program_accounts::AgentTripwireConfigRecord::default();
     Ok(())
 }
 
@@ -152,6 +153,7 @@ mod tests {
             trust_config: TrustConfigRecord::from_domain(&TrustConfig::default()),
             agents: Vec::new(),
             pending_ownership_handover: None,
+            tripwire_config: Default::default(),
         }
     }
 

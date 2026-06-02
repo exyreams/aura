@@ -135,13 +135,28 @@ pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -
                 ti.is_authorized_agent(&ai_key, &ai_authority_str, args.target_chain, args.tx_type),
                 AuraCoreError::AgentScopeExceeded
             );
+            // Capability manifest gate: enforce the matching agent's
+            // full manifest and record its action stats. A breach escalates the
+            // trust tier via a behavior signal before the proposal is rejected.
+            ti.enforce_and_record_agent_action(
+                &ai_key,
+                args.target_chain,
+                args.tx_type,
+                args.protocol_id,
+                args.amount_usd,
+                args.current_timestamp,
+            )
+            .map_err(crate::map_treasury_error)?;
         }
     }
 
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
     // Inject tier multiplier so the policy engine applies the trust-tier haircut.
+    // A Restricted (or worse) tier also forces at least Multisig approval.
     if let Some(ref ti) = ctx.accounts.trust_identity {
         domain.tier_multiplier_bps = Some(ti.tier_multiplier_bps());
+        domain.force_multisig_approval =
+            ti.trust_tier() as u8 >= crate::state::trust::TrustTier::Restricted as u8;
     }
     let mut transfer = args.transfer_details();
     validate_transfer_details(&transfer)?;

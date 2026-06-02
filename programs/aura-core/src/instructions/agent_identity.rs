@@ -47,7 +47,7 @@ pub struct EmergencyRevokeAgent<'info> {
             let s = caller.key().to_string();
             treasury.owner == caller.key()
                 || treasury.multisig.as_ref()
-                    .map(|m| m.guardians.iter().any(|g| g.to_string() == s))
+                    .map(|m| m.guardians.iter().any(|g| g.key.to_string() == s))
                     .unwrap_or(false)
         } @ AuraCoreError::UnauthorizedGuardian
     )]
@@ -72,7 +72,7 @@ pub struct OwnershipHandover<'info> {
             let s = caller.key().to_string();
             treasury.owner == caller.key()
                 || treasury.multisig.as_ref()
-                    .map(|m| m.guardians.iter().any(|g| g.to_string() == s))
+                    .map(|m| m.guardians.iter().any(|g| g.key.to_string() == s))
                     .unwrap_or(false)
         } @ AuraCoreError::UnauthorizedHandover
     )]
@@ -97,7 +97,7 @@ pub struct ExecuteOwnershipHandover<'info> {
             let s = caller.key().to_string();
             treasury.owner == caller.key()
                 || treasury.multisig.as_ref()
-                    .map(|m| m.guardians.iter().any(|g| g.to_string() == s))
+                    .map(|m| m.guardians.iter().any(|g| g.key.to_string() == s))
                     .unwrap_or(false)
         } @ AuraCoreError::UnauthorizedHandover
     )]
@@ -169,9 +169,21 @@ pub fn register_agent(ctx: Context<AgentManage>, args: RegisterAgentArgs) -> Res
             allowed_chains: args.allowed_chains,
             allowed_tx_types: args.allowed_tx_types,
             daily_limit_usd: args.daily_limit_usd,
+            allowed_protocols: 0,
+            allowed_instructions: 0,
+            per_tx_limit_usd: None,
+            recipient_list: None,
+            allowed_assets: None,
+            active_window: None,
         },
         enabled: true,
         registered_at: args.now,
+        stats: crate::program_accounts::AgentStatsRecord {
+            actions_total: 0,
+            denials: 0,
+            last_active_at: args.now,
+        },
+        loosen_unlock_at: 0,
     });
     Ok(())
 }
@@ -308,6 +320,7 @@ mod tests {
             trust_config: TrustConfigRecord::from_domain(&TrustConfig::default()),
             agents: Vec::new(),
             pending_ownership_handover: None,
+            tripwire_config: Default::default(),
         }
     }
 
@@ -319,9 +332,21 @@ mod tests {
                 allowed_chains: chains,
                 allowed_tx_types: tx_types,
                 daily_limit_usd: None,
+                allowed_protocols: 0,
+                allowed_instructions: 0,
+                per_tx_limit_usd: None,
+                recipient_list: None,
+                allowed_assets: None,
+                active_window: None,
             },
             enabled: true,
             registered_at: 0,
+            stats: crate::program_accounts::AgentStatsRecord {
+                actions_total: 0,
+                denials: 0,
+                last_active_at: 0,
+            },
+            loosen_unlock_at: 0,
         }
     }
 
@@ -388,5 +413,107 @@ mod tests {
             handover.executable_after,
             1_000 + OWNERSHIP_HANDOVER_TIMELOCK_SECS
         );
+    }
+
+    // Capability manifest & tripwire enforcement.
+
+    use crate::state::AgentScope;
+
+    const SWAP: u8 = 1;
+
+    fn scoped_agent(
+        key: Pubkey,
+        mutate: impl FnOnce(&mut AgentScopeRecord),
+    ) -> AgentAuthorityRecord {
+        let mut a = agent(key, vec![], vec![]);
+        mutate(&mut a.scope);
+        a
+    }
+
+    #[test]
+    fn capability_gate_denies_out_of_manifest_and_records_stats() {
+        let agent_key = Pubkey::new_unique();
+        let mut ti = make_ti();
+        ti.agents.push(scoped_agent(agent_key, |s| {
+            s.allowed_chains = vec![ETH];
+            s.allowed_tx_types = vec![TRANSFER];
+            s.per_tx_limit_usd = Some(5_000);
+        }));
+        let key = agent_key.to_string();
+
+        // In-manifest transfer succeeds and bumps actions.
+        ti.enforce_and_record_agent_action(&key, ETH, TRANSFER, None, 1_000, 10)
+            .expect("within manifest");
+        // A swap (disallowed tx type) is denied and escalates threat score.
+        assert!(ti
+            .enforce_and_record_agent_action(&key, ETH, SWAP, None, 1_000, 11)
+            .is_err());
+        // Over the per-tx cap is denied.
+        assert!(ti
+            .enforce_and_record_agent_action(&key, ETH, TRANSFER, None, 6_000, 12)
+            .is_err());
+
+        let a = ti.agents.iter().find(|a| a.key == agent_key).unwrap();
+        assert_eq!(a.stats.actions_total, 3);
+        assert_eq!(a.stats.denials, 2);
+        assert!(
+            ti.threat_score >= 20,
+            "two denials should raise threat score"
+        );
+    }
+
+    #[test]
+    fn capability_gate_enforces_protocol_and_active_window() {
+        let scope = AgentScope {
+            allowed_protocols: 0b101, // protocols 0 and 2 only
+            active_window: Some((100, 200)),
+            ..Default::default()
+        };
+        // Allowed protocol within window.
+        assert!(scope
+            .check_capability(ETH, TRANSFER, Some(2), 0, 150)
+            .is_ok());
+        // Disallowed protocol.
+        assert!(scope
+            .check_capability(ETH, TRANSFER, Some(1), 0, 150)
+            .is_err());
+        // Outside the active window.
+        assert!(scope
+            .check_capability(ETH, TRANSFER, Some(0), 0, 250)
+            .is_err());
+    }
+
+    #[test]
+    fn manifest_tightening_vs_loosening_is_detected() {
+        let wide = AgentScope {
+            allowed_chains: vec![], // all chains
+            per_tx_limit_usd: None, // uncapped
+            allowed_protocols: 0,   // all protocols
+            ..Default::default()
+        };
+        let narrow = AgentScope {
+            allowed_chains: vec![ETH],
+            per_tx_limit_usd: Some(1_000),
+            allowed_protocols: 0b1,
+            ..Default::default()
+        };
+        // Narrowing every dimension is a tightening.
+        assert!(narrow.is_tighter_or_equal_to(&wide));
+        // Going back to wide is a loosening.
+        assert!(!wide.is_tighter_or_equal_to(&narrow));
+        // Equal manifests count as tighter-or-equal.
+        assert!(narrow.is_tighter_or_equal_to(&narrow));
+    }
+
+    #[test]
+    fn primary_ai_authority_is_not_capability_gated() {
+        let mut ti = make_ti();
+        ti.agents.push(scoped_agent(Pubkey::new_unique(), |s| {
+            s.allowed_tx_types = vec![TRANSFER];
+        }));
+        // The primary AI authority has no agent record, so the gate is a no-op
+        // even for a tx type no registered agent could perform.
+        ti.enforce_and_record_agent_action(AI_AUTH, ETH, SWAP, None, 10_000, 5)
+            .expect("primary authority bypasses the manifest gate");
     }
 }

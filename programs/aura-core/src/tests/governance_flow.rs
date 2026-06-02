@@ -11,6 +11,8 @@ fn unauthorized_guardian_cannot_propose_override() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     let result = multisig.propose("stranger", 20_000, 1_700_000_000);
@@ -26,6 +28,8 @@ fn propose_override_sets_pending_with_correct_fields() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     multisig.propose("g1", 30_000, 1_700_000_000).unwrap();
@@ -45,6 +49,8 @@ fn collect_signature_fails_without_active_proposal() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     let result = multisig.collect_signature("g2");
@@ -59,6 +65,8 @@ fn unauthorized_guardian_cannot_collect_signature() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
     multisig.propose("g1", 20_000, 1_700_000_000).unwrap();
 
@@ -74,6 +82,8 @@ fn duplicate_signature_is_deduplicated() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
     multisig.propose("g1", 20_000, 1_700_000_000).unwrap();
     multisig.collect_signature("g1").unwrap();
@@ -90,6 +100,8 @@ fn full_multisig_flow_propose_collect_apply() {
         guardians: vec!["g1".to_string(), "g2".to_string(), "g3".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     multisig.propose("g1", 50_000, 1_700_000_000).unwrap();
@@ -119,6 +131,8 @@ fn override_not_applied_when_insufficient_signatures() {
         guardians: vec!["g1".to_string(), "g2".to_string(), "g3".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     multisig.propose("g1", 50_000, 1_700_000_000).unwrap();
@@ -140,6 +154,8 @@ fn override_not_applied_when_expired() {
         guardians: vec!["g1".to_string(), "g2".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
 
     multisig.propose("g1", 50_000, 1_700_000_000).unwrap();
@@ -161,6 +177,8 @@ fn apply_ready_override_records_audit_event() {
         guardians: vec!["g1".to_string()],
         pending_override: None,
         pending_guardian_change: None,
+        guardian_weights: Vec::new(),
+        required_approval_weight: 0,
     };
     multisig.propose("g1", 25_000, 1_700_000_000).unwrap();
     treasury.attach_multisig(multisig, 1_700_000_000);

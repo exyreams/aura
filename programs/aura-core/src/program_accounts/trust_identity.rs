@@ -11,7 +11,8 @@ use anchor_lang::prelude::*;
 
 use crate::{
     program_accounts::treasury_records::{
-        AgentAuthorityRecord, PendingOwnershipHandoverRecord, TrustConfigRecord,
+        AgentAuthorityRecord, AgentTripwireConfigRecord, PendingOwnershipHandoverRecord,
+        TrustConfigRecord,
     },
     state::trust::TrustTier,
 };
@@ -33,6 +34,8 @@ pub struct TrustIdentityAccount {
     #[max_len(8)]
     pub agents: Vec<AgentAuthorityRecord>,
     pub pending_ownership_handover: Option<PendingOwnershipHandoverRecord>,
+    /// Owner-tunable behavior-signal weights for the agent tripwire engine.
+    pub tripwire_config: AgentTripwireConfigRecord,
 }
 
 impl TrustIdentityAccount {
@@ -93,6 +96,49 @@ impl TrustIdentityAccount {
             self.trust_tier = new_tier as u8;
             self.tier_entered_at = now;
         }
+    }
+
+    /// Capability gate: validates a proposed action against the
+    /// matching agent's manifest, records agent stats, and on a breach registers
+    /// a behavior signal that escalates the trust tier (the tripwire→consequence
+    /// link). A no-op when the caller is the primary `ai_authority` (no matching
+    /// agent record) — that path is governed by the trust envelope alone.
+    pub fn enforce_and_record_agent_action(
+        &mut self,
+        key: &str,
+        chain: u8,
+        tx_type: u8,
+        protocol_id: Option<u8>,
+        amount_usd: u64,
+        now: i64,
+    ) -> core::result::Result<(), crate::TreasuryError> {
+        let outcome = {
+            let Some(agent) = self
+                .agents
+                .iter_mut()
+                .find(|a| a.enabled && a.key.to_string() == key)
+            else {
+                return Ok(());
+            };
+            agent.stats.actions_total = agent.stats.actions_total.saturating_add(1);
+            agent.stats.last_active_at = now;
+            let res = agent.scope.to_domain().check_capability(
+                chain,
+                tx_type,
+                protocol_id,
+                amount_usd,
+                now,
+            );
+            if res.is_err() {
+                agent.stats.denials = agent.stats.denials.saturating_add(1);
+            }
+            res
+        };
+        if outcome.is_err() {
+            let weight = self.tripwire_config.policy_denial_weight;
+            self.register_behavior_signal(weight, now);
+        }
+        outcome
     }
 
     pub fn register_behavior_signal(&mut self, weight: u16, now: i64) {

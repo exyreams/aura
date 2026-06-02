@@ -130,15 +130,26 @@ impl PendingGuardianChangeRecord {
     }
 }
 
+/// A guardian and its voting weight, stored inline in `MultisigConfigRecord`.
+/// Folding the weight into the guardian entry keeps the multisig record to a
+/// single guardian `Vec`, which matters for the treasury deserialization stack
+/// frame (the treasury sits at the SBF 4096-byte ceiling).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct MultisigGuardianRecord {
+    pub key: Pubkey,
+    pub weight: u16,
+}
+
 /// Serialized form of `EmergencyMultisig`.
 /// Guardian addresses are stored as `Pubkey` values rather than strings.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct MultisigConfigRecord {
     pub required_signatures: u8,
     #[max_len(10)]
-    pub guardians: Vec<Pubkey>,
+    pub guardians: Vec<MultisigGuardianRecord>,
     pub pending_override: Option<PendingOverrideRecord>,
     pub pending_guardian_change: Option<PendingGuardianChangeRecord>,
+    pub required_approval_weight: u16,
 }
 
 impl MultisigConfigRecord {
@@ -148,7 +159,13 @@ impl MultisigConfigRecord {
             guardians: domain
                 .guardians
                 .iter()
-                .map(|guardian| parse_pubkey(guardian))
+                .enumerate()
+                .map(|(i, guardian)| {
+                    Ok(MultisigGuardianRecord {
+                        key: parse_pubkey(guardian)?,
+                        weight: domain.guardian_weights.get(i).copied().unwrap_or(1),
+                    })
+                })
                 .collect::<Result<Vec<_>>>()?,
             pending_override: domain
                 .pending_override
@@ -160,13 +177,14 @@ impl MultisigConfigRecord {
                 .as_ref()
                 .map(PendingGuardianChangeRecord::from_domain)
                 .transpose()?,
+            required_approval_weight: domain.required_approval_weight,
         })
     }
 
     pub fn to_domain(&self) -> Result<EmergencyMultisig> {
         Ok(EmergencyMultisig {
             required_signatures: self.required_signatures as usize,
-            guardians: self.guardians.iter().map(ToString::to_string).collect(),
+            guardians: self.guardians.iter().map(|g| g.key.to_string()).collect(),
             pending_override: self
                 .pending_override
                 .as_ref()
@@ -176,6 +194,8 @@ impl MultisigConfigRecord {
                 .as_ref()
                 .map(PendingGuardianChangeRecord::to_domain)
                 .transpose()?,
+            guardian_weights: self.guardians.iter().map(|g| g.weight).collect(),
+            required_approval_weight: self.required_approval_weight,
         })
     }
 }

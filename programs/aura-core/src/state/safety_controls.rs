@@ -251,7 +251,14 @@ pub fn audit_lifecycle_label(state: AgentLifecycleState) -> &'static str {
 
 // Agent identity
 
-/// Allowed-scope constraints for a secondary agent authority.
+/// The capability manifest for a secondary agent authority — a bounded,
+/// declarative statement of *everything* the agent may do. Checked on every
+/// agent action; anything not granted is denied.
+///
+/// Bitmap / `Option` sentinels mean "unrestricted" so existing agents keep
+/// working: empty chain/tx-type lists, a `0` protocol/instruction bitmap, and
+/// `None` recipient/asset/window all mean "no restriction on this dimension".
+/// Tightening narrows a dimension; loosening widens it (timelocked).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AgentScope {
     /// Chain codes this agent may propose on; empty = all chains allowed.
@@ -260,6 +267,136 @@ pub struct AgentScope {
     pub allowed_tx_types: Vec<u8>,
     /// Optional per-agent daily spend cap (tighter than the global policy wins).
     pub daily_limit_usd: Option<u64>,
+    /// Allowed DeFi protocol bitmap (bit i = protocol id i); 0 = all protocols.
+    pub allowed_protocols: u64,
+    /// Allowed privileged-instruction bitmap; 0 = all instructions.
+    pub allowed_instructions: u32,
+    /// Optional per-agent per-transaction USD cap.
+    pub per_tx_limit_usd: Option<u64>,
+    /// Optional allow/deny address-list account this agent's recipients are
+    /// checked against; `None` = no recipient restriction.
+    pub recipient_list: Option<String>,
+    /// Optional asset allow-list account; `None` = no asset restriction.
+    pub allowed_assets: Option<String>,
+    /// Optional `(start, end)` active window (unix secs); `None` = always active.
+    pub active_window: Option<(i64, i64)>,
+}
+
+impl AgentScope {
+    /// Returns `true` if `protocol_id` is permitted by the protocol bitmap.
+    pub fn protocol_allowed(&self, protocol_id: Option<u8>) -> bool {
+        if self.allowed_protocols == 0 {
+            return true;
+        }
+        match protocol_id {
+            Some(id) if id < 64 => self.allowed_protocols & (1u64 << id) != 0,
+            // No protocol id supplied is fine; an out-of-range id is not.
+            Some(_) => false,
+            None => true,
+        }
+    }
+
+    /// Returns `true` if `instruction_bit` is permitted by the instruction bitmap.
+    pub fn instruction_allowed(&self, instruction_bit: u32) -> bool {
+        self.allowed_instructions == 0 || self.allowed_instructions & instruction_bit != 0
+    }
+
+    /// Returns `true` if `now` is inside the agent's active window (if any).
+    pub fn within_active_window(&self, now: i64) -> bool {
+        match self.active_window {
+            Some((start, end)) => now >= start && now <= end,
+            None => true,
+        }
+    }
+
+    /// Contract-enforced capability gate: validates a proposed action against
+    /// every manifest dimension that can be checked from on-chain proposal data.
+    /// `recipient_list` / `allowed_assets` are enforced via their address-list
+    /// accounts on the evaluator path, not here.
+    pub fn check_capability(
+        &self,
+        chain: u8,
+        tx_type: u8,
+        protocol_id: Option<u8>,
+        amount_usd: u64,
+        now: i64,
+    ) -> Result<(), crate::TreasuryError> {
+        use crate::TreasuryError::AgentCapabilityExceeded;
+        if !self.allowed_chains.is_empty() && !self.allowed_chains.contains(&chain) {
+            return Err(AgentCapabilityExceeded);
+        }
+        if !self.allowed_tx_types.is_empty() && !self.allowed_tx_types.contains(&tx_type) {
+            return Err(AgentCapabilityExceeded);
+        }
+        if !self.protocol_allowed(protocol_id) {
+            return Err(AgentCapabilityExceeded);
+        }
+        if !self.within_active_window(now) {
+            return Err(AgentCapabilityExceeded);
+        }
+        if let Some(cap) = self.per_tx_limit_usd {
+            if amount_usd > cap {
+                return Err(AgentCapabilityExceeded);
+            }
+        }
+        Ok(())
+    }
+
+    /// Returns `true` if `self` is no wider than `other` on every dimension —
+    /// i.e. setting the manifest to `self` is a tightening (or no-op), which may
+    /// be applied immediately. Widening any dimension is a loosening (timelocked).
+    pub fn is_tighter_or_equal_to(&self, other: &AgentScope) -> bool {
+        // A list constrains when non-empty; empty = unrestricted (widest).
+        let list_tighter = |new: &[u8], old: &[u8]| -> bool {
+            if old.is_empty() {
+                true // old unrestricted: any new (incl. empty) is ≤
+            } else if new.is_empty() {
+                false // new unrestricted but old wasn't: widening
+            } else {
+                new.iter().all(|c| old.contains(c))
+            }
+        };
+        let bitmap_tighter =
+            |new: u64, old: u64| -> bool { old == 0 || (new != 0 && new & !old == 0) };
+        let opt_cap_tighter = |new: Option<u64>, old: Option<u64>| -> bool {
+            match (new, old) {
+                (_, None) => true,        // old uncapped: any cap is ≤
+                (None, Some(_)) => false, // removing a cap is widening
+                (Some(n), Some(o)) => n <= o,
+            }
+        };
+        list_tighter(&self.allowed_chains, &other.allowed_chains)
+            && list_tighter(&self.allowed_tx_types, &other.allowed_tx_types)
+            && bitmap_tighter(self.allowed_protocols, other.allowed_protocols)
+            && bitmap_tighter(
+                u64::from(self.allowed_instructions),
+                u64::from(other.allowed_instructions),
+            )
+            && opt_cap_tighter(self.daily_limit_usd, other.daily_limit_usd)
+            && opt_cap_tighter(self.per_tx_limit_usd, other.per_tx_limit_usd)
+    }
+}
+
+/// On-chain telemetry for a single agent — its scorecard. Fed by the capability
+/// gate and read by owners, the trust engine, and analytics.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AgentStats {
+    /// Total actions attempted by this agent.
+    pub actions_total: u64,
+    /// Actions denied (capability or policy).
+    pub denials: u64,
+    /// Unix timestamp of the agent's most recent action.
+    pub last_active_at: i64,
+}
+
+impl AgentStats {
+    /// Denial rate in basis points (0 when no actions yet).
+    pub fn denial_rate_bps(&self) -> u16 {
+        if self.actions_total == 0 {
+            return 0;
+        }
+        ((self.denials.saturating_mul(10_000)) / self.actions_total) as u16
+    }
 }
 
 /// A scoped, enableable authority that can submit proposals on behalf of a
@@ -273,6 +410,11 @@ pub struct AgentAuthority {
     pub scope: AgentScope,
     pub enabled: bool,
     pub registered_at: i64,
+    /// On-chain action telemetry for this agent.
+    pub stats: AgentStats,
+    /// Unix timestamp before which a manifest *loosening* is not permitted.
+    /// Set by `arm_capability_loosen`; tightening ignores it.
+    pub loosen_unlock_at: i64,
 }
 
 /// Timelocked pending handover of treasury control to a new owner.

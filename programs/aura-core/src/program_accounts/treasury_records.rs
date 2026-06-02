@@ -49,6 +49,57 @@ pub struct AgentScopeRecord {
     #[max_len(8)]
     pub allowed_tx_types: Vec<u8>,
     pub daily_limit_usd: Option<u64>,
+    pub allowed_protocols: u64,
+    pub allowed_instructions: u32,
+    pub per_tx_limit_usd: Option<u64>,
+    pub recipient_list: Option<Pubkey>,
+    pub allowed_assets: Option<Pubkey>,
+    pub active_window: Option<AgentActiveWindowRecord>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct AgentActiveWindowRecord {
+    pub start: i64,
+    pub end: i64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct AgentStatsRecord {
+    pub actions_total: u64,
+    pub denials: u64,
+    pub last_active_at: i64,
+}
+
+/// Per-treasury behavior-signal weights (the agent tripwire engine).
+/// Owner-tunable via `set_agent_tripwires`; defaults match the hardcoded
+/// `BehaviorSignalKind` base weights.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct AgentTripwireConfigRecord {
+    pub policy_denial_weight: u16,
+    pub anomaly_weight: u16,
+    pub fail_open_abuse_weight: u16,
+    pub approval_miss_weight: u16,
+}
+
+impl Default for AgentTripwireConfigRecord {
+    fn default() -> Self {
+        Self {
+            policy_denial_weight: 10,
+            anomaly_weight: 25,
+            fail_open_abuse_weight: 40,
+            approval_miss_weight: 5,
+        }
+    }
+}
+
+impl AgentTripwireConfigRecord {
+    /// All weights must be non-zero for the tripwire engine to be meaningful.
+    pub fn is_valid(&self) -> bool {
+        self.policy_denial_weight > 0
+            && self.anomaly_weight > 0
+            && self.fail_open_abuse_weight > 0
+            && self.approval_miss_weight > 0
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
@@ -59,6 +110,40 @@ pub struct AgentAuthorityRecord {
     pub scope: AgentScopeRecord,
     pub enabled: bool,
     pub registered_at: i64,
+    pub stats: AgentStatsRecord,
+    pub loosen_unlock_at: i64,
+}
+
+impl AgentScopeRecord {
+    pub fn from_domain(s: &AgentScope) -> Result<Self> {
+        Ok(Self {
+            allowed_chains: s.allowed_chains.clone(),
+            allowed_tx_types: s.allowed_tx_types.clone(),
+            daily_limit_usd: s.daily_limit_usd,
+            allowed_protocols: s.allowed_protocols,
+            allowed_instructions: s.allowed_instructions,
+            per_tx_limit_usd: s.per_tx_limit_usd,
+            recipient_list: s.recipient_list.as_deref().map(parse_pubkey).transpose()?,
+            allowed_assets: s.allowed_assets.as_deref().map(parse_pubkey).transpose()?,
+            active_window: s
+                .active_window
+                .map(|(start, end)| AgentActiveWindowRecord { start, end }),
+        })
+    }
+
+    pub fn to_domain(&self) -> AgentScope {
+        AgentScope {
+            allowed_chains: self.allowed_chains.clone(),
+            allowed_tx_types: self.allowed_tx_types.clone(),
+            daily_limit_usd: self.daily_limit_usd,
+            allowed_protocols: self.allowed_protocols,
+            allowed_instructions: self.allowed_instructions,
+            per_tx_limit_usd: self.per_tx_limit_usd,
+            recipient_list: self.recipient_list.map(|k| k.to_string()),
+            allowed_assets: self.allowed_assets.map(|k| k.to_string()),
+            active_window: self.active_window.as_ref().map(|w| (w.start, w.end)),
+        }
+    }
 }
 
 impl AgentAuthorityRecord {
@@ -66,13 +151,15 @@ impl AgentAuthorityRecord {
         Ok(Self {
             key: parse_pubkey(&d.key)?,
             label: d.label.clone(),
-            scope: AgentScopeRecord {
-                allowed_chains: d.scope.allowed_chains.clone(),
-                allowed_tx_types: d.scope.allowed_tx_types.clone(),
-                daily_limit_usd: d.scope.daily_limit_usd,
-            },
+            scope: AgentScopeRecord::from_domain(&d.scope)?,
             enabled: d.enabled,
             registered_at: d.registered_at,
+            stats: AgentStatsRecord {
+                actions_total: d.stats.actions_total,
+                denials: d.stats.denials,
+                last_active_at: d.stats.last_active_at,
+            },
+            loosen_unlock_at: d.loosen_unlock_at,
         })
     }
 
@@ -80,13 +167,15 @@ impl AgentAuthorityRecord {
         AgentAuthority {
             key: self.key.to_string(),
             label: self.label.clone(),
-            scope: AgentScope {
-                allowed_chains: self.scope.allowed_chains.clone(),
-                allowed_tx_types: self.scope.allowed_tx_types.clone(),
-                daily_limit_usd: self.scope.daily_limit_usd,
-            },
+            scope: self.scope.to_domain(),
             enabled: self.enabled,
             registered_at: self.registered_at,
+            stats: crate::state::AgentStats {
+                actions_total: self.stats.actions_total,
+                denials: self.stats.denials,
+                last_active_at: self.stats.last_active_at,
+            },
+            loosen_unlock_at: self.loosen_unlock_at,
         }
     }
 }
