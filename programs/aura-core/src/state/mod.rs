@@ -25,6 +25,7 @@ mod receipt;
 mod reputation;
 mod safety_controls;
 mod swarm;
+pub mod trust;
 
 pub use agent_treasury::AgentTreasury;
 pub use confidential::ConfidentialGuardrails;
@@ -44,9 +45,11 @@ pub use pending::{
 pub use receipt::ExecutionReceipt;
 pub use reputation::AgentReputation;
 pub use safety_controls::{
-    AgentLifecycleState, CircuitBreakerConfig, CircuitBreakerState, ComplianceMetadata,
-    ConfigChangeKind, DeadMansSwitch, GuardianChangeAction, PendingAiRotation, PendingConfigChange,
-    PendingGuardianChange, RecoveryDestination, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
-    REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
+    AgentAuthority, AgentLifecycleState, AgentScope, CircuitBreakerConfig, CircuitBreakerState,
+    ComplianceMetadata, ConfigChangeKind, DeadMansSwitch, GuardianChangeAction, PendingAiRotation,
+    PendingConfigChange, PendingGuardianChange, PendingOwnershipHandover, RecoveryDestination,
+    REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD, REG_FLAG_HIGH_RISK_COUNTERPARTY,
+    REG_FLAG_REQUIRES_KYC,
 };
 pub use swarm::AgentSwarm;
+pub use trust::{BehaviorSignalKind, TrustConfig, TrustTier};

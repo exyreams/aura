@@ -76,6 +76,28 @@ pub enum TreasuryError {
     RecipientRejected,
     /// Statistical anomaly was detected and configured to deny.
     AnomalyDetected,
+    /// The treasury is in trust Lockdown; no proposals may be submitted.
+    TrustLockdownActive,
+    /// Trust-policy configuration is invalid (thresholds not monotonic, etc.).
+    InvalidTrustPolicy,
+    /// Caller is not authorized to restore trust (must be owner or guardian quorum).
+    TrustRestoreUnauthorized,
+    /// No successor owner has been nominated.
+    SuccessorNotNominated,
+    /// Ownership handover timelock has not yet elapsed.
+    OwnershipHandoverTimelockActive,
+    /// The proposal exceeds what the agent's scope permits.
+    AgentScopeExceeded,
+    /// The agent authority is disabled.
+    AgentDisabled,
+    /// Treasury already has the maximum number of agent authorities.
+    TooManyAgents,
+    /// Caller is not authorized to execute the ownership handover.
+    UnauthorizedHandover,
+    /// An agent with this key is already registered.
+    AgentAlreadyRegistered,
+    /// No agent with this key found.
+    AgentNotFound,
     /// No recovery destination has been registered for the requested chain.
     NoRecoveryDestination,
     /// The recovery destination is locked and cannot be changed until the
@@ -146,6 +168,21 @@ impl Display for TreasuryError {
             Self::ParentLimitExceeded => write!(f, "parent treasury limit exceeded"),
             Self::RecipientRejected => write!(f, "recipient rejected by address controls"),
             Self::AnomalyDetected => write!(f, "anomaly detected in transaction pattern"),
+            Self::TrustLockdownActive => write!(f, "treasury is in trust lockdown"),
+            Self::InvalidTrustPolicy => write!(f, "trust policy configuration is invalid"),
+            Self::TrustRestoreUnauthorized => {
+                write!(f, "caller is not authorized to restore trust")
+            }
+            Self::SuccessorNotNominated => write!(f, "no successor owner nominated"),
+            Self::OwnershipHandoverTimelockActive => {
+                write!(f, "ownership handover timelock has not elapsed")
+            }
+            Self::AgentScopeExceeded => write!(f, "proposal exceeds agent scope"),
+            Self::AgentDisabled => write!(f, "agent authority is disabled"),
+            Self::TooManyAgents => write!(f, "maximum number of agent authorities reached"),
+            Self::UnauthorizedHandover => write!(f, "not authorized to execute ownership handover"),
+            Self::AgentAlreadyRegistered => write!(f, "agent with this key already registered"),
+            Self::AgentNotFound => write!(f, "agent with this key not found"),
             Self::NoRecoveryDestination => {
                 write!(f, "no recovery destination registered for chain")
             }

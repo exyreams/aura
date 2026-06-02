@@ -97,6 +97,7 @@ pub fn simulate_policy(ctx: Context<SimulatePolicy>, args: SimulatePolicyArgs) -
             .swarm
             .as_ref()
             .map(|swarm| swarm.total_swarm_spent_usd),
+        tier_multiplier_bps: domain.tier_multiplier_bps,
     };
     let decision = evaluate_policy_without_spend_mutation(
         &domain.policy_config,

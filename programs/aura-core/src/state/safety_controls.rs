@@ -249,6 +249,52 @@ pub fn audit_lifecycle_label(state: AgentLifecycleState) -> &'static str {
     }
 }
 
+// ── Agent identity ───────────────────────────────────────────────────────────
+
+/// Allowed-scope constraints for a secondary agent authority.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AgentScope {
+    /// Chain codes this agent may propose on; empty = all chains allowed.
+    pub allowed_chains: Vec<u8>,
+    /// Transaction-type codes this agent may propose; empty = all types.
+    pub allowed_tx_types: Vec<u8>,
+    /// Optional per-agent daily spend cap (tighter than the global policy wins).
+    pub daily_limit_usd: Option<u64>,
+}
+
+/// A scoped, enableable authority that can submit proposals on behalf of a
+/// treasury alongside (or instead of) the primary `ai_authority`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentAuthority {
+    /// Pubkey of the agent, stored as a string.
+    pub key: String,
+    /// Human-readable label (max 32 chars).
+    pub label: String,
+    pub scope: AgentScope,
+    pub enabled: bool,
+    pub registered_at: i64,
+}
+
+/// Timelocked pending handover of treasury control to a new owner.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingOwnershipHandover {
+    pub successor_owner: String,
+    pub proposed_at: i64,
+    pub executable_after: i64,
+    pub proposed_by: String,
+}
+
+impl PendingOwnershipHandover {
+    pub fn new(successor_owner: String, proposed_at: i64, proposed_by: String) -> Self {
+        Self {
+            successor_owner,
+            proposed_at,
+            executable_after: proposed_at + crate::constants::OWNERSHIP_HANDOVER_TIMELOCK_SECS,
+            proposed_by,
+        }
+    }
+}
+
 /// A pre-registered cold-wallet address on a specific chain used as the sole
 /// permitted destination when `break_glass_recover` sweeps funds out.
 ///

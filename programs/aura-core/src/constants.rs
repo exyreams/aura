@@ -128,3 +128,9 @@ pub const RECOVERY_DESTINATION_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
 /// Minimum elapsed time after `emergency_shutdown` before `break_glass_recover`
 /// can be called (gives the legitimate owner a reaction window).
 pub const RECOVERY_ACTIVATION_SECS: i64 = 3_600;
+/// Maximum secondary agent authorities on one treasury.
+pub const MAX_AGENTS: usize = 8;
+/// Timelock before an ownership handover can be executed.
+pub const OWNERSHIP_HANDOVER_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SECS;
+/// PDA seed for the per-treasury trust + identity account.
+pub const TRUST_IDENTITY_SEED: &[u8] = b"trust_identity";

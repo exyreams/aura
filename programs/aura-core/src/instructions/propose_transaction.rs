@@ -17,6 +17,7 @@ use crate::{
         DWalletAccount, ExposureGroupAccount, SessionKeyAccount, SwarmPoolAccount, TreasuryAccount,
     },
     state::{ChainExecutionBinding, TransferDetails},
+    AuraCoreError,
 };
 
 /// Instruction data for `propose_transaction`.
@@ -110,6 +111,11 @@ pub struct ProposeTransaction<'info> {
     #[account(mut)]
     pub dwallet_state: Option<Box<Account<'info, DWalletAccount>>>,
     pub chain_profile: Option<Box<Account<'info, ChainProfileAccount>>>,
+    /// Optional trust + identity PDA.  When provided: enforces trust-tier
+    /// lockdown and validates secondary-agent scopes.  When absent: falls back
+    /// to `ai_authority`-only check with no tier enforcement.
+    #[account(mut)]
+    pub trust_identity: Option<Box<Account<'info, crate::program_accounts::TrustIdentityAccount>>>,
 }
 
 /// Proposes a public (non-confidential) transaction.
@@ -118,7 +124,25 @@ pub struct ProposeTransaction<'info> {
 /// pending transaction. No FHE evaluation or decryption step is needed;
 /// `execute_pending` can be called immediately after this instruction.
 pub fn handler(ctx: Context<ProposeTransaction>, args: ProposeTransactionArgs) -> Result<()> {
+    // ── Trust + identity checks (optional TrustIdentityAccount) ──────────────
+    let ai_key = ctx.accounts.ai_authority.key().to_string();
+    if let Some(ti) = ctx.accounts.trust_identity.as_mut() {
+        ti.apply_trust_decay(args.current_timestamp);
+        require!(!ti.is_lockdown(), AuraCoreError::TrustLockdownActive);
+        if !ti.agents.is_empty() {
+            let ai_authority_str = ctx.accounts.treasury.ai_authority.to_string();
+            require!(
+                ti.is_authorized_agent(&ai_key, &ai_authority_str, args.target_chain, args.tx_type),
+                AuraCoreError::AgentScopeExceeded
+            );
+        }
+    }
+
     let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
+    // Inject tier multiplier so the policy engine applies the trust-tier haircut.
+    if let Some(ref ti) = ctx.accounts.trust_identity {
+        domain.tier_multiplier_bps = Some(ti.tier_multiplier_bps());
+    }
     let mut transfer = args.transfer_details();
     validate_transfer_details(&transfer)?;
     let target_chain = chain_from_code(args.target_chain)?;

@@ -207,6 +207,30 @@ pub enum AuraCoreError {
     SettlementReorged,
     #[msg("chain profile is not registered or enabled")]
     ChainProfileNotRegistered,
+    #[msg("treasury is in trust lockdown; no proposals may be submitted")]
+    TrustLockdownActive,
+    #[msg(
+        "trust policy configuration is invalid (thresholds must be monotonic, multipliers ≤ 1×)"
+    )]
+    InvalidTrustPolicy,
+    #[msg("caller is not authorized to restore trust")]
+    TrustRestoreUnauthorized,
+    #[msg("no successor owner has been nominated")]
+    SuccessorNotNominated,
+    #[msg("ownership handover timelock has not elapsed")]
+    OwnershipHandoverTimelockActive,
+    #[msg("proposal exceeds what this agent's scope permits")]
+    AgentScopeExceeded,
+    #[msg("agent authority is disabled")]
+    AgentDisabled,
+    #[msg("treasury already has the maximum number of agent authorities")]
+    TooManyAgents,
+    #[msg("caller is not authorized to execute the ownership handover")]
+    UnauthorizedHandover,
+    #[msg("an agent with this key is already registered")]
+    AgentAlreadyRegistered,
+    #[msg("no agent with this key found on the treasury")]
+    AgentNotFound,
     #[msg("no recovery destination registered for this chain")]
     NoRecoveryDestination,
     #[msg("recovery destination is locked; wait for the timelock to elapse")]
@@ -274,6 +298,19 @@ pub fn map_treasury_error(error: TreasuryError) -> anchor_lang::error::Error {
         TreasuryError::ParentLimitExceeded => error!(AuraCoreError::ParentLimitExceeded),
         TreasuryError::RecipientRejected => error!(AuraCoreError::RecipientBlacklisted),
         TreasuryError::AnomalyDetected => error!(AuraCoreError::AnomalyDetected),
+        TreasuryError::TrustLockdownActive => error!(AuraCoreError::TrustLockdownActive),
+        TreasuryError::InvalidTrustPolicy => error!(AuraCoreError::InvalidTrustPolicy),
+        TreasuryError::TrustRestoreUnauthorized => error!(AuraCoreError::TrustRestoreUnauthorized),
+        TreasuryError::SuccessorNotNominated => error!(AuraCoreError::SuccessorNotNominated),
+        TreasuryError::OwnershipHandoverTimelockActive => {
+            error!(AuraCoreError::OwnershipHandoverTimelockActive)
+        }
+        TreasuryError::AgentScopeExceeded => error!(AuraCoreError::AgentScopeExceeded),
+        TreasuryError::AgentDisabled => error!(AuraCoreError::AgentDisabled),
+        TreasuryError::TooManyAgents => error!(AuraCoreError::TooManyAgents),
+        TreasuryError::UnauthorizedHandover => error!(AuraCoreError::UnauthorizedHandover),
+        TreasuryError::AgentAlreadyRegistered => error!(AuraCoreError::AgentAlreadyRegistered),
+        TreasuryError::AgentNotFound => error!(AuraCoreError::AgentNotFound),
         TreasuryError::NoRecoveryDestination => error!(AuraCoreError::NoRecoveryDestination),
         TreasuryError::RecoveryTimelockActive => error!(AuraCoreError::RecoveryTimelockActive),
         TreasuryError::RecoveryPreconditionNotMet => {

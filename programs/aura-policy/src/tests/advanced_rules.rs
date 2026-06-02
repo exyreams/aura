@@ -39,6 +39,7 @@ fn reputation_policy_scales_the_daily_limit() {
             transaction: tx,
             reputation_score: Some(90),
             shared_spent_usd: None,
+            tier_multiplier_bps: None,
         },
     );
 
@@ -207,6 +208,7 @@ fn shared_pool_limit_blocks_swarm_overspend() {
             transaction: tx,
             reputation_score: None,
             shared_spent_usd: Some(2_700),
+            tier_multiplier_bps: None,
         },
     );
 

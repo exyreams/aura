@@ -102,7 +102,13 @@ pub fn evaluate_transaction(
 ) -> PolicyDecision {
     let tx = &context.transaction;
     let mut state = normalize_state(previous_state, tx.current_timestamp);
-    let effective_daily_limit_usd = config.effective_daily_limit_usd(context.reputation_score);
+    let effective_daily_limit_usd = {
+        let rep_limit = config.effective_daily_limit_usd(context.reputation_score);
+        match context.tier_multiplier_bps {
+            Some(bps) if bps < 10_000 => rep_limit.saturating_mul(bps) / 10_000,
+            _ => rep_limit,
+        }
+    };
     let (risk_score, risk_factors) = compute_risk_score(tx, config, &state);
     let regulatory_flags = compute_regulatory_flags(tx);
     let mut trace = Vec::new();
@@ -700,7 +706,13 @@ pub fn evaluate_public_precheck(
 ) -> PolicyDecision {
     let tx = &context.transaction;
     let mut state = normalize_state(previous_state, tx.current_timestamp);
-    let effective_daily_limit_usd = config.effective_daily_limit_usd(context.reputation_score);
+    let effective_daily_limit_usd = {
+        let rep_limit = config.effective_daily_limit_usd(context.reputation_score);
+        match context.tier_multiplier_bps {
+            Some(bps) if bps < 10_000 => rep_limit.saturating_mul(bps) / 10_000,
+            _ => rep_limit,
+        }
+    };
     let (risk_score, risk_factors) = compute_risk_score(tx, config, &state);
     let regulatory_flags = compute_regulatory_flags(tx);
     let mut trace = Vec::new();

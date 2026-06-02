@@ -46,38 +46,41 @@ pub mod state;
 pub use instructions::*;
 #[allow(unused_imports)]
 use instructions::{
-    __client_accounts_abandon_proposal, __client_accounts_apply_policy_preset,
-    __client_accounts_apply_policy_template, __client_accounts_approve_pending_execution,
-    __client_accounts_attest_policy, __client_accounts_break_glass_recover,
-    __client_accounts_break_glass_transfer_authority, __client_accounts_cancel_pending,
-    __client_accounts_check_invariants, __client_accounts_check_policy_cpi,
-    __client_accounts_clear_scheduled_intent_in_flight, __client_accounts_close_activity_log,
-    __client_accounts_close_address_list, __client_accounts_close_conditional_proposal,
-    __client_accounts_close_exposure_group, __client_accounts_close_external_liveness,
-    __client_accounts_close_fee_vault, __client_accounts_close_health_score,
-    __client_accounts_close_policy_history, __client_accounts_close_policy_template,
-    __client_accounts_close_scheduled_intent, __client_accounts_close_session_key,
-    __client_accounts_close_snapshot, __client_accounts_close_swarm_pool,
-    __client_accounts_collect_fees, __client_accounts_collect_override_signature,
-    __client_accounts_configure_approval_ladder, __client_accounts_configure_budget_envelope,
+    __client_accounts_abandon_proposal, __client_accounts_agent_manage,
+    __client_accounts_apply_policy_preset, __client_accounts_apply_policy_template,
+    __client_accounts_approve_pending_execution, __client_accounts_attest_policy,
+    __client_accounts_break_glass_recover, __client_accounts_break_glass_transfer_authority,
+    __client_accounts_cancel_pending, __client_accounts_check_invariants,
+    __client_accounts_check_policy_cpi, __client_accounts_clear_scheduled_intent_in_flight,
+    __client_accounts_close_activity_log, __client_accounts_close_address_list,
+    __client_accounts_close_conditional_proposal, __client_accounts_close_exposure_group,
+    __client_accounts_close_external_liveness, __client_accounts_close_fee_vault,
+    __client_accounts_close_health_score, __client_accounts_close_policy_history,
+    __client_accounts_close_policy_template, __client_accounts_close_scheduled_intent,
+    __client_accounts_close_session_key, __client_accounts_close_snapshot,
+    __client_accounts_close_swarm_pool, __client_accounts_collect_fees,
+    __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
+    __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
     __client_accounts_confirm_settlement, __client_accounts_create_policy_template,
     __client_accounts_create_scheduled_intent, __client_accounts_create_treasury,
     __client_accounts_dwallet_control, __client_accounts_dwallet_spend,
+    __client_accounts_emergency_revoke_agent, __client_accounts_execute_ownership_handover,
     __client_accounts_execute_pending, __client_accounts_execute_scheduled_intent,
     __client_accounts_finalize_execution, __client_accounts_grant_operator_role,
     __client_accounts_init_activity_log, __client_accounts_init_address_list,
     __client_accounts_init_dwallet_state, __client_accounts_init_exposure_group,
     __client_accounts_init_external_liveness, __client_accounts_init_fee_vault,
     __client_accounts_init_health_score, __client_accounts_init_policy_history,
-    __client_accounts_init_swarm_pool, __client_accounts_issue_session_key,
-    __client_accounts_join_exposure_group, __client_accounts_join_swarm,
-    __client_accounts_manage_address_list, __client_accounts_manage_exposure_group,
-    __client_accounts_manage_policy_template, __client_accounts_manage_scheduled_intent,
-    __client_accounts_manage_swarm, __client_accounts_mark_settlement_broadcast,
-    __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
+    __client_accounts_init_swarm_pool, __client_accounts_init_trust_identity,
+    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
+    __client_accounts_join_swarm, __client_accounts_manage_address_list,
+    __client_accounts_manage_exposure_group, __client_accounts_manage_policy_template,
+    __client_accounts_manage_scheduled_intent, __client_accounts_manage_swarm,
+    __client_accounts_mark_settlement_broadcast, __client_accounts_migrate_treasury,
+    __client_accounts_owner_treasury, __client_accounts_ownership_handover,
     __client_accounts_pause_execution, __client_accounts_propose_batch,
     __client_accounts_propose_conditional_transaction,
     __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
@@ -90,11 +93,12 @@ use instructions::{
     __client_accounts_revoke_session_key, __client_accounts_set_default_chain,
     __client_accounts_set_scoped_pause, __client_accounts_simulate_policy,
     __client_accounts_take_snapshot, __client_accounts_trigger_dead_mans_switch,
-    __client_accounts_try_trigger, __client_accounts_update_chain_profile,
-    __client_accounts_update_fee_recipient, __client_accounts_update_health_score,
-    __client_accounts_update_operator_role, __client_accounts_update_session_key,
-    __client_accounts_veto_config_change, __client_accounts_write_policy_receipt,
-    __cpi_client_accounts_abandon_proposal, __cpi_client_accounts_apply_policy_preset,
+    __client_accounts_trust_envelope_config, __client_accounts_try_trigger,
+    __client_accounts_update_chain_profile, __client_accounts_update_fee_recipient,
+    __client_accounts_update_health_score, __client_accounts_update_operator_role,
+    __client_accounts_update_session_key, __client_accounts_veto_config_change,
+    __client_accounts_write_policy_receipt, __cpi_client_accounts_abandon_proposal,
+    __cpi_client_accounts_agent_manage, __cpi_client_accounts_apply_policy_preset,
     __cpi_client_accounts_apply_policy_template, __cpi_client_accounts_approve_pending_execution,
     __cpi_client_accounts_attest_policy, __cpi_client_accounts_break_glass_recover,
     __cpi_client_accounts_break_glass_transfer_authority, __cpi_client_accounts_cancel_pending,
@@ -116,18 +120,20 @@ use instructions::{
     __cpi_client_accounts_confirm_settlement, __cpi_client_accounts_create_policy_template,
     __cpi_client_accounts_create_scheduled_intent, __cpi_client_accounts_create_treasury,
     __cpi_client_accounts_dwallet_control, __cpi_client_accounts_dwallet_spend,
+    __cpi_client_accounts_emergency_revoke_agent, __cpi_client_accounts_execute_ownership_handover,
     __cpi_client_accounts_execute_pending, __cpi_client_accounts_execute_scheduled_intent,
     __cpi_client_accounts_finalize_execution, __cpi_client_accounts_grant_operator_role,
     __cpi_client_accounts_init_activity_log, __cpi_client_accounts_init_address_list,
     __cpi_client_accounts_init_dwallet_state, __cpi_client_accounts_init_exposure_group,
     __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_init_fee_vault,
     __cpi_client_accounts_init_health_score, __cpi_client_accounts_init_policy_history,
-    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_issue_session_key,
-    __cpi_client_accounts_join_exposure_group, __cpi_client_accounts_join_swarm,
-    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_manage_exposure_group,
-    __cpi_client_accounts_manage_policy_template, __cpi_client_accounts_manage_scheduled_intent,
-    __cpi_client_accounts_manage_swarm, __cpi_client_accounts_mark_settlement_broadcast,
-    __cpi_client_accounts_migrate_treasury, __cpi_client_accounts_owner_treasury,
+    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_init_trust_identity,
+    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
+    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
+    __cpi_client_accounts_manage_exposure_group, __cpi_client_accounts_manage_policy_template,
+    __cpi_client_accounts_manage_scheduled_intent, __cpi_client_accounts_manage_swarm,
+    __cpi_client_accounts_mark_settlement_broadcast, __cpi_client_accounts_migrate_treasury,
+    __cpi_client_accounts_owner_treasury, __cpi_client_accounts_ownership_handover,
     __cpi_client_accounts_pause_execution, __cpi_client_accounts_propose_batch,
     __cpi_client_accounts_propose_conditional_transaction,
     __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
@@ -140,11 +146,11 @@ use instructions::{
     __cpi_client_accounts_revoke_operator_role, __cpi_client_accounts_revoke_session_key,
     __cpi_client_accounts_set_default_chain, __cpi_client_accounts_set_scoped_pause,
     __cpi_client_accounts_simulate_policy, __cpi_client_accounts_take_snapshot,
-    __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_try_trigger,
-    __cpi_client_accounts_update_chain_profile, __cpi_client_accounts_update_fee_recipient,
-    __cpi_client_accounts_update_health_score, __cpi_client_accounts_update_operator_role,
-    __cpi_client_accounts_update_session_key, __cpi_client_accounts_veto_config_change,
-    __cpi_client_accounts_write_policy_receipt,
+    __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_trust_envelope_config,
+    __cpi_client_accounts_try_trigger, __cpi_client_accounts_update_chain_profile,
+    __cpi_client_accounts_update_fee_recipient, __cpi_client_accounts_update_health_score,
+    __cpi_client_accounts_update_operator_role, __cpi_client_accounts_update_session_key,
+    __cpi_client_accounts_veto_config_change, __cpi_client_accounts_write_policy_receipt,
 };
 
 declare_id!("auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce");
@@ -162,6 +168,51 @@ pub mod aura_core {
         args: RegisterDwalletArgs,
     ) -> Result<()> {
         instructions::register_dwallet::handler(ctx, args)
+    }
+
+    pub fn init_trust_identity(ctx: Context<InitTrustIdentity>, now: i64) -> Result<()> {
+        instructions::trust_envelope::init_trust_identity(ctx, now)
+    }
+
+    pub fn configure_trust_policy(
+        ctx: Context<TrustEnvelopeConfig>,
+        args: ConfigureTrustPolicyArgs,
+    ) -> Result<()> {
+        instructions::trust_envelope::configure_trust_policy(ctx, args)
+    }
+
+    pub fn restore_trust(ctx: Context<TrustEnvelopeConfig>, now: i64) -> Result<()> {
+        instructions::trust_envelope::restore_trust(ctx, now)
+    }
+
+    pub fn register_agent(ctx: Context<AgentManage>, args: RegisterAgentArgs) -> Result<()> {
+        instructions::agent_identity::register_agent(ctx, args)
+    }
+
+    pub fn revoke_agent(ctx: Context<AgentManage>, key: Pubkey, now: i64) -> Result<()> {
+        instructions::agent_identity::revoke_agent(ctx, key, now)
+    }
+
+    pub fn emergency_revoke_agent(
+        ctx: Context<EmergencyRevokeAgent>,
+        key: Pubkey,
+        now: i64,
+    ) -> Result<()> {
+        instructions::agent_identity::emergency_revoke_agent(ctx, key, now)
+    }
+
+    pub fn nominate_successor_owner(
+        ctx: Context<OwnershipHandover>,
+        args: NominateSuccessorArgs,
+    ) -> Result<()> {
+        instructions::agent_identity::nominate_successor_owner(ctx, args)
+    }
+
+    pub fn execute_ownership_handover(
+        ctx: Context<ExecuteOwnershipHandover>,
+        args: ExecuteHandoverArgs,
+    ) -> Result<()> {
+        instructions::agent_identity::execute_ownership_handover(ctx, args)
     }
 
     pub fn register_recovery_destination(

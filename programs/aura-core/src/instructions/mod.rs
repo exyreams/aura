@@ -5,6 +5,7 @@
 /// while this index re-exports the stable public instruction surface.
 pub mod activity_log;
 pub mod address_lists;
+pub mod agent_identity;
 pub mod apply_policy_preset;
 pub mod approval_ladder;
 pub mod batch_execution;
@@ -46,6 +47,7 @@ pub mod session_keys;
 pub mod snapshots;
 pub mod swarm_pool;
 pub mod treasury_admin;
+pub mod trust_envelope;
 pub mod wallet_balances;
 pub mod wallet_controls;
 pub mod wallet_transfers;
@@ -60,6 +62,16 @@ pub(crate) use address_lists::{
     __client_accounts_close_address_list, __client_accounts_init_address_list,
     __client_accounts_manage_address_list, __cpi_client_accounts_close_address_list,
     __cpi_client_accounts_init_address_list, __cpi_client_accounts_manage_address_list,
+};
+pub use agent_identity::{
+    AgentManage, EmergencyRevokeAgent, ExecuteHandoverArgs, ExecuteOwnershipHandover,
+    NominateSuccessorArgs, OwnershipHandover, RegisterAgentArgs,
+};
+pub(crate) use agent_identity::{
+    __client_accounts_agent_manage, __client_accounts_emergency_revoke_agent,
+    __client_accounts_execute_ownership_handover, __client_accounts_ownership_handover,
+    __cpi_client_accounts_agent_manage, __cpi_client_accounts_emergency_revoke_agent,
+    __cpi_client_accounts_execute_ownership_handover, __cpi_client_accounts_ownership_handover,
 };
 pub use apply_policy_preset::{ApplyPolicyPreset, ApplyPolicyPresetArgs};
 pub(crate) use apply_policy_preset::{
@@ -289,6 +301,12 @@ pub(crate) use treasury_admin::{
     __client_accounts_owner_treasury, __client_accounts_trigger_dead_mans_switch,
     __client_accounts_veto_config_change, __cpi_client_accounts_owner_treasury,
     __cpi_client_accounts_trigger_dead_mans_switch, __cpi_client_accounts_veto_config_change,
+};
+pub use trust_envelope::InitTrustIdentity;
+pub use trust_envelope::{ConfigureTrustPolicyArgs, TrustEnvelopeConfig};
+pub(crate) use trust_envelope::{
+    __client_accounts_init_trust_identity, __client_accounts_trust_envelope_config,
+    __cpi_client_accounts_init_trust_identity, __cpi_client_accounts_trust_envelope_config,
 };
 pub use wallet_balances::{
     RefreshVerifiedAssetBalance, RefreshVerifiedAssetBalanceArgs, SetAssetOracleFeedArgs,

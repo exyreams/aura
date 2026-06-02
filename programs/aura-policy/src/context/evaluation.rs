@@ -14,6 +14,10 @@ pub struct PolicyEvaluationContext {
     /// Total USD already spent by all members of the agent's swarm, used for
     /// the shared-pool limit check. `None` if the agent is not in a swarm.
     pub shared_spent_usd: Option<u64>,
+    /// Trust-tier effective-limit multiplier in basis points (10_000 = 1×).
+    /// Applied on top of the reputation multiplier: `limit × rep_bps × tier_bps / 10_000²`.
+    /// `None` is treated as 10_000 (no adjustment — Trusted tier default).
+    pub tier_multiplier_bps: Option<u64>,
 }
 
 impl From<TransactionContext> for PolicyEvaluationContext {
@@ -22,6 +26,7 @@ impl From<TransactionContext> for PolicyEvaluationContext {
             transaction,
             reputation_score: None,
             shared_spent_usd: None,
+            tier_multiplier_bps: None,
         }
     }
 }

@@ -20,13 +20,13 @@ use crate::{
     governance::{EmergencyMultisig, OverrideProposal},
     program_error::{map_treasury_error, AuraCoreError},
     state::{
-        AgentLifecycleState, AgentReputation, AgentSwarm, AgentTreasury, ChainExecutionBinding,
-        CircuitBreakerConfig, CircuitBreakerState, ComplianceMetadata, ConfidentialGuardrails,
-        ConfigChangeKind, DWalletCurve, DWalletReference, DeadMansSwitch, GuardianChangeAction,
-        OracleFeed, OracleProvider, PendingAiRotation, PendingConfigChange,
-        PendingDecryptionRequest, PendingGuardianChange, PendingSignatureRequest,
-        PendingTransaction, ProposalStatus, ProtocolDeployment, ProtocolFees, RecoveryDestination,
-        SignatureScheme, TransferDetails,
+        AgentAuthority, AgentLifecycleState, AgentReputation, AgentScope, AgentSwarm,
+        AgentTreasury, ChainExecutionBinding, CircuitBreakerConfig, CircuitBreakerState,
+        ComplianceMetadata, ConfidentialGuardrails, ConfigChangeKind, DWalletCurve,
+        DWalletReference, DeadMansSwitch, GuardianChangeAction, OracleFeed, OracleProvider,
+        PendingAiRotation, PendingConfigChange, PendingDecryptionRequest, PendingGuardianChange,
+        PendingOwnershipHandover, PendingSignatureRequest, PendingTransaction, ProposalStatus,
+        ProtocolDeployment, ProtocolFees, RecoveryDestination, SignatureScheme, TransferDetails,
     },
 };
 
@@ -51,6 +51,7 @@ mod wallet_records;
 
 pub use attestation_records::*;
 pub use auxiliary_accounts::*;
+pub mod trust_identity;
 pub use batch_records::*;
 pub use chain_profile_records::*;
 pub use codecs::*;
@@ -66,6 +67,7 @@ pub use schedule_records::*;
 pub use template_records::*;
 pub use treasury::*;
 pub use treasury_records::*;
+pub use trust_identity::{TrustIdentityAccount, TRUST_IDENTITY_SPACE};
 pub use wallet_records::*;
 
 #[cfg(test)]

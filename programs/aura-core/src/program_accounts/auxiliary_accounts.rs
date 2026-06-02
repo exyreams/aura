@@ -334,6 +334,14 @@ pub fn audit_kind_code(kind: &AuditKind) -> u8 {
         AuditKind::RecoveryDestinationSet => 37,
         AuditKind::BreakGlassRecovered => 38,
         AuditKind::CustodyTransferred => 39,
+        AuditKind::TrustTierEscalated => 40,
+        AuditKind::TrustTierDeescalated => 41,
+        AuditKind::TrustLockdownEngaged => 42,
+        AuditKind::TrustRestored => 43,
+        AuditKind::AgentRegistered => 44,
+        AuditKind::AgentRevoked => 45,
+        AuditKind::OwnershipHandoverNominated => 46,
+        AuditKind::OwnershipHandoverExecuted => 47,
     }
 }
 

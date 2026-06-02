@@ -89,6 +89,22 @@ pub enum AuditKind {
     /// Emitted when `break_glass_transfer_authority` hands dWallet ownership
     /// to a new authority via CPI.
     CustodyTransferred,
+    /// Emitted when the trust tier escalates due to accumulated threat score.
+    TrustTierEscalated,
+    /// Emitted when the trust tier de-escalates as threat score decays.
+    TrustTierDeescalated,
+    /// Emitted when the trust tier reaches Lockdown.
+    TrustLockdownEngaged,
+    /// Emitted when `restore_trust` lifts a Lockdown or steps the tier down.
+    TrustRestored,
+    /// Emitted when a new agent authority is registered on the treasury.
+    AgentRegistered,
+    /// Emitted when an agent authority is revoked.
+    AgentRevoked,
+    /// Emitted when a successor owner is nominated via `nominate_successor_owner`.
+    OwnershipHandoverNominated,
+    /// Emitted when the ownership handover is executed.
+    OwnershipHandoverExecuted,
 }
 
 impl Display for AuditKind {
@@ -134,6 +150,14 @@ impl Display for AuditKind {
             Self::RecoveryDestinationSet => "recovery_destination_set",
             Self::BreakGlassRecovered => "break_glass_recovered",
             Self::CustodyTransferred => "custody_transferred",
+            Self::TrustTierEscalated => "trust_tier_escalated",
+            Self::TrustTierDeescalated => "trust_tier_deescalated",
+            Self::TrustLockdownEngaged => "trust_lockdown_engaged",
+            Self::TrustRestored => "trust_restored",
+            Self::AgentRegistered => "agent_registered",
+            Self::AgentRevoked => "agent_revoked",
+            Self::OwnershipHandoverNominated => "ownership_handover_nominated",
+            Self::OwnershipHandoverExecuted => "ownership_handover_executed",
         };
 
         write!(f, "{label}")

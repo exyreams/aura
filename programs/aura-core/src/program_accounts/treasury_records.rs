@@ -1,4 +1,123 @@
 use super::*;
+use crate::state::trust::TrustConfig;
+
+// ── Trust envelope ───────────────────────────────────────────────────────────
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct TrustConfigRecord {
+    pub watch_threshold: u16,
+    pub restricted_threshold: u16,
+    pub lockdown_threshold: u16,
+    pub watch_multiplier_bps: u64,
+    pub restricted_multiplier_bps: u64,
+    pub decay_points_per_period: u16,
+    pub decay_period_secs: i64,
+}
+
+impl TrustConfigRecord {
+    pub fn from_domain(d: &TrustConfig) -> Self {
+        Self {
+            watch_threshold: d.watch_threshold,
+            restricted_threshold: d.restricted_threshold,
+            lockdown_threshold: d.lockdown_threshold,
+            watch_multiplier_bps: d.watch_multiplier_bps,
+            restricted_multiplier_bps: d.restricted_multiplier_bps,
+            decay_points_per_period: d.decay_points_per_period,
+            decay_period_secs: d.decay_period_secs,
+        }
+    }
+
+    pub fn to_domain(&self) -> TrustConfig {
+        TrustConfig {
+            watch_threshold: self.watch_threshold,
+            restricted_threshold: self.restricted_threshold,
+            lockdown_threshold: self.lockdown_threshold,
+            watch_multiplier_bps: self.watch_multiplier_bps,
+            restricted_multiplier_bps: self.restricted_multiplier_bps,
+            decay_points_per_period: self.decay_points_per_period,
+            decay_period_secs: self.decay_period_secs,
+        }
+    }
+}
+
+// ── Agent identity ───────────────────────────────────────────────────────────
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct AgentScopeRecord {
+    #[max_len(8)]
+    pub allowed_chains: Vec<u8>,
+    #[max_len(8)]
+    pub allowed_tx_types: Vec<u8>,
+    pub daily_limit_usd: Option<u64>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct AgentAuthorityRecord {
+    pub key: Pubkey,
+    #[max_len(32)]
+    pub label: String,
+    pub scope: AgentScopeRecord,
+    pub enabled: bool,
+    pub registered_at: i64,
+}
+
+impl AgentAuthorityRecord {
+    pub fn from_domain(d: &AgentAuthority) -> Result<Self> {
+        Ok(Self {
+            key: parse_pubkey(&d.key)?,
+            label: d.label.clone(),
+            scope: AgentScopeRecord {
+                allowed_chains: d.scope.allowed_chains.clone(),
+                allowed_tx_types: d.scope.allowed_tx_types.clone(),
+                daily_limit_usd: d.scope.daily_limit_usd,
+            },
+            enabled: d.enabled,
+            registered_at: d.registered_at,
+        })
+    }
+
+    pub fn to_domain(&self) -> AgentAuthority {
+        AgentAuthority {
+            key: self.key.to_string(),
+            label: self.label.clone(),
+            scope: AgentScope {
+                allowed_chains: self.scope.allowed_chains.clone(),
+                allowed_tx_types: self.scope.allowed_tx_types.clone(),
+                daily_limit_usd: self.scope.daily_limit_usd,
+            },
+            enabled: self.enabled,
+            registered_at: self.registered_at,
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct PendingOwnershipHandoverRecord {
+    pub successor_owner: Pubkey,
+    pub proposed_at: i64,
+    pub executable_after: i64,
+    pub proposed_by: Pubkey,
+}
+
+impl PendingOwnershipHandoverRecord {
+    pub fn from_domain(d: &PendingOwnershipHandover) -> Result<Self> {
+        Ok(Self {
+            successor_owner: parse_pubkey(&d.successor_owner)?,
+            proposed_at: d.proposed_at,
+            executable_after: d.executable_after,
+            proposed_by: parse_pubkey(&d.proposed_by)?,
+        })
+    }
+
+    pub fn to_domain(&self) -> PendingOwnershipHandover {
+        PendingOwnershipHandover {
+            successor_owner: self.successor_owner.to_string(),
+            proposed_at: self.proposed_at,
+            executable_after: self.executable_after,
+            proposed_by: self.proposed_by.to_string(),
+        }
+    }
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
 pub struct RecoveryDestinationRecord {

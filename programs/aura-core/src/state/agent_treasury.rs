@@ -110,6 +110,9 @@ pub struct AgentTreasury {
     /// Per-chain cold-wallet addresses used as the sole permitted destination
     /// when `break_glass_recover` sweeps dWallet funds in an emergency.
     pub recovery_destinations: Vec<RecoveryDestination>,
+    /// Transient trust-tier multiplier injected at instruction time from
+    /// `TrustIdentityAccount`.  Not persisted to `TreasuryAccount`.
+    pub tier_multiplier_bps: Option<u64>,
 }
 
 impl AgentTreasury {
@@ -173,6 +176,7 @@ impl AgentTreasury {
             swarm: None,
             default_chain: None,
             recovery_destinations: Vec::new(),
+            tier_multiplier_bps: None,
         }
     }
 
@@ -884,6 +888,7 @@ impl AgentTreasury {
             transaction,
             reputation_score: Some(self.reputation.score()),
             shared_spent_usd: self.swarm.as_ref().map(|swarm| swarm.total_swarm_spent_usd),
+            tier_multiplier_bps: self.tier_multiplier_bps,
         }
     }
 
@@ -897,6 +902,7 @@ impl AgentTreasury {
             reputation_score: Some(self.reputation.score()),
             shared_spent_usd: shared_spent_usd
                 .or_else(|| self.swarm.as_ref().map(|swarm| swarm.total_swarm_spent_usd)),
+            tier_multiplier_bps: self.tier_multiplier_bps,
         }
     }
 }
