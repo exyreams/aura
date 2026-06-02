@@ -50,6 +50,10 @@ path = "src/bin/versioning_monetization.rs"
 name = "monetization"
 path = "src/bin/monetization.rs"
 
+[[bin]]
+name = "confidential_lifecycle"
+path = "src/bin/confidential_lifecycle.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"
