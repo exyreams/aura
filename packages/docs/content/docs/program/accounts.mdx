@@ -105,7 +105,8 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 
 | Account | Seeds | Purpose |
 |---|---|---|
-| `FeeVaultAccount` | `[b"fee_vault", treasury]` | Protocol fee recipient + accrual counters |
+| `FeeVaultAccount` | `[b"fee_vault", treasury]` | Prepaid fee balance, accrued bucket, fee debt, recipient split table, and low-balance mode |
+| `FeeScheduleAccount` | `[b"fee_schedule", treasury]` | Sidecar fee schedule: per-type rates, volume tiers, min/max clamps, flat/recurring fees, discounts, and integrator/owner layers |
 | `ProtocolConfigAccount` | `[b"protocol_config"]` | Global monetization singleton: protocol authority, non-bypassable fee floor, integrator bounds, settlement asset, timelocked pending update |
 | `ChainProfileAccount` | `[b"chain_profile", chain_code]` | Chain metadata for custom/built-in chain codes: address format, replay scheme, curve/scheme, gas asset, finality model, and confirmations |
 | `SwarmPoolAccount` | `[b"swarm_pool", swarm_id_hash]` | Shared spend pool across treasuries |
@@ -127,6 +128,7 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | `BatchProposalAccount` | `[b"batch_proposal", …]` | Batch proposal preview |
 | `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
 | `PolicyTemplate` | `[b"policy_template", owner, template_id]` | Reusable, validated policy posture (apply across treasuries) |
+| `BillingTemplate` | `[b"billing_template", owner, template_id]` | Reusable, validated fee posture (fork a `BillingProfileKind` or author one; apply across treasuries) |
 | `ScheduledIntent` | `[b"scheduled_intent", treasury, intent_id]` | Recurring standing order with conditions plus in-flight promoted-proposal tracking |
 | `ConditionalProposal` | `[b"conditional_proposal", treasury, proposal_id]` | Parked conditional proposal that records the promoted pending proposal after trigger |
 
