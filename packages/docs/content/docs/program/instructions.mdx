@@ -209,6 +209,37 @@ change in place).
 | `nominate_successor_owner` | Owner or guardian quorum nominates a new owner; timelocked 48 h. | <New /> |
 | `execute_ownership_handover` | After the timelock: transfers one dWallet's ownership to the successor's CPI authority. Call once per dWallet; set `finalize = true` on the last call to decommission the old treasury. | <New /> |
 
+## Agent capability manifest & tripwires
+
+Turns each agent's scope into a full, declarative **capability manifest** — allowed chains, tx types,
+DeFi protocols (bitmap), privileged instructions (bitmap), per-agent daily and per-transaction USD
+caps, an optional recipient/asset allow-list, and an optional active-time window. The manifest is
+checked on **every** agent action by the gate in `propose_transaction`; anything not granted is denied
+and the breach registers a behavior signal that escalates the trust tier (the tripwire → consequence
+link). Changes are **asymmetric**: tightening applies immediately, loosening requires a pre-armed
+timelock so a compromised owner key cannot instantly widen an agent's powers.
+
+| Instruction | Description | |
+|---|---|---|
+| `set_agent_capability` | Replace an agent's capability manifest. Tightening applies now; loosening needs an armed, elapsed timelock. | <New /> |
+| `arm_capability_loosen` | Arm the loosen timelock for an agent so a subsequent widening becomes permitted once it elapses. | <New /> |
+| `set_agent_tripwires` | Tune the per-treasury behavior-signal weights that feed the trust tier when the gate trips. | <New /> |
+
+## Multi-party authorization
+
+Real M-of-N on the ordinary spend path. The approval ladder can require a `Multisig` level for
+high-value or high-risk proposals; each `approve_pending_execution` now records a **distinct** approval
+in a per-proposal tally, and the level is only satisfied once a quorum is reached — a single owner
+signature no longer suffices. Supports plain N-of-M (distinct count) and **weighted / role-based**
+quorum (summed guardian weight, e.g. a treasurer counts double). A `Restricted` trust tier forces
+`Multisig` on every proposal regardless of amount; a satisfied multisig cannot be softened by any
+failure-mode `CheckMode`.
+
+| Instruction | Description | |
+|---|---|---|
+| `configure_multisig` | Attach guardians, the required-signature count, optional per-guardian weights, and an optional required summed weight. | |
+| `approve_pending_execution` | Record one distinct guardian/owner approval; the proposal unblocks once the count or weight quorum is met. | |
+
 ## Custody recovery & break-glass
 
 The owner can pre-register a per-chain cold-wallet address and later sweep funds to it (or hand off

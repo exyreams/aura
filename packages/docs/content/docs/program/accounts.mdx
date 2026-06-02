@@ -16,6 +16,11 @@ The root state machine for one agent treasury — owner + AI authority, register
 config and spend counters, the pending-proposal queue, reputation, fees, optional multisig and swarm, and
 lifecycle/safety state.
 
+The optional multisig stores guardians with optional per-guardian **voting weights** and an optional
+required summed weight, powering real M-of-N (and weighted / role-based) approval on the spend path. Each
+queued pending proposal carries an `approvals` tally of distinct approvers; `approve_pending_execution`
+only marks the `Multisig` level satisfied once the count or weight quorum is reached.
+
 ```
 seeds = [ b"treasury", owner, agent_id ]
 ```
@@ -85,6 +90,14 @@ Four fields track the trust tier: `trust_tier` (u8 code), `threat_score` (decayi
 thresholds and per-tier multipliers. An `agents` list (up to 8) holds scoped secondary agent authorities;
 when non-empty, `propose_transaction` validates callers against it (the primary `ai_authority` always
 retains full access). A `pending_ownership_handover` field holds a timelocked successor nomination.
+
+Each agent entry carries a full **capability manifest** (`scope`): allowed chains, tx types, a DeFi
+protocol bitmap, a privileged-instruction bitmap, per-agent daily and per-transaction USD caps, an
+optional recipient/asset allow-list, and an optional active-time window — checked on every action by the
+`propose_transaction` gate. It also carries on-chain **stats** (`actions_total`, `denials`,
+`last_active_at`) and a `loosen_unlock_at` timelock that gates manifest *loosening* (tightening is
+immediate). A treasury-level `tripwire_config` holds the owner-tunable behavior-signal weights that the
+gate feeds into `threat_score` on a breach.
 
 ## Auxiliary accounts
 

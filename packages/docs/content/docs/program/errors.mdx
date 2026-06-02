@@ -140,6 +140,19 @@ latest instructions.
 | 6110 | `UnauthorizedHandover` | Caller is not authorized to nominate or execute an ownership handover. <New /> |
 | 6111 | `AgentAlreadyRegistered` | An agent with this pubkey is already registered. <New /> |
 | 6112 | `AgentNotFound` | No agent with this pubkey found. <New /> |
+| 6117 | `AgentCapabilityExceeded` | Proposed action falls outside the agent's capability manifest. <New /> |
+| 6118 | `ForbiddenInstructionForAgent` | Agent attempted a privileged instruction it is not granted. <New /> |
+| 6119 | `AgentManifestLoosenTimelock` | Manifest loosening attempted before its armed timelock elapsed. <New /> |
+| 6120 | `InvalidAgentTripwires` | Tripwire weights are invalid (every weight must be non-zero). <New /> |
+
+## Multi-party authorization
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6113 | `DuplicateApprover` | The same approver tried to approve a proposal twice. <New /> |
+| 6114 | `ApprovalThresholdNotMet` | Distinct-guardian approval quorum has not been reached. <New /> |
+| 6115 | `ApproverNotAuthorized` | Signer is neither the owner nor a registered guardian. <New /> |
+| 6116 | `ApprovalWeightInsufficient` | Weighted (summed-weight) approval quorum has not been reached. <New /> |
 
 ## Custody recovery
 
