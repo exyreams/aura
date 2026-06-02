@@ -1,20 +1,24 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{SCHEDULED_INTENT_SEED, TREASURY_SEED},
+    constants::{
+        FEE_SCHEDULE_SEED, FEE_VAULT_SEED, PROTOCOL_CONFIG_SEED, SCHEDULED_INTENT_SEED,
+        TREASURY_SEED,
+    },
     ext_cpi::{
         parse_message_approval_account, verify_message_approval, DWALLET_CPI_AUTHORITY_SEED,
     },
     instructions::{
         external_liveness::{enforce_liveness_gate, LivenessGate},
+        fee_vault::accrue_fee,
         wallet_transfers::settle_transfer_details,
     },
     program_accounts::{
         proposal_status_code, BudgetEnvelopeAccount, DWalletAccount, ExposureGroupAccount,
-        ExternalLivenessAccount, PolicyStateRecord, ScheduledIntent, SwarmPoolAccount,
-        TreasuryAccount,
+        ExternalLivenessAccount, FeeScheduleAccount, FeeVaultAccount, PolicyStateRecord,
+        ProtocolConfigAccount, ScheduledIntent, SwarmPoolAccount, TreasuryAccount,
     },
-    state::{ProposalStatus, TransferDetails, DWALLET_DEVNET_PROGRAM_ID},
+    state::{FeeContext, FeeSchedule, ProposalStatus, TransferDetails, DWALLET_DEVNET_PROGRAM_ID},
 };
 
 #[derive(Accounts)]
@@ -45,6 +49,25 @@ pub struct FinalizeExecution<'info> {
         constraint = scheduled_intent.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
     )]
     pub scheduled_intent: Option<Box<Account<'info, ScheduledIntent>>>,
+    /// Optional fee vault. When supplied with a schedule, the effective fee is
+    /// debited from the prepaid balance into the accrued bucket on success.
+    #[account(
+        mut,
+        seeds = [FEE_VAULT_SEED, treasury.key().as_ref()],
+        bump = fee_vault.bump,
+        constraint = fee_vault.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub fee_vault: Option<Box<Account<'info, FeeVaultAccount>>>,
+    /// Optional fee schedule. Absent → the treasury's legacy `ProtocolFees` is used.
+    #[account(
+        seeds = [FEE_SCHEDULE_SEED, treasury.key().as_ref()],
+        bump = fee_schedule.bump,
+        constraint = fee_schedule.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub fee_schedule: Option<Box<Account<'info, FeeScheduleAccount>>>,
+    /// Optional protocol config supplying the non-bypassable fee floor.
+    #[account(seeds = [PROTOCOL_CONFIG_SEED], bump = protocol_config.bump)]
+    pub protocol_config: Option<Box<Account<'info, ProtocolConfigAccount>>>,
 }
 
 /// Finalizes an approved pending transaction by verifying the dWallet signature
@@ -108,6 +131,14 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         mark_chain_bound_signed(&mut ctx.accounts.treasury, now)?;
         return Ok(());
     }
+    // Capture the fee inputs from the pending record before it is cleared below.
+    let (fee_tx_type, fee_is_confidential) = ctx
+        .accounts
+        .treasury
+        .pending_queue
+        .first()
+        .map(|pending| (pending.tx_type, pending.decryption_request.is_some()))
+        .unwrap_or((0, false));
     if liveness_softening {
         record_liveness_fail_open(
             &mut next_policy_state,
@@ -197,6 +228,34 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
     }
     if !treasury.pending_queue.is_empty() {
         treasury.pending_queue.remove(0);
+    }
+
+    // On success, debit the effective fee from the prepaid balance into the
+    // accrued bucket. The schedule sidecar is preferred; otherwise the legacy
+    // `ProtocolFees` is treated as a single base tier. No fee vault → no-op.
+    let fee = ctx.accounts.fee_vault.as_ref().map(|_| {
+        let schedule = match ctx.accounts.fee_schedule.as_ref() {
+            Some(account) => account.schedule.to_domain(),
+            None => FeeSchedule::from_protocol_fees(&ctx.accounts.treasury.fees.to_domain()),
+        };
+        let protocol_floor_bps = ctx
+            .accounts
+            .protocol_config
+            .as_ref()
+            .map(|config| config.floor_bps())
+            .unwrap_or(0);
+        schedule.transaction_fee(&FeeContext {
+            amount_usd: finalized_amount_usd,
+            tx_type_code: fee_tx_type,
+            volume_usd: ctx.accounts.treasury.reputation.total_volume_usd,
+            is_confidential: fee_is_confidential,
+            reputation_discount: false,
+            referral_discount: false,
+            protocol_floor_bps,
+        })
+    });
+    if let (Some(fee), Some(vault)) = (fee, ctx.accounts.fee_vault.as_mut()) {
+        accrue_fee(vault, fee)?;
     }
 
     Ok(())

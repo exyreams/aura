@@ -10,6 +10,7 @@ pub mod agent_identity;
 pub mod apply_policy_preset;
 pub mod approval_ladder;
 pub mod batch_execution;
+pub mod billing_templates;
 pub mod budget_envelopes;
 pub mod cancel_pending;
 pub mod chain_profiles;
@@ -23,6 +24,7 @@ pub mod confirm_settlement;
 pub mod create_treasury;
 pub mod execute_pending;
 pub mod external_liveness;
+pub mod fee_schedule;
 pub mod fee_vault;
 pub mod finalize_execution;
 pub mod health_score;
@@ -93,6 +95,17 @@ pub(crate) use approval_ladder::{
 pub use batch_execution::{BatchProposalItemArgs, ProposeBatch, ProposeBatchArgs};
 pub(crate) use batch_execution::{
     __client_accounts_propose_batch, __cpi_client_accounts_propose_batch,
+};
+pub use billing_templates::{
+    ApplyBillingTemplate, ApplyOrgProfile, CloseBillingTemplate, CreateBillingTemplate,
+    CreateBillingTemplateArgs, ManageBillingTemplate, UpdateBillingTemplateArgs,
+};
+pub(crate) use billing_templates::{
+    __client_accounts_apply_billing_template, __client_accounts_apply_org_profile,
+    __client_accounts_close_billing_template, __client_accounts_create_billing_template,
+    __client_accounts_manage_billing_template, __cpi_client_accounts_apply_billing_template,
+    __cpi_client_accounts_apply_org_profile, __cpi_client_accounts_close_billing_template,
+    __cpi_client_accounts_create_billing_template, __cpi_client_accounts_manage_billing_template,
 };
 pub use budget_envelopes::{
     CloseExposureGroup, ConfigureBudgetEnvelope, ConfigureBudgetEnvelopeArgs, InitExposureGroup,
@@ -166,12 +179,19 @@ pub(crate) use external_liveness::{
     __cpi_client_accounts_configure_liveness_guardrails,
     __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_refresh_external_liveness,
 };
-pub use fee_vault::{CloseFeeVault, CollectFees, InitFeeVault, UpdateFeeRecipient};
+pub use fee_schedule::{CloseFeeSchedule, InitFeeSchedule, UpdateFeeSchedule};
+pub(crate) use fee_schedule::{
+    __client_accounts_close_fee_schedule, __client_accounts_init_fee_schedule,
+    __client_accounts_update_fee_schedule, __cpi_client_accounts_close_fee_schedule,
+    __cpi_client_accounts_init_fee_schedule, __cpi_client_accounts_update_fee_schedule,
+};
+pub use fee_vault::{CloseFeeVault, CollectFees, InitFeeVault, ManageFeeVault, UpdateFeeRecipient};
 pub(crate) use fee_vault::{
     __client_accounts_close_fee_vault, __client_accounts_collect_fees,
-    __client_accounts_init_fee_vault, __client_accounts_update_fee_recipient,
-    __cpi_client_accounts_close_fee_vault, __cpi_client_accounts_collect_fees,
-    __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_update_fee_recipient,
+    __client_accounts_init_fee_vault, __client_accounts_manage_fee_vault,
+    __client_accounts_update_fee_recipient, __cpi_client_accounts_close_fee_vault,
+    __cpi_client_accounts_collect_fees, __cpi_client_accounts_init_fee_vault,
+    __cpi_client_accounts_manage_fee_vault, __cpi_client_accounts_update_fee_recipient,
 };
 pub use finalize_execution::FinalizeExecution;
 pub(crate) use finalize_execution::__client_accounts_finalize_execution;

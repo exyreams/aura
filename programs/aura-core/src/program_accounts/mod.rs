@@ -23,10 +23,11 @@ use crate::{
         AgentAuthority, AgentLifecycleState, AgentReputation, AgentScope, AgentSwarm,
         AgentTreasury, ChainExecutionBinding, CircuitBreakerConfig, CircuitBreakerState,
         ComplianceMetadata, ConfidentialGuardrails, ConfigChangeKind, DWalletCurve,
-        DWalletReference, DeadMansSwitch, GuardianChangeAction, OracleFeed, OracleProvider,
-        PendingAiRotation, PendingConfigChange, PendingDecryptionRequest, PendingGuardianChange,
-        PendingOwnershipHandover, PendingSignatureRequest, PendingTransaction, ProposalStatus,
-        ProtocolDeployment, ProtocolFees, RecoveryDestination, SignatureScheme, TransferDetails,
+        DWalletReference, DeadMansSwitch, FeeSchedule, FeeTier, FeeTypeRate, GuardianChangeAction,
+        OracleFeed, OracleProvider, PendingAiRotation, PendingConfigChange,
+        PendingDecryptionRequest, PendingGuardianChange, PendingOwnershipHandover,
+        PendingSignatureRequest, PendingTransaction, ProposalStatus, ProtocolDeployment,
+        ProtocolFees, RecoveryDestination, SignatureScheme, TransferDetails,
     },
 };
 
@@ -37,6 +38,7 @@ mod chain_profile_records;
 mod codecs;
 mod conditional_records;
 mod envelope_records;
+mod fee_schedule_records;
 mod governance_records;
 mod liveness_records;
 mod pending_records;
@@ -59,6 +61,7 @@ pub use chain_profile_records::*;
 pub use codecs::*;
 pub use conditional_records::*;
 pub use envelope_records::*;
+pub use fee_schedule_records::*;
 pub use governance_records::*;
 pub use liveness_records::*;
 pub use pending_records::*;

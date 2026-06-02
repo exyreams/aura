@@ -11,6 +11,7 @@
 mod administration_flow;
 mod advanced_flow;
 mod confidential_flow;
+mod fee_models_flow;
 mod governance_flow;
 mod policy_controls_flow;
 mod proposal_flow;

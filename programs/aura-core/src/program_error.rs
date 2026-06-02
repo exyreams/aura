@@ -275,6 +275,27 @@ pub enum AuraCoreError {
     NoPendingProtocolUpdate,
     #[msg("protocol configuration update timelock has not elapsed")]
     ProtocolUpdateTimelockActive,
+    // Fee models & schedule.
+    #[msg("fee schedule fails coherence validation")]
+    InvalidFeeSchedule,
+    #[msg("integrator fee is outside the protocol-defined bounds")]
+    IntegratorFeeOutOfBounds,
+    #[msg("discount would reduce the fee below the protocol floor")]
+    DiscountExceedsProtocolFloor,
+    // Fee accrual & settlement.
+    #[msg("prepaid fee balance cannot cover the fee")]
+    InsufficientFeeBalance,
+    #[msg("fee splits must sum to 10000 bps")]
+    FeeSplitsInvalid,
+    #[msg("fee conversion is unavailable (oracle stale)")]
+    FeeConversionUnavailable,
+    #[msg("fee debt is outstanding; settle before closing")]
+    FeeDebtOutstanding,
+    // Billing templates & org profiles.
+    #[msg("billing template fails coherence validation")]
+    InvalidBillingTemplate,
+    #[msg("org profile is missing a required component")]
+    OrgProfileComponentMissing,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

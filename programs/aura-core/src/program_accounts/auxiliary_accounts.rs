@@ -216,16 +216,46 @@ pub struct PolicySnapshotRecord {
     pub snapshot_digest: [u8; 32],
 }
 
+/// A recipient's share of collected fees. `share_bps` across all splits must
+/// sum to 10000.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub struct FeeSplitRecord {
+    pub recipient: Pubkey,
+    pub share_bps: u16,
+    /// Role code: 0 protocol, 1 integrator, 2 referrer, 3 guardian.
+    pub role: u8,
+}
+
+/// Low-balance behavior when the prepaid balance cannot cover an accrued fee.
+pub mod low_balance_mode {
+    /// Refuse execution until the balance is topped up.
+    pub const BLOCK: u8 = 0;
+    /// Accrue a USD fee-debt counter and settle later.
+    pub const DEGRADE: u8 = 1;
+    /// Skip accrual and continue.
+    pub const WARN: u8 = 2;
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct FeeVaultAccount {
     pub bump: u8,
     pub treasury: Pubkey,
     pub protocol_fee_recipient: Pubkey,
+    /// Accrued fees awaiting collection (lamports).
     pub accumulated_fees_lamports: u64,
     pub total_fees_collected_usd: u64,
     pub last_collection_at: i64,
     pub fee_count: u64,
+    /// Prepaid fee balance (lamports) that execution debits.
+    pub fee_balance: u64,
+    /// USD fees owed but not yet covered by the prepaid balance.
+    pub fee_debt_usd: u64,
+    /// Behavior when the prepaid balance is short (`low_balance_mode`).
+    pub low_balance_mode: u8,
+    /// Recipient split table for collection (empty = drain to the recipient).
+    #[max_len(4)]
+    pub splits: Vec<FeeSplitRecord>,
 }
 
 #[account]

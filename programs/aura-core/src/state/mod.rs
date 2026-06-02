@@ -18,6 +18,7 @@ mod agent_treasury;
 mod confidential;
 mod deployment;
 mod dwallet;
+mod fee_schedule;
 mod fees;
 mod oracle;
 mod pending;
@@ -35,6 +36,10 @@ pub use deployment::{
 };
 pub use dwallet::{
     AssetBalance, DWalletCurve, DWalletReference, DWalletState, DWalletStatus, SignatureScheme,
+};
+pub use fee_schedule::{
+    build_billing_profile, BillingProfileKind, FeeContext, FeeSchedule, FeeScheduleInvariant,
+    FeeTier, FeeTypeRate, MAX_FEE_TIERS, MAX_FEE_TYPE_RATES,
 };
 pub use fees::ProtocolFees;
 pub use oracle::{OracleFeed, OracleProvider};

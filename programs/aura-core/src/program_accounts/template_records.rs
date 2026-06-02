@@ -34,3 +34,33 @@ pub struct PolicyTemplate {
     /// The serialized policy posture this template applies.
     pub config: PolicyConfigRecord,
 }
+
+/// Fixed allocation for a [`BillingTemplate`] account.
+pub const BILLING_TEMPLATE_SPACE: usize = 8 + BillingTemplate::INIT_SPACE;
+
+/// A user-authored, reusable billing (fee) posture.
+///
+/// Seeded by `[BILLING_TEMPLATE_SEED, owner, template_id]`, mirroring
+/// [`PolicyTemplate`]: holds a full [`FeeScheduleRecord`] plus provenance so a
+/// billing shape can be authored once (or forked from a `BillingProfileKind`)
+/// and applied across treasuries within the `ProtocolConfig` bounds.
+#[account]
+#[derive(InitSpace)]
+pub struct BillingTemplate {
+    pub bump: u8,
+    pub owner: Pubkey,
+    pub template_id: u64,
+    #[max_len(48)]
+    pub name: String,
+    #[max_len(160)]
+    pub description: String,
+    pub version: u32,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub applied_count: u64,
+    pub shared: bool,
+    /// `BillingProfileKind` code when forked from a built-in profile.
+    pub source_kind: Option<u8>,
+    /// The serialized fee posture this template applies.
+    pub schedule: FeeScheduleRecord,
+}

@@ -150,3 +150,9 @@ pub const PROTOCOL_CONFIG_UPDATE_TIMELOCK_SECS: i64 = CONFIG_CHANGE_TIMELOCK_SEC
 /// loosening change and must route through the config-change timelock instead
 /// of applying immediately.
 pub const ROLLBACK_LOOSEN_RISK_THRESHOLD_BPS: i16 = 0;
+/// PDA seed for the per-treasury fee schedule sidecar.
+pub const FEE_SCHEDULE_SEED: &[u8] = b"fee_schedule";
+/// PDA seed for a user-authored billing template: `[seed, owner, template_id]`.
+pub const BILLING_TEMPLATE_SEED: &[u8] = b"billing_template";
+/// Maximum recipients a fee can be split across at collection.
+pub const MAX_FEE_SPLITS: usize = 4;
