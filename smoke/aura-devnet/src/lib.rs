@@ -950,6 +950,9 @@ pub async fn finalize_via_dwallet(
                 external_liveness: None,
                 dwallet_state: None,
                 scheduled_intent: None,
+                fee_vault: None,
+                fee_schedule: None,
+                protocol_config: None,
             }
             .to_account_metas(None),
             data: instruction::FinalizeExecution { now: now + 1 }.data(),

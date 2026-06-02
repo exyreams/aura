@@ -46,6 +46,10 @@ path = "src/bin/trust_identity.rs"
 name = "versioning_monetization"
 path = "src/bin/versioning_monetization.rs"
 
+[[bin]]
+name = "monetization"
+path = "src/bin/monetization.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"
