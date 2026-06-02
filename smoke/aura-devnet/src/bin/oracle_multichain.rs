@@ -377,6 +377,7 @@ fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) ->
                 dwallet_state: None,
                 chain_profile: None,
                 trust_identity: None,
+                policy_canary: None,
             }
             .to_account_metas(None),
             instruction::ProposeTransaction {

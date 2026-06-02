@@ -95,6 +95,7 @@ pub async fn run() -> anyhow::Result<()> {
                 dwallet_state: None,
                 chain_profile: None,
                 trust_identity: None,
+                policy_canary: None,
             }
             .to_account_metas(None),
             data: instruction::ProposeTransaction {
