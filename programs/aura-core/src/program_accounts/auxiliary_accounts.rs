@@ -372,6 +372,9 @@ pub fn audit_kind_code(kind: &AuditKind) -> u8 {
         AuditKind::AgentRevoked => 45,
         AuditKind::OwnershipHandoverNominated => 46,
         AuditKind::OwnershipHandoverExecuted => 47,
+        AuditKind::ConfidentialGuardrailsUpdated => 48,
+        AuditKind::ConfidentialGuardrailsRotated => 49,
+        AuditKind::ConfidentialGuardrailsCleared => 50,
     }
 }
 

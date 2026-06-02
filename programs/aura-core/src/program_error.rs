@@ -296,6 +296,13 @@ pub enum AuraCoreError {
     InvalidBillingTemplate,
     #[msg("org profile is missing a required component")]
     OrgProfileComponentMissing,
+    // Confidential guardrail lifecycle.
+    #[msg("guardrail ciphertexts belong to a stale Encrypt epoch")]
+    GuardrailEpochMismatch,
+    #[msg("confidential guardrails are disabled")]
+    ConfidentialGuardrailsDisabled,
+    #[msg("confidential guardrails require rotation before use")]
+    GuardrailRotationRequired,
 }
 
 /// Converts a `TreasuryError` from the domain layer into an Anchor `Error`.

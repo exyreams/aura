@@ -156,3 +156,5 @@ pub const FEE_SCHEDULE_SEED: &[u8] = b"fee_schedule";
 pub const BILLING_TEMPLATE_SEED: &[u8] = b"billing_template";
 /// Maximum recipients a fee can be split across at collection.
 pub const MAX_FEE_SPLITS: usize = 4;
+/// PDA seed for the per-treasury confidential guardrails sidecar.
+pub const CONFIDENTIAL_GUARDRAILS_SEED: &[u8] = b"confidential_guardrails";

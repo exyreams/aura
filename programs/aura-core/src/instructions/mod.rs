@@ -16,6 +16,7 @@ pub mod cancel_pending;
 pub mod chain_profiles;
 pub mod collect_override_signature;
 pub mod conditional;
+pub mod confidential_guardrails;
 pub mod configure_confidential_guardrails;
 pub mod configure_multisig;
 pub mod configure_swarm;
@@ -138,6 +139,20 @@ pub(crate) use conditional::{
     __client_accounts_propose_conditional_transaction, __client_accounts_try_trigger,
     __cpi_client_accounts_close_conditional_proposal,
     __cpi_client_accounts_propose_conditional_transaction, __cpi_client_accounts_try_trigger,
+};
+pub use confidential_guardrails::{
+    CloseConfidentialGuardrails, DisableConfidentialGuardrails, InitConfidentialGuardrails,
+    ManageConfidentialGuardrails,
+};
+pub(crate) use confidential_guardrails::{
+    __client_accounts_close_confidential_guardrails,
+    __client_accounts_disable_confidential_guardrails,
+    __client_accounts_init_confidential_guardrails,
+    __client_accounts_manage_confidential_guardrails,
+    __cpi_client_accounts_close_confidential_guardrails,
+    __cpi_client_accounts_disable_confidential_guardrails,
+    __cpi_client_accounts_init_confidential_guardrails,
+    __cpi_client_accounts_manage_confidential_guardrails,
 };
 pub use configure_confidential_guardrails::ConfigureConfidentialGuardrails;
 pub(crate) use configure_confidential_guardrails::__client_accounts_configure_confidential_guardrails;

@@ -105,6 +105,12 @@ pub enum AuditKind {
     OwnershipHandoverNominated,
     /// Emitted when the ownership handover is executed.
     OwnershipHandoverExecuted,
+    /// Emitted when confidential guardrail pointers are updated.
+    ConfidentialGuardrailsUpdated,
+    /// Emitted when confidential guardrails are rotated to a new Encrypt epoch.
+    ConfidentialGuardrailsRotated,
+    /// Emitted when confidential guardrails are cleared / disabled.
+    ConfidentialGuardrailsCleared,
 }
 
 impl Display for AuditKind {
@@ -158,6 +164,9 @@ impl Display for AuditKind {
             Self::AgentRevoked => "agent_revoked",
             Self::OwnershipHandoverNominated => "ownership_handover_nominated",
             Self::OwnershipHandoverExecuted => "ownership_handover_executed",
+            Self::ConfidentialGuardrailsUpdated => "confidential_guardrails_updated",
+            Self::ConfidentialGuardrailsRotated => "confidential_guardrails_rotated",
+            Self::ConfidentialGuardrailsCleared => "confidential_guardrails_cleared",
         };
 
         write!(f, "{label}")

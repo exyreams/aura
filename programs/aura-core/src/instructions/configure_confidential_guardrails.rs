@@ -69,7 +69,7 @@ pub fn handler(ctx: Context<ConfigureConfidentialGuardrails>, now: i64) -> Resul
 /// Validates that `account` is an Encrypt-owned `u64` ciphertext with the
 /// expected FHE type. If `require_verified` is `true`, also checks that the
 /// ciphertext status byte is `1` (network-verified).
-fn validate_u64_ciphertext(
+pub(crate) fn validate_u64_ciphertext(
     account: &UncheckedAccount<'_>,
     expected_encrypt_program: &Pubkey,
     require_verified: bool,
