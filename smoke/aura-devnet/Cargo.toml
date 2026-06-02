@@ -38,6 +38,10 @@ path = "src/bin/oracle_multichain.rs"
 name = "recovery"
 path = "src/bin/recovery.rs"
 
+[[bin]]
+name = "trust_identity"
+path = "src/bin/trust_identity.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"

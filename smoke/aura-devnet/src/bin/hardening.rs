@@ -124,6 +124,7 @@ fn propose_public(
                 exposure_group: None,
                 dwallet_state,
                 chain_profile: None,
+                trust_identity: None,
             }
             .to_account_metas(None),
             instruction::ProposeTransaction { args }.data(),

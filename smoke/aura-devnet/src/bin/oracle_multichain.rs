@@ -120,7 +120,7 @@ fn setup_eth_dwallet(
     Ok(dwallet_state)
 }
 
-// ── Feature 07: Oracle integration ──────────────────────────────────────────
+// ── Oracle integration ──────────────────────────────────────────────────────
 
 fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
     println!("\n[oracle] set_asset_oracle_feed + refresh_verified_asset_balance");
@@ -256,7 +256,7 @@ fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
     Ok(())
 }
 
-// ── Feature 08a: Chain profile registry ─────────────────────────────────────
+// ── Chain profile registry ──────────────────────────────────────────────────
 
 fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
     println!("\n[chain profiles] register_chain_profile + update_chain_profile");
@@ -347,7 +347,7 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
     Ok(())
 }
 
-// ── Feature 08b: Chain binding + abandon ────────────────────────────────────
+// ── Chain binding + abandon ─────────────────────────────────────────────────
 
 fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
     println!("\n[chain binding] propose_transaction with EVM binding + abandon_proposal");
@@ -376,6 +376,7 @@ fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) ->
                 exposure_group: None,
                 dwallet_state: None,
                 chain_profile: None,
+                trust_identity: None,
             }
             .to_account_metas(None),
             instruction::ProposeTransaction {
