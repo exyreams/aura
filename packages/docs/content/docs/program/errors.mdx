@@ -120,6 +120,27 @@ latest instructions.
 | 6095 | `SettlementReorged` | Settlement evidence indicates the broadcast failed or was reorged. <New /> |
 | 6096 | `ChainProfileNotRegistered` | Custom chain profile is missing, disabled, or mismatched. <New /> |
 
+## Trust envelope
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6102 | `TrustLockdownActive` | Treasury is in Lockdown; no proposals may be submitted. <New /> |
+| 6103 | `InvalidTrustPolicy` | Trust policy thresholds are not monotonic or multipliers exceed 1×. <New /> |
+| 6104 | `TrustRestoreUnauthorized` | Caller is not the owner or a registered guardian. <New /> |
+
+## Agent identity & ownership
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6105 | `SuccessorNotNominated` | `execute_ownership_handover` called with no pending nomination. <New /> |
+| 6106 | `OwnershipHandoverTimelockActive` | Handover timelock (48 h) has not elapsed. <New /> |
+| 6107 | `AgentScopeExceeded` | Proposal chain or tx type is outside the agent's allowed scope. <New /> |
+| 6108 | `AgentDisabled` | Agent authority has been revoked. <New /> |
+| 6109 | `TooManyAgents` | Treasury already has 8 agent authorities. <New /> |
+| 6110 | `UnauthorizedHandover` | Caller is not authorized to nominate or execute an ownership handover. <New /> |
+| 6111 | `AgentAlreadyRegistered` | An agent with this pubkey is already registered. <New /> |
+| 6112 | `AgentNotFound` | No agent with this pubkey found. <New /> |
+
 ## Custody recovery
 
 | Code | Name | Trigger |

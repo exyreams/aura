@@ -180,6 +180,35 @@ instructions.
 | `try_trigger` | Keeper/caller checks conditions and promotes a satisfied proposal into the pending queue. | <New /> |
 | `close_conditional_proposal` | Close the conditional proposal after it is expired, cancelled, or no longer has a promoted pending proposal. | <New /> |
 
+## Trust envelope & enforcement
+
+Trust state lives on a per-treasury `TrustIdentityAccount` PDA (see [Accounts](/docs/program/accounts)),
+created once by `init_trust_identity`. It carries a `TrustTier` (Trusted → Watch → Restricted → Lockdown)
+derived from a decaying `threat_score`. Denials, anomalies, and fail-open abuse accumulate score; clean
+activity decays it. The tier multiplier is applied on top of the reputation multiplier in
+`effective_daily_limit_usd`, shrinking the operating envelope proportionally. Lockdown is the only
+non-auto-recoverable state — it freezes execution, cancels pending, and arms break-glass.
+
+| Instruction | Description | |
+|---|---|---|
+| `init_trust_identity` | Creates the `TrustIdentityAccount` PDA for a treasury (one-time) with default settings. | <New /> |
+| `configure_trust_policy` | Owner sets the tier thresholds, per-tier multipliers, and decay rate. | <New /> |
+| `restore_trust` | Owner or guardian quorum steps the tier down by one. The only path out of Lockdown. | <New /> |
+
+## Agent identity & ownership handover
+
+Replaces the single `ai_authority` with a bounded list of **scoped agent authorities** and adds a
+timelocked path to hand treasury control to a new owner (the owner key is a PDA seed and cannot
+change in place).
+
+| Instruction | Description | |
+|---|---|---|
+| `register_agent` | Owner registers a secondary agent with allowed chains, tx types, and an optional per-agent daily cap. | <New /> |
+| `revoke_agent` | Owner disables an agent authority (non-urgent path). | <New /> |
+| `emergency_revoke_agent` | Owner or guardian immediately disables an agent (no timelock). For active-compromise response. | <New /> |
+| `nominate_successor_owner` | Owner or guardian quorum nominates a new owner; timelocked 48 h. | <New /> |
+| `execute_ownership_handover` | After the timelock: transfers one dWallet's ownership to the successor's CPI authority. Call once per dWallet; set `finalize = true` on the last call to decommission the old treasury. | <New /> |
+
 ## Custody recovery & break-glass
 
 The owner can pre-register a per-chain cold-wallet address and later sweep funds to it (or hand off

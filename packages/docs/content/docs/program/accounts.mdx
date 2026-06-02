@@ -33,6 +33,12 @@ chain (set via `set_default_chain`). Pending proposals can carry optional asset/
 the treasury stores that metadata so the proposal digest, dWallet message, cancellation, expiry, and
 finalization paths all agree on the same concrete asset payload.
 
+Trust-envelope and agent-identity state lives in a separate **`TrustIdentityAccount`** PDA (see below),
+not on `TreasuryAccount`, to keep treasury deserialization within the SBF 4096-byte stack-frame limit.
+The treasury's effective daily limit is still computed as `base × reputation_bps × tier_bps / 10_000²`,
+where `tier_bps` is the multiplier for the trust tier stored on that PDA — the tier multiplier is applied
+on top of the reputation multiplier so both the "earn more rope" and "lose it fast" signals use the same dial.
+
 A `recovery_destinations` list holds up to 8 per-chain cold-wallet addresses used exclusively by
 `break_glass_recover`. Each entry carries a `locked_until` timestamp: newly registered or updated
 addresses are locked for 48 hours to prevent an attacker who steals the owner key from immediately
@@ -62,6 +68,23 @@ Pending proposals may also store `ChainExecutionBinding` fields in the treasury 
 EVM replay data, Bitcoin UTXO/sighash data, or Solana blockhash/message data into the dWallet signed
 message and keep chain-bound proposals open until `confirm_settlement` observes the required confirmations.
 Failed broadcasts can be resubmitted with fresh replay fields or abandoned to release wallet reservations.
+
+## TrustIdentityAccount
+
+Trust-envelope and agent-identity state is held in its own PDA — one per treasury — so the size-capped
+`TreasuryAccount` stays within the SBF 4096-byte stack-frame limit during deserialization. It is created by
+`init_trust_identity` and is optional on the proposal path: instructions that accept it fall back to
+`ai_authority`-only auth and assume `TrustTier::Trusted` when it is absent.
+
+```
+seeds = [ b"trust_identity", treasury ]
+```
+
+Four fields track the trust tier: `trust_tier` (u8 code), `threat_score` (decaying u16 accumulator),
+`tier_entered_at`, and `last_clean_activity_at`. A `trust_config` record holds the owner-configurable
+thresholds and per-tier multipliers. An `agents` list (up to 8) holds scoped secondary agent authorities;
+when non-empty, `propose_transaction` validates callers against it (the primary `ai_authority` always
+retains full access). A `pending_ownership_handover` field holds a timelocked successor nomination.
 
 ## Auxiliary accounts
 
