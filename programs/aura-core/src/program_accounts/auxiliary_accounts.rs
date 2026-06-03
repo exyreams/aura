@@ -1,9 +1,10 @@
 use super::*;
 
-pub const ACTIVITY_LOG_SPACE: usize = 8 + (128 * 220);
-// Capped at 64 entries (~9 KiB) so the account can be created in one
-// instruction: Solana limits per-instruction account-data growth to 10 KiB,
-// and `init` allocates via CPI. Must match `addresses` `#[max_len]` below.
+pub const ACTIVITY_LOG_CAPACITY: usize = 32;
+pub const ACTIVITY_LOG_SPACE: usize = 8 + ActivityLogAccount::INIT_SPACE;
+// Capped below 10 KiB so the account can be created in one instruction:
+// Solana limits per-instruction account-data growth in inner instructions, and
+// Anchor `init` allocates via CPI. Must match `events` `#[max_len]` below.
 pub const ADDRESS_LIST_SPACE: usize = 8 + (64 * 140);
 pub const SESSION_KEY_SPACE: usize = 8 + 512;
 pub const POLICY_HISTORY_SPACE: usize = 8 + (16 * 96);
@@ -17,7 +18,7 @@ pub struct ActivityLogAccount {
     pub total_events: u64,
     pub ring_head: u16,
     pub capacity: u16,
-    #[max_len(128)]
+    #[max_len(32)]
     pub events: Vec<ActivityRecord>,
 }
 

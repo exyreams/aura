@@ -158,3 +158,5 @@ pub const BILLING_TEMPLATE_SEED: &[u8] = b"billing_template";
 pub const MAX_FEE_SPLITS: usize = 4;
 /// PDA seed for the per-treasury confidential guardrails sidecar.
 pub const CONFIDENTIAL_GUARDRAILS_SEED: &[u8] = b"confidential_guardrails";
+/// PDA seed for the per-treasury analytics + audit-commitment sidecar.
+pub const TREASURY_ANALYTICS_SEED: &[u8] = b"treasury_analytics";

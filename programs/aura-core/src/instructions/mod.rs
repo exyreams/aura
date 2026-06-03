@@ -7,6 +7,7 @@ pub mod activity_log;
 pub mod address_lists;
 pub mod agent_capabilities;
 pub mod agent_identity;
+pub mod analytics;
 pub mod apply_policy_preset;
 pub mod approval_ladder;
 pub mod batch_execution;
@@ -79,6 +80,11 @@ pub(crate) use agent_identity::{
     __client_accounts_execute_ownership_handover, __client_accounts_ownership_handover,
     __cpi_client_accounts_agent_manage, __cpi_client_accounts_emergency_revoke_agent,
     __cpi_client_accounts_execute_ownership_handover, __cpi_client_accounts_ownership_handover,
+};
+pub use analytics::{CloseTreasuryAnalytics, InitTreasuryAnalytics};
+pub(crate) use analytics::{
+    __client_accounts_close_treasury_analytics, __client_accounts_init_treasury_analytics,
+    __cpi_client_accounts_close_treasury_analytics, __cpi_client_accounts_init_treasury_analytics,
 };
 pub use apply_policy_preset::{ApplyPolicyPreset, ApplyPolicyPresetArgs};
 pub(crate) use apply_policy_preset::{

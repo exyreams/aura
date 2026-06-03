@@ -1,9 +1,11 @@
 use anchor_lang::prelude::*;
+use anchor_lang::Discriminator;
 
 use crate::{
+    audit::{AuditEvent, AuditKind},
     constants::{
-        FEE_SCHEDULE_SEED, FEE_VAULT_SEED, PROTOCOL_CONFIG_SEED, SCHEDULED_INTENT_SEED,
-        TREASURY_SEED,
+        ACTIVITY_LOG_SEED, FEE_SCHEDULE_SEED, FEE_VAULT_SEED, PROTOCOL_CONFIG_SEED,
+        SCHEDULED_INTENT_SEED, TREASURY_ANALYTICS_SEED, TREASURY_SEED,
     },
     ext_cpi::{
         parse_message_approval_account, verify_message_approval, DWALLET_CPI_AUTHORITY_SEED,
@@ -14,9 +16,10 @@ use crate::{
         wallet_transfers::settle_transfer_details,
     },
     program_accounts::{
-        proposal_status_code, BudgetEnvelopeAccount, DWalletAccount, ExposureGroupAccount,
-        ExternalLivenessAccount, FeeScheduleAccount, FeeVaultAccount, PolicyStateRecord,
-        ProtocolConfigAccount, ScheduledIntent, SwarmPoolAccount, TreasuryAccount,
+        proposal_status_code, ActivityLogAccount, BudgetEnvelopeAccount, DWalletAccount,
+        ExposureGroupAccount, ExternalLivenessAccount, FeeScheduleAccount, FeeVaultAccount,
+        PolicyStateRecord, ProtocolConfigAccount, ScheduledIntent, SwarmPoolAccount,
+        TreasuryAccount, TreasuryAnalyticsAccount,
     },
     state::{FeeContext, FeeSchedule, ProposalStatus, TransferDetails, DWALLET_DEVNET_PROGRAM_ID},
 };
@@ -258,7 +261,159 @@ pub fn handler(ctx: Context<FinalizeExecution>, now: i64) -> Result<()> {
         accrue_fee(vault, fee)?;
     }
 
+    record_optional_execution_sidecars(
+        &ctx,
+        finalized_proposal_id,
+        finalized_amount_usd,
+        fee_tx_type,
+        target_chain,
+        fee.unwrap_or(0),
+        now,
+    )?;
+
     Ok(())
+}
+
+/// Deterministic byte encoding of an executed proposal, folded into the audit
+/// hash-chain. Off-chain tooling reproduces this to verify the `audit_root`.
+fn encode_execution_event(
+    proposal_id: u64,
+    amount_usd: u64,
+    tx_type_code: u8,
+    target_chain: u8,
+    fee_usd: u64,
+) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(26);
+    bytes.extend_from_slice(&proposal_id.to_le_bytes());
+    bytes.extend_from_slice(&amount_usd.to_le_bytes());
+    bytes.extend_from_slice(&fee_usd.to_le_bytes());
+    bytes.push(tx_type_code);
+    bytes.push(target_chain);
+    bytes
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+fn record_optional_execution_sidecars(
+    ctx: &Context<FinalizeExecution>,
+    proposal_id: u64,
+    amount_usd: u64,
+    tx_type_code: u8,
+    target_chain: u8,
+    fee_usd: u64,
+    now: i64,
+) -> Result<()> {
+    let treasury_key = ctx.accounts.treasury.key();
+
+    let analytics_key = TreasuryAnalyticsAccount::expected_key(&treasury_key);
+    if let Some(analytics_info) = ctx
+        .remaining_accounts
+        .iter()
+        .find(|account| account.key() == analytics_key)
+    {
+        let mut analytics =
+            load_optional_sidecar::<TreasuryAnalyticsAccount>(analytics_info, &treasury_key)?;
+        let event =
+            encode_execution_event(proposal_id, amount_usd, tx_type_code, target_chain, fee_usd);
+        analytics.record_execution(tx_type_code, amount_usd, fee_usd, &event, now);
+        store_optional_sidecar(analytics_info, &analytics)?;
+    }
+
+    let activity_log_key = ActivityLogAccount::expected_key(&treasury_key);
+    if let Some(activity_log_info) = ctx
+        .remaining_accounts
+        .iter()
+        .find(|account| account.key() == activity_log_key)
+    {
+        let mut log =
+            load_optional_sidecar::<ActivityLogAccount>(activity_log_info, &treasury_key)?;
+        let event = AuditEvent::new(
+            AuditKind::ProposalExecuted,
+            format!("proposal {proposal_id} executed"),
+            now,
+        );
+        let slot = Clock::get().map(|clock| clock.slot).unwrap_or(0);
+        log.append(
+            &event,
+            slot,
+            Some(proposal_id),
+            Some(amount_usd),
+            Some(target_chain),
+            ctx.accounts.operator.key(),
+            0,
+        );
+        store_optional_sidecar(activity_log_info, &log)?;
+    }
+
+    Ok(())
+}
+
+fn load_optional_sidecar<T>(account: &AccountInfo, treasury_key: &Pubkey) -> Result<T>
+where
+    T: AccountDeserialize + Discriminator + SidecarAccount,
+{
+    require!(
+        account.is_writable,
+        crate::AuraCoreError::InvalidExternalAccountData
+    );
+    require_keys_eq!(
+        *account.owner,
+        crate::ID,
+        crate::AuraCoreError::InvalidExternalAccountData
+    );
+    let expected_key = T::expected_key(treasury_key);
+    require_keys_eq!(
+        account.key(),
+        expected_key,
+        crate::AuraCoreError::InvalidExternalAccountData
+    );
+    let data = account.try_borrow_data()?;
+    let mut bytes: &[u8] = &data;
+    let sidecar = T::try_deserialize(&mut bytes)?;
+    require_keys_eq!(
+        sidecar.treasury_key(),
+        *treasury_key,
+        crate::AuraCoreError::InvalidExternalAccountData
+    );
+    Ok(sidecar)
+}
+
+fn store_optional_sidecar<T>(account: &AccountInfo, sidecar: &T) -> Result<()>
+where
+    T: AccountSerialize,
+{
+    let mut data = account.try_borrow_mut_data()?;
+    sidecar.try_serialize(&mut &mut data[..])?;
+    Ok(())
+}
+
+trait SidecarAccount {
+    fn expected_key(treasury_key: &Pubkey) -> Pubkey;
+    fn treasury_key(&self) -> Pubkey;
+}
+
+impl SidecarAccount for TreasuryAnalyticsAccount {
+    fn expected_key(treasury_key: &Pubkey) -> Pubkey {
+        Pubkey::find_program_address(
+            &[TREASURY_ANALYTICS_SEED, treasury_key.as_ref()],
+            &crate::ID,
+        )
+        .0
+    }
+
+    fn treasury_key(&self) -> Pubkey {
+        self.treasury
+    }
+}
+
+impl SidecarAccount for ActivityLogAccount {
+    fn expected_key(treasury_key: &Pubkey) -> Pubkey {
+        Pubkey::find_program_address(&[ACTIVITY_LOG_SEED, treasury_key.as_ref()], &crate::ID).0
+    }
+
+    fn treasury_key(&self) -> Pubkey {
+        self.treasury
+    }
 }
 
 fn mark_chain_bound_signed(treasury: &mut TreasuryAccount, now: i64) -> Result<()> {

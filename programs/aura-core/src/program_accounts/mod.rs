@@ -31,6 +31,7 @@ use crate::{
     },
 };
 
+mod analytics_records;
 mod attestation_records;
 mod auxiliary_accounts;
 mod batch_records;
@@ -54,6 +55,7 @@ mod treasury;
 mod treasury_records;
 mod wallet_records;
 
+pub use analytics_records::*;
 pub use attestation_records::*;
 pub use auxiliary_accounts::*;
 pub mod trust_identity;

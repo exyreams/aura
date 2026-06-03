@@ -61,8 +61,9 @@ use instructions::{
     __client_accounts_close_policy_history, __client_accounts_close_policy_template,
     __client_accounts_close_scheduled_intent, __client_accounts_close_session_key,
     __client_accounts_close_snapshot, __client_accounts_close_swarm_pool,
-    __client_accounts_collect_fees, __client_accounts_collect_override_signature,
-    __client_accounts_configure_approval_ladder, __client_accounts_configure_budget_envelope,
+    __client_accounts_close_treasury_analytics, __client_accounts_collect_fees,
+    __client_accounts_collect_override_signature, __client_accounts_configure_approval_ladder,
+    __client_accounts_configure_budget_envelope,
     __client_accounts_configure_confidential_guardrails,
     __client_accounts_configure_liveness_guardrails, __client_accounts_configure_multisig,
     __client_accounts_configure_swarm, __client_accounts_confirm_policy_decryption,
@@ -79,17 +80,17 @@ use instructions::{
     __client_accounts_init_external_liveness, __client_accounts_init_fee_schedule,
     __client_accounts_init_fee_vault, __client_accounts_init_health_score,
     __client_accounts_init_policy_history, __client_accounts_init_protocol_config,
-    __client_accounts_init_swarm_pool, __client_accounts_init_trust_identity,
-    __client_accounts_issue_session_key, __client_accounts_join_exposure_group,
-    __client_accounts_join_swarm, __client_accounts_manage_address_list,
-    __client_accounts_manage_billing_template, __client_accounts_manage_confidential_guardrails,
-    __client_accounts_manage_exposure_group, __client_accounts_manage_fee_vault,
-    __client_accounts_manage_policy_template, __client_accounts_manage_scheduled_intent,
-    __client_accounts_manage_swarm, __client_accounts_mark_settlement_broadcast,
-    __client_accounts_migrate_treasury, __client_accounts_owner_treasury,
-    __client_accounts_ownership_handover, __client_accounts_pause_execution,
-    __client_accounts_promote_canary, __client_accounts_propose_batch,
-    __client_accounts_propose_conditional_transaction,
+    __client_accounts_init_swarm_pool, __client_accounts_init_treasury_analytics,
+    __client_accounts_init_trust_identity, __client_accounts_issue_session_key,
+    __client_accounts_join_exposure_group, __client_accounts_join_swarm,
+    __client_accounts_manage_address_list, __client_accounts_manage_billing_template,
+    __client_accounts_manage_confidential_guardrails, __client_accounts_manage_exposure_group,
+    __client_accounts_manage_fee_vault, __client_accounts_manage_policy_template,
+    __client_accounts_manage_scheduled_intent, __client_accounts_manage_swarm,
+    __client_accounts_mark_settlement_broadcast, __client_accounts_migrate_treasury,
+    __client_accounts_owner_treasury, __client_accounts_ownership_handover,
+    __client_accounts_pause_execution, __client_accounts_promote_canary,
+    __client_accounts_propose_batch, __client_accounts_propose_conditional_transaction,
     __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_protocol_config_authority,
     __client_accounts_record_policy_snapshot, __client_accounts_recovery_config,
@@ -123,8 +124,8 @@ use instructions::{
     __cpi_client_accounts_close_health_score, __cpi_client_accounts_close_policy_history,
     __cpi_client_accounts_close_policy_template, __cpi_client_accounts_close_scheduled_intent,
     __cpi_client_accounts_close_session_key, __cpi_client_accounts_close_snapshot,
-    __cpi_client_accounts_close_swarm_pool, __cpi_client_accounts_collect_fees,
-    __cpi_client_accounts_collect_override_signature,
+    __cpi_client_accounts_close_swarm_pool, __cpi_client_accounts_close_treasury_analytics,
+    __cpi_client_accounts_collect_fees, __cpi_client_accounts_collect_override_signature,
     __cpi_client_accounts_configure_approval_ladder,
     __cpi_client_accounts_configure_budget_envelope,
     __cpi_client_accounts_configure_confidential_guardrails,
@@ -143,10 +144,10 @@ use instructions::{
     __cpi_client_accounts_init_external_liveness, __cpi_client_accounts_init_fee_schedule,
     __cpi_client_accounts_init_fee_vault, __cpi_client_accounts_init_health_score,
     __cpi_client_accounts_init_policy_history, __cpi_client_accounts_init_protocol_config,
-    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_init_trust_identity,
-    __cpi_client_accounts_issue_session_key, __cpi_client_accounts_join_exposure_group,
-    __cpi_client_accounts_join_swarm, __cpi_client_accounts_manage_address_list,
-    __cpi_client_accounts_manage_billing_template,
+    __cpi_client_accounts_init_swarm_pool, __cpi_client_accounts_init_treasury_analytics,
+    __cpi_client_accounts_init_trust_identity, __cpi_client_accounts_issue_session_key,
+    __cpi_client_accounts_join_exposure_group, __cpi_client_accounts_join_swarm,
+    __cpi_client_accounts_manage_address_list, __cpi_client_accounts_manage_billing_template,
     __cpi_client_accounts_manage_confidential_guardrails,
     __cpi_client_accounts_manage_exposure_group, __cpi_client_accounts_manage_fee_vault,
     __cpi_client_accounts_manage_policy_template, __cpi_client_accounts_manage_scheduled_intent,
@@ -523,6 +524,14 @@ pub mod aura_core {
 
     pub fn close_confidential_guardrails(ctx: Context<CloseConfidentialGuardrails>) -> Result<()> {
         instructions::confidential_guardrails::close_confidential_guardrails(ctx)
+    }
+
+    pub fn init_treasury_analytics(ctx: Context<InitTreasuryAnalytics>, now: i64) -> Result<()> {
+        instructions::analytics::init_treasury_analytics(ctx, now)
+    }
+
+    pub fn close_treasury_analytics(ctx: Context<CloseTreasuryAnalytics>) -> Result<()> {
+        instructions::analytics::close_treasury_analytics(ctx)
     }
 
     pub fn propose_transaction(

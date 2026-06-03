@@ -16,8 +16,9 @@ use crate::{
         swarm_pool_seeds, transaction_type_from_code, update_health_score, verify_merkle_inclusion,
         ActivityLogAccount, AddressListAccount, ComplianceOracleAccount, FeeVaultAccount,
         HealthScoreAccount, PolicyCheckResult, PolicyConfigRecord, PolicyHistoryAccount,
-        SessionKeyAccount, SnapshotAccount, SwarmPoolAccount, TreasuryAccount, ACTIVITY_LOG_SPACE,
-        ADDRESS_LIST_SPACE, POLICY_HISTORY_SPACE, SESSION_KEY_SPACE,
+        SessionKeyAccount, SnapshotAccount, SwarmPoolAccount, TreasuryAccount,
+        ACTIVITY_LOG_CAPACITY, ACTIVITY_LOG_SPACE, ADDRESS_LIST_SPACE, POLICY_HISTORY_SPACE,
+        SESSION_KEY_SPACE,
     },
     state::{ConfigChangeKind, GuardianChangeAction, PendingConfigChange},
     AuraCoreError,
@@ -51,7 +52,7 @@ pub fn init_activity_log(ctx: Context<InitActivityLog>) -> Result<()> {
     log.owner = ctx.accounts.owner.key();
     log.total_events = 0;
     log.ring_head = 0;
-    log.capacity = 128;
+    log.capacity = ACTIVITY_LOG_CAPACITY as u16;
     log.events = Vec::new();
     Ok(())
 }
