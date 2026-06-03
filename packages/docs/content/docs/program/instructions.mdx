@@ -443,8 +443,25 @@ Economic changes are staged and applied behind a timelock.
 |---|---|---|
 | `init_health_score` / `refresh_health_score` / `close_health_score` | Treasury health scoring. | |
 | `take_snapshot` / `close_snapshot` | Periodic treasury snapshots. | |
-| `init_activity_log` / `close_activity_log` | On-chain activity ring buffer. | |
+| `init_activity_log` / `close_activity_log` | On-chain activity ring buffer (wired into the execution boundary). | |
 | `init_policy_history` / `record_policy_snapshot` / `close_policy_history` | Policy version history. | |
+| `init_treasury_analytics` / `close_treasury_analytics` | Durable audit commitment + analytics aggregates sidecar. | <New /> |
 | `simulate_policy` | Non-mutating policy simulation. | |
 | `write_policy_receipt` · `attest_policy` | Compact policy receipts + attestations. | |
 | `check_invariants` · `check_policy_cpi` | Invariant reports + CPI policy checks. | |
+
+### Audit commitment & analytics capture
+
+The `TreasuryAnalyticsAccount` sidecar is the on-chain tier of a two-tier capture model. When supplied
+(optionally) to `finalize_execution` as a writable remaining account, each successful execution is folded into a rolling tamper-evident
+**audit commitment** — `audit_root = H(prev_root ‖ event)` — and into queryable **aggregates** (executed
+count, total + per-tx-type volume, fees, rolling daily buckets); the execution is also appended to the
+`ActivityLogAccount` ring when that writable remaining account is also supplied. An off-chain indexer holds the full history and is **provably complete/untampered**
+when its recomputed root matches `audit_root`. Both accounts are optional on the hot path (zero impact when
+omitted).
+
+<Callout title="Capture scope">
+  This increment captures the execution boundary (`finalize_execution`). Denial/expiry capture, the full
+  per-instruction structured-event firehose, new typed events, and committed period statements are tracked
+  follow-ups.
+</Callout>
