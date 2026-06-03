@@ -183,6 +183,8 @@ pub(super) async fn scenario_multisig_override(
         dwallet_program,
         live,
         created_at + 80,
+        None,
+        None,
     )
     .await
 }

@@ -92,6 +92,8 @@ pub(super) async fn scenario_swarm_pool(
         dwallet_program,
         live,
         created_at + 30,
+        None,
+        None,
     )
     .await?;
     println!("  ✓ finalized, pool spent=200");
@@ -184,6 +186,8 @@ pub(super) async fn scenario_reputation_scaling(
         dwallet_program,
         live,
         created_at + 30,
+        None,
+        None,
     )
     .await
 }

@@ -49,7 +49,10 @@ pub(super) async fn scenario_treasury_administration(
         domain.pending_transaction_ttl_secs == 1_800,
         "[13] ttl not updated"
     );
-    ensure!(domain.high_risk_threshold == 90, "[13] threshold not updated");
+    ensure!(
+        domain.high_risk_threshold == 90,
+        "[13] threshold not updated"
+    );
     ensure!(
         domain.high_risk_require_guardian,
         "[13] guardian flag not set"

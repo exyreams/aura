@@ -19,8 +19,8 @@ use aura_core::{
     RegisterRecoveryDestinationArgs, TreasuryAccount, ID,
 };
 use aura_devnet::{
-    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer,
-    now_unix, pda, send_tx,
+    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer, now_unix,
+    pda, send_tx,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -30,7 +30,11 @@ use solana_sdk::{
 };
 
 fn ix(accounts: Vec<AccountMeta>, data: Vec<u8>) -> Instruction {
-    Instruction { program_id: ID, accounts, data }
+    Instruction {
+        program_id: ID,
+        accounts,
+        data,
+    }
 }
 
 fn unique_agent_id(prefix: &str, now: i64) -> String {
@@ -45,11 +49,21 @@ fn create_active_treasury(
     now: i64,
 ) -> anyhow::Result<Pubkey> {
     let agent_id = unique_agent_id(prefix, now);
-    let treasury = pda(&[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()], &ID).0;
+    let treasury = pda(
+        &[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()],
+        &ID,
+    )
+    .0;
     send_tx(
         rpc,
         payer,
-        vec![create_treasury_ix(payer, treasury, &agent_id, now, aura_policy::PolicyConfig::default())],
+        vec![create_treasury_ix(
+            payer,
+            treasury,
+            &agent_id,
+            now,
+            aura_policy::PolicyConfig::default(),
+        )],
         &[],
     )?;
     activate_treasury(rpc, payer, treasury, now + 1)?;
@@ -73,7 +87,11 @@ fn register_recovery_destination(
         rpc,
         payer,
         vec![ix(
-            accounts::RecoveryConfig { owner: payer.pubkey(), treasury }.to_account_metas(None),
+            accounts::RecoveryConfig {
+                owner: payer.pubkey(),
+                treasury,
+            }
+            .to_account_metas(None),
             instruction::RegisterRecoveryDestination {
                 args: RegisterRecoveryDestinationArgs {
                     chain,
@@ -99,8 +117,16 @@ fn emergency_shutdown(
         rpc,
         payer,
         vec![ix(
-            accounts::OwnerTreasury { owner: payer.pubkey(), treasury }.to_account_metas(None),
-            instruction::EmergencyShutdown { recovery_pubkey: payer.pubkey(), now }.data(),
+            accounts::OwnerTreasury {
+                owner: payer.pubkey(),
+                treasury,
+            }
+            .to_account_metas(None),
+            instruction::EmergencyShutdown {
+                recovery_pubkey: payer.pubkey(),
+                now,
+            }
+            .data(),
         )],
         &[],
     )?;
@@ -178,20 +204,17 @@ fn main() -> anyhow::Result<()> {
         domain.shutdown_initiated_at == Some(shutdown_now),
         "shutdown_initiated_at not set"
     );
-    anyhow::ensure!(domain.execution_paused, "execution not paused after shutdown");
+    anyhow::ensure!(
+        domain.execution_paused,
+        "execution not paused after shutdown"
+    );
     println!("  ok treasury in Decommissioning, execution_paused=true, shutdown_at={shutdown_now}");
 
     // [4] registration blocked during shutdown
 
     println!("\n[4] RecoveryDestinationImmutable — registration blocked during active shutdown");
-    let immutable_result = register_recovery_destination(
-        &rpc,
-        &payer,
-        treasury,
-        ETH,
-        REDIRECT_ADDR,
-        shutdown_now + 1,
-    );
+    let immutable_result =
+        register_recovery_destination(&rpc, &payer, treasury, ETH, REDIRECT_ADDR, shutdown_now + 1);
     anyhow::ensure!(
         immutable_result.is_err(),
         "registration during shutdown should have failed"
@@ -200,7 +223,9 @@ fn main() -> anyhow::Result<()> {
 
     // [5] break_glass_recover
 
-    println!("\n[5] break_glass_recover — creates pending sweep after shutdown + activation window");
+    println!(
+        "\n[5] break_glass_recover — creates pending sweep after shutdown + activation window"
+    );
 
     // Supply now = shutdown_at + RECOVERY_ACTIVATION_SECS + 1 to satisfy the
     // activation check without waiting a real hour on devnet.
@@ -249,6 +274,8 @@ fn main() -> anyhow::Result<()> {
     );
 
     println!("\ncustody recovery smoke checks passed on devnet.");
-    println!("Note: break_glass_transfer_authority requires a live dWallet CPI; covered by unit tests.");
+    println!(
+        "Note: break_glass_transfer_authority requires a live dWallet CPI; covered by unit tests."
+    );
     Ok(())
 }

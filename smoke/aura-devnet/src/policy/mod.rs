@@ -24,12 +24,16 @@ pub async fn run() -> anyhow::Result<()> {
 
     println!("Payer: {}", payer.pubkey());
 
-    println!("
-Ensuring Encrypt deposit account...");
+    println!(
+        "
+Ensuring Encrypt deposit account..."
+    );
     let ep = ensure_encrypt_deposit(&rpc, &payer, &encrypt_program)?;
 
-    println!("
-Provisioning live dWallet via DKG...");
+    println!(
+        "
+Provisioning live dWallet via DKG..."
+    );
     let mut dwallet_client = connect_dwallet_client().await?;
     let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
     println!("  dWallet PDA: {}", live.dwallet_pda);
@@ -131,7 +135,9 @@ Provisioning live dWallet via DKG...");
     administration::scenario_treasury_administration(&rpc, &payer, seed).await?;
     println!("  ✓ [13] passed");
 
-    println!("
-✓ All 13 AURA policy scenarios passed on devnet.");
+    println!(
+        "
+✓ All 13 AURA policy scenarios passed on devnet."
+    );
     Ok(())
 }

@@ -38,7 +38,11 @@ use solana_sdk::{
 };
 
 fn ix(accounts: Vec<AccountMeta>, data: Vec<u8>) -> Instruction {
-    Instruction { program_id: ID, accounts, data }
+    Instruction {
+        program_id: ID,
+        accounts,
+        data,
+    }
 }
 
 fn unique_agent_id(prefix: &str, now: i64) -> String {
@@ -53,11 +57,21 @@ fn create_active_treasury(
     now: i64,
 ) -> anyhow::Result<Pubkey> {
     let agent_id = unique_agent_id(prefix, now);
-    let treasury = pda(&[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()], &ID).0;
+    let treasury = pda(
+        &[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()],
+        &ID,
+    )
+    .0;
     send_tx(
         rpc,
         payer,
-        vec![create_treasury_ix(payer, treasury, &agent_id, now, PolicyConfig::default())],
+        vec![create_treasury_ix(
+            payer,
+            treasury,
+            &agent_id,
+            now,
+            PolicyConfig::default(),
+        )],
         &[],
     )?;
     activate_treasury(rpc, payer, treasury, now + 1)?;
@@ -91,7 +105,9 @@ fn init_policy_history(
 
 fn fetch_history(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<PolicyHistoryAccount> {
     let info = rpc.get_account(addr)?;
-    Ok(PolicyHistoryAccount::try_deserialize(&mut info.data.as_slice())?)
+    Ok(PolicyHistoryAccount::try_deserialize(
+        &mut info.data.as_slice(),
+    )?)
 }
 
 fn fetch_treasury(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TreasuryAccount> {
@@ -115,8 +131,12 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::RecordPolicySnapshot { owner, treasury, policy_history }
-                .to_account_metas(None),
+            accounts::RecordPolicySnapshot {
+                owner,
+                treasury,
+                policy_history,
+            }
+            .to_account_metas(None),
             instruction::RecordPolicySnapshot { now: seed + 2 }.data(),
         )],
         &[],
@@ -133,7 +153,12 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::RollbackPolicy { owner, treasury, policy_history }.to_account_metas(None),
+            accounts::RollbackPolicy {
+                owner,
+                treasury,
+                policy_history,
+            }
+            .to_account_metas(None),
             instruction::RollbackPolicy {
                 target_version: 1,
                 candidate: default_record.clone(),
@@ -157,7 +182,12 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::RollbackPolicy { owner, treasury, policy_history }.to_account_metas(None),
+            accounts::RollbackPolicy {
+                owner,
+                treasury,
+                policy_history,
+            }
+            .to_account_metas(None),
             instruction::RollbackPolicy {
                 target_version: 99,
                 candidate: default_record,
@@ -322,8 +352,11 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::ProtocolConfigAuthority { authority: owner, protocol_config }
-                .to_account_metas(None),
+            accounts::ProtocolConfigAuthority {
+                authority: owner,
+                protocol_config,
+            }
+            .to_account_metas(None),
             instruction::UpdateProtocolConfig {
                 args: ProtocolConfigArgs {
                     protocol_authority: owner,
@@ -356,8 +389,11 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::ProtocolConfigAuthority { authority: owner, protocol_config }
-                .to_account_metas(None),
+            accounts::ProtocolConfigAuthority {
+                authority: owner,
+                protocol_config,
+            }
+            .to_account_metas(None),
             instruction::CommitProtocolConfig { now: seed + 302 }.data(),
         )],
         &[],

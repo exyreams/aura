@@ -291,6 +291,8 @@ async fn run_confidential_scenario(
             dwallet_program,
             live_dw,
             created_at + 7,
+            None,
+            None,
         )
         .await?;
     } else {
@@ -329,7 +331,9 @@ async fn run_confidential_weekly_scenario(
     let daily_ct = encrypt_u64(10_000, &ID).await.context("encrypt daily")?;
     let per_tx_ct = encrypt_u64(10_000, &ID).await.context("encrypt per_tx")?;
     let spent_ct = encrypt_u64(0, &ID).await.context("encrypt spent_today")?;
-    let weekly_ct = encrypt_u64(500, &ID).await.context("encrypt weekly_limit")?;
+    let weekly_ct = encrypt_u64(500, &ID)
+        .await
+        .context("encrypt weekly_limit")?;
     let weekly_spent_ct = encrypt_u64(0, &ID).await.context("encrypt weekly_spent")?;
     let amount_ct = encrypt_u64(amount, &ID).await.context("encrypt amount")?;
 
@@ -379,7 +383,10 @@ async fn run_confidential_weekly_scenario(
                 spent_today_ciphertext: spent_ct,
             }
             .to_account_metas(None),
-            data: instruction::ConfigureConfidentialGuardrails { now: created_at + 2 }.data(),
+            data: instruction::ConfigureConfidentialGuardrails {
+                now: created_at + 2,
+            }
+            .data(),
         }],
         &[],
     )
@@ -401,8 +408,11 @@ async fn run_confidential_weekly_scenario(
                 system_program: SYSTEM_PROGRAM_ID,
             }
             .to_account_metas(None),
-            data: instruction::InitConfidentialGuardrails { epoch_id: 1, now: created_at + 3 }
-                .data(),
+            data: instruction::InitConfidentialGuardrails {
+                epoch_id: 1,
+                now: created_at + 3,
+            }
+            .data(),
         }],
         &[],
     )
@@ -428,7 +438,10 @@ async fn run_confidential_weekly_scenario(
                 velocity_window_ciphertext: None,
             }
             .to_account_metas(None),
-            data: instruction::UpdateConfidentialGuardrails { now: created_at + 4 }.data(),
+            data: instruction::UpdateConfidentialGuardrails {
+                now: created_at + 4,
+            }
+            .data(),
         }],
         &[],
     )
@@ -514,7 +527,10 @@ async fn run_confidential_weekly_scenario(
         vec![solana_sdk::instruction::Instruction {
             program_id: ID,
             accounts: req_metas,
-            data: instruction::RequestPolicyDecryption { now: created_at + 6 }.data(),
+            data: instruction::RequestPolicyDecryption {
+                now: created_at + 6,
+            }
+            .data(),
         }],
         &[&request_account],
     )
@@ -535,7 +551,10 @@ async fn run_confidential_weekly_scenario(
                 request_account: request_account.pubkey(),
             }
             .to_account_metas(None),
-            data: instruction::ConfirmPolicyDecryption { now: created_at + 7 }.data(),
+            data: instruction::ConfirmPolicyDecryption {
+                now: created_at + 7,
+            }
+            .data(),
         }],
         &[],
     )
@@ -558,7 +577,8 @@ async fn run_confidential_weekly_scenario(
         pending.decision.violation == aura_policy::ViolationCode::WeeklyLimit,
         "expected WeeklyLimit violation"
     );
-    execute_denied(rpc, payer, treasury, created_at + 8).context("execute_pending (denial) failed")?;
+    execute_denied(rpc, payer, treasury, created_at + 8)
+        .context("execute_pending (denial) failed")?;
     println!("  Denied (weekly) proposal cleared.");
     Ok(())
 }

@@ -136,7 +136,11 @@ fn main() -> anyhow::Result<()> {
 
     // 4. update_operator_role (setup: grant).
     let operator = Keypair::new().pubkey();
-    let operator_role = pda(&[b"operator_role", treasury.as_ref(), operator.as_ref()], &ID).0;
+    let operator_role = pda(
+        &[b"operator_role", treasury.as_ref(), operator.as_ref()],
+        &ID,
+    )
+    .0;
     send_tx(
         &rpc,
         &payer,

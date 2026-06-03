@@ -359,7 +359,9 @@ fn main() -> anyhow::Result<()> {
         "settle did not record spend"
     );
     anyhow::ensure!(
-        dw.assets.iter().any(|a| a.asset_id == "usdc" && a.usd_value == 600),
+        dw.assets
+            .iter()
+            .any(|a| a.asset_id == "usdc" && a.usd_value == 600),
         "settle did not debit asset"
     );
     println!("[9] reserve_dwallet_spend (400)");

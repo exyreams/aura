@@ -15,15 +15,22 @@
 //! Not smoke-tested (require Ika dWallet CPI):
 //!   `execute_ownership_handover`, `emergency_revoke_agent` — unit tests only.
 
-use anchor_lang::{system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData, ToAccountMetas};
+use anchor_lang::{
+    system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData, ToAccountMetas,
+};
 use aura_core::{
     accounts,
-    constants::{AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS, OWNERSHIP_HANDOVER_TIMELOCK_SECS, TRUST_IDENTITY_SEED},
+    constants::{
+        AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS, OWNERSHIP_HANDOVER_TIMELOCK_SECS,
+        TRUST_IDENTITY_SEED,
+    },
     instruction, ConfigureMultisigArgs, ConfigureTrustPolicyArgs, NominateSuccessorArgs,
     RegisterAgentArgs, SetAgentCapabilityArgs, SetAgentTripwiresArgs, TreasuryAccount,
     TrustIdentityAccount, ID,
 };
-use aura_devnet::{activate_treasury, create_treasury_ix, devnet_rpc, load_payer, now_unix, pda, send_tx};
+use aura_devnet::{
+    activate_treasury, create_treasury_ix, devnet_rpc, load_payer, now_unix, pda, send_tx,
+};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
@@ -32,7 +39,11 @@ use solana_sdk::{
 };
 
 fn ix(accounts: Vec<AccountMeta>, data: Vec<u8>) -> Instruction {
-    Instruction { program_id: ID, accounts, data }
+    Instruction {
+        program_id: ID,
+        accounts,
+        data,
+    }
 }
 
 fn unique_agent_id(prefix: &str, now: i64) -> String {
@@ -40,10 +51,30 @@ fn unique_agent_id(prefix: &str, now: i64) -> String {
     format!("{prefix}-{now}-{}", &suffix[..8])
 }
 
-fn create_active_treasury(rpc: &RpcClient, payer: &Keypair, prefix: &str, now: i64) -> anyhow::Result<Pubkey> {
+fn create_active_treasury(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    prefix: &str,
+    now: i64,
+) -> anyhow::Result<Pubkey> {
     let agent_id = unique_agent_id(prefix, now);
-    let treasury = pda(&[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()], &ID).0;
-    send_tx(rpc, payer, vec![create_treasury_ix(payer, treasury, &agent_id, now, aura_policy::PolicyConfig::default())], &[])?;
+    let treasury = pda(
+        &[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()],
+        &ID,
+    )
+    .0;
+    send_tx(
+        rpc,
+        payer,
+        vec![create_treasury_ix(
+            payer,
+            treasury,
+            &agent_id,
+            now,
+            aura_policy::PolicyConfig::default(),
+        )],
+        &[],
+    )?;
     activate_treasury(rpc, payer, treasury, now + 1)?;
     Ok(treasury)
 }
@@ -54,7 +85,12 @@ fn trust_identity_pda(treasury: &Pubkey) -> Pubkey {
 }
 
 /// Creates the TrustIdentityAccount PDA via `init_trust_identity`.
-fn init_trust_identity(rpc: &RpcClient, payer: &Keypair, treasury: Pubkey, now: i64) -> anyhow::Result<Pubkey> {
+fn init_trust_identity(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    treasury: Pubkey,
+    now: i64,
+) -> anyhow::Result<Pubkey> {
     let trust_identity = trust_identity_pda(&treasury);
     let sig = send_tx(
         rpc,
@@ -77,7 +113,9 @@ fn init_trust_identity(rpc: &RpcClient, payer: &Keypair, treasury: Pubkey, now: 
 
 fn fetch_trust_identity(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TrustIdentityAccount> {
     let info = rpc.get_account(addr)?;
-    Ok(TrustIdentityAccount::try_deserialize(&mut info.data.as_slice())?)
+    Ok(TrustIdentityAccount::try_deserialize(
+        &mut info.data.as_slice(),
+    )?)
 }
 
 fn fetch_treasury(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TreasuryAccount> {
@@ -103,7 +141,12 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::TrustEnvelopeConfig { owner, treasury, trust_identity }.to_account_metas(None),
+            accounts::TrustEnvelopeConfig {
+                owner,
+                treasury,
+                trust_identity,
+            }
+            .to_account_metas(None),
             instruction::ConfigureTrustPolicy {
                 args: ConfigureTrustPolicyArgs {
                     watch_threshold: 30,
@@ -123,8 +166,14 @@ fn main() -> anyhow::Result<()> {
     println!("  tx: {sig}");
 
     let ti = fetch_trust_identity(&rpc, &trust_identity)?;
-    anyhow::ensure!(ti.trust_config.watch_threshold == 30, "watch_threshold not stored");
-    anyhow::ensure!(ti.trust_tier == 0, "tier should still be Trusted after configure");
+    anyhow::ensure!(
+        ti.trust_config.watch_threshold == 30,
+        "watch_threshold not stored"
+    );
+    anyhow::ensure!(
+        ti.trust_tier == 0,
+        "tier should still be Trusted after configure"
+    );
     println!("  ok custom thresholds stored on TrustIdentityAccount (watch=30, lockdown=200)");
 
     // [2] restore_trust (no-op on Trusted)
@@ -134,7 +183,12 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::TrustEnvelopeConfig { owner, treasury, trust_identity }.to_account_metas(None),
+            accounts::TrustEnvelopeConfig {
+                owner,
+                treasury,
+                trust_identity,
+            }
+            .to_account_metas(None),
             instruction::RestoreTrust { now: seed + 4 }.data(),
         )],
         &[],
@@ -155,13 +209,17 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::AgentManage { owner, treasury: treasury2, trust_identity: trust_identity2 }
-                .to_account_metas(None),
+            accounts::AgentManage {
+                owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
             instruction::RegisterAgent {
                 args: RegisterAgentArgs {
                     key: agent_key,
                     label: "trading-agent".to_string(),
-                    allowed_chains: vec![1u8],  // ETH only
+                    allowed_chains: vec![1u8],   // ETH only
                     allowed_tx_types: vec![0u8], // Transfer only
                     daily_limit_usd: Some(5_000),
                     now: seed + 102,
@@ -180,9 +238,18 @@ fn main() -> anyhow::Result<()> {
         .find(|a| a.key == agent_key)
         .ok_or_else(|| anyhow::anyhow!("agent not found in TrustIdentityAccount"))?;
     anyhow::ensure!(agent.enabled, "agent should be enabled");
-    anyhow::ensure!(agent.scope.allowed_chains == vec![1u8], "chain scope mismatch");
-    anyhow::ensure!(agent.scope.daily_limit_usd == Some(5_000), "daily limit mismatch");
-    println!("  ok agent {} registered (ETH-only, limit=5000 usd)", agent_key);
+    anyhow::ensure!(
+        agent.scope.allowed_chains == vec![1u8],
+        "chain scope mismatch"
+    );
+    anyhow::ensure!(
+        agent.scope.daily_limit_usd == Some(5_000),
+        "daily limit mismatch"
+    );
+    println!(
+        "  ok agent {} registered (ETH-only, limit=5000 usd)",
+        agent_key
+    );
 
     // [4] revoke_agent
 
@@ -191,9 +258,17 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::AgentManage { owner, treasury: treasury2, trust_identity: trust_identity2 }
-                .to_account_metas(None),
-            instruction::RevokeAgent { key: agent_key, now: seed + 103 }.data(),
+            accounts::AgentManage {
+                owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
+            instruction::RevokeAgent {
+                key: agent_key,
+                now: seed + 103,
+            }
+            .data(),
         )],
         &[],
     )?;
@@ -219,7 +294,10 @@ fn main() -> anyhow::Result<()> {
             }
             .to_account_metas(None),
             instruction::NominateSuccessorOwner {
-                args: NominateSuccessorArgs { new_owner: successor, now: seed + 104 },
+                args: NominateSuccessorArgs {
+                    new_owner: successor,
+                    now: seed + 104,
+                },
             }
             .data(),
         )],
@@ -271,8 +349,14 @@ fn main() -> anyhow::Result<()> {
     )?;
     println!("  tx: {sig}");
     let acct = fetch_treasury(&rpc, &treasury)?;
-    let ms = acct.multisig.as_ref().ok_or_else(|| anyhow::anyhow!("multisig not stored"))?;
-    anyhow::ensure!(ms.required_approval_weight == 4, "required_approval_weight not stored");
+    let ms = acct
+        .multisig
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("multisig not stored"))?;
+    anyhow::ensure!(
+        ms.required_approval_weight == 4,
+        "required_approval_weight not stored"
+    );
     anyhow::ensure!(
         ms.guardians.iter().any(|g| g.key == g1 && g.weight == 3),
         "weighted guardian not stored"
@@ -286,12 +370,16 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::AgentManage { owner, treasury: treasury2, trust_identity: trust_identity2 }
-                .to_account_metas(None),
+            accounts::AgentManage {
+                owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
             instruction::SetAgentCapability {
                 args: SetAgentCapabilityArgs {
                     key: agent_key,
-                    allowed_chains: vec![1u8],  // ETH only
+                    allowed_chains: vec![1u8],   // ETH only
                     allowed_tx_types: vec![0u8], // Transfer only
                     daily_limit_usd: Some(5_000),
                     allowed_protocols: 0b101, // protocols 0 and 2
@@ -311,8 +399,14 @@ fn main() -> anyhow::Result<()> {
     println!("  tx: {sig}");
     let ti = fetch_trust_identity(&rpc, &trust_identity2)?;
     let agent = ti.agents.iter().find(|a| a.key == agent_key).unwrap();
-    anyhow::ensure!(agent.scope.allowed_protocols == 0b101, "protocol bitmap not stored");
-    anyhow::ensure!(agent.scope.per_tx_limit_usd == Some(2_000), "per-tx cap not stored");
+    anyhow::ensure!(
+        agent.scope.allowed_protocols == 0b101,
+        "protocol bitmap not stored"
+    );
+    anyhow::ensure!(
+        agent.scope.per_tx_limit_usd == Some(2_000),
+        "per-tx cap not stored"
+    );
     println!("  ok manifest tightened (protocols=0b101, per_tx=2000)");
 
     println!("\n[capabilities] arm_capability_loosen sets the timelock");
@@ -320,9 +414,17 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::AgentManage { owner, treasury: treasury2, trust_identity: trust_identity2 }
-                .to_account_metas(None),
-            instruction::ArmCapabilityLoosen { key: agent_key, now: seed + 111 }.data(),
+            accounts::AgentManage {
+                owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
+            instruction::ArmCapabilityLoosen {
+                key: agent_key,
+                now: seed + 111,
+            }
+            .data(),
         )],
         &[],
     )?;
@@ -333,15 +435,22 @@ fn main() -> anyhow::Result<()> {
         agent.loosen_unlock_at == seed + 111 + AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS,
         "loosen timelock not armed"
     );
-    println!("  ok loosen timelock armed (+{}s)", AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS);
+    println!(
+        "  ok loosen timelock armed (+{}s)",
+        AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS
+    );
 
     println!("\n[capabilities] set_agent_tripwires stores custom weights");
     let sig = send_tx(
         &rpc,
         &payer,
         vec![ix(
-            accounts::TrustEnvelopeConfig { owner, treasury: treasury2, trust_identity: trust_identity2 }
-                .to_account_metas(None),
+            accounts::TrustEnvelopeConfig {
+                owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
             instruction::SetAgentTripwires {
                 args: SetAgentTripwiresArgs {
                     policy_denial_weight: 15,
@@ -357,7 +466,10 @@ fn main() -> anyhow::Result<()> {
     )?;
     println!("  tx: {sig}");
     let ti = fetch_trust_identity(&rpc, &trust_identity2)?;
-    anyhow::ensure!(ti.tripwire_config.policy_denial_weight == 15, "tripwire weight not stored");
+    anyhow::ensure!(
+        ti.tripwire_config.policy_denial_weight == 15,
+        "tripwire weight not stored"
+    );
     println!("  ok tripwire weights stored (policy_denial=15)");
 
     println!("\ntrust envelope + agent identity + multiparty + capabilities smoke checks passed on devnet.");

@@ -9,7 +9,6 @@ pub mod confidential;
 pub mod dwallet;
 pub mod policy;
 
-
 use std::{
     env,
     str::FromStr,
@@ -25,8 +24,8 @@ use anyhow::{anyhow, ensure, Context};
 use aura_core::{
     accounts, build_message_approval_request, instruction, parse_message_approval_account,
     CreateTreasuryArgs, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord, RegisterDwalletArgs,
-    TreasuryAccount, DWALLET_CPI_AUTHORITY_SEED, DWALLET_DEVNET_GRPC_ENDPOINT,
-    ENCRYPT_FHE_UINT64, ID,
+    TreasuryAccount, DWALLET_CPI_AUTHORITY_SEED, DWALLET_DEVNET_GRPC_ENDPOINT, ENCRYPT_FHE_UINT64,
+    ID,
 };
 use encrypt_compute::mock_crypto::MockEncryptor;
 use encrypt_grpc::{
@@ -801,6 +800,7 @@ pub fn execute_denied(
 /// 4. Sign request (with `ApprovalProof::Solana`) to the gRPC service.
 /// 5. Wait for `MessageApproval` account to reach `Signed` status.
 /// 6. `finalize_execution` — advances policy state and clears pending slot.
+#[allow(clippy::too_many_arguments)]
 pub async fn finalize_via_dwallet(
     rpc: &RpcClient,
     payer: &Keypair,
@@ -809,6 +809,8 @@ pub async fn finalize_via_dwallet(
     dwallet_program: &Pubkey,
     live: &LiveDWallet,
     now: i64,
+    analytics: Option<Pubkey>,
+    activity_log: Option<Pubkey>,
 ) -> anyhow::Result<()> {
     let domain = fetch_treasury_domain(rpc, &treasury)?;
     let pending = domain
@@ -935,26 +937,34 @@ pub async fn finalize_via_dwallet(
     println!("  dWallet signature verified on-chain");
 
     // 6 — finalize
+    let mut finalize_accounts = accounts::FinalizeExecution {
+        operator: payer.pubkey(),
+        treasury,
+        message_approval: approval_req.message_approval_account,
+        swarm_pool: None,
+        budget_envelope: None,
+        exposure_group: None,
+        external_liveness: None,
+        dwallet_state: None,
+        scheduled_intent: None,
+        fee_vault: None,
+        fee_schedule: None,
+        protocol_config: None,
+    }
+    .to_account_metas(None);
+    if let Some(analytics) = analytics {
+        finalize_accounts.push(AccountMeta::new(analytics, false));
+    }
+    if let Some(activity_log) = activity_log {
+        finalize_accounts.push(AccountMeta::new(activity_log, false));
+    }
+
     send_tx(
         rpc,
         payer,
         vec![Instruction {
             program_id: ID,
-            accounts: accounts::FinalizeExecution {
-                operator: payer.pubkey(),
-                treasury,
-                message_approval: approval_req.message_approval_account,
-                swarm_pool: None,
-                budget_envelope: None,
-                exposure_group: None,
-                external_liveness: None,
-                dwallet_state: None,
-                scheduled_intent: None,
-                fee_vault: None,
-                fee_schedule: None,
-                protocol_config: None,
-            }
-            .to_account_metas(None),
+            accounts: finalize_accounts,
             data: instruction::FinalizeExecution { now: now + 1 }.data(),
         }],
         &[],

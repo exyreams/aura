@@ -8,13 +8,13 @@
 use anchor_lang::system_program::ID as SYSTEM_PROGRAM_ID;
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
 use aura_core::{
-    accounts, instruction, ConditionalProposal, ConditionalProposalArgs, ConditionRecord,
+    accounts, instruction, ConditionRecord, ConditionalProposal, ConditionalProposalArgs,
     DWalletAccount, ProposeTransactionArgs, RegisterDwalletArgs, ScheduleRecipient,
     ScheduledIntent, ScheduledIntentArgs, ID,
 };
 use aura_devnet::{
-    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer,
-    now_unix, pda, send_tx,
+    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer, now_unix,
+    pda, send_tx,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -48,7 +48,11 @@ fn create_active_treasury(
     now: i64,
 ) -> anyhow::Result<Pubkey> {
     let agent_id = unique_agent_id(prefix, now);
-    let treasury = pda(&[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()], &ID).0;
+    let treasury = pda(
+        &[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()],
+        &ID,
+    )
+    .0;
     send_tx(
         rpc,
         payer,
@@ -242,8 +246,15 @@ fn run_scheduled_recovery(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
     println!("\n[scheduled] promotion and abandoned-run recovery");
     let treasury = create_active_treasury(rpc, payer, "hard-sched", seed)?;
     let intent_id = 7u64;
-    let scheduled_intent =
-        pda(&[b"scheduled_intent", treasury.as_ref(), &intent_id.to_le_bytes()], &ID).0;
+    let scheduled_intent = pda(
+        &[
+            b"scheduled_intent",
+            treasury.as_ref(),
+            &intent_id.to_le_bytes(),
+        ],
+        &ID,
+    )
+    .0;
 
     send_tx(
         rpc,
@@ -306,8 +317,14 @@ fn run_scheduled_recovery(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
         .in_flight_proposal_id
         .ok_or_else(|| anyhow::anyhow!("scheduled run did not promote"))?;
     anyhow::ensure!(intent.in_flight_usd == 200, "in-flight amount not recorded");
-    anyhow::ensure!(intent.spent_usd == 0, "scheduled spend settled before finalize");
-    anyhow::ensure!(intent.runs_completed == 0, "run counter advanced before finalize");
+    anyhow::ensure!(
+        intent.spent_usd == 0,
+        "scheduled spend settled before finalize"
+    );
+    anyhow::ensure!(
+        intent.runs_completed == 0,
+        "run counter advanced before finalize"
+    );
     anyhow::ensure!(
         fetch_treasury_domain(rpc, &treasury)?.pending.is_some(),
         "promoted proposal missing from treasury"
@@ -412,8 +429,7 @@ fn run_conditional_trigger(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyho
                     target_chain: ETH,
                     tx_type: TRANSFER,
                     protocol_id: None,
-                    recipient_or_contract: "0xDD00000000000000000000000000000000000000"
-                        .to_string(),
+                    recipient_or_contract: "0xDD00000000000000000000000000000000000000".to_string(),
                     ttl_secs: 7_200,
                     conditions: vec![ConditionRecord {
                         kind: 2,
@@ -501,7 +517,11 @@ fn run_asset_reservation_release(
     let treasury = create_active_treasury(rpc, payer, "hard-asset", seed + 200)?;
     let dwallet_state = setup_wallet(rpc, payer, treasury, seed + 202)?;
 
-    let mut cancel_args = proposal_args(seed + 205, 300, "0xEE00000000000000000000000000000000000000");
+    let mut cancel_args = proposal_args(
+        seed + 205,
+        300,
+        "0xEE00000000000000000000000000000000000000",
+    );
     cancel_args.asset_id = Some("usdc".to_string());
     cancel_args.native_amount = Some(300_000_000);
     cancel_args.decimals = Some(6);
@@ -515,7 +535,11 @@ fn run_asset_reservation_release(
     let dw: DWalletAccount = fetch_account(rpc, &dwallet_state)?;
     anyhow::ensure!(dw.reserved_usd == 0, "cancel did not release reservation");
 
-    let mut expired_args = proposal_args(seed - 2_000, 200, "0xEF00000000000000000000000000000000000000");
+    let mut expired_args = proposal_args(
+        seed - 2_000,
+        200,
+        "0xEF00000000000000000000000000000000000000",
+    );
     expired_args.asset_id = Some("usdc".to_string());
     expired_args.native_amount = Some(200_000_000);
     expired_args.decimals = Some(6);

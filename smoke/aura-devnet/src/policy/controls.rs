@@ -468,6 +468,8 @@ pub(super) async fn scenario_reconfigure_guardrails(
         dwallet_program,
         live,
         created_at + 60,
+        None,
+        None,
     )
     .await
 }

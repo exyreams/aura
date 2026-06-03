@@ -14,6 +14,7 @@
 //!   mark_settlement_broadcast, confirm_settlement, resubmit_proposal.
 //! Those paths are covered by unit tests in `instructions/confirm_settlement.rs`.
 
+use anchor_lang::prelude::system_instruction;
 use anchor_lang::system_program::ID as SYSTEM_PROGRAM_ID;
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
 use aura_core::{
@@ -22,11 +23,10 @@ use aura_core::{
     SetAssetOracleFeedArgs, ID,
 };
 use aura_devnet::{
-    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer,
-    now_unix, pda, send_tx,
+    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer, now_unix,
+    pda, send_tx,
 };
 use solana_client::rpc_client::RpcClient;
-use anchor_lang::prelude::system_instruction;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
@@ -38,7 +38,11 @@ const TRANSFER: u8 = 0;
 const CUSTOM_CHAIN: u8 = 100;
 
 fn ix(accounts: Vec<AccountMeta>, data: Vec<u8>) -> Instruction {
-    Instruction { program_id: ID, accounts, data }
+    Instruction {
+        program_id: ID,
+        accounts,
+        data,
+    }
 }
 
 fn unique_agent_id(prefix: &str, now: i64) -> String {
@@ -53,11 +57,21 @@ fn create_active_treasury(
     now: i64,
 ) -> anyhow::Result<Pubkey> {
     let agent_id = unique_agent_id(prefix, now);
-    let treasury = pda(&[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()], &ID).0;
+    let treasury = pda(
+        &[b"treasury", payer.pubkey().as_ref(), agent_id.as_bytes()],
+        &ID,
+    )
+    .0;
     send_tx(
         rpc,
         payer,
-        vec![create_treasury_ix(payer, treasury, &agent_id, now, aura_policy::PolicyConfig::default())],
+        vec![create_treasury_ix(
+            payer,
+            treasury,
+            &agent_id,
+            now,
+            aura_policy::PolicyConfig::default(),
+        )],
         &[],
     )?;
     activate_treasury(rpc, payer, treasury, now + 1)?;
@@ -112,7 +126,11 @@ fn setup_eth_dwallet(
                 system_program: SYSTEM_PROGRAM_ID,
             }
             .to_account_metas(None),
-            instruction::InitDwalletState { chain: ETH, now: now + 1 }.data(),
+            instruction::InitDwalletState {
+                chain: ETH,
+                now: now + 1,
+            }
+            .data(),
         )],
         &[],
     )?;
@@ -133,7 +151,12 @@ fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
         rpc,
         payer,
         vec![ix(
-            accounts::DwalletControl { owner, treasury, dwallet_state }.to_account_metas(None),
+            accounts::DwalletControl {
+                owner,
+                treasury,
+                dwallet_state,
+            }
+            .to_account_metas(None),
             instruction::RecordDeposit {
                 chain: ETH,
                 asset_id: "usdc".to_string(),
@@ -177,7 +200,12 @@ fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
         rpc,
         payer,
         vec![ix(
-            accounts::DwalletControl { owner, treasury, dwallet_state }.to_account_metas(None),
+            accounts::DwalletControl {
+                owner,
+                treasury,
+                dwallet_state,
+            }
+            .to_account_metas(None),
             instruction::SetAssetOracleFeed {
                 chain: ETH,
                 args: SetAssetOracleFeedArgs {
@@ -245,12 +273,16 @@ fn run_oracle_integration(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow
         .assets
         .iter()
         .find(|a| a.asset_id == "usdc")
-        .ok_or_else(|| anyhow::anyhow!("usdc asset missing after refresh_verified_asset_balance"))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!("usdc asset missing after refresh_verified_asset_balance")
+        })?;
     anyhow::ensure!(
         usdc.native_amount == 500_000_000,
         "native_amount not updated by verified refresh"
     );
-    println!("  ok refresh_verified_asset_balance (RawLegacy, native=500_000_000, usd=0 from zero feed)");
+    println!(
+        "  ok refresh_verified_asset_balance (RawLegacy, native=500_000_000, usd=0 from zero feed)"
+    );
 
     println!("  oracle integration checks passed");
     Ok(())
@@ -277,11 +309,11 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
                 args: ChainProfileArgs {
                     chain_code: CUSTOM_CHAIN,
                     enabled: true,
-                    address_format: 0,      // EVM hex
-                    replay_scheme: 0,       // EVM nonce/chain_id
-                    finality_model: 0,      // probabilistic
-                    curve: 0,              // Secp256k1
-                    signature_scheme: 0,   // ECDSA
+                    address_format: 0,   // EVM hex
+                    replay_scheme: 0,    // EVM nonce/chain_id
+                    finality_model: 0,   // probabilistic
+                    curve: 0,            // Secp256k1
+                    signature_scheme: 0, // ECDSA
                     native_gas_asset: "eth".to_string(),
                     evm_chain_id: Some(9999),
                     confirmations_required: 12,
@@ -305,7 +337,9 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
         profile.confirmations_required == 12,
         "confirmations_required mismatch on registered profile"
     );
-    println!("  ok register_chain_profile (code={CUSTOM_CHAIN}, evm_chain_id=9999, confirmations=12)");
+    println!(
+        "  ok register_chain_profile (code={CUSTOM_CHAIN}, evm_chain_id=9999, confirmations=12)"
+    );
 
     // update_chain_profile — reduce confirmation depth to 6.
     send_tx(
@@ -349,7 +383,11 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
 
 // Chain binding + abandon
 
-fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Result<()> {
+fn run_chain_binding_and_abandon(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    seed: i64,
+) -> anyhow::Result<()> {
     println!("\n[chain binding] propose_transaction with EVM binding + abandon_proposal");
     let treasury = create_active_treasury(rpc, payer, "om-chain", seed + 500)?;
 
@@ -391,8 +429,7 @@ fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) ->
                     actual_output_usd: None,
                     quote_age_secs: None,
                     counterparty_risk_score: None,
-                    recipient_or_contract: "0xAA00000000000000000000000000000000000001"
-                        .to_string(),
+                    recipient_or_contract: "0xAA00000000000000000000000000000000000001".to_string(),
                     sanctions_proof: Vec::new(),
                     asset_id: None,
                     native_amount: None,
@@ -417,10 +454,9 @@ fn run_chain_binding_and_abandon(rpc: &RpcClient, payer: &Keypair, seed: i64) ->
     )?;
 
     let domain = fetch_treasury_domain(rpc, &treasury)?;
-    let pending = domain
-        .pending
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("no pending proposal after chain-bound propose_transaction"))?;
+    let pending = domain.pending.as_ref().ok_or_else(|| {
+        anyhow::anyhow!("no pending proposal after chain-bound propose_transaction")
+    })?;
     anyhow::ensure!(
         pending.transfer.has_chain_binding(),
         "pending proposal missing chain binding"

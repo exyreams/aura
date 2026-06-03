@@ -13,9 +13,16 @@
 //! Run with:
 //!   cargo run -p aura-devnet --bin dwallet
 
-use anchor_lang::{prelude::Pubkey, InstructionData, ToAccountMetas};
+use anchor_lang::{
+    prelude::Pubkey, system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData,
+    ToAccountMetas,
+};
 use anyhow::{ensure, Context};
-use aura_core::{accounts, instruction, ProposeTransactionArgs, ID};
+use aura_core::{
+    accounts,
+    constants::{ACTIVITY_LOG_SEED, TREASURY_ANALYTICS_SEED},
+    instruction, ProposeTransactionArgs, TreasuryAnalyticsAccount, ID,
+};
 use solana_sdk::signature::Signer;
 
 use crate::*;
@@ -74,6 +81,44 @@ pub async fn run() -> anyhow::Result<()> {
         &[],
     )
     .context("register_dwallet failed")?;
+
+    // Audit/analytics sidecars: the execution should be captured into both.
+    println!("Initializing analytics + activity-log sidecars...");
+    let (analytics, _) = pda(&[TREASURY_ANALYTICS_SEED, treasury.as_ref()], &ID);
+    let (activity_log, _) = pda(&[ACTIVITY_LOG_SEED, treasury.as_ref()], &ID);
+    send_tx(
+        &rpc,
+        &payer,
+        vec![
+            solana_sdk::instruction::Instruction {
+                program_id: ID,
+                accounts: accounts::InitTreasuryAnalytics {
+                    owner: payer.pubkey(),
+                    treasury,
+                    analytics,
+                    system_program: SYSTEM_PROGRAM_ID,
+                }
+                .to_account_metas(None),
+                data: instruction::InitTreasuryAnalytics {
+                    now: created_at + 1,
+                }
+                .data(),
+            },
+            solana_sdk::instruction::Instruction {
+                program_id: ID,
+                accounts: accounts::InitActivityLog {
+                    owner: payer.pubkey(),
+                    treasury,
+                    activity_log,
+                    system_program: SYSTEM_PROGRAM_ID,
+                }
+                .to_account_metas(None),
+                data: instruction::InitActivityLog {}.data(),
+            },
+        ],
+        &[],
+    )
+    .context("init analytics/activity_log failed")?;
 
     // Step 5: propose a plain transfer
     println!("\nProposing public transfer of 250 USD...");
@@ -158,8 +203,23 @@ pub async fn run() -> anyhow::Result<()> {
         &dwallet_program_id,
         &live,
         created_at + 3,
+        Some(analytics),
+        Some(activity_log),
     )
     .await?;
+
+    // The execution must have been captured into the analytics aggregates +
+    // the audit commitment.
+    let info = rpc.get_account(&analytics).context("fetch analytics")?;
+    let stats = TreasuryAnalyticsAccount::try_deserialize(&mut info.data.as_slice())?;
+    ensure!(stats.executed_count == 1, "execution not counted");
+    ensure!(stats.total_volume_usd == 250, "volume not recorded");
+    ensure!(stats.event_seq == 1, "audit commitment not advanced");
+    ensure!(stats.audit_root != [0u8; 32], "audit_root still genesis");
+    println!(
+        "  ✓ analytics captured: executed={} volume={} audit_root advanced (seq={})",
+        stats.executed_count, stats.total_volume_usd, stats.event_seq
+    );
 
     println!("\n✓ AURA devnet dWallet smoke test passed.");
     Ok(())

@@ -27,12 +27,18 @@ use solana_sdk::{
 };
 
 fn ix(accounts: Vec<AccountMeta>, data: Vec<u8>) -> Instruction {
-    Instruction { program_id: ID, accounts, data }
+    Instruction {
+        program_id: ID,
+        accounts,
+        data,
+    }
 }
 
 fn fetch(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<ConfidentialGuardrailsAccount> {
     let info = rpc.get_account(addr)?;
-    Ok(ConfidentialGuardrailsAccount::try_deserialize(&mut info.data.as_slice())?)
+    Ok(ConfidentialGuardrailsAccount::try_deserialize(
+        &mut info.data.as_slice(),
+    )?)
 }
 
 /// Mint a verified `u64` ciphertext authorized to the AURA program.
@@ -56,7 +62,13 @@ async fn main() -> anyhow::Result<()> {
     send_tx(
         &rpc,
         &payer,
-        vec![create_treasury_ix(&payer, treasury, &agent_id, seed, PolicyConfig::default())],
+        vec![create_treasury_ix(
+            &payer,
+            treasury,
+            &agent_id,
+            seed,
+            PolicyConfig::default(),
+        )],
         &[],
     )?;
     activate_treasury(&rpc, &payer, treasury, seed + 1)?;
@@ -84,14 +96,21 @@ async fn main() -> anyhow::Result<()> {
                 system_program: SYSTEM_PROGRAM_ID,
             }
             .to_account_metas(None),
-            instruction::InitConfidentialGuardrails { epoch_id: 1, now: seed + 2 }.data(),
+            instruction::InitConfidentialGuardrails {
+                epoch_id: 1,
+                now: seed + 2,
+            }
+            .data(),
         )],
         &[],
     )?;
     println!("  init tx: {sig}");
     let g = fetch(&rpc, &guardrails)?;
     anyhow::ensure!(g.enabled && g.epoch_id == 1, "init state wrong");
-    anyhow::ensure!(g.daily_limit_ciphertext == Some(daily), "daily ptr not stored");
+    anyhow::ensure!(
+        g.daily_limit_ciphertext == Some(daily),
+        "daily ptr not stored"
+    );
     println!("  ok sidecar created (enabled, epoch=1, 3 pointers)");
 
     // [2] update: re-point one new field (velocity), leave the rest.
@@ -122,8 +141,14 @@ async fn main() -> anyhow::Result<()> {
     )?;
     println!("  update tx: {sig}");
     let g = fetch(&rpc, &guardrails)?;
-    anyhow::ensure!(g.velocity_limit_ciphertext == Some(velocity), "velocity not set");
-    anyhow::ensure!(g.daily_limit_ciphertext == Some(daily), "daily should be unchanged");
+    anyhow::ensure!(
+        g.velocity_limit_ciphertext == Some(velocity),
+        "velocity not set"
+    );
+    anyhow::ensure!(
+        g.daily_limit_ciphertext == Some(daily),
+        "daily should be unchanged"
+    );
     println!("  ok velocity re-pointed; other pointers unchanged");
 
     // [3] rotate: fresh ciphertexts under a new epoch.
@@ -150,14 +175,21 @@ async fn main() -> anyhow::Result<()> {
                 velocity_window_ciphertext: None,
             }
             .to_account_metas(None),
-            instruction::RotateConfidentialGuardrails { new_epoch_id: 2, now: seed + 4 }.data(),
+            instruction::RotateConfidentialGuardrails {
+                new_epoch_id: 2,
+                now: seed + 4,
+            }
+            .data(),
         )],
         &[],
     )?;
     println!("  rotate tx: {sig}");
     let g = fetch(&rpc, &guardrails)?;
     anyhow::ensure!(g.epoch_id == 2, "epoch not bumped");
-    anyhow::ensure!(g.daily_limit_ciphertext == Some(daily2), "daily not rotated");
+    anyhow::ensure!(
+        g.daily_limit_ciphertext == Some(daily2),
+        "daily not rotated"
+    );
     println!("  ok rotated to epoch 2 with fresh ciphertexts");
 
     // [4] disable, then close.
@@ -166,8 +198,12 @@ async fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::DisableConfidentialGuardrails { owner, treasury, guardrails }
-                .to_account_metas(None),
+            accounts::DisableConfidentialGuardrails {
+                owner,
+                treasury,
+                guardrails,
+            }
+            .to_account_metas(None),
             instruction::DisableConfidentialGuardrails { now: seed + 5 }.data(),
         )],
         &[],
@@ -181,14 +217,21 @@ async fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
-            accounts::CloseConfidentialGuardrails { owner, treasury, guardrails }
-                .to_account_metas(None),
+            accounts::CloseConfidentialGuardrails {
+                owner,
+                treasury,
+                guardrails,
+            }
+            .to_account_metas(None),
             instruction::CloseConfidentialGuardrails {}.data(),
         )],
         &[],
     )?;
     println!("  close tx: {sig}");
-    anyhow::ensure!(rpc.get_account(&guardrails).is_err(), "sidecar should be closed");
+    anyhow::ensure!(
+        rpc.get_account(&guardrails).is_err(),
+        "sidecar should be closed"
+    );
     println!("  ok sidecar closed");
 
     println!("\nconfidential guardrail lifecycle smoke checks passed on devnet.");

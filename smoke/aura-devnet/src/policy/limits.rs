@@ -104,6 +104,8 @@ pub(super) async fn scenario_per_tx_approve(
         dwallet_program,
         live,
         created_at + 20,
+        None,
+        None,
     )
     .await
 }
@@ -210,6 +212,8 @@ pub(super) async fn scenario_daily_approve(
         dwallet_program,
         live,
         created_at + 20,
+        None,
+        None,
     )
     .await
 }
