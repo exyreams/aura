@@ -92,6 +92,7 @@ curve/scheme, native gas asset, optional EVM chain id, finality model, and requi
 | `propose_transaction` | Submit a public proposal; runs the policy engine and optionally reserves an asset-aware dWallet transfer. | |
 | `propose_confidential_transaction` | Submit a confidential (FHE) proposal, with optional asset-aware transfer binding. | |
 | `propose_batch` | Preview/propose a batch of transactions. | |
+| `propose_confidential_batch` | Create a confidential batch record from packed Encrypt `EUint64Vector` amount + per-item-limit ciphertexts, then submit the vector item-limit graph. | <New /> |
 | `approve_pending_execution` | Satisfy an approval-ladder level on a pending proposal. | |
 | `execute_pending` | Advance a pending proposal toward execution; expired proposals persist cleanup and release any asset reservation. | |
 | `finalize_execution` | Verify the dWallet signature. Legacy and unbound asset-aware proposals settle here; chain-bound proposals move to `Signed` and wait for settlement confirmation. | |
@@ -100,6 +101,12 @@ curve/scheme, native gas asset, optional EVM chain id, finality model, and requi
 | `resubmit_proposal` | Replace chain replay fields after a failed/reorged broadcast, clear the signature request, and return the proposal to signing. | <New /> |
 | `abandon_proposal` | Cancel a failed chain-bound proposal and release any reserved dWallet spend. | <New /> |
 | `cancel_pending` | Owner cancels the pending proposal and releases any matching asset-aware reservation. | |
+
+Confidential batch inputs are provisioned off-chain as fixed-width Encrypt vectors and referenced on-chain by
+ciphertext accounts. The public `item_count` names how many leading `EUint64Vector` lanes are active
+(`1..=8`); unused lanes must be padded by the client before submission. The instruction validates the amount
+and per-item-limit ciphertext metadata, stores the three vector ciphertext addresses on the batch PDA, and
+marks the result pending until the vector output is reduced/decrypted by the follow-up flow.
 
 ## Chain profiles
 
@@ -113,8 +120,8 @@ curve/scheme, native gas asset, optional EVM chain id, finality model, and requi
 | Instruction | Description | |
 |---|---|---|
 | `configure_confidential_guardrails` | Set the encrypted daily/per-tx limit + spent-counter ciphertexts (treasury-embedded). | |
-| `request_policy_decryption` | Request decryption of the encrypted policy output. | |
-| `confirm_policy_decryption` | Verify the decrypted violation code and apply it (maps `5 → WeeklyLimit`). | <New /> |
+| `request_policy_decryption` | Request decryption of the encrypted policy output, optionally binding the request to the current confidential guardrail epoch. | |
+| `confirm_policy_decryption` | Verify the decrypted policy output, enforce any bound guardrail epoch, and apply the result (maps `5 → WeeklyLimit`). | <New /> |
 
 `propose_confidential_transaction` runs a scalar FHE graph over the encrypted limits. By default it enforces
 per-tx + daily. When the optional `weekly_limit_ciphertext` + `weekly_spent_ciphertext` accounts and the
@@ -124,10 +131,17 @@ combined violation code (`0` ok, `1` per-tx, `2` daily, `5` weekly). The sidecar
 weekly pointers must match the supplied accounts. <New />
 
 <Callout title="Confidentiality scope">
-  The encrypted amount is not yet bound to the executed amount, and the encrypted spent counter is not read
-  back across the decryption boundary — both require Encrypt-network features (a plaintext commitment and an
-  exposed epoch) that the pre-alpha does not provide yet. Tracked for the decryption-boundary work.
+  The encrypted amount is not yet bound to the executed amount; that still requires an Encrypt-network
+  plaintext commitment. The decryption boundary now accepts scalar policy outputs whose first lane is the
+  public verdict and whose optional second `EUint64` lane carries `next_spent_today`; when present, the
+  decrypted counter must match the projected spend before the clear counter is advanced.
 </Callout>
+
+`request_policy_decryption(now, current_epoch_id)` and
+`confirm_policy_decryption(now, current_epoch_id)` accept an optional
+`ConfidentialGuardrailsAccount`. When the sidecar is supplied at request time, the request records
+`guardrail_epoch_id`; confirmation requires the same epoch to still be current and returns
+`GuardrailEpochMismatch` if the guardrails were rotated mid-flight.
 
 ### Confidential guardrail lifecycle
 

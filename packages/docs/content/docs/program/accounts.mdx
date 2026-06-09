@@ -125,11 +125,11 @@ Each is created with `init`, edited, and reclaimed with `close`. Seeds are relat
 | `PolicySimulationResultAccount` | `[b"policy_simulation", treasury, simulation_id]` | Non-mutating simulation result |
 | `PolicyReceiptAccount` | `[b"policy_receipt", …]` | Compact policy decision receipt |
 | `AttestationAccount` | `[b"policy_attestation", …]` | Policy attestation |
-| `BatchProposalAccount` | `[b"batch_proposal", …]` | Batch proposal preview |
+| `BatchProposalAccount` | `[b"batch_proposal", treasury, batch_id]` | Public or confidential batch proposal preview. Confidential batches store the public active item count plus Encrypt vector ciphertext pointers for packed amounts, per-item limits, and per-item violation output. |
 | `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
 | `PolicyTemplate` | `[b"policy_template", owner, template_id]` | Reusable, validated policy posture (apply across treasuries) |
 | `BillingTemplate` | `[b"billing_template", owner, template_id]` | Reusable, validated fee posture (fork a `BillingProfileKind` or author one; apply across treasuries) |
-| `ConfidentialGuardrailsAccount` | `[b"confidential_guardrails", treasury]` | Expanded confidential posture: Encrypt epoch marker, enabled flag, and encrypted limit/counter ciphertext pointers (sidecar; treasury keeps a 3-pointer fallback) |
+| `ConfidentialGuardrailsAccount` | `[b"confidential_guardrails", treasury]` | Expanded confidential posture: Encrypt epoch marker, enabled flag, and encrypted limit/counter ciphertext pointers (sidecar; treasury keeps a 3-pointer fallback). `request_policy_decryption` can bind a decryption request to this epoch, and `confirm_policy_decryption` rejects stale-epoch results. |
 | `TreasuryAnalyticsAccount` | `[b"treasury_analytics", treasury]` | Durable audit commitment (rolling `audit_root` hash-chain + `event_seq`) plus analytics aggregates (executed/denied counts, total + per-tx-type volume, fees, daily buckets) captured at the execution/decision boundary |
 | `ScheduledIntent` | `[b"scheduled_intent", treasury, intent_id]` | Recurring standing order with conditions plus in-flight promoted-proposal tracking |
 | `ConditionalProposal` | `[b"conditional_proposal", treasury, proposal_id]` | Parked conditional proposal that records the promoted pending proposal after trigger |
@@ -140,3 +140,7 @@ Execution also reads accounts owned by the Ika networks — `Ciphertext` and `De
 and `MessageApproval` (dWallet signing). These are parsed by `aura-core` but **not** owned by it; see
 [Confidential Guardrails](/docs/overview/confidential-guardrails) and
 [dWallet Execution](/docs/overview/dwallet-execution).
+
+Encrypt `Ciphertext` accounts can be scalar policy outputs or fixed-width SIMD vectors. Confidential batch
+submission currently accepts ready `EUint64Vector` ciphertexts for the packed amount and per-item-limit
+inputs, with at most 8 public active lanes.
