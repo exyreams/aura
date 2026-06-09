@@ -5,11 +5,16 @@ use crate::{
         evaluate_batch, evaluate_transaction, REG_FLAG_CROSS_BORDER, REG_FLAG_CTR_THRESHOLD,
         REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
     },
-    graphs::{advanced_policy_graph, batch_policy_graph, transaction_policy_graph},
+    graphs::{
+        advanced_policy_graph, batch_policy_graph,
+        confidential_batch_item_limit_vector_graph_bytes, confidential_batch_vector_policy_graph,
+        transaction_policy_graph,
+    },
     state::PolicyState,
     types::{Chain, TransactionType},
     violations::ViolationCode,
 };
+use encrypt_types::graph::{get_node, parse_graph};
 
 use super::engine_rules::base_tx;
 
@@ -251,4 +256,32 @@ fn policy_graph_specs_expose_expected_metadata() {
     assert_eq!(transaction.name, "evaluate_agent_transaction");
     assert!(advanced.requires_decryption);
     assert!(batch.uses_update_mode);
+
+    let confidential_batch = confidential_batch_vector_policy_graph();
+    assert_eq!(confidential_batch.name, "confidential_batch_vector_v1");
+    assert_eq!(
+        confidential_batch.outputs,
+        &["violation_code", "batch_total"]
+    );
+    assert!(!confidential_batch.uses_update_mode);
+    assert!(confidential_batch.requires_decryption);
+}
+
+#[test]
+fn confidential_batch_item_limit_vector_graph_compiles_to_vector_compare() {
+    let bytes = confidential_batch_item_limit_vector_graph_bytes();
+    let graph = parse_graph(&bytes).expect("vector item-limit graph should parse");
+
+    assert_eq!(graph.header().num_inputs(), 2);
+    assert_eq!(graph.header().num_outputs(), 1);
+    assert_eq!(graph.header().num_ops(), 1);
+
+    let amount_input = get_node(graph.node_bytes(), 0).expect("amount vector input");
+    let limit_input = get_node(graph.node_bytes(), 1).expect("limit vector input");
+    let compare = get_node(graph.node_bytes(), 2).expect("vector comparison op");
+
+    assert_eq!(amount_input.fhe_type(), 35);
+    assert_eq!(limit_input.fhe_type(), 35);
+    assert_eq!(compare.fhe_type(), 35);
+    assert_eq!(compare.op_type(), 43);
 }

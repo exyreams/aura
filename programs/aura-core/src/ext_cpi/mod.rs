@@ -25,11 +25,13 @@ pub use dwallet::{
 };
 
 pub use encrypt::{
-    decision_digest, decrypt_scalar_u64, decrypt_u64, is_supported_policy_scalar_fhe_type,
+    decision_digest, decrypt_confidential_policy_output, decrypt_scalar_u64, decrypt_u64,
+    encrypt_vector_lane_count, is_encrypt_vector_fhe_type, is_supported_policy_scalar_fhe_type,
     parse_ciphertext_account, parse_decryption_request_account, request_decryption_via_cpi,
-    verify_decryption_request_digest, AuraEncryptContext, DecryptionStatus, EncryptEvaluation,
-    OnchainCiphertext, OnchainDecryptionRequest, ENCRYPT_CPI_AUTHORITY_SEED,
-    ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
+    validate_encrypt_u64_vector_ciphertext, verify_decryption_request_digest, AuraEncryptContext,
+    ConfidentialPolicyOutput, DecryptionStatus, EncryptEvaluation, OnchainCiphertext,
+    OnchainDecryptionRequest, ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED,
+    ENCRYPT_FHE_UINT64, ENCRYPT_FHE_UINT64_VECTOR, ENCRYPT_VECTOR_BYTE_LEN,
 };
 
 pub use oracle::{native_to_usd_value, read_verified_price, VerifiedPrice};

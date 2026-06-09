@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::TREASURY_SEED,
+    constants::{CONFIDENTIAL_GUARDRAILS_SEED, TREASURY_SEED},
     execution::{expire_pending_transaction, mark_pending_decryption_request},
     ext_cpi::{
         is_supported_policy_scalar_fhe_type, parse_ciphertext_account, request_decryption_via_cpi,
         ENCRYPT_CPI_AUTHORITY_SEED, ENCRYPT_EVENT_AUTHORITY_SEED, ENCRYPT_FHE_UINT64,
     },
     instructions::sync_treasury_pending_account,
-    program_accounts::TreasuryAccount,
+    program_accounts::{ConfidentialGuardrailsAccount, TreasuryAccount},
     state::PendingDecryptionRequest,
 };
 
@@ -42,6 +42,13 @@ pub struct RequestPolicyDecryption<'info> {
     pub network_encryption_key: UncheckedAccount<'info>,
     /// CHECK: Encrypt event authority PDA.
     pub event_authority: UncheckedAccount<'info>,
+    /// Optional confidential guardrails sidecar used to bind request-time epoch.
+    #[account(
+        seeds = [CONFIDENTIAL_GUARDRAILS_SEED, treasury.key().as_ref()],
+        bump = confidential_guardrails.bump,
+        constraint = confidential_guardrails.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub confidential_guardrails: Option<Box<Account<'info, ConfidentialGuardrailsAccount>>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -54,11 +61,15 @@ pub struct RequestPolicyDecryption<'info> {
 /// `confirm_policy_decryption` must be called once the plaintext is ready.
 ///
 /// The operator must be the owner or AI authority.
-pub fn handler(mut ctx: Context<RequestPolicyDecryption>, now: i64) -> Result<()> {
+pub fn handler(
+    mut ctx: Context<RequestPolicyDecryption>,
+    now: i64,
+    current_epoch_id: u64,
+) -> Result<()> {
     let cpi_authority_bump = {
         let mut domain = ctx.accounts.treasury.to_domain_boxed()?;
         expire_pending_transaction(domain.as_mut(), now).map_err(crate::map_treasury_error)?;
-        prepare_live_decryption(&mut ctx, domain.as_mut(), now)?
+        prepare_live_decryption(&mut ctx, domain.as_mut(), now, current_epoch_id)?
     };
 
     request_decryption_via_cpi(
@@ -83,6 +94,7 @@ fn prepare_live_decryption(
     ctx: &mut Context<RequestPolicyDecryption>,
     domain: &mut crate::AgentTreasury,
     now: i64,
+    current_epoch_id: u64,
 ) -> Result<u8> {
     let pending = domain
         .pending
@@ -98,6 +110,13 @@ fn prepare_live_decryption(
     let expected_fhe_type = pending
         .policy_output_fhe_type
         .ok_or_else(|| error!(crate::AuraCoreError::PolicyGraphMismatch))?;
+    let guardrail_epoch_id = match ctx.accounts.confidential_guardrails.as_ref() {
+        Some(guardrails) => {
+            guardrails.assert_usable(current_epoch_id)?;
+            Some(guardrails.epoch_id)
+        }
+        None => None,
+    };
 
     let expected_encrypt_program: Pubkey = domain
         .deployment
@@ -152,6 +171,7 @@ fn prepare_live_decryption(
         PendingDecryptionRequest {
             ciphertext_account: ctx.accounts.ciphertext.key().to_string(),
             request_account: ctx.accounts.request_account.key().to_string(),
+            guardrail_epoch_id,
             expected_digest: hex::encode(digest),
             requested_at: now,
             verified_at: None,

@@ -108,6 +108,8 @@ pub struct PendingDecryptionRequest {
     pub ciphertext_account: String,
     /// The decryption request PDA account created by the Encrypt program.
     pub request_account: String,
+    /// Guardrail epoch bound at request time when the confidential sidecar is supplied.
+    pub guardrail_epoch_id: Option<u64>,
     /// Hex-encoded digest of the ciphertext at submission time, used for tamper detection.
     pub expected_digest: String,
     /// Unix timestamp when the request was submitted.

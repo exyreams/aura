@@ -29,6 +29,14 @@ pub const IX_EXECUTE_GRAPH: u8 = 4;
 
 /// FHE type code for a single encrypted `u64` scalar.
 pub const ENCRYPT_FHE_UINT64: u8 = 4;
+/// FHE type code for an encrypted SIMD vector of `u64` lanes.
+pub const ENCRYPT_FHE_UINT64_VECTOR: u8 = 35;
+/// Lowest Encrypt SIMD vector FHE type code.
+pub const ENCRYPT_VECTOR_FHE_TYPE_MIN: u8 = 32;
+/// Highest Encrypt SIMD vector FHE type code.
+pub const ENCRYPT_VECTOR_FHE_TYPE_MAX: u8 = 44;
+/// Fixed byte width of Encrypt SIMD vector plaintexts/ciphertexts.
+pub const ENCRYPT_VECTOR_BYTE_LEN: usize = 8192;
 
 /// Version byte expected in all Encrypt program accounts.
 pub const ENCRYPT_ACCOUNT_VERSION: u8 = 1;
@@ -554,6 +562,110 @@ pub fn is_supported_policy_scalar_fhe_type(fhe_type: u8) -> bool {
     matches!(fhe_type, 0..=4)
 }
 
+/// Returns `true` if `fhe_type` is one of Encrypt's fixed-size SIMD vector
+/// ciphertext types. Vector inputs are created off-chain and referenced by the
+/// same `Ciphertext` account shape as scalar inputs.
+pub fn is_encrypt_vector_fhe_type(fhe_type: u8) -> bool {
+    (ENCRYPT_VECTOR_FHE_TYPE_MIN..=ENCRYPT_VECTOR_FHE_TYPE_MAX).contains(&fhe_type)
+}
+
+/// Number of lanes in a full 8,192-byte Encrypt vector for supported integer
+/// vector types. Returns `None` for scalar or currently unsupported vector
+/// element widths.
+pub fn encrypt_vector_lane_count(fhe_type: u8) -> Option<usize> {
+    match fhe_type {
+        32 => Some(8192),
+        33 => Some(4096),
+        34 => Some(2048),
+        ENCRYPT_FHE_UINT64_VECTOR => Some(1024),
+        36 => Some(512),
+        37 => Some(256),
+        38 => Some(128),
+        39 => Some(64),
+        40 => Some(32),
+        41 => Some(16),
+        42 => Some(8),
+        43 => Some(4),
+        44 => Some(2),
+        _ => None,
+    }
+}
+
+/// Validates a `u64` vector ciphertext account for a small active-lane batch.
+///
+/// Encrypt vectors are fixed-width and padded off-chain. AURA can only verify
+/// public metadata here: the ciphertext must be an `EUint64Vector`, and the
+/// number of active lanes the graph will consume must fit inside the fixed
+/// 1,024-lane vector. Padding contents remain encrypted and are validated by
+/// graph-level tests/provisioning.
+pub fn validate_encrypt_u64_vector_ciphertext(
+    ciphertext: &OnchainCiphertext,
+    active_lanes: usize,
+) -> TreasuryResult<()> {
+    if ciphertext.fhe_type != ENCRYPT_FHE_UINT64_VECTOR {
+        return Err(TreasuryError::InvalidAccountData(format!(
+            "unsupported vector FHE type {}, expected EUint64Vector ({})",
+            ciphertext.fhe_type, ENCRYPT_FHE_UINT64_VECTOR
+        )));
+    }
+    let lane_count = encrypt_vector_lane_count(ciphertext.fhe_type).ok_or_else(|| {
+        TreasuryError::InvalidAccountData(format!(
+            "unsupported vector FHE type {}",
+            ciphertext.fhe_type
+        ))
+    })?;
+    if active_lanes == 0 || active_lanes > lane_count {
+        return Err(TreasuryError::InvalidAccountData(format!(
+            "active vector lanes {active_lanes} outside 1..={lane_count}"
+        )));
+    }
+    Ok(())
+}
+
+/// Decoded confidential-policy output.
+///
+/// Lane 0 is always the public enforcement verdict (`0` approve, non-zero
+/// deny code). For `EUint64` outputs with at least two lanes, lane 1 carries
+/// the decrypted next `spent_today` counter so the reveal boundary can close
+/// the encrypted-counter loop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConfidentialPolicyOutput {
+    pub violation_code: u64,
+    pub next_spent_today: Option<u64>,
+}
+
+/// Decodes the policy output produced by AURA confidential graphs.
+///
+/// Scalar outputs reveal only the verdict. `EUint64` outputs may include a
+/// second 8-byte lane with the next spent counter. Full vector outputs are not
+/// accepted as hot-path enforcement outputs; vector graphs should reduce to a
+/// scalar before decryption.
+pub fn decrypt_confidential_policy_output(
+    request: &OnchainDecryptionRequest<'_>,
+) -> TreasuryResult<ConfidentialPolicyOutput> {
+    if !is_supported_policy_scalar_fhe_type(request.fhe_type) {
+        return Err(TreasuryError::InvalidAccountData(format!(
+            "unsupported policy output FHE type {}",
+            request.fhe_type
+        )));
+    }
+
+    let violation_code = decrypt_scalar_u64(request)?;
+    let next_spent_today = if request.fhe_type == ENCRYPT_FHE_UINT64 {
+        match request.plaintext {
+            Some(plaintext) if plaintext.len() >= 16 => Some(decrypt_u64_lane(request, 1)?),
+            _ => None,
+        }
+    } else {
+        None
+    };
+
+    Ok(ConfidentialPolicyOutput {
+        violation_code,
+        next_spent_today,
+    })
+}
+
 /// Reads the decrypted `u64` value from a specific lane of a completed decryption request.
 ///
 /// Each lane occupies 8 bytes in the plaintext. AURA's canonical confidential
@@ -759,5 +871,78 @@ mod tests {
 
         assert_eq!(decrypt_scalar_u64(&parsed).expect("scalar u32"), 7);
         assert!(is_supported_policy_scalar_fhe_type(parsed.fhe_type));
+    }
+
+    #[test]
+    fn confidential_policy_output_reads_optional_next_spent_lane() {
+        let (mut data, _, _) = sample_decryption_request_data();
+        data.resize(DR_HEADER_END + 16, 0);
+        data[DR_TOTAL_LEN..DR_TOTAL_LEN + 4].copy_from_slice(&16u32.to_le_bytes());
+        data[DR_BYTES_WRITTEN..DR_BYTES_WRITTEN + 4].copy_from_slice(&16u32.to_le_bytes());
+        data[DR_FHE_TYPE] = ENCRYPT_FHE_UINT64;
+        data[DR_HEADER_END..DR_HEADER_END + 8].copy_from_slice(&0u64.to_le_bytes());
+        data[DR_HEADER_END + 8..DR_HEADER_END + 16].copy_from_slice(&1_500u64.to_le_bytes());
+
+        let parsed = parse_decryption_request_account(&data).expect("layout should parse");
+        let output = decrypt_confidential_policy_output(&parsed).expect("policy output");
+
+        assert_eq!(output.violation_code, 0);
+        assert_eq!(output.next_spent_today, Some(1_500));
+    }
+
+    #[test]
+    fn encrypt_vector_type_metadata_matches_fixed_width_vectors() {
+        assert!(is_encrypt_vector_fhe_type(ENCRYPT_FHE_UINT64_VECTOR));
+        assert_eq!(ENCRYPT_FHE_UINT64_VECTOR, 35);
+        assert_eq!(ENCRYPT_VECTOR_BYTE_LEN, 8192);
+        assert_eq!(encrypt_vector_lane_count(32), Some(8192));
+        assert_eq!(encrypt_vector_lane_count(33), Some(4096));
+        assert_eq!(encrypt_vector_lane_count(34), Some(2048));
+        assert_eq!(
+            encrypt_vector_lane_count(ENCRYPT_FHE_UINT64_VECTOR),
+            Some(1024)
+        );
+        assert_eq!(encrypt_vector_lane_count(36), Some(512));
+        assert_eq!(encrypt_vector_lane_count(44), Some(2));
+        assert_eq!(encrypt_vector_lane_count(31), None);
+        assert_eq!(encrypt_vector_lane_count(45), None);
+    }
+
+    #[test]
+    fn validate_u64_vector_ciphertext_rejects_wrong_type_or_lane_count() {
+        let mut ciphertext = OnchainCiphertext {
+            digest: [0x11; 32],
+            fhe_type: ENCRYPT_FHE_UINT64_VECTOR,
+            status: 1,
+        };
+
+        validate_encrypt_u64_vector_ciphertext(&ciphertext, 8)
+            .expect("8 active batch lanes fit in a u64 vector");
+        assert!(matches!(
+            validate_encrypt_u64_vector_ciphertext(&ciphertext, 0),
+            Err(TreasuryError::InvalidAccountData(_))
+        ));
+        assert!(matches!(
+            validate_encrypt_u64_vector_ciphertext(&ciphertext, 1025),
+            Err(TreasuryError::InvalidAccountData(_))
+        ));
+
+        ciphertext.fhe_type = 34;
+        assert!(matches!(
+            validate_encrypt_u64_vector_ciphertext(&ciphertext, 8),
+            Err(TreasuryError::InvalidAccountData(_))
+        ));
+    }
+
+    #[test]
+    fn confidential_policy_output_rejects_full_vector_hot_path_output() {
+        let (mut data, _, _) = sample_decryption_request_data();
+        data[DR_FHE_TYPE] = ENCRYPT_FHE_UINT64_VECTOR;
+
+        let parsed = parse_decryption_request_account(&data).expect("layout should parse");
+        let err = decrypt_confidential_policy_output(&parsed)
+            .expect_err("full vector policy outputs must reduce before hot-path decrypt");
+
+        assert!(matches!(err, TreasuryError::InvalidAccountData(_)));
     }
 }

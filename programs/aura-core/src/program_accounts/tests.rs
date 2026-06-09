@@ -148,6 +148,7 @@ fn treasury_account_space_budget_covers_populated_state() {
         decryption_request: Some(PendingDecryptionRequest {
             ciphertext_account: Pubkey::new_unique().to_string(),
             request_account: Pubkey::new_unique().to_string(),
+            guardrail_epoch_id: None,
             expected_digest: hex::encode([0x33u8; 32]),
             requested_at: 1_301,
             verified_at: Some(1_302),

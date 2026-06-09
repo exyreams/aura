@@ -99,9 +99,13 @@ pub(crate) use approval_ladder::{
     __cpi_client_accounts_approve_pending_execution,
     __cpi_client_accounts_configure_approval_ladder,
 };
-pub use batch_execution::{BatchProposalItemArgs, ProposeBatch, ProposeBatchArgs};
+pub use batch_execution::{
+    BatchProposalItemArgs, ProposeBatch, ProposeBatchArgs, ProposeConfidentialBatch,
+    ProposeConfidentialBatchArgs,
+};
 pub(crate) use batch_execution::{
-    __client_accounts_propose_batch, __cpi_client_accounts_propose_batch,
+    __client_accounts_propose_batch, __client_accounts_propose_confidential_batch,
+    __cpi_client_accounts_propose_batch, __cpi_client_accounts_propose_confidential_batch,
 };
 pub use billing_templates::{
     ApplyBillingTemplate, ApplyOrgProfile, CloseBillingTemplate, CreateBillingTemplate,

@@ -1,13 +1,13 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::TREASURY_SEED,
+    constants::{CONFIDENTIAL_GUARDRAILS_SEED, TREASURY_SEED},
     ext_cpi::{
-        decode_digest_hex, decrypt_scalar_u64, is_supported_policy_scalar_fhe_type,
+        decode_digest_hex, decrypt_confidential_policy_output, is_supported_policy_scalar_fhe_type,
         parse_decryption_request_account, verify_decryption_request_digest, DecryptionStatus,
         ENCRYPT_FHE_UINT64,
     },
-    program_accounts::{violation_code, TreasuryAccount},
+    program_accounts::{violation_code, ConfidentialGuardrailsAccount, TreasuryAccount},
     state::ENCRYPT_DEVNET_PROGRAM_ID,
 };
 use aura_policy::ViolationCode;
@@ -24,6 +24,13 @@ pub struct ConfirmPolicyDecryption<'info> {
     pub treasury: Box<Account<'info, TreasuryAccount>>,
     /// CHECK: Completed decryption request account owned by the Encrypt program.
     pub request_account: UncheckedAccount<'info>,
+    /// Optional confidential guardrails sidecar used to verify request-time epoch.
+    #[account(
+        seeds = [CONFIDENTIAL_GUARDRAILS_SEED, treasury.key().as_ref()],
+        bump = confidential_guardrails.bump,
+        constraint = confidential_guardrails.treasury == treasury.key() @ crate::AuraCoreError::InvalidExternalAccountData
+    )]
+    pub confidential_guardrails: Option<Box<Account<'info, ConfidentialGuardrailsAccount>>>,
 }
 
 /// Verifies a completed Encrypt decryption request and applies the confidential
@@ -34,12 +41,20 @@ pub struct ConfirmPolicyDecryption<'info> {
 /// `apply_confidential_policy_result`. The operator must be the owner or AI
 /// authority. Normal execution reveals only the small decision code; guardrail
 /// ciphertexts remain encrypted.
-pub fn handler(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> Result<()> {
-    confirm_live_decryption(ctx, now)
+pub fn handler(
+    ctx: Context<ConfirmPolicyDecryption>,
+    now: i64,
+    current_epoch_id: u64,
+) -> Result<()> {
+    confirm_live_decryption(ctx, now, current_epoch_id)
 }
 
 #[inline(never)]
-fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> Result<()> {
+fn confirm_live_decryption(
+    ctx: Context<ConfirmPolicyDecryption>,
+    now: i64,
+    current_epoch_id: u64,
+) -> Result<()> {
     let request_key = ctx.accounts.request_account.key();
     let (
         expected_request_account,
@@ -47,6 +62,7 @@ fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> R
         expected_digest_hex,
         expected_fhe_type,
         has_policy_output,
+        expected_guardrail_epoch_id,
     ) = {
         let pending = ctx
             .accounts
@@ -69,8 +85,22 @@ fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> R
                 .policy_output_fhe_type
                 .ok_or_else(|| error!(crate::AuraCoreError::PolicyGraphMismatch))?,
             pending.policy_output_ciphertext_account.is_some(),
+            decrypt_request.guardrail_epoch_id,
         )
     };
+
+    if let Some(expected_guardrail_epoch_id) = expected_guardrail_epoch_id {
+        let guardrails = ctx
+            .accounts
+            .confidential_guardrails
+            .as_ref()
+            .ok_or_else(|| error!(crate::AuraCoreError::InvalidExternalAccountData))?;
+        guardrails.assert_usable(current_epoch_id)?;
+        require!(
+            expected_guardrail_epoch_id == current_epoch_id,
+            crate::AuraCoreError::GuardrailEpochMismatch
+        );
+    }
 
     let expected_request_account: Pubkey = expected_request_account
         .parse()
@@ -123,14 +153,18 @@ fn confirm_live_decryption(ctx: Context<ConfirmPolicyDecryption>, now: i64) -> R
         let plaintext_sha256 = parsed
             .plaintext_sha256()
             .ok_or_else(|| error!(crate::AuraCoreError::DecryptionNotReady))?;
-        let confidential_violation_code = match (has_policy_output, parsed.fhe_type) {
-            (true, fhe_type) if is_supported_policy_scalar_fhe_type(fhe_type) => {
-                Some(decrypt_scalar_u64(&parsed).map_err(crate::map_treasury_error)?)
-            }
+        let policy_output = match (has_policy_output, parsed.fhe_type) {
+            (true, fhe_type) if is_supported_policy_scalar_fhe_type(fhe_type) => Some(
+                decrypt_confidential_policy_output(&parsed).map_err(crate::map_treasury_error)?,
+            ),
             (true, _) => return err!(crate::AuraCoreError::InvalidExternalAccountData),
             (false, _) => None,
         };
-        (plaintext_sha256, confidential_violation_code, None)
+        (
+            plaintext_sha256,
+            policy_output.map(|output| output.violation_code),
+            policy_output.and_then(|output| output.next_spent_today),
+        )
     };
 
     {

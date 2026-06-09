@@ -7,6 +7,7 @@ pub struct PendingDecryptionRequestRecord {
     pub ciphertext_account: String,
     #[max_len(64)]
     pub request_account: String,
+    pub guardrail_epoch_id: Option<u64>,
     #[max_len(64)]
     pub expected_digest: String,
     pub requested_at: i64,
@@ -20,6 +21,7 @@ impl PendingDecryptionRequestRecord {
         Self {
             ciphertext_account: domain.ciphertext_account.clone(),
             request_account: domain.request_account.clone(),
+            guardrail_epoch_id: domain.guardrail_epoch_id,
             expected_digest: domain.expected_digest.clone(),
             requested_at: domain.requested_at,
             verified_at: domain.verified_at,
@@ -31,6 +33,7 @@ impl PendingDecryptionRequestRecord {
         PendingDecryptionRequest {
             ciphertext_account: self.ciphertext_account.clone(),
             request_account: self.request_account.clone(),
+            guardrail_epoch_id: self.guardrail_epoch_id,
             expected_digest: self.expected_digest.clone(),
             requested_at: self.requested_at,
             verified_at: self.verified_at,

@@ -91,6 +91,7 @@ use instructions::{
     __client_accounts_owner_treasury, __client_accounts_ownership_handover,
     __client_accounts_pause_execution, __client_accounts_promote_canary,
     __client_accounts_propose_batch, __client_accounts_propose_conditional_transaction,
+    __client_accounts_propose_confidential_batch,
     __client_accounts_propose_confidential_transaction, __client_accounts_propose_override,
     __client_accounts_propose_transaction, __client_accounts_protocol_config_authority,
     __client_accounts_record_policy_snapshot, __client_accounts_recovery_config,
@@ -156,6 +157,7 @@ use instructions::{
     __cpi_client_accounts_ownership_handover, __cpi_client_accounts_pause_execution,
     __cpi_client_accounts_promote_canary, __cpi_client_accounts_propose_batch,
     __cpi_client_accounts_propose_conditional_transaction,
+    __cpi_client_accounts_propose_confidential_batch,
     __cpi_client_accounts_propose_confidential_transaction, __cpi_client_accounts_propose_override,
     __cpi_client_accounts_propose_transaction, __cpi_client_accounts_protocol_config_authority,
     __cpi_client_accounts_record_policy_snapshot, __cpi_client_accounts_recovery_config,
@@ -555,15 +557,17 @@ pub mod aura_core {
     pub fn request_policy_decryption(
         ctx: Context<RequestPolicyDecryption>,
         now: i64,
+        current_epoch_id: u64,
     ) -> Result<()> {
-        instructions::request_policy_decryption::handler(ctx, now)
+        instructions::request_policy_decryption::handler(ctx, now, current_epoch_id)
     }
 
     pub fn confirm_policy_decryption(
         ctx: Context<ConfirmPolicyDecryption>,
         now: i64,
+        current_epoch_id: u64,
     ) -> Result<()> {
-        instructions::confirm_policy_decryption::handler(ctx, now)
+        instructions::confirm_policy_decryption::handler(ctx, now, current_epoch_id)
     }
 
     pub fn confirm_settlement(
@@ -1210,6 +1214,13 @@ pub mod aura_core {
 
     pub fn propose_batch(ctx: Context<ProposeBatch>, args: ProposeBatchArgs) -> Result<()> {
         instructions::batch_execution::propose_batch(ctx, args)
+    }
+
+    pub fn propose_confidential_batch(
+        ctx: Context<ProposeConfidentialBatch>,
+        args: ProposeConfidentialBatchArgs,
+    ) -> Result<()> {
+        instructions::batch_execution::propose_confidential_batch(ctx, args)
     }
 
     pub fn check_invariants(

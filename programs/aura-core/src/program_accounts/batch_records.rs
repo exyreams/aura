@@ -6,7 +6,7 @@
 use super::*;
 
 /// Allocated size for a `BatchProposalAccount`.
-pub const BATCH_PROPOSAL_SPACE: usize = 8 + 1024;
+pub const BATCH_PROPOSAL_SPACE: usize = 8 + 1536;
 
 /// Serialized transaction item inside a batch proposal.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
@@ -52,4 +52,16 @@ pub struct BatchProposalAccount {
     /// Serialized batch items.
     #[max_len(8)]
     pub items: Vec<BatchProposalItemRecord>,
+    /// Whether this proposal was evaluated through confidential vector FHE.
+    pub confidential: bool,
+    /// Whether confidential vector outputs have been reduced/decrypted into a final result.
+    pub confidential_result_ready: bool,
+    /// Public active item count inside fixed-width confidential vectors.
+    pub confidential_item_count: u8,
+    /// Encrypt ciphertext containing packed confidential item amounts.
+    pub amount_vector_ciphertext: Option<Pubkey>,
+    /// Encrypt ciphertext containing packed confidential per-item limits.
+    pub per_item_limit_vector_ciphertext: Option<Pubkey>,
+    /// Encrypt ciphertext receiving packed per-item violation flags.
+    pub item_violation_vector_ciphertext: Option<Pubkey>,
 }

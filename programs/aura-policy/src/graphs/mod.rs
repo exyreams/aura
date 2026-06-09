@@ -9,6 +9,8 @@
 /// - `transaction_policy_graph`                    — spec for the public evaluation graph
 /// - `advanced_policy_graph`                       — spec for the advanced guardrails graph
 /// - `batch_policy_graph`                          — spec for the batch preview graph
+/// - `confidential_batch_vector_policy_graph`      — spec for vector batch FHE reductions
+/// - `confidential_batch_item_limit_vector_graph_bytes` — compiled vector item-limit graph bytes
 /// - `confidential_scalar_policy_graph`            — spec for the scalar FHE guardrails graph
 /// - `confidential_spend_guardrails_graph_bytes`   — compiled scalar graph bytes
 /// - `execute_confidential_spend_guardrails_graph` — CPI helper for scalar graph
@@ -19,7 +21,10 @@ mod spec;
 mod transaction;
 
 pub use advanced::advanced_policy_graph;
-pub use batch::batch_policy_graph;
+pub use batch::{
+    batch_policy_graph, confidential_batch_item_limit_vector_graph_bytes,
+    confidential_batch_vector_policy_graph, execute_confidential_batch_item_limit_vector_graph,
+};
 pub use confidential::{
     confidential_extended_scalar_policy_graph, confidential_extended_spend_guardrails_graph_bytes,
     confidential_scalar_policy_graph, confidential_spend_guardrails_graph_bytes,

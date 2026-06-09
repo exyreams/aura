@@ -56,9 +56,10 @@ pub use engine::{
     REG_FLAG_HIGH_RISK_COUNTERPARTY, REG_FLAG_REQUIRES_KYC,
 };
 pub use graphs::{
-    advanced_policy_graph, batch_policy_graph, confidential_extended_scalar_policy_graph,
+    advanced_policy_graph, batch_policy_graph, confidential_batch_item_limit_vector_graph_bytes,
+    confidential_batch_vector_policy_graph, confidential_extended_scalar_policy_graph,
     confidential_extended_spend_guardrails_graph_bytes, confidential_scalar_policy_graph,
-    confidential_spend_guardrails_graph_bytes,
+    confidential_spend_guardrails_graph_bytes, execute_confidential_batch_item_limit_vector_graph,
     execute_confidential_extended_spend_guardrails_graph,
     execute_confidential_spend_guardrails_graph, transaction_policy_graph, PolicyGraphSpec,
 };

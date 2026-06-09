@@ -62,6 +62,7 @@ fn mark_and_confirm_decryption(
         PendingDecryptionRequest {
             ciphertext_account,
             request_account: request_account.to_string(),
+            guardrail_epoch_id: None,
             expected_digest: hex::encode([0x77u8; 32]),
             requested_at: now,
             verified_at: None,
@@ -136,6 +137,7 @@ fn confidential_execution_requires_verified_decryption_before_finalize() {
         PendingDecryptionRequest {
             ciphertext_account,
             request_account: Pubkey::new_unique().to_string(),
+            guardrail_epoch_id: None,
             expected_digest: hex::encode([0x11u8; 32]),
             requested_at: 43_210,
             verified_at: None,
@@ -190,6 +192,39 @@ fn confidential_approved_flow_finalizes_after_verified_decryption() {
     );
     assert_eq!(receipt.message_digest.as_deref(), Some(digest.as_str()));
     assert_eq!(receipt.signed_message.as_deref(), Some(message.as_str()));
+}
+
+#[test]
+fn confidential_approval_accepts_matching_decrypted_next_spent_counter() {
+    let mut treasury = treasury();
+    configure_guardrails(&mut treasury, 1_700_000_100);
+    propose_approved_confidential(&mut treasury, 43_200);
+
+    let request_account = Pubkey::new_unique().to_string();
+    mark_and_confirm_decryption(&mut treasury, &request_account, 43_210);
+    apply_confidential_policy_result(&mut treasury, 0, Some(500), 43_212)
+        .expect("matching decrypted next-spent counter should apply");
+
+    assert_eq!(
+        treasury
+            .pending
+            .as_ref()
+            .map(|pending| pending.decision.next_state.spent_today_usd),
+        Some(500)
+    );
+}
+
+#[test]
+fn confidential_approval_rejects_mismatched_decrypted_next_spent_counter() {
+    let mut treasury = treasury();
+    configure_guardrails(&mut treasury, 1_700_000_100);
+    propose_approved_confidential(&mut treasury, 43_200);
+
+    let request_account = Pubkey::new_unique().to_string();
+    mark_and_confirm_decryption(&mut treasury, &request_account, 43_210);
+    let result = apply_confidential_policy_result(&mut treasury, 0, Some(501), 43_212);
+
+    assert!(matches!(result, Err(TreasuryError::InvalidAccountData(_))));
 }
 
 #[test]
