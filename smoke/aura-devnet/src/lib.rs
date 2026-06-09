@@ -56,6 +56,8 @@ use solana_sdk::{
 /// 32-byte network encryption key used by the pre-alpha Encrypt service.
 /// Replace with the real key once the network publishes it.
 pub const ENCRYPT_NETWORK_KEY: [u8; 32] = [0x55u8; 32];
+pub const ENCRYPT_FHE_UINT64_VECTOR: u8 = 35;
+pub const ENCRYPT_VECTOR_BYTE_LEN: usize = 8192;
 
 // Raw discriminator / layout bytes for polling account readiness.
 pub const ENCRYPT_DEPOSIT_DISC: u8 = 14;
@@ -472,6 +474,74 @@ pub async fn encrypt_u64(value: u64, authorized: &Pubkey) -> anyhow::Result<Pubk
                 tokio::time::sleep(Duration::from_secs(attempt * 2)).await;
             }
             Err(e) => return Err(anyhow!("Encrypt create_input failed after 8 attempts: {e}")),
+        }
+    }
+    unreachable!()
+}
+
+/// Encrypt a fixed-width `EUint64Vector` and return the on-chain ciphertext
+/// account. `active_lanes` are copied into the front of the vector; all
+/// remaining lanes are padded with zero.
+pub async fn encrypt_u64_vector(
+    active_lanes: &[u64],
+    authorized: &Pubkey,
+) -> anyhow::Result<Pubkey> {
+    ensure!(
+        !active_lanes.is_empty() && active_lanes.len() <= 1024,
+        "EUint64Vector active lanes must be in 1..=1024"
+    );
+
+    let mut value_bytes = vec![0u8; ENCRYPT_VECTOR_BYTE_LEN];
+    for (index, value) in active_lanes.iter().enumerate() {
+        let start = index * 8;
+        value_bytes[start..start + 8].copy_from_slice(&value.to_le_bytes());
+    }
+
+    let inputs = [PlaintextInput {
+        plaintext_bytes: &value_bytes,
+        fhe_type: FheType::EVectorU64,
+    }];
+    let enc =
+        MockEncryptor.encrypt_and_prove(&inputs, &ENCRYPT_NETWORK_KEY, EncryptProofChain::Solana);
+
+    let req = CreateInputRequest {
+        chain: EncryptChain::Solana.into(),
+        inputs: enc
+            .ciphertexts
+            .iter()
+            .map(|ct| EncryptedInput {
+                ciphertext_bytes: ct.clone(),
+                fhe_type: ENCRYPT_FHE_UINT64_VECTOR as u32,
+            })
+            .collect(),
+        proof: enc.proof,
+        authorized: authorized.to_bytes().to_vec(),
+        network_encryption_public_key: ENCRYPT_NETWORK_KEY.to_vec(),
+    };
+
+    for attempt in 1u64..=8 {
+        let mut client = connect_encrypt_client()
+            .await
+            .context("connect to Encrypt gRPC")?;
+        match client.create_input(req.clone()).await {
+            Ok(resp) => {
+                let id = resp
+                    .into_inner()
+                    .ciphertext_identifiers
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| anyhow!("Encrypt returned no identifier for u64 vector"))?;
+                return Ok(Pubkey::from(<[u8; 32]>::try_from(id.as_slice())?));
+            }
+            Err(e) if attempt < 8 => {
+                eprintln!("  retrying encrypt_u64_vector (attempt {attempt}/8): {e}");
+                tokio::time::sleep(Duration::from_secs(attempt * 2)).await;
+            }
+            Err(e) => {
+                return Err(anyhow!(
+                    "Encrypt vector create_input failed after 8 attempts: {e}"
+                ))
+            }
         }
     }
     unreachable!()

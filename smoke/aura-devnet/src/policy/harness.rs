@@ -196,6 +196,7 @@ pub(super) async fn run_confidential_cycle(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        confidential_guardrails: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -208,6 +209,7 @@ pub(super) async fn run_confidential_cycle(
             accounts: req_metas,
             data: instruction::RequestPolicyDecryption {
                 now: created_at + time_offset + 2,
+                current_epoch_id: 0,
             }
             .data(),
         }],
@@ -229,10 +231,12 @@ pub(super) async fn run_confidential_cycle(
                 operator: payer.pubkey(),
                 treasury,
                 request_account: request_account.pubkey(),
+                confidential_guardrails: None,
             }
             .to_account_metas(None),
             data: instruction::ConfirmPolicyDecryption {
                 now: created_at + time_offset + 3,
+                current_epoch_id: 0,
             }
             .data(),
         }],

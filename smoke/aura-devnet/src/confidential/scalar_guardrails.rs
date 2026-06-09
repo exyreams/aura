@@ -221,6 +221,7 @@ async fn run_confidential_scenario(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        confidential_guardrails: None,
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -234,6 +235,7 @@ async fn run_confidential_scenario(
             accounts: req_metas,
             data: instruction::RequestPolicyDecryption {
                 now: created_at + 5,
+                current_epoch_id: 0,
             }
             .data(),
         }],
@@ -256,10 +258,12 @@ async fn run_confidential_scenario(
                 operator: payer.pubkey(),
                 treasury,
                 request_account: request_account.pubkey(),
+                confidential_guardrails: None,
             }
             .to_account_metas(None),
             data: instruction::ConfirmPolicyDecryption {
                 now: created_at + 6,
+                current_epoch_id: 0,
             }
             .data(),
         }],
@@ -516,6 +520,7 @@ async fn run_confidential_weekly_scenario(
         cpi_authority: ep.cpi_authority,
         network_encryption_key: ep.network_key_pda,
         event_authority: ep.event_authority,
+        confidential_guardrails: Some(guardrails),
         system_program: SYSTEM_PROGRAM_ID,
     }
     .to_account_metas(None);
@@ -529,6 +534,7 @@ async fn run_confidential_weekly_scenario(
             accounts: req_metas,
             data: instruction::RequestPolicyDecryption {
                 now: created_at + 6,
+                current_epoch_id: 1,
             }
             .data(),
         }],
@@ -536,9 +542,46 @@ async fn run_confidential_weekly_scenario(
     )
     .context("request_policy_decryption failed")?;
 
+    let requested = fetch_treasury_domain(rpc, &treasury)?;
+    let bound_epoch = requested
+        .pending
+        .as_ref()
+        .and_then(|pending| pending.decryption_request.as_ref())
+        .and_then(|request| request.guardrail_epoch_id);
+    ensure!(
+        bound_epoch == Some(1),
+        "decryption request should bind guardrail epoch 1"
+    );
+
     println!("  Waiting for decryption plaintext...");
     wait_for_decryption_ready(rpc, &request_account.pubkey())
         .context("decryption request did not complete")?;
+
+    let stale_confirm = send_tx(
+        rpc,
+        payer,
+        vec![solana_sdk::instruction::Instruction {
+            program_id: ID,
+            accounts: accounts::ConfirmPolicyDecryption {
+                operator: payer.pubkey(),
+                treasury,
+                request_account: request_account.pubkey(),
+                confidential_guardrails: Some(guardrails),
+            }
+            .to_account_metas(None),
+            data: instruction::ConfirmPolicyDecryption {
+                now: created_at + 7,
+                current_epoch_id: 2,
+            }
+            .data(),
+        }],
+        &[],
+    );
+    ensure!(
+        stale_confirm.is_err(),
+        "stale current_epoch_id should reject confirm_policy_decryption"
+    );
+    println!("  ok stale epoch confirm rejected");
 
     send_tx(
         rpc,
@@ -549,10 +592,12 @@ async fn run_confidential_weekly_scenario(
                 operator: payer.pubkey(),
                 treasury,
                 request_account: request_account.pubkey(),
+                confidential_guardrails: Some(guardrails),
             }
             .to_account_metas(None),
             data: instruction::ConfirmPolicyDecryption {
-                now: created_at + 7,
+                now: created_at + 8,
+                current_epoch_id: 1,
             }
             .data(),
         }],
@@ -577,7 +622,7 @@ async fn run_confidential_weekly_scenario(
         pending.decision.violation == aura_policy::ViolationCode::WeeklyLimit,
         "expected WeeklyLimit violation"
     );
-    execute_denied(rpc, payer, treasury, created_at + 8)
+    execute_denied(rpc, payer, treasury, created_at + 9)
         .context("execute_pending (denial) failed")?;
     println!("  Denied (weekly) proposal cleared.");
     Ok(())
