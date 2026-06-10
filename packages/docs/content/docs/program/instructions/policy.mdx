@@ -30,6 +30,51 @@ frozen wallets are always enforced and have no softening field.
 User-authored, reusable policy postures stored in a standalone `PolicyTemplate` PDA — coherence-validated,
 optionally forked from a built-in preset, and applied (optionally parameterized) across treasuries.
 
+```mermaid
+flowchart TD
+    Start([Owner]) --> Create[create_policy_template]
+    Create --> |From scratch| Validate1{Validate config}
+    Create --> |Fork preset| Validate1
+    Validate1 --> |Invalid| Error1[Error: InvalidTemplateConfig]
+    Validate1 --> |Valid| Template[(PolicyTemplate PDA<br/>version=1)]
+    
+    Template --> Update[update_policy_template]
+    Update --> Validate2{Re-validate config}
+    Validate2 --> |Invalid| Error2[Error: InvalidTemplateConfig]
+    Validate2 --> |Valid| Template2[(PolicyTemplate PDA<br/>version++)]
+    
+    Template2 --> Apply{Apply to Treasury}
+    Apply --> |Direct| ApplyDirect[apply_policy_template]
+    Apply --> |With overrides| ApplyParam[apply_policy_template_parameterized]
+    
+    ApplyParam --> |scale_bps| Scale[Scale all USD limits]
+    ApplyParam --> |daily_limit_usd| Override1[Override specific limits]
+    ApplyParam --> |per_tx_limit_usd| Override2[Override specific limits]
+    
+    Scale --> Commit[Commit to Treasury]
+    Override1 --> Commit
+    Override2 --> Commit
+    ApplyDirect --> Commit
+    
+    Commit --> Check{Owner match?}
+    Check --> |Same owner| Write[Write config + bump version]
+    Check --> |Different owner| Shared{Template shared?}
+    Shared --> |No| Error3[Error: TemplateNotShared]
+    Shared --> |Yes| Write
+    
+    Write --> Done[Applied count++<br/>Audit trail recorded]
+    
+    Template2 --> Close[close_policy_template]
+    Close --> Reclaim[Reclaim rent]
+    
+    style Template fill:#e1f5ff
+    style Template2 fill:#e1f5ff
+    style Done fill:#d4edda
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+```
+
 | Instruction | Description | |
 |---|---|---|
 | `create_policy_template` | Author a template from a config or fork a built-in preset (validated). | <New /> |
@@ -43,6 +88,47 @@ optionally forked from a built-in preset, and applied (optionally parameterized)
 Make policy changes safe to ship and trivial to undo. `record_policy_snapshot` writes a full-config
 fingerprint into the `PolicyHistory` ring; `rollback_policy` restores a recorded version, and a canary
 trials a candidate against live traffic before promotion.
+
+```mermaid
+stateDiagram-v2
+    [*] --> NoCanary: Initial State
+    
+    NoCanary --> CanaryActive: start_canary(candidate, sample_cap)
+    
+    state CanaryActive {
+        [*] --> Scoring
+        Scoring --> Scoring: propose_transaction<br/>(shadow evaluation)
+        Scoring --> SamplesMet: samples >= sample_cap
+        
+        note right of Scoring
+            Each proposal scores against:
+            1. Enforced policy (normal flow)
+            2. Candidate policy (non-mutating)
+            
+            Tracks:
+            - allow/deny divergence
+            - per-rule outcome differences
+            - samples counter
+        end note
+    }
+    
+    CanaryActive --> NoCanary: discard_canary()<br/>(drop candidate)
+    
+    SamplesMet --> Promoted: promote_canary()
+    Promoted --> [*]: Candidate → Enforced<br/>Record in PolicyHistory<br/>Close canary PDA
+    
+    NoCanary --> Historical: rollback_policy(version)
+    Historical --> NoCanary: Config restored from fingerprint<br/>New version appended
+    
+    state "Sample Floor Check" as SampleCheck
+    CanaryActive --> SampleCheck: promote_canary() too early
+    SampleCheck --> CanaryActive: Error: CanarySampleFloorNotMet
+    
+    style CanaryActive fill:#fff3cd
+    style Promoted fill:#d4edda
+    style NoCanary fill:#e1f5ff
+    style Historical fill:#e1f5ff
+```
 
 | Instruction | Description | |
 |---|---|---|

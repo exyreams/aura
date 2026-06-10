@@ -6,6 +6,42 @@ icon: CalendarClock
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
+## Scheduled Intent Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: create_scheduled_intent
+    Created --> Active: Default state
+    Created --> Paused: pause_scheduled_intent
+    
+    Active --> Due: Clock reaches next_run_at
+    Paused --> Active: resume_scheduled_intent
+    
+    Due --> CheckConditions: execute_scheduled_intent (keeper)
+    CheckConditions --> ConditionsUnmet: Conditions fail
+    CheckConditions --> PolicyEvaluation: Conditions pass
+    
+    ConditionsUnmet --> Active: Reschedule next run
+    
+    PolicyEvaluation --> Denied: Policy denies
+    PolicyEvaluation --> Promoted: Policy approves
+    
+    Denied --> Active: runs_executed++, reschedule
+    Promoted --> InFlight: Pending proposal created
+    
+    InFlight --> Settled: finalize_execution
+    Settled --> Active: Reschedule if runs remaining
+    Settled --> Exhausted: No runs/budget remaining
+    
+    InFlight --> Abandoned: Proposal cancelled/expired
+    Abandoned --> Active: clear_scheduled_intent_in_flight
+    
+    Active --> Closed: close_scheduled_intent
+    Exhausted --> Closed: close_scheduled_intent
+    Paused --> Closed: close_scheduled_intent
+    Closed --> [*]
+```
+
 ## Scheduled intents
 
 On-chain standing orders (payroll / DCA / sweeps) in a `ScheduledIntent` PDA. Each due run is gated by the

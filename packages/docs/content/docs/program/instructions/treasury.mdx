@@ -6,6 +6,30 @@ icon: Landmark
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
+## Lifecycle State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Provisioning: create_treasury
+    Provisioning --> Active: transition_agent_state
+    Active --> Suspended: pause_execution / emergency_shutdown
+    Suspended --> Active: transition_agent_state (resume)
+    Active --> Decommissioning: transition_agent_state
+    Suspended --> Decommissioning: transition_agent_state
+    Decommissioning --> Decommissioned: Final cleanup
+    Decommissioned --> [*]
+    
+    note right of Active
+        Only Active permits
+        new proposals
+    end note
+    
+    note right of Suspended
+        emergency_shutdown arms
+        recovery mechanisms
+    end note
+```
+
 ## Treasury lifecycle
 
 | Instruction | Description | |
@@ -19,6 +43,6 @@ import { Callout } from 'fumadocs-ui/components/callout';
 | `trigger_dead_mans_switch` | Fire the inactivity switch after the threshold elapses. | |
 
 <Callout title="Lifecycle states">
-  Treasuries progress through states: **Provisioning** → **Active** → **Paused** → **Shutdown** → **Decommissioned**. 
-  State transitions are audited and most require owner authority.
+  Treasuries progress through states: **Provisioning** → **Active** → **Suspended** → **Decommissioning** → **Decommissioned**. 
+  Only the **Active** state permits new proposals. State transitions are audited and most require owner authority.
 </Callout>

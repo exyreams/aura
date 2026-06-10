@@ -6,6 +6,43 @@ icon: FingerprintPattern
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
+## Trust Tier Transitions
+
+```mermaid
+stateDiagram-v2
+    [*] --> Trusted: Default state
+    
+    Trusted --> Watch: threat_score ≥ watch_threshold
+    Watch --> Trusted: Score decays below threshold
+    
+    Watch --> Restricted: threat_score ≥ restricted_threshold
+    Restricted --> Watch: restore_trust (manual)
+    
+    Restricted --> Lockdown: threat_score ≥ lockdown_threshold
+    Lockdown --> Restricted: restore_trust (owner/guardian)
+    
+    note right of Trusted
+        100% limits
+        Full autonomy
+    end note
+    
+    note right of Watch
+        50% limits (configurable)
+        Increased logging
+    end note
+    
+    note right of Restricted
+        10% limits (configurable)
+        Forced multisig approval
+    end note
+    
+    note right of Lockdown
+        Execution frozen
+        Break-glass armed
+        Manual recovery only
+    end note
+```
+
 ## Trust envelope & enforcement
 
 Trust state lives on a per-treasury `TrustIdentityAccount` PDA (see [Accounts](/docs/program/accounts)),
@@ -53,7 +90,7 @@ timelock so a compromised owner key cannot instantly widen an agent's powers.
 
 <Callout title="Trust tiers">
   - **Trusted** (default): Full operating envelope
-  - **Watch**: Reduced limits, increased logging
-  - **Restricted**: Multisig required on all proposals
-  - **Lockdown**: Execution frozen, break-glass armed
+  - **Watch**: Reduced limits (50%), increased logging
+  - **Restricted**: Minimal limits (10%), multisig required on all proposals
+  - **Lockdown**: Execution frozen, break-glass armed, manual recovery only
 </Callout>

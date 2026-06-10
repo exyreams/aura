@@ -35,6 +35,37 @@ holds your keys" acceptable: the owner always has an agent-independent recovery 
 **Activation** (emergency path):
 - Call `emergency_shutdown`, wait `RECOVERY_ACTIVATION_SECS` (1 h), then use one of the two primitives.
 
+```mermaid
+sequenceDiagram
+    participant Owner
+    participant Treasury
+    participant Recovery
+    
+    Note over Owner,Recovery: Normal Setup Phase
+    Owner->>Treasury: register_recovery_destination(chain, address)
+    Treasury->>Recovery: Store address + timelock (48h)
+    Note over Recovery: First registration: immediate<br/>Updates: 48h timelock
+    
+    Note over Owner,Recovery: Emergency Situation
+    Owner->>Treasury: emergency_shutdown()
+    Treasury->>Treasury: Set shutdown_initiated_at
+    Note over Treasury: Wait 1 hour activation period
+    
+    alt Option 1: Sweep Funds
+        Owner->>Treasury: break_glass_recover(chain, amount)
+        Treasury->>Treasury: Verify shutdown + 1h elapsed
+        Treasury->>Recovery: Get pre-registered address
+        Treasury->>Treasury: Create pending proposal (bypass policy)
+        Treasury->>Treasury: Status: Proposed
+        Note over Treasury: Then proceed through normal<br/>execute_pending → finalize_execution
+    else Option 2: Transfer Authority
+        Owner->>Treasury: break_glass_transfer_authority(chain, new_authority)
+        Treasury->>Treasury: Verify shutdown + 1h elapsed
+        Treasury->>Treasury: Transfer dWallet ownership via CPI
+        Note over Treasury: Nuclear option:<br/>Abandons treasury
+    end
+```
+
 | Instruction | Description | |
 |---|---|---|
 | `register_recovery_destination` | Owner pre-registers a per-chain cold-wallet sweep address. First registration is immediate; changes are gated by a 48-hour timelock. Blocked during an active shutdown. | <New /> |

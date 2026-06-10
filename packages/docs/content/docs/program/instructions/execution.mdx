@@ -6,6 +6,37 @@ icon: Play
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
+## Proposal Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Proposed: propose_transaction / propose_confidential_transaction
+    Proposed --> Pending: Policy approved
+    Proposed --> Denied: Policy denied
+    
+    Pending --> Executing: execute_pending
+    Pending --> Cancelled: cancel_pending
+    Pending --> Expired: TTL elapsed
+    
+    Executing --> Signing: Request dWallet signature
+    Signing --> Signed: finalize_execution (chain-bound)
+    Signing --> Executed: finalize_execution (legacy)
+    
+    Signed --> Broadcast: mark_settlement_broadcast
+    Broadcast --> Confirmed: confirm_settlement
+    Broadcast --> Failed: Settlement failed
+    
+    Failed --> Signing: resubmit_proposal
+    Failed --> Abandoned: abandon_proposal
+    
+    Confirmed --> [*]
+    Executed --> [*]
+    Denied --> [*]
+    Cancelled --> [*]
+    Expired --> [*]
+    Abandoned --> [*]
+```
+
 Public proposals can be legacy USD-only or **asset-aware**. When `asset_id`, `native_amount`,
 `decimals`, or gas fields are provided, the proposal digest and dWallet message bind that concrete
 asset payload. Approved asset-aware proposals reserve the matching `DWalletAccount`; cancellation,

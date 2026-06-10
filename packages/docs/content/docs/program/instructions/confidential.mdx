@@ -6,6 +6,48 @@ icon: Lock
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
+## FHE Evaluation Flow
+
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant Core as aura-core
+    participant Encrypt as Ika Encrypt
+    
+    Agent->>Core: propose_confidential_transaction(amount_ct, ...)
+    Core->>Core: evaluate_public_precheck()
+    Note over Core: Non-FHE rules first
+    
+    alt Public rules deny
+        Core-->>Agent: Denied (no FHE evaluation)
+    else Public rules pass
+        Core->>Encrypt: CPI: evaluate(daily_limit_ct, per_tx_ct, spent_ct, amount_ct)
+        Note over Encrypt: FHE computation over encrypted values
+        Encrypt->>Encrypt: Store policy_output_ct
+        Encrypt-->>Core: CPI result
+        Core->>Core: Record pending proposal
+        Core-->>Agent: Pending (awaiting decryption)
+        
+        Agent->>Core: request_policy_decryption(epoch_id)
+        Core->>Encrypt: CPI: request_decryption(policy_output_ct)
+        Encrypt-->>Core: Decryption request queued
+        
+        Note over Encrypt: Decrypt network decrypts output
+        
+        Agent->>Core: confirm_policy_decryption(epoch_id)
+        Core->>Encrypt: Read decrypted plaintext
+        Encrypt-->>Core: violation_code (0=ok, 1=per-tx, 2=daily, 5=weekly)
+        
+        alt violation_code == 0
+            Core->>Core: Approve proposal
+            Core-->>Agent: Approved → Pending execution
+        else violation_code != 0
+            Core->>Core: Deny proposal
+            Core-->>Agent: Denied (limit exceeded)
+        end
+    end
+```
+
 ## Confidential (FHE)
 
 | Instruction | Description | |

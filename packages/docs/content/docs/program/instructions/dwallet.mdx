@@ -6,6 +6,35 @@ icon: Wallet
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
+## dWallet Transfer Flow
+
+```mermaid
+flowchart TD
+    A[Proposal Created] --> B{Asset-Aware?}
+    B -->|Yes| C[reserve_dwallet_spend]
+    B -->|No| D[Legacy USD-only flow]
+    
+    C --> E{Check Status}
+    E -->|Not Active| F[Error: DWalletNotActive]
+    E -->|Frozen| G[Error: DWalletFrozen]
+    E -->|Active| H{Check Limits}
+    
+    H -->|Exceeds per-tx| I[Error: DWalletLimitExceeded]
+    H -->|Exceeds daily| I
+    H -->|Within limits| J{Check Balance}
+    
+    J -->|Insufficient| K[Error: InsufficientWalletBalance]
+    J -->|Sufficient| L[Reserve Created]
+    
+    L --> M{Proposal Result}
+    M -->|Cancelled/Expired| N[release_dwallet_spend]
+    M -->|Executed| O[Settlement Confirmed]
+    
+    N --> P[Reservation Released]
+    O --> Q[settle_dwallet_spend]
+    Q --> R[Debit Asset + Update Counters]
+```
+
 ## dWallets
 
 | Instruction | Description | |
