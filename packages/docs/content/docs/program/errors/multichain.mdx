@@ -1,0 +1,38 @@
+---
+title: Multichain & Oracles
+description: Oracle validation, settlement, and chain profile errors
+icon: Link2
+---
+
+## Oracles
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6086 | `OracleStale` | Verified price publish time is older than the configured staleness bound. <New /> |
+| 6087 | `OracleConfidenceTooWide` | Price confidence interval exceeds the configured basis-point limit. <New /> |
+| 6088 | `UntrustedOracleProvider` | Oracle provider is not accepted for the operation. <New /> |
+| 6089 | `TrustedOracleRequired` | Policy requires a trusted provider, but the feed is raw legacy. <New /> |
+| 6090 | `OracleAccountInvalid` | Feed account, owner program, status, exponent, or value failed validation. <New /> |
+| 6091 | `OracleProviderNotAllowed` | Oracle provider code is unknown or disabled. <New /> |
+
+## Settlement & Chain Binding
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6092 | `ChainReplayFieldsMissing` | Required chain-native replay fields are missing or invalid. <New /> |
+| 6093 | `RecipientAddressInvalidForChain` | Recipient format does not match the target chain. <New /> |
+| 6094 | `SettlementNotConfirmed` | Chain-bound proposal has not reached the required confirmation depth. <New /> |
+| 6095 | `SettlementReorged` | Settlement evidence indicates the broadcast failed or was reorged. <New /> |
+| 6096 | `ChainProfileNotRegistered` | Custom chain profile is missing, disabled, or mismatched. <New /> |
+
+## Data Validation
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6013 | `InvalidDeployment` | Invalid deployment configuration. |
+| 6021 | `InvalidChain` | Invalid stored chain code. |
+| 6022 | `InvalidTransactionType` | Invalid stored transaction-type code. |
+| 6023 | `InvalidCurve` | Invalid stored curve code. |
+| 6024 | `InvalidSignatureScheme` | Invalid stored signature-scheme code. |
+| 6025 | `InvalidViolationCode` | Invalid stored violation code. |
+| 6026 | `InvalidProposalStatus` | Invalid stored proposal status. |

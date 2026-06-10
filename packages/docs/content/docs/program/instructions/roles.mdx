@@ -1,0 +1,22 @@
+---
+title: Roles & Permissions
+description: Operator roles, session keys, and permission management
+icon: KeyRound
+---
+
+## Operator roles
+
+| Instruction | Description | |
+|---|---|---|
+| `grant_operator_role` | Grant a scoped operator permission bitmap. | |
+| `revoke_operator_role` | Revoke an operator role. | |
+| `update_operator_role` | Edit an operator's permission mask / expiry in place. | <New /> |
+
+## Session keys
+
+| Instruction | Description | |
+|---|---|---|
+| `issue_session_key` | Issue a scoped, expiring session key. | |
+| `revoke_session_key` | Revoke a session key. | |
+| `close_session_key` | Close the session-key account (reclaim rent). | |
+| `update_session_key` | Extend expiry / re-scope an active session key. | <New /> |

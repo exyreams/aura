@@ -1,0 +1,86 @@
+---
+title: Execution & Operations
+description: Batches, scheduled intents, conditional proposals, and analytics
+icon: Play
+---
+
+## BatchProposalAccount
+
+Public or confidential batch proposal preview. Confidential batches store the public active item count plus Encrypt vector ciphertext pointers for packed amounts, per-item limits, and per-item violation output.
+
+**Seeds:**
+```
+[b"batch_proposal", treasury, batch_id]
+```
+
+## ScheduledIntent
+
+Recurring standing order (payroll / DCA / sweeps) with conditions, budget tracking, and in-flight promoted-proposal tracking.
+
+**Seeds:**
+```
+[b"scheduled_intent", treasury, intent_id]
+```
+
+## ConditionalProposal
+
+Parked conditional proposal that records the promoted pending proposal after trigger conditions are satisfied.
+
+**Seeds:**
+```
+[b"conditional_proposal", treasury, proposal_id]
+```
+
+## ChainProfileAccount
+
+Chain metadata for custom/built-in chain codes: address format, replay scheme, curve/scheme, gas asset, finality model, and required confirmations.
+
+**Seeds:**
+```
+[b"chain_profile", chain_code]
+```
+
+## TreasuryAnalyticsAccount
+
+Durable audit commitment (rolling `audit_root` hash-chain + `event_seq`) plus analytics aggregates (executed/denied counts, total + per-tx-type volume, fees, daily buckets) captured at the execution/decision boundary.
+
+**Seeds:**
+```
+[b"treasury_analytics", treasury]
+```
+
+## SnapshotAccount
+
+Point-in-time treasury snapshot for historical analysis.
+
+**Seeds:**
+```
+[b"treasury_snapshot", treasury, snapshot_index]
+```
+
+## HealthScoreAccount
+
+Treasury health metrics and scoring.
+
+**Seeds:**
+```
+[b"health_score", treasury]
+```
+
+## ActivityLogAccount
+
+On-chain activity ring buffer wired into the execution boundary.
+
+**Seeds:**
+```
+[b"activity_log", treasury]
+```
+
+## BudgetEnvelopeAccount
+
+Scoped (chain/category/protocol) budget envelope for spending control.
+
+**Seeds:**
+```
+[b"budget_envelope", treasury, envelope_id]
+```

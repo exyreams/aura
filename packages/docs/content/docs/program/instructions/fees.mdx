@@ -1,0 +1,70 @@
+---
+title: Fees & Billing
+description: Fee vaults, schedules, billing templates, and protocol-level monetization
+icon: Receipt
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Fees
+
+| Instruction | Description | |
+|---|---|---|
+| `init_fee_vault` | Create the protocol fee vault. | |
+| `deposit_fees` | Top up the prepaid fee balance (real lamport transfer into the vault). | <New /> |
+| `withdraw_unused_fees` | Return prepaid surplus to the owner (cannot touch accrued fees). | <New /> |
+| `set_fee_splits` | Set the recipient split table (bps sum to 10000) and the low-balance mode. | <New /> |
+| `collect_fees` | Sweep the accrued bucket — split-aware across recipients, or drain to one. | <New /> |
+| `update_fee_recipient` | Change the protocol fee recipient. | <New /> |
+| `close_fee_vault` | Close the fee vault (refused with outstanding accrued/debt). | |
+
+The effective fee is debited from the prepaid balance into the accrued bucket at `finalize_execution` (success
+only — denied/expired proposals are free). When the prepaid balance is short, the **low-balance mode** decides:
+`Block` refuses execution, `Degrade` records a `fee_debt`, `Warn` skips. The protocol floor portion is always
+charged.
+
+## Fee models & schedule
+
+A per-treasury `FeeScheduleAccount` sidecar (kept off the treasury record for stack-frame headroom) defines
+**what** is charged: a base rate, per-transaction-type overrides, volume tiers, min/max clamps, flat and
+recurring (subscription / AUM) fees, and discounts (FHE subsidy, reputation, referral) — merged across the
+protocol / integrator / owner layers. Absent a sidecar, the treasury's legacy `ProtocolFees` is used as a
+single base tier.
+
+| Instruction | Description | |
+|---|---|---|
+| `init_fee_schedule` | Create the sidecar and store a coherence-validated schedule (integrator layer bounded by `ProtocolConfig`). | <New /> |
+| `update_fee_schedule` | Replace the schedule (re-validated and re-bounded). | <New /> |
+| `close_fee_schedule` | Close the schedule sidecar. | <New /> |
+
+## Billing templates & org profiles
+
+A `BillingTemplate` mirrors policy templates for fee posture: author a schedule once (or fork a built-in
+`BillingProfileKind` — Payroll, TradingDesk, DaoTreasury, GrantProgram, VendorPayments, ColdStorage,
+Specialty) and apply it across treasuries within the protocol bounds. An **org profile** composes a policy
+template and a billing template into one apply call.
+
+| Instruction | Description | |
+|---|---|---|
+| `create_billing_template` | Author a billing template or fork a `BillingProfileKind` (validated). | <New /> |
+| `update_billing_template` | Overwrite the schedule/metadata and bump the version. | <New /> |
+| `close_billing_template` | Close a billing template and reclaim rent. | <New /> |
+| `apply_billing_template` | Write a template's schedule onto a treasury's fee sidecar (shared templates allow foreign owners). | <New /> |
+| `apply_org_profile` | Apply a policy template and a billing template to a treasury in one call, each through its own validation. | <New /> |
+
+## Monetization control plane
+
+The global `ProtocolConfig` singleton is the root of fee control: a protocol authority — distinct from any
+treasury owner — sets a **non-bypassable** per-transaction fee floor and the bounds within which integrators
+may charge. Fee computation reads the floor directly, so zeroing a treasury's own schedule cannot escape it.
+Economic changes are staged and applied behind a timelock.
+
+| Instruction | Description | |
+|---|---|---|
+| `init_protocol_config` | Bootstrap the `ProtocolConfig` singleton and set the protocol authority (callable once). | <New /> |
+| `update_protocol_config` | Stage an economic change (fee floor, creation fee, integrator bounds, recipient, settlement asset) behind the update timelock. | <New /> |
+| `commit_protocol_config` | Apply a staged change once its timelock has elapsed. | <New /> |
+
+<Callout title="Fee enforcement">
+  The protocol floor is enforced at the program level — no treasury can bypass it by zeroing their own fee schedule.
+</Callout>

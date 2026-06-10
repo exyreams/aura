@@ -1,0 +1,38 @@
+---
+title: Instructions Overview
+description: The aura-core instruction catalog, organized by domain
+icon: LayoutList
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Every in-treasury instruction follows the same shape: load the `AgentTreasury` domain from its account,
+mutate it (recording an audit event), then serialize it back and emit events. Standalone PDAs (fee vault,
+swarm pool, operator role, …) follow an `init` / edit / `close` pattern.
+
+<Callout title="Gating">
+  Unless noted, instructions are **owner-gated**. Some accept an **operator role** with the matching
+  permission, the **AI authority** (proposals/session keys), or a **guardian quorum** (governance/recovery).
+</Callout>
+
+## Instruction Domains
+
+Browse the complete instruction catalog by domain:
+
+- **[Treasury](/docs/program/instructions/treasury)** — Lifecycle, metadata, state transitions
+- **[dWallets](/docs/program/instructions/dwallet)** — Registration, controls, balances, transfers
+- **[Execution](/docs/program/instructions/execution)** — Proposals, batches, chain profiles, settlement
+- **[Confidential](/docs/program/instructions/confidential)** — FHE guardrails, decryption, epoch management
+- **[Policy](/docs/program/instructions/policy)** — Configuration, templates, versioning, canary deployments
+- **[Scheduled & Conditional](/docs/program/instructions/scheduled)** — Standing orders, triggers, conditions
+- **[Trust & Identity](/docs/program/instructions/trust)** — Trust scoring, agent authorities, ownership handover
+- **[Authorization](/docs/program/instructions/authorization)** — Multisig, custody recovery, break-glass
+- **[Governance](/docs/program/instructions/governance)** — Guardian rotation, AI authority rotation, overrides
+- **[Roles & Permissions](/docs/program/instructions/roles)** — Operators, session keys, capability manifests
+- **[Exposure & Pooling](/docs/program/instructions/exposure)** — Exposure groups, swarm pools, address lists
+- **[Fees & Billing](/docs/program/instructions/fees)** — Fee vaults, schedules, billing templates, protocol config
+- **[Observability](/docs/program/instructions/observability)** — Health scoring, snapshots, analytics, audit trails
+
+## Status Indicators
+
+Instructions marked with <span className="text-green-600 dark:text-green-400 font-semibold">New</span> were added in the latest update and may not yet have typed SDK wrappers.

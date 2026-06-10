@@ -1,0 +1,74 @@
+---
+title: Errors Overview
+description: aura-core program error codes and troubleshooting
+icon: LayoutList
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+`aura-core` returns Anchor errors from the `AuraCoreError` enum, starting at code **6000**. Domain-layer `TreasuryError`s are mapped to these at the instruction boundary.
+
+<Callout title="Error code range">
+  All aura-core errors are in the **6000-6199** range. Errors below 6000 are Anchor framework errors.
+</Callout>
+
+## Error Categories
+
+<Cards>
+  <Card 
+    title="Authorization" 
+    description="Why: Control who can perform actions. These errors prevent unauthorized access to treasury operations, protecting against malicious actors or misconfigured permissions."
+    href="/docs/program/errors/authorization"
+  />
+  <Card 
+    title="Execution" 
+    description="Why: Enforce proposal lifecycle rules. These errors ensure proposals follow the correct state machine, timelock requirements, and approval flows before execution."
+    href="/docs/program/errors/execution"
+  />
+  <Card 
+    title="Confidential" 
+    description="Why: Protect FHE encryption integrity. These errors validate that encrypted guardrails are properly configured and decryption follows the secure protocol."
+    href="/docs/program/errors/confidential"
+  />
+  <Card 
+    title="Wallets & Limits" 
+    description="Why: Enforce spending limits and balance checks. These errors prevent overdrafts, ensure wallets are active, and validate that spending stays within configured caps."
+    href="/docs/program/errors/wallets"
+  />
+  <Card 
+    title="Policy & Templates" 
+    description="Why: Maintain policy consistency and validation. These errors ensure policy configurations are coherent, templates are valid, and governance rules are followed."
+    href="/docs/program/errors/policy"
+  />
+  <Card 
+    title="Fees & Billing" 
+    description="Why: Control monetization and fee collection. These errors enforce protocol fee floors, validate billing schedules, and ensure proper fee accounting."
+    href="/docs/program/errors/fees"
+  />
+  <Card 
+    title="Trust & Recovery" 
+    description="Why: Enable emergency controls and threat response. These errors manage trust tier enforcement, ownership handovers, and break-glass recovery mechanisms."
+    href="/docs/program/errors/trust"
+  />
+  <Card 
+    title="Multichain" 
+    description="Why: Validate cross-chain execution and oracles. These errors ensure chain-specific replay protection, oracle data integrity, and settlement confirmation."
+    href="/docs/program/errors/multichain"
+  />
+</Cards>
+
+## Common Patterns
+
+### Error Code Format
+```
+6XXX | ErrorName | Description
+```
+
+### Handling Errors
+
+Most errors include contextual information about what triggered them. Always check:
+- The specific instruction that failed
+- Account states involved
+- Policy rules that were violated
+- Resource limits that were exceeded

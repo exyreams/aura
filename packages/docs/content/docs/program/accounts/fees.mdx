@@ -1,0 +1,43 @@
+---
+title: Fees & Billing
+description: Fee vaults, schedules, billing templates, and protocol config
+icon: Receipt
+---
+
+## FeeVaultAccount
+
+Prepaid fee balance, accrued bucket, fee debt, recipient split table, and low-balance mode.
+
+**Seeds:**
+```
+[b"fee_vault", treasury]
+```
+
+## FeeScheduleAccount
+
+Sidecar fee schedule defining what is charged: per-type rates, volume tiers, min/max clamps, flat/recurring fees, discounts, and integrator/owner layers.
+
+**Seeds:**
+```
+[b"fee_schedule", treasury]
+```
+
+## BillingTemplate
+
+Reusable, validated fee posture: author a schedule once (or fork a `BillingProfileKind`) and apply it across treasuries within the protocol bounds.
+
+**Seeds:**
+```
+[b"billing_template", owner, template_id]
+```
+
+## ProtocolConfigAccount
+
+Global monetization singleton: protocol authority, non-bypassable fee floor, integrator bounds, settlement asset, and timelocked pending updates.
+
+**Seeds:**
+```
+[b"protocol_config"]
+```
+
+This is the root of fee control — a protocol authority distinct from any treasury owner sets economic parameters that cannot be bypassed.

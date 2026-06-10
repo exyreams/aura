@@ -1,0 +1,47 @@
+---
+title: Multi-Party Authorization
+description: Multisig approvals, custody recovery, and break-glass mechanisms
+icon: Users
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Multi-party authorization
+
+Real M-of-N on the ordinary spend path. The approval ladder can require a `Multisig` level for
+high-value or high-risk proposals; each `approve_pending_execution` now records a **distinct** approval
+in a per-proposal tally, and the level is only satisfied once a quorum is reached — a single owner
+signature no longer suffices. Supports plain N-of-M (distinct count) and **weighted / role-based**
+quorum (summed guardian weight, e.g. a treasurer counts double). A `Restricted` trust tier forces
+`Multisig` on every proposal regardless of amount; a satisfied multisig cannot be softened by any
+failure-mode `CheckMode`.
+
+| Instruction | Description | |
+|---|---|---|
+| `configure_multisig` | Attach guardians, the required-signature count, optional per-guardian weights, and an optional required summed weight. | |
+| `approve_pending_execution` | Record one distinct guardian/owner approval; the proposal unblocks once the count or weight quorum is met. | |
+
+## Custody recovery & break-glass
+
+The owner can pre-register a per-chain cold-wallet address and later sweep funds to it (or hand off
+dWallet ownership) without needing the AI authority. This is the safety net that makes "the agent
+holds your keys" acceptable: the owner always has an agent-independent recovery path.
+
+**Setup** (do this while healthy):
+- Register a recovery address per chain. The first registration is immediate; changing it is gated by
+  a 48-hour timelock so a stolen owner key can't instantly redirect a sweep. Registration is blocked
+  during an active emergency shutdown.
+
+**Activation** (emergency path):
+- Call `emergency_shutdown`, wait `RECOVERY_ACTIVATION_SECS` (1 h), then use one of the two primitives.
+
+| Instruction | Description | |
+|---|---|---|
+| `register_recovery_destination` | Owner pre-registers a per-chain cold-wallet sweep address. First registration is immediate; changes are gated by a 48-hour timelock. Blocked during an active shutdown. | <New /> |
+| `break_glass_recover` | After shutdown + 1-hour activation: creates a pending sweep proposal forced to the registered address. AI-authority check and policy spend limits are bypassed; the proposal then proceeds through the normal `execute_pending → finalize_execution` path. | <New /> |
+| `break_glass_transfer_authority` | After shutdown + 1-hour activation: transfers dWallet ownership to an owner-controlled key via `transfer_ownership` CPI, abandoning the treasury. | <New /> |
+
+<Callout type="warn" title="Floor still applies">
+  Break-glass does not bypass sanctions checks — the recovery address must not be on the
+  deny list. Spend limits **are** bypassed; that's the point.
+</Callout>

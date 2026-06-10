@@ -1,0 +1,97 @@
+---
+title: Core Accounts
+description: Treasury, dWallet runtime, and trust identity accounts
+icon: ScrollText
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## TreasuryAccount
+
+The root state machine for one agent treasury — owner + AI authority, registered dWallets, the active policy
+config and spend counters, the pending-proposal queue, reputation, fees, optional multisig and swarm, and
+lifecycle/safety state.
+
+**Seeds:**
+```
+[b"treasury", owner, agent_id]
+```
+
+The optional multisig stores guardians with optional per-guardian **voting weights** and an optional
+required summed weight, powering real M-of-N (and weighted / role-based) approval on the spend path. Each
+queued pending proposal carries an `approvals` tally of distinct approvers; `approve_pending_execution`
+only marks the `Multisig` level satisfied once the count or weight quorum is reached.
+
+<Callout title="Immutable identity">
+  `owner` and `agent_id` are part of the seed, so they cannot change in place — they define the account's
+  address. Mutable settings are edited via `update_treasury_metadata`; the policy config via the
+  policy-configuration instructions.
+</Callout>
+
+The on-chain record (`TreasuryAccount`) is the serialized form; instructions deserialize it into the
+`AgentTreasury` domain object, mutate that, and write it back. The audit trail is emitted as events rather
+than persisted in the account. A `default_chain` field marks the treasury's preferred ("primary") execution
+chain (set via `set_default_chain`). Pending proposals can carry optional asset/native/gas transfer metadata;
+the treasury stores that metadata so the proposal digest, dWallet message, cancellation, expiry, and
+finalization paths all agree on the same concrete asset payload.
+
+Trust-envelope and agent-identity state lives in a separate **`TrustIdentityAccount`** PDA, not on `TreasuryAccount`, to keep treasury deserialization within the SBF 4096-byte stack-frame limit.
+The treasury's effective daily limit is still computed as `base × reputation_bps × tier_bps / 10_000²`,
+where `tier_bps` is the multiplier for the trust tier stored on that PDA — the tier multiplier is applied
+on top of the reputation multiplier so both the "earn more rope" and "lose it fast" signals use the same dial.
+
+A `recovery_destinations` list holds up to 8 per-chain cold-wallet addresses used exclusively by
+`break_glass_recover`. Each entry carries a `locked_until` timestamp: newly registered or updated
+addresses are locked for 48 hours to prevent an attacker who steals the owner key from immediately
+redirecting a recovery sweep.
+
+## DWalletAccount
+
+Each registered dWallet has its own **runtime account** — one PDA per `(treasury, chain)` — holding the
+controls, multi-asset ledger, and spend reservation that don't fit inside the size-capped treasury account.
+It is created by `init_dwallet_state` and closed by `remove_dwallet`.
+
+**Seeds:**
+```
+[b"dwallet_state", treasury, chain_code]
+```
+
+It stores the lifecycle `status` (active / frozen / retiring / retired), optional per-tx + daily USD limits
+and a rolling spend counter, the controlling authority + CPI authority seed (rotation `epoch`), an optional
+label, a reservation total, and an asset ledger (up to 16 rows of native amount, USD value, decimals, and an
+optional price feed account).
+
+The feed account can be refreshed through the raw legacy path or through the verified oracle adapter (`set_asset_oracle_feed` + `refresh_verified_asset_balance`), which validates the stored feed account, owner program, publish time, confidence interval, and exponent before updating USD value. When `require_balance_oracle_freshness` is enabled, raw legacy balance and condition feeds are refused.
+
+The treasury keeps only a cached aggregate balance per dWallet, kept in sync via `reconcile_dwallet_balance`.
+
+Pending proposals may also store `ChainExecutionBinding` fields in the treasury queue. Those fields bind
+EVM replay data, Bitcoin UTXO/sighash data, or Solana blockhash/message data into the dWallet signed
+message and keep chain-bound proposals open until `confirm_settlement` observes the required confirmations.
+Failed broadcasts can be resubmitted with fresh replay fields or abandoned to release wallet reservations.
+
+## TrustIdentityAccount
+
+Trust-envelope and agent-identity state is held in its own PDA — one per treasury — so the size-capped
+`TreasuryAccount` stays within the SBF 4096-byte stack-frame limit during deserialization. It is created by
+`init_trust_identity` and is optional on the proposal path: instructions that accept it fall back to
+`ai_authority`-only auth and assume `TrustTier::Trusted` when it is absent.
+
+**Seeds:**
+```
+[b"trust_identity", treasury]
+```
+
+Four fields track the trust tier: `trust_tier` (u8 code), `threat_score` (decaying u16 accumulator),
+`tier_entered_at`, and `last_clean_activity_at`. A `trust_config` record holds the owner-configurable
+thresholds and per-tier multipliers. An `agents` list (up to 8) holds scoped secondary agent authorities;
+when non-empty, `propose_transaction` validates callers against it (the primary `ai_authority` always
+retains full access). A `pending_ownership_handover` field holds a timelocked successor nomination.
+
+Each agent entry carries a full **capability manifest** (`scope`): allowed chains, tx types, a DeFi
+protocol bitmap, a privileged-instruction bitmap, per-agent daily and per-transaction USD caps, an
+optional recipient/asset allow-list, and an optional active-time window — checked on every action by the
+`propose_transaction` gate. It also carries on-chain **stats** (`actions_total`, `denials`,
+`last_active_at`) and a `loosen_unlock_at` timelock that gates manifest *loosening* (tightening is
+immediate). A treasury-level `tripwire_config` holds the owner-tunable behavior-signal weights that the
+gate feeds into `threat_score` on a breach.

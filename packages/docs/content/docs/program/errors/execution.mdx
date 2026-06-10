@@ -1,0 +1,34 @@
+---
+title: Execution Errors
+description: Proposal and execution lifecycle failures
+icon: OctagonX
+---
+
+## Proposals & Execution
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6004 | `PendingTransactionExists` | The pending queue is full. |
+| 6005 | `NoPendingTransaction` | No active pending proposal. |
+| 6019 | `PendingTransactionExpired` | TTL elapsed before execution. |
+| 6042 | `PendingExecutionTimelockActive` | Earliest-execution time not reached. |
+| 6041 | `ApprovalLevelNotSatisfied` | Required approval-ladder level unmet. |
+| 6018 | `ExecutionPaused` | Execution is paused. |
+| 6043 | `ExecutionScopePaused` | A specific execution scope is paused. |
+| 6032 | `CooldownNotElapsed` | Large-tx cooldown still active. |
+| 6033 | `HighRiskTransactionRequiresGuardian` | High-risk proposal needs guardian co-sign. |
+| 6036 | `AnomalyDetected` | Anomaly rule denied the proposal. |
+| 6039 | `AccountStillActive` | Closing an account that is still in use. |
+| 6049 | `EmptyBatch` | Batch proposal cannot be empty. |
+| 6050 | `BatchTooLarge` | Batch exceeds the maximum item count. |
+| 6034 | `InvalidStateTransition` | Illegal lifecycle transition. |
+| 6076 | `IntentDisabled` | Executing a paused scheduled intent. <New /> |
+| 6077 | `IntentNotDue` | Executing a scheduled intent before its next slot. <New /> |
+| 6078 | `IntentBudgetExhausted` | Per-run or lifetime budget exhausted. <New /> |
+| 6079 | `IntentRunsExhausted` | The intent's run count cap is reached. <New /> |
+| 6080 | `IntentExpired` | The intent passed its `end_at`. <New /> |
+| 6081 | `UnauthorizedKeeper` | Caller is not the intent's authorized keeper. <New /> |
+| 6082 | `InvalidIntentConfig` | Invalid recurrence / budget / condition config. <New /> |
+| 6083 | `ConditionUnmet` | Trigger conditions are not satisfied. <New /> |
+| 6084 | `ConditionExpired` | A conditional proposal expired unmet. <New /> |
+| 6085 | `TooManyConditions` | More than the per-item condition cap. <New /> |

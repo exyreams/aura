@@ -1,0 +1,13 @@
+{
+  "title": "Accounts",
+  "icon": "Database",
+  "defaultOpen": false,
+  "pages": [
+    "core",
+    "policy",
+    "fees",
+    "execution",
+    "access",
+    "external"
+  ]
+}

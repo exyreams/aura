@@ -1,0 +1,15 @@
+{
+  "title": "Errors",
+  "icon": "TriangleAlert",
+  "defaultOpen": false,
+  "pages": [
+    "authorization",
+    "execution",
+    "confidential",
+    "wallets",
+    "policy",
+    "fees",
+    "trust",
+    "multichain"
+  ]
+}

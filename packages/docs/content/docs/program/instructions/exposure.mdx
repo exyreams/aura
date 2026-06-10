@@ -1,0 +1,36 @@
+---
+title: Exposure & Pooling
+description: Exposure groups, swarm pools, and address lists
+icon: GitMerge
+---
+
+## Exposure groups
+
+| Instruction | Description | |
+|---|---|---|
+| `init_exposure_group` | Create a cross-treasury exposure group. | |
+| `join_exposure_group` | Add a treasury to the group. | |
+| `leave_exposure_group` | Remove a member from the group. | <New /> |
+| `update_exposure_group` | Edit the group's aggregate daily cap. | <New /> |
+| `close_exposure_group` | Close an empty group (reclaim rent). | <New /> |
+
+## Swarm pools
+
+| Instruction | Description | |
+|---|---|---|
+| `configure_swarm` | Attach a swarm shared-pool config to a treasury. | |
+| `init_swarm_pool` | Create the shared swarm pool account. | |
+| `join_swarm` | Add a treasury to the pool. | |
+| `leave_swarm` | Remove a treasury from the pool + detach its swarm config. | <New /> |
+| `update_swarm` | Update the shared-pool limit (treasury + pool). | <New /> |
+| `close_swarm_pool` | Close a pool with no remaining members. | <New /> |
+
+## Address lists
+
+| Instruction | Description | |
+|---|---|---|
+| `init_address_list` | Create an allow/deny address list. | |
+| `manage_address_list` | Replace the full list. | |
+| `update_address_list_entry` | Add/remove a single address without resending the list. | <New /> |
+| `clear_address_list` | Empty the list in place. | <New /> |
+| `close_address_list` | Close the list account. | |

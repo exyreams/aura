@@ -1,0 +1,22 @@
+---
+title: Confidential & Signing
+description: FHE, decryption, and signature verification errors
+icon: FileLock
+---
+
+## Confidential & Signing
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6015 | `ConfidentialGuardrailsNotConfigured` | Confidential proposal without guardrails. |
+| 6016 | `PolicyOutputNotReady` | Encrypted policy output not ready yet. |
+| 6017 | `PolicyOutputAlreadyComputed` | Encrypted policy output already computed. |
+| 6010 | `DecryptionNotReady` | Decryption plaintext not yet available. |
+| 6011 | `MessageApprovalNotReady` | dWallet signature not yet produced. |
+| 6012 | `SignatureVerificationFailed` | Signature did not verify against the request. |
+| 6008 | `PolicyGraphMismatch` | FHE policy graph digest does not match. |
+| 6009 | `PolicyDigestMismatch` | Policy decision/digest binding mismatch. |
+| 6137 | `GuardrailEpochMismatch` | A decryption request was bound to an older confidential guardrail epoch. <New /> |
+| 6138 | `ConfidentialGuardrailsDisabled` | Confidential guardrails are disabled (falls back to public policy). <New /> |
+| 6139 | `GuardrailRotationRequired` | Confidential guardrails must be rotated before use. <New /> |
+| 6014 | `InvalidExternalAccountData` | Malformed external account data, including unsupported or incorrectly owned Encrypt vector ciphertexts. |

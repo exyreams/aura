@@ -1,0 +1,28 @@
+---
+title: Fees & Billing
+description: Fee computation, accrual, and monetization errors
+icon: Receipt
+---
+
+## Monetization Control Plane
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6124 | `UnauthorizedProtocolAuthority` | Caller is not the protocol authority recorded on `ProtocolConfig`. <New /> |
+| 6125 | `InvalidProtocolConfig` | Fee exceeds the cap, integrator bounds are inverted, or the settlement asset is unknown. <New /> |
+| 6126 | `NoPendingProtocolUpdate` | `commit_protocol_config` called with no staged update. <New /> |
+| 6127 | `ProtocolUpdateTimelockActive` | `commit_protocol_config` called before the update timelock elapsed. <New /> |
+
+## Fee Models & Billing
+
+| Code | Name | Trigger |
+|---|---|---|
+| 6128 | `InvalidFeeSchedule` | Fee schedule fails coherence (min > max, non-monotonic tiers, discount > cap, rate > 100%). <New /> |
+| 6129 | `IntegratorFeeOutOfBounds` | Integrator fee is outside the `[min,max]` integrator bounds from `ProtocolConfig`. <New /> |
+| 6130 | `DiscountExceedsProtocolFloor` | A discount would reduce the fee below the protocol floor. <New /> |
+| 6131 | `InsufficientFeeBalance` | Prepaid fee balance cannot cover the fee (under the `Block` low-balance mode). <New /> |
+| 6132 | `FeeSplitsInvalid` | Fee splits do not sum to 10000 bps, exceed the cap, or the collect recipients don't match. <New /> |
+| 6133 | `FeeConversionUnavailable` | USD→settlement-asset conversion is unavailable (oracle stale). <New /> |
+| 6134 | `FeeDebtOutstanding` | Fee vault has outstanding `fee_debt`; settle before closing. <New /> |
+| 6135 | `InvalidBillingTemplate` | Billing template fails coherence validation. <New /> |
+| 6136 | `OrgProfileComponentMissing` | Org profile is missing a required component. <New /> |

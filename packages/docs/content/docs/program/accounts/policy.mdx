@@ -1,0 +1,50 @@
+---
+title: Policy & Governance
+description: Policy templates, history, canaries, and exposure groups
+icon: Shield
+---
+
+## PolicyTemplate
+
+Reusable, validated policy posture stored in a standalone PDA — coherence-validated, optionally forked from a built-in preset, and applied (optionally parameterized) across treasuries.
+
+**Seeds:**
+```
+[b"policy_template", owner, template_id]
+```
+
+## PolicyHistoryAccount
+
+Ring of prior policy-config snapshots. Each snapshot digest commits to the full serialized config so a recorded version can be restored and verified on rollback.
+
+**Seeds:**
+```
+[b"policy_history", treasury]
+```
+
+## PolicyCanaryAccount
+
+Shadow candidate policy + agreement/divergence tallies scored against live traffic before promotion.
+
+**Seeds:**
+```
+[b"policy_canary", treasury]
+```
+
+## ExposureGroupAccount
+
+Cross-treasury daily exposure cap for coordinated risk management.
+
+**Seeds:**
+```
+[b"exposure_group", authority, group_id]
+```
+
+## SwarmPoolAccount
+
+Shared spend pool across treasuries for agent swarms.
+
+**Seeds:**
+```
+[b"swarm_pool", swarm_id_hash]
+```

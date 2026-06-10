@@ -1,0 +1,41 @@
+---
+title: Access Control
+description: Operator roles, session keys, and address lists
+icon: KeyRound
+---
+
+## OperatorRoleAccount
+
+Scoped operator permission bitmap for delegated access control.
+
+**Seeds:**
+```
+[b"operator_role", treasury, operator]
+```
+
+## SessionKeyAccount
+
+Scoped, expiring delegated key for temporary access grants.
+
+**Seeds:**
+```
+[b"session_key", treasury, session_key]
+```
+
+## AddressListAccount
+
+Allow/deny recipient list for address-based access control.
+
+**Seeds:**
+```
+[b"address_list", treasury]
+```
+
+## ExternalLivenessAccount
+
+Dependency freshness timestamps for external service monitoring.
+
+**Seeds:**
+```
+[b"external_liveness", treasury]
+```
