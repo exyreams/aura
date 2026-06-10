@@ -180,12 +180,246 @@ details[open] summary .faq-icon {
   cursor: zoom-in;
 }
 
-.aura-mermaid svg {
+:is(.aura-mermaid, .mermaid-modal-canvas) svg {
   display: block;
   max-width: 100%;
   height: auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono) !important;
   pointer-events: none;
+}
+
+/* 1. Arrowheads & Markers */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg marker path,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .markerPath,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .arrowheadPath {
+  fill: var(--primary) !important;
+  stroke: none !important;
+  opacity: 0.75 !important;
+}
+
+/* 2. Edges / Lines / Transitions */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .transition,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .flowchart-link,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg path.path,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .edgePaths path,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .edgePath .path {
+  stroke: var(--primary) !important;
+  stroke-width: 1.5px !important;
+  opacity: 0.75 !important;
+}
+
+/* 3. Node Shapes (Rectangles, Polygons/Diamonds, Label Containers) */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node rect,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node polygon,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node ellipse,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node .label-container,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .state-box {
+  fill: var(--card-bg) !important;
+  stroke: var(--border) !important;
+  stroke-width: 1.5px !important;
+  rx: 6px !important;
+  ry: 6px !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .node rect,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .node polygon,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .node ellipse,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .node .label-container,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .state-box {
+  fill: #ffffff !important;
+  stroke: var(--border) !important;
+}
+
+/* 4. Hover State Micro-animations */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node:hover rect,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node:hover polygon,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node:hover ellipse,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node:hover .label-container,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node:hover .state-box {
+  fill: var(--hover-bg) !important;
+  stroke: var(--primary) !important;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15)) !important;
+}
+
+/* 5. Text Styling inside Nodes */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .nodeText,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .node .label,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .state-title,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg text,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .nodeLabel {
+  fill: var(--text-main) !important;
+  color: var(--text-main) !important;
+  font-weight: 500 !important;
+}
+
+/* 6. Edge Labels & Text on Lines */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .edgeLabel rect,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .edgeLabel span,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .transition-text,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .edgeLabel text,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .edgeLabel {
+  fill: var(--bg) !important;
+  stroke: none !important;
+  background: var(--bg) !important;
+  background-color: var(--bg) !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+}
+
+/* 7. Subgraphs / Clusters */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .cluster rect {
+  fill: rgba(255, 255, 255, 0.02) !important;
+  stroke: var(--border) !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4 4 !important;
+  rx: 8px !important;
+  ry: 8px !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .cluster rect {
+  fill: rgba(0, 0, 0, 0.02) !important;
+  stroke: var(--border) !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .cluster .label text {
+  fill: var(--text-muted) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* 8. Start and End States */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .state-start {
+  fill: var(--text-muted) !important;
+  stroke: none !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .state-end circle {
+  stroke: var(--text-muted) !important;
+  fill: var(--bg) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* 9. Notes in Diagrams */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note {
+  fill: #1e1e22 !important;
+  stroke: #3a3a40 !important;
+  stroke-width: 1.2px !important;
+  rx: 4px !important;
+  ry: 4px !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note rect,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note path,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note polygon {
+  fill: #1e1e22 !important;
+  stroke: #3a3a40 !important;
+  stroke-width: 1.2px !important;
+  rx: 4px !important;
+  ry: 4px !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg g.note rect,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg g.note path,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg g.note polygon {
+  fill: #1e1e22 !important;
+  stroke: #3a3a40 !important;
+  stroke-width: 1.2px !important;
+  rx: 4px !important;
+  ry: 4px !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note text,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note span,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .note div {
+  fill: #9ca3af !important;
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg g.note text,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg g.note span,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg g.note div {
+  fill: #9ca3af !important;
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note {
+  fill: #f3f4f6 !important;
+  stroke: #cbd5e1 !important;
+  stroke-width: 1.2px !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note rect,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note path,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note polygon {
+  fill: #f3f4f6 !important;
+  stroke: #cbd5e1 !important;
+  stroke-width: 1.2px !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg g.note rect,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg g.note path,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg g.note polygon {
+  fill: #f3f4f6 !important;
+  stroke: #cbd5e1 !important;
+  stroke-width: 1.2px !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note text,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note span,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .note div {
+  fill: #4b5563 !important;
+  color: #4b5563 !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg g.note text,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg g.note span,
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg g.note div {
+  fill: #4b5563 !important;
+  color: #4b5563 !important;
+}
+
+/* 10. Sequence Diagram Styling */
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .actor {
+  fill: var(--card-bg) !important;
+  stroke: var(--border) !important;
+}
+
+.light :is(.aura-mermaid, .mermaid-modal-canvas) svg .actor {
+  fill: #ffffff !important;
+  stroke: var(--border) !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .actor-line {
+  stroke: var(--border) !important;
+  stroke-dasharray: 4 4 !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .messageLine0,
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .messageLine1 {
+  stroke: var(--primary) !important;
+  stroke-width: 1.5px !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .messageText {
+  fill: var(--text-main) !important;
+  color: var(--text-main) !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .loopLine {
+  stroke: var(--border) !important;
+}
+
+:is(.aura-mermaid, .mermaid-modal-canvas) svg .loopText {
+  fill: var(--text-muted) !important;
 }
 
 /* Mermaid modal */
