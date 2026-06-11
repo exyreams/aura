@@ -53,7 +53,7 @@ export function DashboardFooter() {
               Documentation
             </a>
             <a
-              href={`${DEFAULT_DOCS_URL}/docs/sdk-ts`}
+              href={`${DEFAULT_DOCS_URL}/sdk-ts`}
               target="_blank"
               rel="noreferrer"
               className="hover:text-(--text-main) hover:bg-(--hover-bg) transition-colors px-2 py-1 rounded-md"

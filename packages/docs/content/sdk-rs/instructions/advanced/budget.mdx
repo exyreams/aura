@@ -1,0 +1,131 @@
+---
+title: Budget
+description: Scoped budget envelopes, cross-treasury exposure groups, and approval ladders.
+icon: Wallet
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## configure_budget_envelope
+
+Create or update a scoped sub-budget on the treasury.
+
+```rust
+// Build only
+let instruction = client.configure_budget_envelope_instruction(accounts, args);
+
+// Build + send
+client.configure_budget_envelope(&owner, accounts, args)?;
+```
+
+```rust
+use aura_sdk::pda::derive_budget_envelope_pda;
+
+let envelope_id: u64 = 1;
+let (budget_envelope, _) = derive_budget_envelope_pda(&treasury, envelope_id, &client.program_id());
+
+client.configure_budget_envelope(
+    &owner,
+    aura_core::accounts::ConfigureBudgetEnvelope {
+        owner: owner.pubkey(),
+        treasury,
+        budget_envelope,
+        system_program: anchor_lang::system_program::ID,
+    },
+    aura_core::ConfigureBudgetEnvelopeArgs {
+        envelope_id,
+        daily_limit_usd: 2_000,
+        weekly_limit_usd: Some(10_000),
+        scope: aura_core::BudgetEnvelopeScope::Chain(2),
+        timestamp: now,
+    },
+)?;
+```
+
+Pass `budget_envelope` in the proposal accounts to enforce the envelope.
+
+---
+
+## init_exposure_group / join_exposure_group
+
+Create a cross-treasury aggregate cap and add treasuries to it.
+
+```rust
+// Init
+client.init_exposure_group(&authority, accounts, args)?;
+
+// Join
+client.join_exposure_group(&authority, accounts)?;
+```
+
+```rust
+use aura_sdk::pda::derive_exposure_group_pda;
+
+let group_id = [1u8; 16];
+let (exposure_group, _) = derive_exposure_group_pda(&authority.pubkey(), &group_id, &client.program_id());
+
+// Create the group
+client.init_exposure_group(
+    &authority,
+    aura_core::accounts::InitExposureGroup {
+        authority: authority.pubkey(),
+        exposure_group,
+        system_program: anchor_lang::system_program::ID,
+    },
+    aura_core::InitExposureGroupArgs {
+        group_id,
+        limit_usd: 100_000,
+        timestamp: now,
+    },
+)?;
+
+// Add a treasury
+client.join_exposure_group(
+    &authority,
+    aura_core::accounts::JoinExposureGroup {
+        authority: authority.pubkey(),
+        exposure_group,
+        treasury,
+    },
+)?;
+```
+
+---
+
+## configure_approval_ladder
+
+Set amount and risk-score thresholds that require escalating approval levels.
+
+```rust
+// Build only
+let instruction = client.configure_approval_ladder_instruction(accounts, args);
+
+// Build + send
+client.configure_approval_ladder(&owner, accounts, args)?;
+```
+
+```rust
+client.configure_approval_ladder(
+    &owner,
+    aura_core::accounts::ConfigureApprovalLadder { owner: owner.pubkey(), treasury },
+    aura_core::ConfigureApprovalLadderArgs {
+        levels: vec![
+            aura_core::ApprovalLadderLevel { min_amount_usd: 5_000, min_risk_score: 0, required_level: 1 },
+            aura_core::ApprovalLadderLevel { min_amount_usd: 20_000, min_risk_score: 0, required_level: 2 },
+        ],
+        deny_above_amount_usd: Some(50_000),
+        deny_above_risk_score: Some(90),
+        timestamp: now,
+    },
+)?;
+```
+
+<Cards>
+  <Card title="Policy" description="Simulate, attest, and check policy." href="/sdk-rs/instructions/policy" />
+  <Card title="Operations" description="Operator roles, liveness, health scores, and snapshots." href="/sdk-rs/instructions/operations" />
+</Cards>

@@ -1,0 +1,283 @@
+---
+title: Overview
+description: AuraClient constructor, account fetching, PDA derivation, and transaction sending.
+icon: LayoutList
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+`AuraClient` is the main entry point for interacting with the AURA program from
+Rust. It provides typed builders for the current program surface, account
+fetching, PDA derivation, and transaction submission.
+
+## Creating a Client
+
+### Devnet with Default RPC
+
+```rust
+use aura_sdk::AuraClient;
+
+let client = AuraClient::devnet();
+```
+
+### Custom RPC and Program ID
+
+```rust
+use aura_sdk::AuraClient;
+use solana_commitment_config::CommitmentConfig;
+
+let client = AuraClient::with_options(
+    "https://devnet.helius-rpc.com/?api-key=YOUR_KEY",
+    aura_sdk::AURA_DEVNET_PROGRAM_ID,
+    CommitmentConfig::confirmed(),
+);
+```
+
+### With Default Payer
+
+```rust
+use aura_sdk::AuraClient;
+use solana_commitment_config::CommitmentConfig;
+use solana_sdk::signature::Keypair;
+
+let payer_keypair = Keypair::new();
+
+let client = AuraClient::with_payer(
+    "https://api.devnet.solana.com",
+    aura_sdk::AURA_DEVNET_PROGRAM_ID,
+    CommitmentConfig::confirmed(),
+    payer_keypair,
+);
+```
+
+## Account Fetching
+
+### get_treasury_account
+
+Fetch the raw on-chain `TreasuryAccount` record.
+
+```rust
+fn get_treasury_account(&self, treasury: &Pubkey) -> Result<TreasuryAccount, SdkError>
+```
+
+**Example:**
+
+```rust
+let record = client.get_treasury_account(&treasury_pda)?;
+println!("Agent ID: {}", record.agent_id);
+println!("AI Authority: {}", record.ai_authority);
+```
+
+### get_treasury
+
+Fetch and convert to the rich `AgentTreasury` domain model.
+
+```rust
+fn get_treasury(&self, treasury: &Pubkey) -> Result<AgentTreasury, SdkError>
+```
+
+**Example:**
+
+```rust
+let treasury = client.get_treasury(&treasury_pda)?;
+println!("Agent ID: {}", treasury.agent_id);
+println!("Daily limit: {}", treasury.policy_config.daily_limit_usd);
+```
+
+### get_treasury_for_owner
+
+Derive the PDA and fetch the account in one call.
+
+```rust
+fn get_treasury_for_owner(
+    &self,
+    owner: &Pubkey,
+    agent_id: &str
+) -> Result<(Pubkey, AgentTreasury), SdkError>
+```
+
+**Example:**
+
+```rust
+let (pda, treasury) = client.get_treasury_for_owner(&owner_pubkey, "my-agent")?;
+println!("Treasury PDA: {}", pda);
+println!("Daily limit: {}", treasury.policy_config.daily_limit_usd);
+```
+
+## PDA Derivation
+
+### derive_treasury_address
+
+Derive the treasury PDA for an owner and agent ID.
+
+```rust
+fn derive_treasury_address(&self, owner: &Pubkey, agent_id: &str) -> (Pubkey, u8)
+```
+
+**Returns:** `(Pubkey, u8)` - The PDA and bump seed
+
+**Example:**
+
+```rust
+let (treasury_pda, bump) = client.derive_treasury_address(&owner, "my-agent");
+println!("Treasury PDA: {}", treasury_pda);
+println!("Bump: {}", bump);
+```
+
+### derive_dwallet_cpi_authority
+
+Derive the dWallet CPI authority PDA.
+
+```rust
+fn derive_dwallet_cpi_authority(&self) -> (Pubkey, u8)
+```
+
+### derive_encrypt_cpi_authority
+
+Derive the Encrypt CPI authority PDA.
+
+```rust
+fn derive_encrypt_cpi_authority(&self) -> (Pubkey, u8)
+```
+
+### derive_encrypt_event_authority
+
+Derive the Encrypt event authority PDA.
+
+```rust
+fn derive_encrypt_event_authority(&self, encrypt_program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+## Transaction Building
+
+Every instruction has two forms:
+
+1. **`*_instruction(...)`** - Returns a `solana_sdk::instruction::Instruction`
+2. **Method without suffix** - Builds, signs, and sends in one call
+
+### Example: Create Treasury
+
+```rust
+use aura_sdk::types::CreateTreasuryArgs;
+
+// Form 1: Build instruction only
+let (treasury, instruction) = client.create_treasury_instruction(
+    owner.pubkey(),
+    args.clone()
+);
+
+// Compose with other instructions
+let transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
+
+// Form 2: Build and send
+let (treasury, signature) = client.create_treasury(&owner, args)?;
+println!("Created treasury: {}", treasury);
+println!("Transaction: {}", signature);
+```
+
+## Sending Transactions
+
+### send_instructions
+
+Send one or more instructions with a signer.
+
+```rust
+fn send_instructions(
+    &self,
+    payer: &Keypair,
+    instructions: Vec<Instruction>,
+    extra_signers: &[&Keypair],
+) -> Result<Signature, SdkError>
+```
+
+**Parameters:**
+
+- **payer** (`&Keypair`): Transaction fee payer and signer
+- **instructions** (`Vec<Instruction>`): Instructions to execute
+- **extra_signers** (`&[&Keypair]`): Additional signers beyond the payer
+
+**Returns:** Transaction signature
+
+**Example:**
+
+```rust
+let instruction1 = client.pause_execution_instruction(owner.pubkey(), treasury, true, now);
+let instruction2 = client.cancel_pending_instruction(owner.pubkey(), treasury, now);
+
+let signature = client.send_instructions(&owner, vec![instruction1, instruction2], &[])?;
+println!("Transaction: {}", signature);
+```
+
+### send_with_default_payer
+
+Send instructions using the default payer (if configured).
+
+```rust
+fn send_with_default_payer(
+    &self,
+    instructions: Vec<Instruction>,
+    extra_signers: &[&Keypair],
+) -> Result<Signature, SdkError>
+```
+
+**Example:**
+
+```rust
+// Client must be created with with_payer()
+let instruction = client.cancel_pending_instruction(owner.pubkey(), treasury, now);
+let signature = client.send_with_default_payer(vec![instruction], &[])?;
+```
+
+## Error Handling
+
+All methods return `Result<T, SdkError>`. Handle errors appropriately:
+
+```rust
+use aura_sdk::SdkError;
+
+match client.get_treasury(&treasury_pda) {
+    Ok(treasury) => println!("Agent: {}", treasury.agent_id),
+    Err(SdkError::AccountNotFound(addr)) => println!("Not found: {}", addr),
+    Err(SdkError::AccountDecode { account_name, message }) => {
+        println!("Decode failed for {}: {}", account_name, message)
+    }
+    Err(SdkError::Rpc(e)) => println!("RPC error: {}", e),
+    Err(e) => println!("Error: {}", e),
+}
+```
+
+## Properties
+
+### rpc_client()
+
+Access the underlying Solana RPC client.
+
+```rust
+let rpc: &RpcClient = client.rpc_client();
+```
+
+### program_id()
+
+Access the AURA program ID.
+
+```rust
+let program_id: Pubkey = client.program_id();
+```
+
+### commitment()
+
+Access the commitment configuration.
+
+```rust
+let commitment: CommitmentConfig = client.commitment();
+```
+
+## Next Steps
+
+- [Program API](/sdk-rs/instructions) - All instruction builders by domain
+- [Types](/sdk-rs/client/types) - Rust types and domain model
+- [Examples](/sdk-rs/examples) - Complete code examples

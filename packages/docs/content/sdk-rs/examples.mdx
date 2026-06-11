@@ -1,0 +1,224 @@
+---
+title: Examples
+description: End-to-end Rust SDK usage patterns for common AURA workflows.
+icon: BookOpen
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+Complete, runnable Rust examples using `aura-sdk`.
+
+## Setup
+
+```toml
+# Cargo.toml
+[dependencies]
+aura-sdk = { git = "https://github.com/exyreams/aura", branch = "main" }
+solana-sdk = "2.1"
+solana-client = "2.1"
+anyhow = "1"
+chrono = "0.4"
+```
+
+```rust
+use aura_sdk::{AuraClient, AURA_DEVNET_PROGRAM_ID};
+use solana_commitment_config::CommitmentConfig;
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::with_options(
+    "https://devnet.helius-rpc.com/?api-key=YOUR_KEY",
+    AURA_DEVNET_PROGRAM_ID,
+    CommitmentConfig::confirmed(),
+);
+let owner = Keypair::new();
+let now = chrono::Utc::now().timestamp();
+```
+
+---
+
+## Create a Treasury
+
+```rust
+use aura_sdk::types::{
+    CreateTreasuryArgs, PolicyConfig, PolicyConfigRecord,
+    ProtocolFees, ProtocolFeesRecord, LivenessConfig,
+};
+
+let policy = PolicyConfig {
+    daily_limit_usd: 10_000,
+    per_tx_limit_usd: 1_000,
+    daytime_hourly_limit_usd: 2_500,
+    nighttime_hourly_limit_usd: 500,
+    velocity_limit_usd: 5_000,
+    allowed_protocol_bitmap: 0b11111,
+    max_slippage_bps: 100,
+    max_quote_age_secs: 300,
+    max_counterparty_risk_score: 70,
+    bitcoin_manual_review_threshold_usd: 5_000,
+    liveness_config: LivenessConfig::default(),
+    ..Default::default()
+};
+
+let (treasury, signature) = client.create_treasury(&owner, CreateTreasuryArgs {
+    agent_id: "agent-rs-1".to_string(),
+    ai_authority: owner.pubkey(),
+    created_at: now,
+    pending_transaction_ttl_secs: 900,
+    policy_config: PolicyConfigRecord::from_domain(&policy),
+    protocol_fees: ProtocolFeesRecord::from_domain(&ProtocolFees::default()),
+})?;
+
+println!("Treasury PDA: {}", treasury);
+println!("Signature:    {}", signature);
+```
+
+---
+
+## Fetch and Inspect a Treasury
+
+```rust
+let data = client.get_treasury(&treasury)?;
+
+println!("Agent ID:       {}", data.agent_id);
+println!("Owner:          {}", data.owner);
+println!("Daily limit:    {} USD cents", data.policy_config.daily_limit_usd);
+println!("Is paused:      {}", data.execution_paused);
+println!("Total executed: {}", data.total_transactions);
+println!("Daily spent:    {} USD cents", data.policy_state.spent_today_usd);
+
+if let Some(pending) = &data.pending {
+    println!("Pending proposal: {}", pending.proposal_id);
+    println!("Expires at:       {}", pending.expires_at);
+}
+```
+
+---
+
+## Propose a Public Transaction
+
+```rust
+use aura_sdk::types::ProposeTransactionArgs;
+
+client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
+    amount_usd: 250,
+    target_chain: 2,       // Ethereum
+    tx_type: 0,            // Transfer
+    protocol_id: None,
+    current_timestamp: now,
+    expected_output_usd: None,
+    actual_output_usd: None,
+    quote_age_secs: None,
+    counterparty_risk_score: Some(15),
+    recipient_or_contract: "0xdeadbeef...".to_string(),
+    sanctions_proof: vec![],
+})?;
+```
+
+---
+
+## Pause and Resume Execution
+
+```rust
+client.pause_execution(&owner, treasury, true, now)?;   // pause
+client.pause_execution(&owner, treasury, false, now)?;  // resume
+```
+
+---
+
+## Register a dWallet
+
+```rust
+use aura_sdk::types::RegisterDwalletArgs;
+
+client.register_dwallet(&owner, treasury, RegisterDwalletArgs {
+    chain: 2,                              // Ethereum
+    dwallet_id: "dwallet-abc123".to_string(),
+    address: "0xdeadbeef...".to_string(),
+    balance_usd: 5_000,
+    dwallet_account: Some(dwallet_account_pda),
+    authorized_user_pubkey: None,
+    message_metadata_digest: None,
+    public_key_hex: None,
+    timestamp: now,
+})?;
+```
+
+---
+
+## Configure Guardian Multisig
+
+```rust
+use aura_sdk::types::ConfigureMultisigArgs;
+
+client.configure_multisig(&owner, treasury, ConfigureMultisigArgs {
+    required_signatures: 2,
+    guardians: vec![guardian1, guardian2],
+    timestamp: now,
+})?;
+```
+
+---
+
+## Emergency Shutdown
+
+```rust
+let recovery = Keypair::new().pubkey();
+
+let sig = client.emergency_shutdown(&owner, treasury, recovery, now)?;
+println!("Shutdown triggered, recovery: {}", recovery);
+```
+
+---
+
+## Batch Multiple Instructions
+
+```rust
+use solana_sdk::transaction::Transaction;
+
+let pause_ix = client.pause_execution_instruction(owner.pubkey(), treasury, true, now);
+let cancel_ix = client.cancel_pending_instruction(owner.pubkey(), treasury, now);
+
+let sig = client.send_instructions(&owner, vec![pause_ix, cancel_ix], &[])?;
+println!("Batch tx: {}", sig);
+```
+
+---
+
+## Devnet Smoke Test Pattern
+
+```rust
+#[cfg(test)]
+mod devnet_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires funded devnet wallet"]
+    fn smoke_create_and_fetch() {
+        let client = AuraClient::devnet();
+        let owner = Keypair::new();
+
+        client
+            .rpc_client()
+            .request_airdrop(&owner.pubkey(), 1_000_000_000)
+            .expect("airdrop failed");
+
+        let (treasury, _) = client
+            .create_treasury(&owner, build_test_args(&owner))
+            .expect("create_treasury failed");
+
+        let data = client.get_treasury(&treasury).expect("get_treasury failed");
+        assert_eq!(data.agent_id, "smoke-test-agent");
+    }
+}
+```
+
+<Cards>
+  <Card title="AuraClient" description="Full client API reference." href="/sdk-rs/client/overview" />
+  <Card title="Program API" description="All Rust instruction builders by domain." href="/sdk-rs/instructions" />
+  <Card title="Types" description="Domain and record type reference." href="/sdk-rs/client/types" />
+</Cards>

@@ -1,0 +1,95 @@
+---
+title: Proposals
+description: Propose public and scalar FHE-encrypted transactions for policy evaluation.
+icon: FilePlus
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## proposeTransaction
+
+Propose a public transaction. The on-chain policy engine evaluates all rules
+immediately and either approves or rejects.
+
+```typescript
+const instruction = await client.proposeTransactionInstruction(
+  accounts: ProposeTransactionAccounts,
+  args: ProposeTransactionArgs,
+);
+
+await client.proposeTransaction(aiAuthority, accounts, args);
+```
+
+```typescript
+interface ProposeTransactionAccounts {
+  aiAuthority: PublicKey;
+  treasury: PublicKey;
+  sessionKeyAccount?: PublicKey | null;
+  swarmPool?: PublicKey | null;
+  addressList?: PublicKey | null;
+  complianceOracle?: PublicKey | null;
+  parentTreasury?: PublicKey | null;
+  budgetEnvelope?: PublicKey | null;
+  exposureGroup?: PublicKey | null;
+}
+```
+
+## proposeConfidentialTransaction
+
+Propose a confidential transaction using scalar FHE ciphertexts. The amount is
+encrypted off-chain, the Encrypt CPI evaluates the scalar guardrail graph, and
+the pending proposal stores the encrypted policy output ciphertext.
+
+```typescript
+const instruction = await client.proposeConfidentialTransactionInstruction(
+  accounts: ProposeConfidentialTransactionAccounts,
+  args: ProposeConfidentialTransactionArgs,
+);
+
+await client.proposeConfidentialTransaction(
+  aiAuthority,
+  accounts,
+  args,
+  extraSigners,
+);
+```
+
+```typescript
+interface ProposeConfidentialTransactionAccounts {
+  aiAuthority: PublicKey;
+  treasury: PublicKey;
+  dailyLimitCiphertext: PublicKey;
+  perTxLimitCiphertext: PublicKey;
+  spentTodayCiphertext: PublicKey;
+  amountCiphertext: PublicKey;
+  policyOutputCiphertext: PublicKey;
+  encryptProgram: PublicKey;
+  config: PublicKey;
+  deposit: PublicKey;
+  callerProgram: PublicKey;
+  cpiAuthority: PublicKey;
+  networkEncryptionKey: PublicKey;
+  eventAuthority: PublicKey;
+  externalLiveness?: PublicKey | null;
+  systemProgram: PublicKey;
+}
+```
+
+## Public vs Confidential
+
+| | Public | Confidential |
+|---|---|---|
+| Amount visible on-chain | Yes | No, amount is an Encrypt ciphertext |
+| Policy evaluation | Immediate on-chain rules | Scalar FHE graph through Ika Encrypt |
+| Extra accounts needed | No | Ciphertext, Encrypt config, deposit, and CPI authority accounts |
+| Setup required | None | `configureConfidentialGuardrails` first |
+
+<Cards>
+  <Card title="Confidential Setup" description="Configure scalar FHE guardrails before confidential proposals." href="/sdk-ts/instructions/confidential" />
+  <Card title="Execution" description="Drive the proposal through decryption, dWallet signing, and finalization." href="/sdk-ts/instructions/execution" />
+</Cards>

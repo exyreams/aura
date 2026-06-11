@@ -1,0 +1,142 @@
+---
+title: Quick Start
+description: Get up and running with the AURA TypeScript SDK in minutes.
+icon: Rocket
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. Program instructions,
+  account layouts, instruction argument shapes, and SDK APIs may change without
+  notice between releases. Do not use this SDK to manage real funds or
+  production treasuries until a stable release and security audit are published.
+</Callout>
+
+`@aura-protocol/sdk-ts` is the canonical JavaScript/TypeScript interface for
+AURA. It wraps the Anchor IDL, account fetches, PDA derivation, event parsing,
+instruction builders, and the shared program-surface catalog.
+
+Current published package: `@aura-protocol/sdk-ts@0.2.15`.
+
+## What It Exposes
+
+- `AuraClient` — low-level account reads, instruction builders, and send helpers
+- `Aura` — higher-level wallet-oriented usage
+- Typed account records generated from the current IDL
+- Domain instruction builders under `@aura-protocol/sdk-ts/instructions`
+- Program constants for AURA, Encrypt, and dWallet devnet deployments
+- `AURA_FEATURE_DOMAINS` and `AURA_INSTRUCTION_FEATURES` for UI, CLI, and docs discovery
+- 67 current `aura-core` instructions, including the scalar confidential lifecycle
+
+## Installation
+
+```bash npm2yarn
+npm install @aura-protocol/sdk-ts @solana/web3.js bn.js
+```
+
+The npm package publishes `README.md` alongside `dist/`. To verify a release
+artifact locally:
+
+```bash
+npm pack @aura-protocol/sdk-ts@0.2.15 --json
+npm view @aura-protocol/sdk-ts@0.2.15 readmeFilename readme
+```
+
+## Quick Start
+
+```typescript
+import BN from "bn.js";
+import { Connection, Keypair } from "@solana/web3.js";
+import {
+  AuraClient,
+  AURA_FEATURE_DOMAINS,
+  AURA_PROGRAM_ID,
+} from "@aura-protocol/sdk-ts";
+
+const connection = new Connection(
+  "https://devnet.helius-rpc.com/?api-key=YOUR_KEY",
+  "confirmed",
+);
+
+const owner = Keypair.generate();
+const client = new AuraClient({ connection, programId: AURA_PROGRAM_ID });
+
+const { treasury, instruction } = await client.createTreasuryInstruction({
+  owner: owner.publicKey,
+  args: {
+    agentId: "agent-prod-1",
+    aiAuthority: owner.publicKey,
+    createdAt: new BN(Math.floor(Date.now() / 1000)),
+    pendingTransactionTtlSecs: new BN(900),
+    policyConfig: {
+      dailyLimitUsd: new BN(10_000),
+      perTxLimitUsd: new BN(1_000),
+      daytimeHourlyLimitUsd: new BN(2_500),
+      nighttimeHourlyLimitUsd: new BN(500),
+      velocityLimitUsd: new BN(5_000),
+      allowedProtocolBitmap: new BN(31),
+      maxSlippageBps: new BN(100),
+      maxQuoteAgeSecs: new BN(300),
+      maxCounterpartyRiskScore: 70,
+      bitcoinManualReviewThresholdUsd: new BN(5_000),
+      sharedPoolLimitUsd: null,
+      weeklyLimitUsd: null,
+      monthlyLimitUsd: null,
+      recipientLimits: [],
+      cooldownConfig: null,
+      anomalyConfig: null,
+      reputationPolicy: {
+        highScoreThreshold: new BN(80),
+        mediumScoreThreshold: new BN(50),
+        highMultiplierBps: new BN(15_000),
+        lowMultiplierBps: new BN(7_000),
+      },
+      budgetEnvelopes: [],
+      approvalLadder: null,
+      scopedPauseEntries: [],
+      livenessConfig: {
+        requireEncryptFreshness: false,
+        requireDwalletFreshness: false,
+        requireBalanceOracleFreshness: false,
+        requireComplianceOracleFreshness: false,
+        maxStalenessSecs: new BN(300),
+      },
+    },
+    protocolFees: {
+      treasuryCreationFeeUsd: new BN(100),
+      transactionFeeBps: new BN(10),
+      fheSubsidyBps: new BN(5_000),
+    },
+  },
+});
+
+console.log("treasury PDA:", treasury.toBase58());
+await client.sendInstructions(owner, [instruction]);
+```
+
+## Package Boundaries
+
+Use the root package for client code:
+
+```typescript
+import { AuraClient, deriveTreasuryAddress } from "@aura-protocol/sdk-ts";
+```
+
+Use the instruction subpath for pure builders grouped by domain:
+
+```typescript
+import { treasury, governance, execution } from "@aura-protocol/sdk-ts/instructions";
+// treasury.createTreasuryInstruction(client, ...)
+// governance.configureMultisigInstruction(client, ...)
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="AuraClient" description="Full client API — account fetches, PDA derivation, and transaction helpers." href="/sdk-ts/client" />
+  <Card title="Instruction Surface" description="All 13 instruction domains and 67 instructions exposed by the SDK." href="/sdk-ts/instructions" />
+  <Card title="Confidential Flow" description="Scalar guardrails, Encrypt CPI, and policy decryption." href="/sdk-ts/instructions/confidential" />
+  <Card title="Governance" description="Multisig overrides, rotations, config changes, and shutdown." href="/sdk-ts/instructions/governance" />
+</Cards>

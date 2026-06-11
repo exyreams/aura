@@ -31,14 +31,14 @@ export const metadata: Metadata = {
     title: "AURA Documentation",
     description:
       "Build policy-aware autonomous treasury agents with AURA programs, SDKs, CLI, web app, and backend services.",
-    images: ["/og/docs/image.png"],
+    images: ["/og/image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "AURA Documentation",
     description:
       "Build policy-aware autonomous treasury agents with AURA programs, SDKs, CLI, web app, and backend services.",
-    images: ["/og/docs/image.png"],
+    images: ["/og/image.png"],
   },
 };
 

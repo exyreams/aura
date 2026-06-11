@@ -1,0 +1,135 @@
+---
+title: Address Lists
+description: Manage per-chain allow and deny lists for recipient addresses.
+icon: ListFilter
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+Address lists let you maintain per-chain allowlists or denylists for recipient addresses. When an address list is passed in `ProposeTransactionAccounts.addressList`, the policy engine checks the recipient against it before approving.
+
+## initAddressList
+
+Create a new address list for a specific chain and mode (allow or deny).
+
+```typescript
+// Build only
+const instruction = await client.initAddressListInstruction(
+  accounts: InitAddressListAccounts,
+  mode: number,   // 0 = allowlist, 1 = denylist
+  chain: number,  // chain ID 0–5
+  now: BNish,
+);
+
+// Build + send
+await client.initAddressList(owner, accounts, mode, chain, now);
+```
+
+```typescript
+interface InitAddressListAccounts {
+  owner: PublicKey;
+  treasury: PublicKey;
+  addressList: PublicKey;  // PDA — derived on-chain
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import BN from 'bn.js';
+
+// Create an Ethereum denylist
+await client.initAddressList(
+  owner,
+  {
+    owner: owner.publicKey,
+    treasury,
+    addressList: addressListPDA,
+    systemProgram: SystemProgram.programId,
+  },
+  1,  // denylist
+  2,  // Ethereum
+  Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## manageAddressList
+
+Add or remove addresses from an existing list. Can be called by the owner or a delegated operator with the address-list permission.
+
+```typescript
+// Build only
+const instruction = await client.manageAddressListInstruction(
+  accounts: ManageAddressListAccounts,
+  mode: number,       // 0 = add, 1 = remove
+  chain: number,
+  addresses: string[],
+  now: BNish,
+);
+
+// Build + send
+await client.manageAddressList(operator, accounts, mode, chain, addresses, now);
+```
+
+```typescript
+interface ManageAddressListAccounts {
+  operator: PublicKey;
+  treasury: PublicKey;
+  operatorRole?: PublicKey | null;
+  addressList: PublicKey;
+}
+```
+
+```typescript
+// Add addresses to the denylist
+await client.manageAddressList(
+  owner,
+  {
+    operator: owner.publicKey,
+    treasury,
+    operatorRole: null,
+    addressList: addressListPDA,
+  },
+  0,  // add
+  2,  // Ethereum
+  ['0xbadactor1...', '0xbadactor2...'],
+  Math.floor(Date.now() / 1000),
+);
+```
+
+Pass `addressList` in `ProposeTransactionAccounts.addressList` to enforce the list on proposals.
+
+---
+
+## closeAddressList
+
+Close the address list account and reclaim rent.
+
+```typescript
+// Build only
+const instruction = await client.closeAddressListInstruction(
+  accounts: CloseAddressListAccounts,
+);
+
+// Build + send
+await client.closeAddressList(owner, accounts);
+```
+
+```typescript
+interface CloseAddressListAccounts {
+  owner: PublicKey;
+  treasury: PublicKey;
+  addressList: PublicKey;
+}
+```
+
+<Cards>
+  <Card title="Proposals" description="Pass addressList in proposal accounts to enforce lists." href="/sdk-ts/instructions/proposals" />
+  <Card title="Operations" description="Operator roles for delegated list management." href="/sdk-ts/instructions/operations" />
+</Cards>

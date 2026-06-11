@@ -1,0 +1,266 @@
+---
+title: Aura (High-Level)
+description: The recommended high-level API with sensible defaults, auto timestamps, and namespaced methods.
+icon: Zap
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+The `Aura` class is the recommended entry point for most developers. It wraps
+`AuraClient` with sensible defaults, automatic timestamp injection, plain number
+inputs (no `BN` required), and methods organized into logical namespaces.
+
+```typescript
+import { Aura } from '@aura-protocol/sdk-ts';
+import { Keypair } from '@solana/web3.js';
+
+const aura = new Aura({
+  rpcUrl: 'https://devnet.helius-rpc.com/?api-key=YOUR_KEY',
+  keypair: Keypair.generate(),
+});
+```
+
+## Constructor
+
+```typescript
+new Aura(options: AuraOptions)
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `rpcUrl` | `string` | ✓ | Solana RPC endpoint |
+| `keypair` | `Keypair` | ✓ | Default signing keypair for all operations |
+| `programId` | `PublicKey` | — | Override program ID (defaults to devnet) |
+
+### Accessing the low-level client
+
+```typescript
+const client = aura.lowLevel; // AuraClient instance
+```
+
+---
+
+## aura.treasury
+
+### create
+
+Create a new AI agent treasury. Timestamps are injected automatically.
+Unspecified limits default to sensible fractions of `dailyLimitUsd`.
+
+```typescript
+aura.treasury.create(options: CreateTreasuryOptions): Promise<{
+  treasury: PublicKey;
+  signature: string;
+}>
+```
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `agentId` | `string` | ✓ | — | Unique agent identifier |
+| `dailyLimitUsd` | `number` | ✓ | — | Daily spend cap in USD cents |
+| `perTxLimitUsd` | `number` | ✓ | — | Per-transaction cap in USD cents |
+| `aiAuthority` | `PublicKey` | — | keypair.publicKey | AI signer public key |
+| `daytimeHourlyLimitUsd` | `number` | — | dailyLimit / 10 | Daytime hourly cap in USD cents |
+| `nighttimeHourlyLimitUsd` | `number` | — | dailyLimit / 20 | Nighttime hourly cap in USD cents |
+| `velocityLimitUsd` | `number` | — | dailyLimit / 2 | Short-window velocity cap in USD cents |
+| `allowedProtocolBitmap` | `number` | — | 31 (all) | Protocol whitelist bitmap |
+| `maxSlippageBps` | `number` | — | 100 (1%) | Max slippage in bps |
+| `maxQuoteAgeSecs` | `number` | — | 300 | Max price quote age in seconds |
+| `maxCounterpartyRiskScore` | `number` | — | 70 | Max risk score 0–100 |
+| `bitcoinManualReviewThresholdUsd` | `number` | — | 5_000 | Bitcoin manual review threshold in USD cents |
+| `pendingTransactionTtlSecs` | `number` | — | 900 | Proposal TTL in seconds |
+
+```typescript
+const { treasury, signature } = await aura.treasury.create({
+  agentId: 'agent-prod-1',
+  dailyLimitUsd: 10_000,
+  perTxLimitUsd: 1_000,
+});
+
+console.log('Treasury:', treasury.toBase58());
+```
+
+### get / getOrNull / getForOwner
+
+Fetch treasury accounts.
+
+```typescript
+aura.treasury.get(treasury: PublicKey): Promise<TreasuryAccountRecord>
+aura.treasury.getOrNull(treasury: PublicKey): Promise<TreasuryAccountRecord | null>
+aura.treasury.getForOwner(owner: PublicKey, agentId: string): Promise<{
+  treasury: PublicKey;
+  account: TreasuryAccountRecord | null;
+}>
+```
+
+```typescript
+const account = await aura.treasury.get(treasuryPDA);
+const maybeAccount = await aura.treasury.getOrNull(treasuryPDA);
+const { treasury, account } = await aura.treasury.getForOwner(owner, 'agent-prod-1');
+```
+
+### propose
+
+Propose a transaction. Timestamps injected automatically.
+
+```typescript
+aura.treasury.propose(options: ProposeTransactionOptions): Promise<string>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `treasury` | `PublicKey` | ✓ | Treasury PDA |
+| `amountUsd` | `number` | ✓ | Transaction amount in USD cents |
+| `chain` | `number` | ✓ | Target chain (0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism) |
+| `recipient` | `string` | ✓ | Recipient address on the target chain |
+| `txType` | `number` | — | Transaction type (0=Transfer, default) |
+| `protocolId` | `number` | — | Protocol bitmap bit |
+| `expectedOutputUsd` | `number` | — | Expected output for slippage check |
+| `actualOutputUsd` | `number` | — | Actual output for slippage check |
+| `quoteAgeSecs` | `number` | — | Age of price quote in seconds |
+| `counterpartyRiskScore` | `number` | — | 0–100 risk score |
+| `aiAuthority` | `Signer` | — | Override AI authority (defaults to keypair) |
+
+```typescript
+const signature = await aura.treasury.propose({
+  treasury,
+  amountUsd: 250,
+  chain: 2,                          // Ethereum
+  recipient: '0xdeadbeef...',
+  counterpartyRiskScore: 15,
+});
+```
+
+### pause
+
+Pause or resume execution.
+
+```typescript
+aura.treasury.pause(options: PauseExecutionOptions): Promise<string>
+```
+
+```typescript
+await aura.treasury.pause({ treasury, paused: true });
+await aura.treasury.pause({ treasury, paused: false });
+```
+
+### cancel
+
+Cancel the current pending transaction.
+
+```typescript
+aura.treasury.cancel(options: CancelPendingOptions): Promise<string>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `treasury` | `PublicKey` | ✓ | Treasury PDA |
+| `owner` | `Signer` | — | Override owner (defaults to keypair) |
+
+---
+
+## aura.dwallet
+
+### register
+
+Register a dWallet reference with the treasury.
+
+```typescript
+aura.dwallet.register(options: RegisterDwalletOptions): Promise<string>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `treasury` | `PublicKey` | ✓ | Treasury PDA |
+| `chain` | `number` | ✓ | Target chain (0–5) |
+| `dwalletId` | `string` | ✓ | Unique dWallet identifier from Ika |
+| `address` | `string` | ✓ | Native address on the target chain |
+| `balanceUsd` | `number` | ✓ | Current balance hint in USD cents |
+| `owner` | `Signer` | — | Override owner (defaults to keypair) |
+
+```typescript
+await aura.dwallet.register({
+  treasury,
+  chain: 2,                          // Ethereum
+  dwalletId: 'dwallet-abc123',
+  address: '0xdeadbeef...',
+  balanceUsd: 5_000,
+});
+```
+
+---
+
+## aura.governance
+
+### configureMultisig
+
+Set guardian keys and approval threshold.
+
+```typescript
+aura.governance.configureMultisig(options: ConfigureMultisigOptions): Promise<string>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `treasury` | `PublicKey` | ✓ | Treasury PDA |
+| `requiredSignatures` | `number` | ✓ | Number of guardian signatures required |
+| `guardians` | `PublicKey[]` | ✓ | List of guardian public keys |
+| `owner` | `Signer` | — | Override owner (defaults to keypair) |
+
+```typescript
+await aura.governance.configureMultisig({
+  treasury,
+  requiredSignatures: 2,
+  guardians: [guardian1.publicKey, guardian2.publicKey, guardian3.publicKey],
+});
+```
+
+### configureSwarm
+
+Attach the treasury to a shared swarm spending pool.
+
+```typescript
+aura.governance.configureSwarm(options: ConfigureSwarmOptions): Promise<string>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `treasury` | `PublicKey` | ✓ | Treasury PDA |
+| `swarmId` | `string` | ✓ | Unique swarm identifier |
+| `memberAgents` | `string[]` | ✓ | Agent IDs in the swarm |
+| `sharedPoolLimitUsd` | `number` | ✓ | Shared pool limit in USD cents |
+| `owner` | `Signer` | — | Override owner (defaults to keypair) |
+
+```typescript
+await aura.governance.configureSwarm({
+  treasury,
+  swarmId: 'swarm-alpha',
+  memberAgents: ['agent-1', 'agent-2'],
+  sharedPoolLimitUsd: 50_000,
+});
+```
+
+---
+
+## Aura vs AuraClient
+
+| | Aura | AuraClient |
+|---|---|---|
+| Timestamps | Auto-injected | Manual `BN` |
+| Numbers | Plain `number` | `BN` required |
+| PDA derivation | Automatic | Manual or helper |
+| Instruction composition | Not supported | `*Instruction()` form |
+| All 67 instructions | Subset (common ops) | Full surface |
+| Best for | Apps, agents, scripts | Advanced / batching |
+
+For anything not covered by `Aura`, drop down to `aura.lowLevel`.
+
+<Cards>
+  <Card title="AuraClient Overview" description="Full low-level API with all 67 instructions." href="/sdk-ts/client/overview" />
+  <Card title="Examples" description="End-to-end patterns using both API layers." href="/sdk-ts/examples" />
+</Cards>

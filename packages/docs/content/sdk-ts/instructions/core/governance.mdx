@@ -1,0 +1,212 @@
+---
+title: Governance
+description: Emergency multisig overrides, AI authority rotations, config changes, and shutdown.
+icon: Shield
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## configureMultisig
+
+Attach an emergency guardian multisig to the treasury.
+
+```typescript
+await client.configureMultisig(
+  owner: Signer,
+  accounts: OwnerTreasuryAccounts,
+  args: ConfigureMultisigArgs,
+);
+```
+
+```typescript
+interface ConfigureMultisigArgs {
+  requiredSignatures: number;
+  guardians: PublicKey[];
+  timestamp: BN;
+}
+```
+
+```typescript
+await client.configureMultisig(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    requiredSignatures: 2,
+    guardians: [guardian1.publicKey, guardian2.publicKey, guardian3.publicKey],
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+---
+
+## proposeOverride / collectOverrideSignature
+
+Guardian proposes a daily limit override; other guardians co-sign until the
+threshold is reached.
+
+```typescript
+// Guardian 1 proposes
+await client.proposeOverride(
+  guardian1,
+  { guardian: guardian1.publicKey, treasury },
+  new BN(25_000), // new daily limit in USD
+  new BN(Math.floor(Date.now() / 1000)),
+);
+
+// Guardian 2 co-signs
+await client.collectOverrideSignature(
+  guardian2,
+  { guardian: guardian2.publicKey, treasury },
+  new BN(Math.floor(Date.now() / 1000)),
+);
+// Override active once threshold reached
+```
+
+---
+
+## proposeAiRotation / executeAiRotation / cancelAiRotation
+
+Timelocked rotation of the AI authority key.
+
+```typescript
+const now = new BN(Math.floor(Date.now() / 1000));
+const accounts = { owner: owner.publicKey, treasury };
+
+// Start rotation (timelock begins)
+await client.proposeAiRotation(owner, accounts, newAiKeypair.publicKey, now);
+
+// After timelock expires — complete rotation
+await client.executeAiRotation(owner, accounts, now);
+
+// Or cancel before timelock expires
+await client.cancelAiRotation(owner, accounts, now);
+```
+
+---
+
+## proposeConfigChange / executeConfigChange / vetoConfigChange
+
+Timelocked policy configuration update. Guardians can veto during the
+timelock window. Each change requires a unique `changeId` (a `BN`).
+
+```typescript
+const now = new BN(Math.floor(Date.now() / 1000));
+const changeId = new BN(1); // unique ID for this change
+
+// Propose new policy config
+await client.proposeConfigChange(
+  owner,
+  { owner: owner.publicKey, treasury },
+  changeId,
+  updatedPolicyConfig,
+  now,
+);
+
+// Guardian vetoes during timelock
+await client.vetoConfigChange(
+  guardian,
+  { guardian: guardian.publicKey, treasury },
+  changeId,
+  now,
+);
+
+// Or execute after timelock (if not vetoed)
+await client.executeConfigChange(
+  owner,
+  { owner: owner.publicKey, treasury },
+  changeId,
+  now,
+);
+```
+
+---
+
+## emergencyShutdown
+
+Immediately halt the treasury and transfer recovery authority.
+
+```typescript
+await client.emergencyShutdown(
+  owner: Signer,
+  accounts: OwnerTreasuryAccounts,
+  recoveryPubkey: PublicKey,
+  now: BNish,
+);
+```
+
+```typescript
+await client.emergencyShutdown(
+  owner,
+  { owner: owner.publicKey, treasury },
+  recoveryPubkey,
+  Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## proposeGuardianRotation / executeGuardianRotation
+
+Propose adding or removing a guardian from the multisig, then execute after the timelock.
+
+```typescript
+// Propose a guardian change (action: 0=add, 1=remove)
+await client.proposeGuardianRotation(
+  guardian,
+  { guardian: guardian.publicKey, treasury },
+  action,          // 0 = add, 1 = remove
+  targetGuardian,  // PublicKey of the guardian to add or remove
+  now,
+);
+
+// Execute after timelock
+await client.executeGuardianRotation(
+  guardian,
+  { guardian: guardian.publicKey, treasury },
+  now,
+);
+```
+
+---
+
+## configureApprovalLadder
+
+Set amount and risk-score thresholds that require escalating approval levels before execution.
+
+```typescript
+await client.configureApprovalLadder(
+  owner,
+  { owner: owner.publicKey, treasury },
+  args, // ConfigureApprovalLadderArgs
+);
+```
+
+---
+
+## configureSwarm
+
+Attach the treasury to a shared agent swarm spending pool.
+
+```typescript
+await client.configureSwarm(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    swarmId: 'swarm-alpha',
+    memberAgents: ['agent-1', 'agent-2'],
+    sharedPoolLimitUsd: new BN(50_000),
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+<Cards>
+  <Card title="Treasury" description="Create and manage treasury lifecycle." href="/sdk-ts/instructions/treasury" />
+  <Card title="Client Reference" description="AuraClient constructor and sendInstructions." href="/sdk-ts/client/overview" />
+</Cards>

@@ -1,0 +1,180 @@
+---
+title: Lifecycle
+description: Session keys, dead man's switch, agent state transitions, and treasury migration.
+icon: RefreshCw
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## issueSessionKey / revokeSessionKey / closeSessionKey
+
+Issue a short-lived signing key to the AI agent. Session keys are scoped to a maximum amount, allowed chains, allowed transaction types, and an expiry time. They reduce the need for the owner's keypair to be online for every proposal.
+
+```typescript
+// Issue
+await client.issueSessionKey(authority, accounts, args);
+
+// Revoke (marks as inactive, keeps account)
+await client.revokeSessionKey(authority, accounts, now);
+
+// Close (reclaims rent)
+await client.closeSessionKey(authority, accounts);
+```
+
+```typescript
+interface IssueSessionKeyAccounts {
+  authority: PublicKey;       // owner or AI authority — must be a signer
+  treasury: PublicKey;
+  sessionKeyAccount: PublicKey;  // PDA — seeds: [b"session_key", treasury, sessionKey]
+  systemProgram: PublicKey;
+}
+
+interface RevokeSessionKeyAccounts {
+  authority: PublicKey;
+  treasury: PublicKey;
+  sessionKeyAccount: PublicKey;
+}
+```
+
+```typescript
+import { PublicKey, SystemProgram, Keypair } from '@solana/web3.js';
+import BN from 'bn.js';
+
+const sessionKeypair = Keypair.generate();
+const now = new BN(Math.floor(Date.now() / 1000));
+
+// Derive the session key PDA
+const [sessionKeyAccount] = PublicKey.findProgramAddressSync(
+  [
+    Buffer.from('session_key'),
+    treasury.toBuffer(),
+    sessionKeypair.publicKey.toBuffer(),
+  ],
+  client.programId,
+);
+
+await client.issueSessionKey(
+  owner,
+  {
+    authority: owner.publicKey,
+    treasury,
+    sessionKeyAccount,
+    systemProgram: SystemProgram.programId,
+  },
+  {
+    sessionKey: sessionKeypair.publicKey,
+    durationSecs: new BN(3600),          // 1-hour session
+    maxAmountUsdPerTx: new BN(500),
+    maxDailySpendUsd: null,              // no daily cap on session
+    allowedChains: Buffer.from([0, 2]),  // Solana + Ethereum
+    allowedTxTypes: Buffer.from([0]),    // Transfer only
+    maxProposalCount: null,
+    now,
+  },
+);
+```
+
+Pass `sessionKeyAccount` in `ProposeTransactionAccounts.sessionKeyAccount` when the AI agent signs with the session key instead of the full AI authority.
+
+---
+
+## triggerDeadMansSwitch
+
+Evaluate the dead man's switch condition on a treasury. If the owner has been inactive for longer than the configured threshold, this instruction initiates the recovery process.
+
+```typescript
+// Build only
+const instruction = await client.triggerDeadMansSwitchInstruction(
+  accounts: TriggerDeadMansSwitchAccounts,
+  now: BNish,
+);
+
+// Build + send — no signer validation (anyone can trigger)
+await client.triggerDeadMansSwitch(payer, accounts, now);
+```
+
+```typescript
+interface TriggerDeadMansSwitchAccounts {
+  treasury: PublicKey;
+}
+```
+
+```typescript
+await client.triggerDeadMansSwitch(
+  payer,
+  { treasury },
+  Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## transitionAgentState
+
+Move the treasury through its agent state machine. Valid transitions depend on the current state and the caller's authority.
+
+```typescript
+// Build only
+const instruction = await client.transitionAgentStateInstruction(
+  accounts: OwnerTreasuryAccounts,
+  targetState: number,
+  now: BNish,
+);
+
+// Build + send
+await client.transitionAgentState(owner, accounts, targetState, now);
+```
+
+```typescript
+await client.transitionAgentState(
+  owner,
+  { owner: owner.publicKey, treasury },
+  1,  // targetState — see on-chain AgentState enum
+  Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## migrateTreasury
+
+Reallocate the treasury account to the latest schema version. Required after program upgrades that change the account layout. The payer covers any additional rent.
+
+```typescript
+// Build only
+const instruction = await client.migrateTreasuryInstruction(
+  accounts: MigrateTreasuryAccounts,
+);
+
+// Build + send
+await client.migrateTreasury(payer, accounts);
+```
+
+```typescript
+interface MigrateTreasuryAccounts {
+  treasury: PublicKey;
+  payer: PublicKey;       // covers rent increase if schema grew
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+await client.migrateTreasury(
+  payer,
+  {
+    treasury,
+    payer: payer.publicKey,
+    systemProgram: SystemProgram.programId,
+  },
+);
+```
+
+<Cards>
+  <Card title="Operations" description="Operator roles, liveness, health scores, and snapshots." href="/sdk-ts/instructions/operations" />
+  <Card title="Governance" description="Emergency shutdown and authority rotation." href="/sdk-ts/instructions/governance" />
+</Cards>

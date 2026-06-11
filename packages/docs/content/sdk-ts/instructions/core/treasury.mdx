@@ -1,0 +1,161 @@
+---
+title: Treasury
+description: Create and manage treasury lifecycle — pause, cancel, and swarm configuration.
+icon: Vault
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## createTreasury
+
+Initialize a new treasury PDA with a full policy configuration.
+
+```typescript
+// Build only
+const { treasury, instruction } = await client.createTreasuryInstruction({
+  owner: PublicKey,
+  args: CreateTreasuryArgs,
+});
+
+// Build + send
+const { treasury, signature } = await client.createTreasury(
+  owner: Signer,
+  args: CreateTreasuryArgs,
+);
+```
+
+### Arguments
+
+```typescript
+interface CreateTreasuryArgs {
+  agentId: string;
+  aiAuthority: PublicKey;
+  createdAt: BN;
+  pendingTransactionTtlSecs: BN;
+  policyConfig: PolicyConfigRecord;
+  protocolFees: ProtocolFeesRecord;
+}
+```
+
+### Example
+
+```typescript
+const { treasury, signature } = await client.createTreasury(owner, {
+  agentId: 'agent-prod-1',
+  aiAuthority: owner.publicKey,
+  createdAt: new BN(Math.floor(Date.now() / 1000)),
+  pendingTransactionTtlSecs: new BN(900),
+  policyConfig: {
+    dailyLimitUsd: new BN(10_000),
+    perTxLimitUsd: new BN(1_000),
+    daytimeHourlyLimitUsd: new BN(2_500),
+    nighttimeHourlyLimitUsd: new BN(500),
+    velocityLimitUsd: new BN(5_000),
+    allowedProtocolBitmap: new BN(31),
+    maxSlippageBps: new BN(100),
+    maxQuoteAgeSecs: new BN(300),
+    maxCounterpartyRiskScore: 70,
+    bitcoinManualReviewThresholdUsd: new BN(5_000),
+    sharedPoolLimitUsd: null,
+    weeklyLimitUsd: null,
+    monthlyLimitUsd: null,
+    recipientLimits: [],
+    cooldownConfig: null,
+    anomalyConfig: null,
+    reputationPolicy: {
+      highScoreThreshold: new BN(80),
+      mediumScoreThreshold: new BN(50),
+      highMultiplierBps: new BN(15_000),
+      lowMultiplierBps: new BN(7_000),
+    },
+    budgetEnvelopes: [],
+    approvalLadder: null,
+    scopedPauseEntries: [],
+    livenessConfig: {
+      requireEncryptFreshness: false,
+      requireDwalletFreshness: false,
+      requireBalanceOracleFreshness: false,
+      requireComplianceOracleFreshness: false,
+      maxStalenessSecs: new BN(300),
+    },
+  },
+  protocolFees: {
+    treasuryCreationFeeUsd: new BN(100),
+    transactionFeeBps: new BN(10),
+    fheSubsidyBps: new BN(5_000),
+  },
+});
+
+console.log('Treasury PDA:', treasury.toBase58());
+```
+
+---
+
+## pauseExecution
+
+Pause or resume treasury execution. While paused, all `proposeTransaction`
+calls will fail with `ExecutionPaused`.
+
+```typescript
+// Build only
+const instruction = await client.pauseExecutionInstruction(
+  accounts: OwnerTreasuryAccounts,
+  paused: boolean,
+  now: BNish,
+);
+
+// Build + send
+await client.pauseExecution(
+  owner: Signer,
+  accounts: OwnerTreasuryAccounts,
+  paused: boolean,
+  now: BNish,
+);
+```
+
+```typescript
+const now = new BN(Math.floor(Date.now() / 1000));
+const accounts = { owner: owner.publicKey, treasury };
+
+await client.pauseExecution(owner, accounts, true, now);   // pause
+await client.pauseExecution(owner, accounts, false, now);  // resume
+```
+
+---
+
+## cancelPending
+
+Cancel the current pending transaction and reset the treasury to idle.
+
+```typescript
+// Build only
+const instruction = await client.cancelPendingInstruction(
+  accounts: OwnerTreasuryAccounts,
+  now: BNish,
+);
+
+// Build + send
+await client.cancelPending(
+  owner: Signer,
+  accounts: OwnerTreasuryAccounts,
+  now: BNish,
+);
+```
+
+```typescript
+await client.cancelPending(
+  owner,
+  { owner: owner.publicKey, treasury },
+  new BN(Math.floor(Date.now() / 1000)),
+);
+```
+
+<Cards>
+  <Card title="Proposals" description="Propose public and confidential transactions." href="/sdk-ts/instructions/proposals" />
+  <Card title="Governance" description="Multisig, overrides, swarm config, and emergency shutdown." href="/sdk-ts/instructions/governance" />
+</Cards>

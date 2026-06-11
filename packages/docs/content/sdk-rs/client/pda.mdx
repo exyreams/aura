@@ -1,0 +1,356 @@
+---
+title: PDA Derivation
+description: Derive treasury and authority program-derived addresses from Rust.
+icon: KeyRound
+---
+
+import { Card, Cards } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do
+  not use for real funds until a stable release and audit are published.
+</Callout>
+
+All AURA PDAs can be derived off-chain — synchronously and allocation-free.
+
+## Standalone Functions
+
+```rust
+use aura_sdk::pda::{
+    derive_treasury_pda,
+    derive_dwallet_cpi_authority_pda,
+    derive_encrypt_cpi_authority_pda,
+    derive_encrypt_event_authority_pda,
+};
+use aura_sdk::AURA_DEVNET_PROGRAM_ID;
+```
+
+## derive_treasury_pda
+
+Derives the treasury PDA for a given owner and agent ID.
+
+```rust
+pub fn derive_treasury_pda(
+    owner: &Pubkey,
+    agent_id: &str,
+    program_id: &Pubkey,
+) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"treasury", owner.as_ref(), agent_id.as_bytes()]`
+
+```rust
+use aura_sdk::{pda::derive_treasury_pda, AURA_DEVNET_PROGRAM_ID};
+
+let (treasury, bump) = derive_treasury_pda(&owner, "agent-prod-1", &AURA_DEVNET_PROGRAM_ID);
+println!("Treasury PDA: {}", treasury);
+```
+
+### Via AuraClient
+
+```rust
+let (treasury, bump) = client.derive_treasury_address(&owner, "agent-prod-1");
+```
+
+## derive_dwallet_cpi_authority_pda
+
+Derives the PDA used as the CPI authority for dWallet cross-program calls.
+
+```rust
+pub fn derive_dwallet_cpi_authority_pda(program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"__ika_cpi_authority"]`
+
+```rust
+use aura_sdk::{pda::derive_dwallet_cpi_authority_pda, AURA_DEVNET_PROGRAM_ID};
+
+let (authority, bump) = derive_dwallet_cpi_authority_pda(&AURA_DEVNET_PROGRAM_ID);
+```
+
+### Via AuraClient
+
+```rust
+let (authority, bump) = client.derive_dwallet_cpi_authority();
+```
+
+## derive_encrypt_cpi_authority_pda
+
+Derives the PDA used as the CPI authority for Encrypt cross-program calls.
+
+```rust
+pub fn derive_encrypt_cpi_authority_pda(program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"__encrypt_cpi_authority"]`
+
+```rust
+use aura_sdk::{pda::derive_encrypt_cpi_authority_pda, AURA_DEVNET_PROGRAM_ID};
+
+let (authority, bump) = derive_encrypt_cpi_authority_pda(&AURA_DEVNET_PROGRAM_ID);
+```
+
+### Via AuraClient
+
+```rust
+let (authority, bump) = client.derive_encrypt_cpi_authority();
+```
+
+## derive_encrypt_event_authority_pda
+
+Derives the Encrypt program's event authority PDA.
+
+```rust
+pub fn derive_encrypt_event_authority_pda(encrypt_program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"__event_authority"]` — derived on the **Encrypt program**, not AURA.
+
+```rust
+use aura_sdk::{pda::derive_encrypt_event_authority_pda, ENCRYPT_DEVNET_PROGRAM_ID};
+
+let (event_authority, bump) = derive_encrypt_event_authority_pda(&ENCRYPT_DEVNET_PROGRAM_ID);
+```
+
+### Via AuraClient
+
+```rust
+let (event_authority, bump) = client.derive_encrypt_event_authority(&ENCRYPT_DEVNET_PROGRAM_ID);
+```
+
+## Additional PDA Helpers
+
+```rust
+use aura_sdk::pda::{
+    derive_policy_simulation_pda,   // [b"policy_simulation", treasury, simulation_id_le64]
+    derive_policy_receipt_pda,       // [b"policy_receipt", treasury, proposal_id_le64]
+    derive_budget_envelope_pda,      // [b"budget_envelope", treasury, envelope_id_le64]
+    derive_exposure_group_pda,       // [b"exposure_group", authority, group_id_16bytes]
+    derive_operator_role_pda,        // [b"operator_role", treasury, operator]
+    derive_external_liveness_pda,    // [b"external_liveness", treasury]
+    derive_policy_attestation_pda,   // [b"policy_attestation", treasury, attester, version_le64]
+    derive_batch_proposal_pda,       // [b"batch_proposal", treasury, batch_id_le64]
+    derive_invariant_report_pda,     // [b"invariant_report", treasury, report_id_le64]
+    derive_message_approval_pda,     // dWallet MessageApproval PDA
+};
+```
+
+## Program Constants
+
+```rust
+use aura_sdk::{
+    AURA_DEVNET_PROGRAM_ID,     // auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
+    ENCRYPT_DEVNET_PROGRAM_ID,  // 4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8
+    DWALLET_DEVNET_PROGRAM_ID,  // 87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY
+};
+```
+
+## Batch Derivation
+
+```rust
+let agent_ids = ["agent-1", "agent-2", "agent-3"];
+
+let treasuries: Vec<(String, Pubkey)> = agent_ids
+    .iter()
+    .map(|id| {
+        let (pda, _) = client.derive_treasury_address(&owner, id);
+        (id.to_string(), pda)
+    })
+    .collect();
+```
+
+<Cards>
+  <Card
+    title="Types"
+    description="Domain and record types."
+    href="/sdk-rs/client/types"
+  />
+  <Card
+    title="AuraClient"
+    description="Full client API."
+    href="/sdk-rs/client/overview"
+  />
+  <Card
+    title="Examples"
+    description="End-to-end Rust patterns."
+    href="/sdk-rs/examples"
+  />
+</Cards>
+
+All AURA PDAs can be derived off-chain — synchronously and allocation-free.
+
+## Standalone Functions
+
+```rust
+use aura_sdk::pda::{
+    derive_treasury_pda,
+    derive_dwallet_cpi_authority_pda,
+    derive_encrypt_cpi_authority_pda,
+    derive_encrypt_event_authority_pda,
+};
+use aura_sdk::AURA_DEVNET_PROGRAM_ID;
+```
+
+## derive_treasury_pda
+
+Derives the treasury PDA for a given owner and agent ID.
+
+```rust
+pub fn derive_treasury_pda(
+    owner: &Pubkey,
+    agent_id: &str,
+    program_id: &Pubkey,
+) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"treasury", owner.as_ref(), agent_id.as_bytes()]`
+
+```rust
+use aura_sdk::{pda::derive_treasury_pda, AURA_DEVNET_PROGRAM_ID};
+use solana_sdk::pubkey::Pubkey;
+use std::str::FromStr;
+
+let owner = Pubkey::from_str("11111111111111111111111111111111").unwrap();
+let (treasury, bump) = derive_treasury_pda(&owner, "agent-prod-1", &AURA_DEVNET_PROGRAM_ID);
+
+println!("Treasury PDA: {}", treasury);
+println!("Bump: {}", bump);
+```
+
+### Via AuraClient
+
+```rust
+let client = AuraClient::devnet();
+let (treasury, bump) = client.derive_treasury_address(&owner, "agent-prod-1");
+```
+
+## derive_dwallet_cpi_authority_pda
+
+Derives the PDA used as the CPI authority for dWallet cross-program calls.
+
+```rust
+pub fn derive_dwallet_cpi_authority_pda(program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"dwallet_cpi_authority"]`
+
+```rust
+use aura_sdk::{pda::derive_dwallet_cpi_authority_pda, AURA_DEVNET_PROGRAM_ID};
+
+let (authority, bump) = derive_dwallet_cpi_authority_pda(&AURA_DEVNET_PROGRAM_ID);
+println!("dWallet CPI authority: {}", authority);
+```
+
+### Via AuraClient
+
+```rust
+let (authority, bump) = client.derive_dwallet_cpi_authority();
+```
+
+## derive_encrypt_cpi_authority_pda
+
+Derives the PDA used as the CPI authority for Encrypt cross-program calls.
+
+```rust
+pub fn derive_encrypt_cpi_authority_pda(program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"encrypt_cpi_authority"]`
+
+```rust
+use aura_sdk::{pda::derive_encrypt_cpi_authority_pda, AURA_DEVNET_PROGRAM_ID};
+
+let (authority, bump) = derive_encrypt_cpi_authority_pda(&AURA_DEVNET_PROGRAM_ID);
+println!("Encrypt CPI authority: {}", authority);
+```
+
+### Via AuraClient
+
+```rust
+let (authority, bump) = client.derive_encrypt_cpi_authority();
+```
+
+## derive_encrypt_event_authority_pda
+
+Derives the Encrypt program's event authority PDA.
+
+```rust
+pub fn derive_encrypt_event_authority_pda(encrypt_program_id: &Pubkey) -> (Pubkey, u8)
+```
+
+**Seeds:** `[b"__event_authority"]` (derived from the Encrypt program)
+
+```rust
+use aura_sdk::{pda::derive_encrypt_event_authority_pda, ENCRYPT_DEVNET_PROGRAM_ID};
+
+let (event_authority, bump) = derive_encrypt_event_authority_pda(&ENCRYPT_DEVNET_PROGRAM_ID);
+println!("Encrypt event authority: {}", event_authority);
+```
+
+### Via AuraClient
+
+```rust
+let (event_authority, bump) = client.derive_encrypt_event_authority(&ENCRYPT_DEVNET_PROGRAM_ID);
+```
+
+## Program Constants
+
+```rust
+use aura_sdk::{
+    AURA_DEVNET_PROGRAM_ID,     // AURA Anchor program (devnet)
+    ENCRYPT_DEVNET_PROGRAM_ID,  // Encrypt FHE program (devnet)
+    DWALLET_DEVNET_PROGRAM_ID,  // dWallet program (devnet)
+};
+```
+
+## Batch Derivation
+
+All derivations are synchronous and allocation-free — batch freely:
+
+```rust
+let agent_ids = ["agent-1", "agent-2", "agent-3"];
+
+let treasuries: Vec<(String, Pubkey, u8)> = agent_ids
+    .iter()
+    .map(|id| {
+        let (pda, bump) = client.derive_treasury_address(&owner, id);
+        (id.to_string(), pda, bump)
+    })
+    .collect();
+
+for (id, pda, bump) in &treasuries {
+    println!("{}: {} (bump {})", id, pda, bump);
+}
+```
+
+## Verifying a PDA Off-Chain
+
+```rust
+use solana_sdk::pubkey::Pubkey;
+
+let (expected, _bump) = client.derive_treasury_address(&owner, "my-agent");
+let provided = Pubkey::from_str("ProvidedAddressHere...")?;
+
+assert_eq!(expected, provided, "PDA mismatch — wrong owner or agent ID");
+```
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Types"
+    description="Domain and record types used for PDA seeds and accounts."
+    href="/sdk-rs/client/types"
+  />
+  <Card
+    title="AuraClient"
+    description="Full client API including PDA helper methods."
+    href="/sdk-rs/client/overview"
+  />
+  <Card
+    title="Examples"
+    description="End-to-end Rust patterns using PDA derivation."
+    href="/sdk-rs/examples"
+  />
+</Cards>

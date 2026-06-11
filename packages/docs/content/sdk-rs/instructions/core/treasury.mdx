@@ -1,0 +1,122 @@
+---
+title: Treasury
+description: Create and manage treasury lifecycle — pause, cancel, and swarm configuration.
+icon: Vault
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## create_treasury
+
+Initialize a new treasury PDA with a full policy configuration.
+
+```rust
+// Build only
+let (treasury, instruction) = client.create_treasury_instruction(
+    owner.pubkey(),
+    args.clone(),
+);
+
+// Build + send
+let (treasury, signature) = client.create_treasury(&owner, args)?;
+println!("Treasury: {}  Signature: {}", treasury, signature);
+```
+
+### Arguments
+
+```rust
+pub struct CreateTreasuryArgs {
+    pub agent_id: String,
+    pub ai_authority: Pubkey,
+    pub created_at: i64,
+    pub pending_transaction_ttl_secs: i64,
+    pub policy_config: PolicyConfigRecord,
+    pub protocol_fees: ProtocolFeesRecord,
+}
+```
+
+### Example
+
+```rust
+use aura_sdk::types::{CreateTreasuryArgs, PolicyConfig, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord};
+
+let policy = PolicyConfig {
+    daily_limit_usd: 10_000,
+    per_tx_limit_usd: 1_000,
+    daytime_hourly_limit_usd: 2_500,
+    nighttime_hourly_limit_usd: 500,
+    velocity_limit_usd: 5_000,
+    allowed_protocol_bitmap: 0b11111,
+    max_slippage_bps: 100,
+    max_quote_age_secs: 300,
+    max_counterparty_risk_score: 70,
+    bitcoin_manual_review_threshold_usd: 5_000,
+    liveness_config: LivenessConfig::default(),
+    ..Default::default()
+};
+
+let (treasury, sig) = client.create_treasury(&owner, CreateTreasuryArgs {
+    agent_id: "agent-prod-1".to_string(),
+    ai_authority: owner.pubkey(),
+    created_at: now,
+    pending_transaction_ttl_secs: 900,
+    policy_config: PolicyConfigRecord::from_domain(&policy),
+    protocol_fees: ProtocolFeesRecord::from_domain(&ProtocolFees::default()),
+})?;
+```
+
+---
+
+## pause_execution
+
+Pause or resume treasury execution.
+
+```rust
+// Build only
+let instruction = client.pause_execution_instruction(owner.pubkey(), treasury, paused, now);
+
+// Build + send
+client.pause_execution(&owner, treasury, true, now)?;   // pause
+client.pause_execution(&owner, treasury, false, now)?;  // resume
+```
+
+---
+
+## cancel_pending
+
+Cancel the current pending transaction and reset the treasury to idle.
+
+```rust
+// Build only
+let instruction = client.cancel_pending_instruction(owner.pubkey(), treasury, now);
+
+// Build + send
+client.cancel_pending(&owner, treasury, now)?;
+```
+
+---
+
+## configure_swarm
+
+Attach the treasury to a shared swarm spending pool.
+
+```rust
+use aura_sdk::types::ConfigureSwarmArgs;
+
+client.configure_swarm(&owner, treasury, ConfigureSwarmArgs {
+    swarm_id: "swarm-alpha".to_string(),
+    member_agents: vec!["agent-1".to_string(), "agent-2".to_string()],
+    shared_pool_limit_usd: 50_000,
+    timestamp: now,
+})?;
+```
+
+<Cards>
+  <Card title="Proposals" description="Propose public and confidential transactions." href="/sdk-rs/instructions/proposals" />
+  <Card title="Governance" description="Multisig, overrides, and emergency shutdown." href="/sdk-rs/instructions/governance" />
+</Cards>

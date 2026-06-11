@@ -1,0 +1,192 @@
+---
+title: Types
+description: Rust domain types and record types used across the AURA Rust SDK.
+icon: Database
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+The `aura-sdk` crate exposes two layers of types:
+
+- **Record types** (`*Record`) — byte-aligned on-chain representations deserialized directly from account data via Borsh.
+- **Domain types** — ergonomic Rust structs with human-friendly fields, converted from records via `from_domain`.
+
+## CreateTreasuryArgs
+
+Arguments for the `create_treasury` instruction.
+
+```rust
+use aura_sdk::types::CreateTreasuryArgs;
+
+pub struct CreateTreasuryArgs {
+    pub agent_id: String,
+    pub ai_authority: Pubkey,
+    pub created_at: i64,
+    pub pending_transaction_ttl_secs: i64,
+    pub policy_config: PolicyConfigRecord,
+    pub protocol_fees: ProtocolFeesRecord,
+}
+```
+
+## PolicyConfig / PolicyConfigRecord
+
+The domain and record forms of the policy configuration.
+
+```rust
+pub struct PolicyConfig {
+    pub daily_limit_usd: u64,
+    pub per_tx_limit_usd: u64,
+    pub daytime_hourly_limit_usd: u64,
+    pub nighttime_hourly_limit_usd: u64,
+    pub velocity_limit_usd: u64,
+    pub allowed_protocol_bitmap: u64,
+    pub max_slippage_bps: u16,
+    pub max_quote_age_secs: u64,
+    pub max_counterparty_risk_score: u8,
+    pub bitcoin_manual_review_threshold_usd: u64,
+    pub shared_pool_limit_usd: Option<u64>,
+    pub weekly_limit_usd: Option<u64>,
+    pub monthly_limit_usd: Option<u64>,
+    pub recipient_limits: Vec<RecipientLimit>,
+    pub cooldown_config: Option<CooldownConfig>,
+    pub anomaly_config: Option<AnomalyConfig>,
+    pub reputation_policy: Option<ReputationPolicy>,
+    pub budget_envelopes: Vec<BudgetEnvelopeConfig>,
+    pub approval_ladder: Option<ApprovalLadder>,
+    pub scoped_pause_entries: Vec<ScopedPauseEntry>,
+    pub liveness_config: LivenessConfig,
+}
+```
+
+### Conversion
+
+```rust
+use aura_sdk::types::{PolicyConfig, PolicyConfigRecord};
+
+let domain = PolicyConfig::default();
+let record = PolicyConfigRecord::from_domain(&domain);
+```
+
+### Default Policy
+
+```rust
+let policy = PolicyConfig {
+    daily_limit_usd: 10_000,
+    per_tx_limit_usd: 1_000,
+    daytime_hourly_limit_usd: 2_500,
+    nighttime_hourly_limit_usd: 500,
+    velocity_limit_usd: 5_000,
+    allowed_protocol_bitmap: 0b11111,
+    max_slippage_bps: 100,
+    max_quote_age_secs: 300,
+    max_counterparty_risk_score: 70,
+    bitcoin_manual_review_threshold_usd: 5_000,
+    liveness_config: LivenessConfig::default(),
+    ..Default::default()
+};
+```
+
+## ProtocolFees / ProtocolFeesRecord
+
+```rust
+pub struct ProtocolFees {
+    pub treasury_creation_fee_usd: u64,
+    pub transaction_fee_bps: u16,
+    pub fhe_subsidy_bps: u16,
+}
+```
+
+```rust
+use aura_sdk::types::{ProtocolFees, ProtocolFeesRecord};
+
+let fees = ProtocolFees::default();
+let record = ProtocolFeesRecord::from_domain(&fees);
+```
+
+## AgentTreasury
+
+The rich domain representation of an on-chain treasury account. Returned by
+`client.get_treasury()` and `client.get_treasury_for_owner()`.
+
+```rust
+pub struct AgentTreasury {
+    pub agent_id: String,
+    pub owner: String,           // base-58 pubkey as string
+    pub ai_authority: String,    // base-58 pubkey as string
+    pub creation_timestamp: i64,
+    pub deployment: ProtocolDeployment,
+    pub dwallets: BTreeMap<Chain, DWalletReference>,
+    pub policy_config: PolicyConfig,
+    pub policy_state: PolicyState,
+    pub confidential_guardrails: Option<ConfidentialGuardrails>,
+    pub pending: Option<PendingTransaction>,
+    pub pending_queue: Vec<PendingTransaction>,
+    pub total_transactions: u64,
+    pub next_proposal_id: u64,
+    pub execution_paused: bool,
+    pub agent_state: AgentLifecycleState,
+    pub pending_transaction_ttl_secs: i64,
+    pub multisig: Option<EmergencyMultisig>,
+    pub swarm: Option<AgentSwarm>,
+    // ... additional fields
+}
+```
+
+### Fetching
+
+```rust
+let treasury = client.get_treasury(&treasury_pda)?;
+println!("Agent: {}", treasury.agent_id);
+println!("Daily limit: {}", treasury.policy_config.daily_limit_usd);
+println!("Paused: {}", treasury.execution_paused);
+println!("Spent today: {}", treasury.policy_state.spent_today_usd);
+println!("Total executed: {}", treasury.total_transactions);
+
+if let Some(pending) = &treasury.pending {
+    println!("Pending proposal: {}", pending.proposal_id);
+}
+```
+
+## PolicyState
+
+Mutable spending counters updated by the policy engine on every approved transaction.
+
+```rust
+pub struct PolicyState {
+    pub spent_today_usd: u64,
+    pub last_reset_timestamp: i64,
+    pub hourly_spent_usd: u64,
+    pub hourly_bucket_started_at: i64,
+    pub recent_amounts: Vec<u64>,
+    pub thirty_day_spent_usd: u64,
+    pub peak_single_tx_usd: u64,
+    pub peak_day_spend_usd: u64,
+    pub recipient_spend: Vec<RecipientSpendRecord>,
+    // ... additional rolling window fields
+}
+```
+
+## LivenessConfig
+
+```rust
+pub struct LivenessConfig {
+    pub require_encrypt_freshness: bool,
+    pub require_dwallet_freshness: bool,
+    pub require_balance_oracle_freshness: bool,
+    pub require_compliance_oracle_freshness: bool,
+    pub max_staleness_secs: u64,
+}
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="AuraClient" description="Create clients and send transactions." href="/sdk-rs/client/overview" />
+  <Card title="PDA Derivation" description="Derive treasury and authority addresses." href="/sdk-rs/client/pda" />
+  <Card title="Examples" description="End-to-end Rust usage patterns." href="/sdk-rs/examples" />
+</Cards>

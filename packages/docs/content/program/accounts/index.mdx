@@ -1,0 +1,59 @@
+---
+title: Accounts Overview
+description: Program-derived addresses and state accounts in aura-core
+icon: LayoutList
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+All state is held in Program-Derived Addresses (PDAs) owned by `aura-core`. The **`TreasuryAccount`** is the
+root; everything else is an optional auxiliary account attached to a treasury.
+
+<Callout title="Immutable identity">
+  Most account seeds include immutable identifiers (owner, agent_id, chain code) that cannot change in place — they define the account's address. Mutable settings are edited via specific update instructions.
+</Callout>
+
+## Account Categories
+
+<Cards>
+  <Card 
+    title="Core Accounts" 
+    description="Why: Store essential treasury state. Treasury holds policy and spend counters, DWalletAccount manages multi-asset balances, TrustIdentityAccount tracks threat scoring and agent authorities."
+    href="/program/accounts/core"
+  />
+  <Card 
+    title="Policy & Governance" 
+    description="Why: Enable reusable policies and versioning. Templates let you share validated policies across treasuries, history enables rollback, canaries allow safe policy testing before promotion."
+    href="/program/accounts/policy"
+  />
+  <Card 
+    title="Fees & Billing" 
+    description="Why: Control monetization and payment. Fee vaults hold prepaid balances, schedules define tiered pricing, protocol config enforces non-bypassable fee floors for the network."
+    href="/program/accounts/fees"
+  />
+  <Card 
+    title="Execution & Operations" 
+    description="Why: Support advanced execution patterns. Batches group transactions, scheduled intents enable recurring payments, analytics provide tamper-evident audit trails."
+    href="/program/accounts/execution"
+  />
+  <Card 
+    title="Access Control" 
+    description="Why: Enable delegation and fine-grained permissions. Operator roles grant scoped access, session keys provide temporary credentials, address lists enforce recipient restrictions."
+    href="/program/accounts/access"
+  />
+  <Card 
+    title="External Accounts" 
+    description="Why: Interface with Encrypt and dWallet networks. Confidential guardrails reference FHE ciphertexts, external accounts hold encrypted limits and dWallet signatures."
+    href="/program/accounts/external"
+  />
+</Cards>
+
+## PDA Seeds Pattern
+
+All accounts follow the pattern:
+```
+seeds = [ b"account_type", ...identifiers ]
+```
+
+Seeds are derived relative to the `aura-core` program ID and are deterministic based on the identifiers provided.

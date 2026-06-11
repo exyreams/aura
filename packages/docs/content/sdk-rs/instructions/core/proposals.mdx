@@ -1,0 +1,58 @@
+---
+title: Proposals
+description: Propose public and scalar FHE-encrypted transactions for policy evaluation.
+icon: FilePlus
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## propose_transaction
+
+```rust
+use aura_sdk::types::ProposeTransactionArgs;
+
+client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
+    amount_usd: 250,
+    target_chain: 2,
+    tx_type: 0,
+    protocol_id: None,
+    current_timestamp: now,
+    expected_output_usd: None,
+    actual_output_usd: None,
+    quote_age_secs: None,
+    counterparty_risk_score: Some(15),
+    recipient_or_contract: "0xdeadbeef...".to_string(),
+    sanctions_proof: vec![],
+})?;
+```
+
+## propose_confidential_transaction
+
+Propose a confidential transaction using scalar FHE ciphertexts.
+
+```rust
+client.propose_confidential_transaction(
+    &ai_authority,
+    accounts,
+    args,
+    &[&policy_output_signer],
+)?;
+```
+
+## Public vs Confidential
+
+| | Public | Confidential |
+|---|---|---|
+| Amount visible on-chain | Yes | No, amount is an Encrypt ciphertext |
+| Policy evaluation | Immediate on-chain rules | Scalar FHE graph through Ika Encrypt |
+| Extra accounts needed | No | Ciphertext, Encrypt config, deposit, and CPI authority accounts |
+
+<Cards>
+  <Card title="Confidential Setup" description="Configure scalar FHE guardrails before confidential proposals." href="/sdk-rs/instructions/confidential" />
+  <Card title="Execution" description="Drive the proposal through to finalization." href="/sdk-rs/instructions/execution" />
+</Cards>

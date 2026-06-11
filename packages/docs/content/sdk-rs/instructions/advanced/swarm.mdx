@@ -1,0 +1,75 @@
+---
+title: Swarm
+description: Initialize and join shared agent swarm spending pools.
+icon: Network
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+A swarm pool is a shared spending counter across multiple agent treasuries. Use `configure_swarm` (in [Governance](/sdk-rs/instructions/governance)) to attach a treasury to a swarm. Use the instructions below to create and join the pool account itself.
+
+## init_swarm_pool
+
+Create the shared swarm pool account. Must be done before any treasury can join.
+
+```rust
+// Build only
+let instruction = client.init_swarm_pool_instruction(accounts, args);
+
+// Build + send
+client.init_swarm_pool(&creator, accounts, args)?;
+```
+
+```rust
+client.init_swarm_pool(
+    &creator,
+    aura_core::accounts::InitSwarmPool {
+        creator: creator.pubkey(),
+        swarm_pool: swarm_pool_pda,
+        system_program: anchor_lang::system_program::ID,
+    },
+    aura_core::InitSwarmPoolArgs {
+        swarm_id: "swarm-alpha".to_string(),
+        shared_pool_limit_usd: 100_000,
+        timestamp: now,
+    },
+)?;
+```
+
+---
+
+## join_swarm
+
+Add a treasury to an existing swarm pool.
+
+```rust
+// Build only
+let instruction = client.join_swarm_instruction(accounts, now);
+
+// Build + send
+client.join_swarm(&owner, accounts, now)?;
+```
+
+```rust
+client.join_swarm(
+    &owner,
+    aura_core::accounts::JoinSwarm {
+        owner: owner.pubkey(),
+        treasury,
+        swarm_pool: swarm_pool_pda,
+    },
+    now,
+)?;
+```
+
+After joining, pass `swarm_pool` in the proposal accounts to enforce the shared limit.
+
+<Cards>
+  <Card title="Governance" description="configure_swarm and other treasury-level governance." href="/sdk-rs/instructions/governance" />
+  <Card title="Budget" description="Budget envelopes and exposure groups." href="/sdk-rs/instructions/budget" />
+</Cards>

@@ -22,7 +22,7 @@ const features = [
     title: "Confidential Guardrails",
     description:
       "Daily and per-tx limits stored as FHE ciphertexts. Policy evaluation runs over encrypted values — limits never touch plaintext on-chain.",
-    href: "/docs/overview/confidential-guardrails",
+    href: "/overview/confidential-guardrails",
   },
   {
     icon: (
@@ -43,7 +43,7 @@ const features = [
     title: "dWallet Co-signing",
     description:
       "Approved proposals are co-signed through Ika dWallet records. Agents never hold raw private keys — execution is gated by the AURA program.",
-    href: "/docs/overview/dwallet-execution",
+    href: "/overview/dwallet-execution",
   },
   {
     icon: (
@@ -64,7 +64,7 @@ const features = [
     title: "Policy Engine",
     description:
       "27 violation codes, 17 evaluation rules, time windows, velocity limits, anomaly detection, approval ladders, and scoped pauses — all in pure Rust.",
-    href: "/docs/overview/policy-engine",
+    href: "/overview/policy-engine",
   },
   {
     icon: (
@@ -87,7 +87,7 @@ const features = [
     title: "Multi-chain",
     description:
       "Bitcoin, Ethereum, Solana, Polygon, Arbitrum, and Optimism from a single Solana treasury. One policy config governs all chains.",
-    href: "/docs/overview/architecture",
+    href: "/overview/architecture",
   },
   {
     icon: (
@@ -109,7 +109,7 @@ const features = [
     title: "TypeScript SDK",
     description:
       "67 typed instruction builders, PDA helpers, event parsing, and the high-level Aura facade with auto timestamps and plain-number inputs.",
-    href: "/docs/sdk-ts",
+    href: "/sdk-ts",
   },
   {
     icon: (
@@ -132,19 +132,19 @@ const features = [
     title: "CLI & Dashboard",
     description:
       "Full terminal interface with --json output for CI, --dry-run for safe inspection, and a live Ink dashboard for real-time treasury monitoring.",
-    href: "/docs/cli",
+    href: "/cli",
   },
 ];
 
 const sdks = [
+  { label: "Program", href: "/program", desc: "aura-core reference" },
   {
     label: "TypeScript SDK",
-    href: "/docs/sdk-ts",
+    href: "/sdk-ts",
     desc: "@aura-protocol/sdk-ts",
   },
-  { label: "Rust SDK", href: "/docs/sdk-rs", desc: "aura-sdk" },
-  { label: "CLI", href: "/docs/cli", desc: "@aura-protocol/cli" },
-  { label: "Program", href: "/docs/program", desc: "aura-core reference" },
+  { label: "CLI", href: "/cli", desc: "@aura-protocol/cli" },
+  { label: "Rust SDK", href: "/sdk-rs", desc: "aura-sdk" },
 ];
 
 export default function HomePage() {
@@ -204,7 +204,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
-              href="/docs/overview"
+              href="/overview"
               className="inline-flex items-center gap-2 rounded-sm bg-(--primary) px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-(--bg) transition-opacity hover:opacity-80"
             >
               Get Started
@@ -221,7 +221,7 @@ export default function HomePage() {
               </svg>
             </Link>
             <Link
-              href="/docs/overview/architecture"
+              href="/overview/architecture"
               className="inline-flex items-center gap-2 rounded-sm bg-(--card-bg) border border-(--border) px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-(--text-main) transition-colors hover:border-(--primary) hover:bg-(--hover-bg)"
             >
               Architecture

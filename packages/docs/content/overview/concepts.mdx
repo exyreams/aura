@@ -1,0 +1,134 @@
+---
+title: Key Concepts
+description: Core terms, account shapes, and mental models used throughout the AURA docs.
+icon: BookMarked
+---
+
+## Treasury
+
+The root on-chain account for an AI agent. Derived as a PDA from `["treasury", owner, agentId]` on `aura-core`. Stores the agent's identity, full `PolicyConfig`, pause state, multisig config, swarm config, and protocol fee settings.
+
+One owner can have multiple treasuries — one per unique `agentId`. Each treasury is independent unless joined to a swarm pool.
+
+<Mermaid chart="graph TD;Treasury[TreasuryAccount] --> PC[PolicyConfig];Treasury --> MC[MultisigConfig];Treasury --> SC[SwarmConfig];Treasury --> PF[ProtocolFees];Treasury --> DW[DwalletRecords];Treasury --> PT[PendingTransaction]" />
+
+---
+
+## Proposal
+
+A request by the AI agent to execute a transaction. Submitted via `propose_transaction` (public) or `propose_confidential_transaction` (FHE path). Only one proposal can be pending per treasury at a time — `PendingTransactionExists` (6004) is returned if one already exists.
+
+**Proposal lifecycle:**
+
+<Mermaid chart="stateDiagram-v2;[*] --> Pending: propose_transaction;Pending --> Approved: policy pass;Pending --> AwaitingDecryption: confidential path;AwaitingDecryption --> Approved: ViolationCode = 0;AwaitingDecryption --> Rejected: ViolationCode != 0;Pending --> Rejected: policy violation;Pending --> Cancelled: cancel_pending;Approved --> Executed: execute_pending + finalize_execution;Approved --> Expired: TTL elapsed;Rejected --> [*];Cancelled --> [*];Executed --> [*];Expired --> [*]" />
+
+---
+
+## PolicyConfig
+
+The complete set of spending rules on a treasury. Two layers:
+
+**Public rules** — evaluated locally by `aura-policy` in Rust. Stored in plaintext in `TreasuryAccount.policy_config`. Includes time windows, velocity, protocol allowlist, slippage, counterparty risk, recipient limits, anomaly detection, approval ladders, scoped pauses, and liveness requirements.
+
+**Confidential counters** — `daily_limit_usd` and `per_tx_limit_usd` can be stored as `EUint64` FHE ciphertexts via `configure_confidential_guardrails`. When configured, these are evaluated by Ika Encrypt instead of locally.
+
+Changing "dangerous" fields (raising limits, removing guardians) is subject to a timelock enforced by `TimelockNotElapsed` (6027).
+
+---
+
+## ViolationCode
+
+A `u8` returned by the policy engine indicating why a proposal was rejected. `0` (`None`) means approved. There are 27 non-zero variants — see the [Policy Engine](/overview/policy-engine) page for the full table.
+
+On-chain, the violation code is stored as an encrypted `EUint64` in the `policy_output_ciphertext` account for confidential proposals, then decrypted by `confirm_policy_decryption`.
+
+---
+
+## FHE (Fully Homomorphic Encryption)
+
+A cryptographic technique that allows computation directly on encrypted data without decrypting it first. AURA uses FHE via the Ika Encrypt network (`4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8`) to evaluate whether a proposed spend would exceed the encrypted daily or per-tx limit.
+
+The limit values are stored as `EUint64` ciphertexts. The FHE circuit compares them against the encrypted proposal amount and returns an encrypted `ViolationCode`. Only this small integer is decrypted on-chain — the limit values remain encrypted throughout.
+
+---
+
+## dWallet Record
+
+A `DwalletRecord` account registered against a treasury for a specific chain (0–5). When a proposal is approved, `aura-core` CPIs into the Ika dWallet program (`87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY`) via `execute_pending` to request a co-signature. The agent receives the signed transaction bytes — never the private key.
+
+The `MessageApproval` PDA is derived on the dWallet program using the curve code, public key bytes, signature scheme code, and message digest as seeds.
+
+---
+
+## Operator Role
+
+A delegated permission grant stored in an `OperatorRole` PDA (`["operator_role", treasury, operator]`). Operators can drive the execution lifecycle (`execute_pending`, `finalize_execution`, `request_policy_decryption`, `confirm_policy_decryption`) without being the treasury owner. Roles have a `permissions_bitmap` and an `expires_at` timestamp.
+
+Errors: `OperatorRoleMissing` (6043), `OperatorRoleExpired` (6044).
+
+---
+
+## Session Key
+
+A short-lived signing key issued to the AI agent via `issue_session_key`. Stored in a `SessionKeyAccount` PDA. Scoped to a `max_amount_usd`, an `allowed_chains_bitmap`, and an `expires_at` timestamp. Reduces the need for the owner's keypair to be online for every proposal.
+
+Errors: `SessionKeyInactive` (6036), `SessionKeyScopeViolation` (6037).
+
+---
+
+## Guardian / Multisig
+
+An emergency override mechanism configured via `configure_multisig`. Stores a list of guardian public keys and a `required_signatures` threshold in `TreasuryAccount.multisig_config`. Guardians can approve proposals that would otherwise be rejected, rotate the AI authority, or initiate a shutdown.
+
+Errors: `UnauthorizedGuardian` (6002), `InvalidGuardianConfiguration` (6026).
+
+---
+
+## Swarm Pool
+
+A shared spending pool across multiple agent treasuries. Configured via `configure_swarm` and `init_swarm_pool`. Each member's proposal is checked against both its own limits and the shared pool counter (`shared_pool_limit_usd`). Violation: `SharedPoolLimit`.
+
+---
+
+## Budget Envelope
+
+A scoped sub-budget attached to a treasury via `configure_budget_envelope`. Envelopes can be scoped by chain, category, or protocol. Each envelope has its own daily and weekly cap. Violations: `BudgetEnvelopeDailyLimit`, `BudgetEnvelopeWeeklyLimit`.
+
+---
+
+## Exposure Group
+
+A cross-treasury aggregate cap. Multiple treasuries can join an exposure group (`join_exposure_group`). The group tracks total spend across all members. Violation: `ExposureGroupLimitExceeded`.
+
+---
+
+## External Liveness
+
+A freshness record (`ExternalLiveness` PDA) that tracks whether external dependencies (Encrypt network, dWallet network, balance oracle, compliance oracle) have been recently confirmed. Configured via `init_external_liveness` and refreshed via `refresh_external_liveness`. Required when `LivenessConfig.require_*_freshness` flags are set. Violation: `ExternalDependencyStale`.
+
+---
+
+## Health Score
+
+A computed `u8` score (0–100) stored in a `HealthScore` PDA. Initialized via `init_health_score`, refreshed via `refresh_health_score`. Used by `take_snapshot` to record point-in-time treasury health.
+
+---
+
+## PDA Reference
+
+| Account | Seeds | Notes |
+|---|---|---|
+| Treasury | `["treasury", owner, agentId]` | Root account |
+| dWallet CPI authority | `["__ika_cpi_authority"]` | Signs dWallet CPIs |
+| Encrypt CPI authority | `["__encrypt_cpi_authority"]` | Signs Encrypt CPIs |
+| Policy receipt | `["policy_receipt", treasury, proposalId_le64]` | Immutable receipt |
+| Policy simulation | `["policy_simulation", treasury, simulationId_le64]` | Simulation result |
+| Budget envelope | `["budget_envelope", treasury, envelopeId_le64]` | Scoped sub-budget |
+| Exposure group | `["exposure_group", authority, groupId_16bytes]` | Cross-treasury cap |
+| Operator role | `["operator_role", treasury, operator]` | Delegated permissions |
+| External liveness | `["external_liveness", treasury]` | Freshness record |
+| Policy attestation | `["policy_attestation", treasury, attester, policyVersion_le64]` | Signed policy hash |
+| Batch proposal | `["batch_proposal", treasury, batchId_le64]` | Batch result |
+| Invariant report | `["invariant_report", treasury, reportId_le64]` | Invariant check result |
+
+All derivation helpers are exported from `@aura-protocol/sdk-ts` — use them instead of computing seeds manually.

@@ -1,0 +1,244 @@
+---
+title: Policy
+description: Simulate policy rules, write receipts, attest policy hashes, check invariants, and query policy via CPI.
+icon: Shield
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## simulatePolicy
+
+Run the full policy evaluation against a treasury without committing any state changes. Useful for pre-flight checks and UI previews.
+
+```typescript
+// Build only
+const instruction = await client.simulatePolicyInstruction(
+  accounts: SimulatePolicyAccounts,
+  args: SimulatePolicyArgs,
+);
+
+// Build + send
+await client.simulatePolicy(payer, accounts, args);
+```
+
+```typescript
+interface SimulatePolicyAccounts {
+  payer: PublicKey;           // funds the simulation result account
+  treasury: PublicKey;
+  operatorRole?: PublicKey | null;  // required if caller is a delegated operator
+  simulationResult: PublicKey;      // PDA: derivePolicySimulationAddress(treasury, simulationId)
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import { derivePolicySimulationAddress } from '@aura-protocol/sdk-ts';
+import BN from 'bn.js';
+
+const simulationId = new BN(1);
+const [simulationResult] = derivePolicySimulationAddress(treasury, simulationId);
+
+await client.simulatePolicy(
+  payer,
+  {
+    payer: payer.publicKey,
+    treasury,
+    operatorRole: null,
+    simulationResult,
+    systemProgram: SystemProgram.programId,
+  },
+  {
+    simulationId,
+    amountUsd: new BN(500),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    recipientOrContract: '0xdeadbeef...',
+    counterpartyRiskScore: null,
+    quoteAgeSecs: null,
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    currentTimestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+---
+
+## writePolicyReceipt
+
+Store an immutable snapshot of the policy decision for the current pending proposal. Links the receipt to an optional attestation.
+
+```typescript
+// Build only
+const instruction = await client.writePolicyReceiptInstruction(
+  accounts: WritePolicyReceiptAccounts,
+  args: WritePolicyReceiptArgs,
+);
+
+// Build + send
+await client.writePolicyReceipt(payer, accounts, args);
+```
+
+```typescript
+interface WritePolicyReceiptAccounts {
+  payer: PublicKey;
+  treasury: PublicKey;
+  receipt: PublicKey;              // PDA: derivePolicyReceiptAddress(treasury, proposalId)
+  attestation?: PublicKey | null;  // optional — link to an existing attestation
+  systemProgram: PublicKey;
+}
+```
+
+---
+
+## applyPolicyPreset
+
+Apply a named policy preset to the treasury, replacing the current `PolicyConfig` with a predefined configuration.
+
+```typescript
+// Build only
+const instruction = await client.applyPolicyPresetInstruction(
+  accounts: OwnerTreasuryAccounts,
+  args: ApplyPolicyPresetArgs,
+);
+
+// Build + send
+await client.applyPolicyPreset(owner, accounts, args);
+```
+
+```typescript
+await client.applyPolicyPreset(
+  owner,
+  { owner: owner.publicKey, treasury },
+  {
+    presetKind: 0,  // preset index — see on-chain PolicyPresetKind enum
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
+);
+```
+
+---
+
+## attestPolicy
+
+Sign and store a hash of the current policy configuration. Used to prove that a specific policy was in effect at a given time.
+
+```typescript
+// Build only
+const instruction = await client.attestPolicyInstruction(
+  accounts: AttestPolicyAccounts,
+  args: AttestPolicyArgs,
+);
+
+// Build + send — payer and attester may be different signers
+await client.attestPolicy(payer, attester, accounts, args);
+```
+
+```typescript
+interface AttestPolicyAccounts {
+  payer: PublicKey;     // funds the attestation account
+  attester: PublicKey;  // signs the policy hash — must be a signer
+  treasury: PublicKey;
+  attestation: PublicKey;  // PDA: derivePolicyAttestationAddress(treasury, attester, policyVersion)
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import { derivePolicyAttestationAddress } from '@aura-protocol/sdk-ts';
+import BN from 'bn.js';
+
+const account = await client.getTreasuryAccount(treasury);
+const policyVersion = account.currentPolicyVersion;
+
+const [attestation] = derivePolicyAttestationAddress(
+  treasury,
+  attester.publicKey,
+  policyVersion,
+);
+
+await client.attestPolicy(
+  payer,
+  attester,
+  { payer: payer.publicKey, attester: attester.publicKey, treasury, attestation, systemProgram: SystemProgram.programId },
+  { policyVersion, timestamp: new BN(Math.floor(Date.now() / 1000)) },
+);
+```
+
+---
+
+## checkInvariants
+
+Run a set of on-chain invariant checks against the treasury and store the result. Useful for monitoring and auditing.
+
+```typescript
+// Build only
+const instruction = await client.checkInvariantsInstruction(
+  accounts: CheckInvariantsAccounts,
+  args: CheckInvariantsArgs,
+);
+
+// Build + send
+await client.checkInvariants(payer, accounts, args);
+```
+
+```typescript
+interface CheckInvariantsAccounts {
+  payer: PublicKey;
+  treasury: PublicKey;
+  report: PublicKey;  // PDA: deriveInvariantReportAddress(treasury, reportId)
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import { deriveInvariantReportAddress } from '@aura-protocol/sdk-ts';
+import BN from 'bn.js';
+
+const reportId = new BN(1);
+const [report] = deriveInvariantReportAddress(treasury, reportId);
+
+await client.checkInvariants(
+  payer,
+  { payer: payer.publicKey, treasury, report, systemProgram: SystemProgram.programId },
+  { reportId, timestamp: new BN(Math.floor(Date.now() / 1000)) },
+);
+```
+
+---
+
+## checkPolicyCpi
+
+Allow an external program to query AURA policy for a treasury via CPI. The result is stored in a PDA that the calling program can read.
+
+```typescript
+// Build only
+const instruction = await client.checkPolicyCpiInstruction(
+  accounts: CheckPolicyCpiAccounts,
+  args: CheckPolicyCpiArgs,
+);
+
+// Build + send
+await client.checkPolicyCpi(feePayer, accounts, args);
+```
+
+```typescript
+interface CheckPolicyCpiAccounts {
+  caller: PublicKey;    // the calling integration account
+  treasury: PublicKey;
+  feePayer: PublicKey;  // funds the result account — must be a signer
+  result: PublicKey;    // PDA storing the policy check result
+  systemProgram: PublicKey;
+}
+```
+
+<Cards>
+  <Card title="Budget" description="Budget envelopes, exposure groups, and approval ladders." href="/sdk-ts/instructions/budget" />
+  <Card title="Execution" description="Drive proposals through policy and dWallet signing." href="/sdk-ts/instructions/execution" />
+</Cards>

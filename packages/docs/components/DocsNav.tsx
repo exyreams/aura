@@ -13,11 +13,11 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { label: "Introduction", href: "/docs/overview" },
-  { label: "Program", href: "/docs/program" },
-  { label: "TypeScript SDK", href: "/docs/sdk-ts" },
-  { label: "Rust SDK", href: "/docs/sdk-rs" },
-  { label: "CLI", href: "/docs/cli" },
+  { label: "Introduction", href: "/overview" },
+  { label: "Program", href: "/program" },
+  { label: "TypeScript SDK", href: "/sdk-ts" },
+  { label: "Rust SDK", href: "/sdk-rs" },
+  { label: "CLI", href: "/cli" },
 ];
 
 export function DocsNav() {

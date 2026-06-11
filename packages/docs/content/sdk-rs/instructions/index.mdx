@@ -1,0 +1,59 @@
+---
+title: Overview
+description: All AURA program instructions available as Rust builders.
+icon: LayoutList
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+The Rust SDK follows the same domain structure as the TypeScript SDK. Builder
+methods return `solana_sdk::instruction::Instruction` for custom transactions;
+convenience methods build and send through the configured `AuraClient`.
+
+## Domains
+
+| Domain | Key methods | Status |
+| --- | --- | --- |
+| Treasury | `create_treasury`, `pause_execution`, `cancel_pending`, `configure_swarm` | Documented |
+| dWallet | `register_dwallet`, `refresh_dwallet_balance` | Documented |
+| Proposals | `propose_transaction`, `propose_confidential_transaction` | Documented |
+| Confidential | `configure_confidential_guardrails`, `request_policy_decryption`, `confirm_policy_decryption` | Documented |
+| Execution | `execute_pending`, `finalize_execution`, `approve_pending_execution` | Documented |
+| Governance | `configure_multisig`, `propose_ai_rotation`, `emergency_shutdown`, `propose_config_change` | Documented |
+| Policy | `simulate_policy`, `write_policy_receipt`, `apply_policy_preset`, `attest_policy`, `check_invariants` | — |
+| Budget | `configure_budget_envelope`, `init_exposure_group`, `configure_approval_ladder` | — |
+| Operations | `set_scoped_pause`, `grant_operator_role`, `init_external_liveness`, `refresh_external_liveness`, `take_snapshot` | — |
+| Lifecycle | `issue_session_key`, `revoke_session_key`, `trigger_dead_mans_switch`, `migrate_treasury` | — |
+| Swarm | `init_swarm_pool`, `join_swarm` | — |
+| Fees | `init_fee_vault`, `collect_fees`, `close_fee_vault` | — |
+| Address Lists | `init_address_list`, `manage_address_list` | — |
+| Batch | `propose_batch` | — |
+
+## Builder Pattern
+
+Every instruction has two forms:
+
+```rust
+// Build only — compose into custom transactions
+let instruction = client.cancel_pending_instruction(
+    owner.pubkey(),
+    treasury,
+    now,
+);
+let sig = client.send_instructions(&owner, vec![instruction], &[])?;
+
+// Build + send in one call
+client.cancel_pending(&owner, treasury, now)?;
+```
+
+<Cards>
+  <Card title="Treasury" description="Create, pause, cancel, and configure swarms." href="/sdk-rs/instructions/treasury" />
+  <Card title="Proposals" description="Public and confidential transaction proposals." href="/sdk-rs/instructions/proposals" />
+  <Card title="Execution" description="Drive the full proposal → sign → finalize flow." href="/sdk-rs/instructions/execution" />
+  <Card title="Governance" description="Multisig overrides, rotations, and emergency shutdown." href="/sdk-rs/instructions/governance" />
+</Cards>

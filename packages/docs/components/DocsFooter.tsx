@@ -17,16 +17,17 @@ const itemVariants: Variants = {
 };
 
 const DOCS_LINKS = [
-  { label: "Introduction", href: "/docs/overview" },
-  { label: "Architecture", href: "/docs/overview/architecture" },
-  { label: "Quick Start", href: "/docs/overview/quickstart" },
-  { label: "Key Concepts", href: "/docs/overview/concepts" },
+  { label: "Introduction", href: "/overview" },
+  { label: "Architecture", href: "/overview/architecture" },
+  { label: "Quick Start", href: "/overview/quickstart" },
+  { label: "Key Concepts", href: "/overview/concepts" },
 ];
 
 const SDK_LINKS = [
-  { label: "TypeScript SDK", href: "/docs/sdk-ts" },
-  { label: "Rust SDK", href: "/docs/sdk-rs" },
-  { label: "CLI Reference", href: "/docs/cli" },
+  { label: "Program Reference", href: "/program" },
+  { label: "TypeScript SDK", href: "/sdk-ts" },
+  { label: "CLI Reference", href: "/cli" },
+  { label: "Rust SDK", href: "/sdk-rs" },
 ];
 
 const RESOURCE_LINKS = [
@@ -35,12 +36,12 @@ const RESOURCE_LINKS = [
     href: "https://github.com/aura-protocol/aura",
     external: true,
   },
-  { label: "Policy Engine", href: "/docs/overview/policy-engine" },
+  { label: "Policy Engine", href: "/overview/policy-engine" },
   {
     label: "Confidential Guardrails",
-    href: "/docs/overview/confidential-guardrails",
+    href: "/overview/confidential-guardrails",
   },
-  { label: "dWallet Execution", href: "/docs/overview/dwallet-execution" },
+  { label: "dWallet Execution", href: "/overview/dwallet-execution" },
 ];
 
 export function DocsFooter() {
@@ -183,7 +184,10 @@ export function DocsFooter() {
           </span>
           <div className="flex items-center gap-6">
             <span className="font-mono text-[9px] uppercase text-(--text-muted)">
-              Program: <span className="text-(--text-main)">EaRoLV…bhHs</span>
+              Program:{" "}
+              <span className="text-(--text-main) normal-case">
+                auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
+              </span>
             </span>
             <div className="flex items-center gap-2">
               <div className="size-2 rounded-full bg-(--primary) animate-pulse" />

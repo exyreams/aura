@@ -1,0 +1,126 @@
+---
+title: Fees
+description: Initialize, collect, and close protocol fee vaults.
+icon: Coins
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## initFeeVault
+
+Initialize the protocol fee vault for a treasury. The vault accumulates protocol fees from transactions.
+
+```typescript
+// Build only
+const instruction = await client.initFeeVaultInstruction(
+  accounts: InitFeeVaultAccounts,
+  protocolFeeRecipient: PublicKey,
+  now: BNish,
+);
+
+// Build + send
+await client.initFeeVault(owner, accounts, protocolFeeRecipient, now);
+```
+
+```typescript
+interface InitFeeVaultAccounts {
+  owner: PublicKey;
+  treasury: PublicKey;
+  feeVault: PublicKey;  // PDA — derived on-chain
+  systemProgram: PublicKey;
+}
+```
+
+```typescript
+import BN from 'bn.js';
+
+await client.initFeeVault(
+  owner,
+  {
+    owner: owner.publicKey,
+    treasury,
+    feeVault: feeVaultPDA,
+    systemProgram: SystemProgram.programId,
+  },
+  protocolFeeRecipient,
+  Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## collectFees
+
+Drain accumulated protocol fees from the vault to the recipient. Only callable by the authorized `protocolAuthority`.
+
+```typescript
+// Build only
+const instruction = await client.collectFeesInstruction(
+  accounts: CollectFeesAccounts,
+  now: BNish,
+);
+
+// Build + send
+await client.collectFees(protocolAuthority, accounts, now);
+```
+
+```typescript
+interface CollectFeesAccounts {
+  protocolAuthority: PublicKey;  // authorized fee collector — must be a signer
+  feeVault: PublicKey;
+  recipient: PublicKey;          // lamport destination
+}
+```
+
+```typescript
+await client.collectFees(
+  protocolAuthority,
+  {
+    protocolAuthority: protocolAuthority.publicKey,
+    feeVault: feeVaultPDA,
+    recipient: recipientPubkey,
+  },
+  Math.floor(Date.now() / 1000),
+);
+```
+
+---
+
+## closeFeeVault
+
+Close the fee vault and reclaim rent. Only callable by the treasury owner.
+
+```typescript
+// Build only
+const instruction = await client.closeFeeVaultInstruction(
+  accounts: CloseFeeVaultAccounts,
+);
+
+// Build + send
+await client.closeFeeVault(owner, accounts);
+```
+
+```typescript
+interface CloseFeeVaultAccounts {
+  owner: PublicKey;
+  treasury: PublicKey;
+  feeVault: PublicKey;
+}
+```
+
+```typescript
+await client.closeFeeVault(
+  owner,
+  { owner: owner.publicKey, treasury, feeVault: feeVaultPDA },
+);
+```
+
+<Cards>
+  <Card title="Treasury" description="Create and manage treasury lifecycle." href="/sdk-ts/instructions/treasury" />
+  <Card title="Operations" description="Operator roles and health monitoring." href="/sdk-ts/instructions/operations" />
+</Cards>

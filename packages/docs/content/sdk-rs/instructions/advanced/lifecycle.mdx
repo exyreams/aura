@@ -1,0 +1,122 @@
+---
+title: Lifecycle
+description: Session keys, dead man's switch, agent state transitions, and treasury migration.
+icon: RefreshCw
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## issue_session_key / revoke_session_key / close_session_key
+
+Issue a short-lived signing key to the AI agent scoped to a maximum amount, allowed chains, and expiry.
+
+```rust
+// Issue
+client.issue_session_key(&authority, accounts, args)?;
+
+// Revoke (marks as inactive, keeps account)
+client.revoke_session_key(&authority, accounts, now)?;
+
+// Close (reclaims rent)
+client.close_session_key(&authority, accounts)?;
+```
+
+```rust
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer};
+
+let session_keypair = Keypair::new();
+
+// Derive the session key PDA: [b"session_key", treasury, session_key]
+let (session_key_account, _) = Pubkey::find_program_address(
+    &[b"session_key", treasury.as_ref(), session_keypair.pubkey().as_ref()],
+    &client.program_id(),
+);
+
+client.issue_session_key(
+    &owner,
+    aura_core::accounts::IssueSessionKey {
+        authority: owner.pubkey(),
+        treasury,
+        session_key_account,
+        system_program: anchor_lang::system_program::ID,
+    },
+    aura_core::IssueSessionKeyArgs {
+        session_key: session_keypair.pubkey(),
+        duration_secs: 3600,
+        max_amount_usd_per_tx: Some(500),
+        max_daily_spend_usd: None,
+        allowed_chains: vec![0, 2],   // Solana + Ethereum
+        allowed_tx_types: vec![0],    // Transfer only
+        max_proposal_count: None,
+        now,
+    },
+)?;
+```
+
+Pass `session_key_account` in the proposal accounts when the AI agent signs with the session key.
+
+---
+
+## trigger_dead_mans_switch
+
+Evaluate the dead man's switch condition. Anyone can call this — no signer validation.
+
+```rust
+// Build only
+let instruction = client.trigger_dead_mans_switch_instruction(
+    aura_core::accounts::TriggerDeadMansSwitch { treasury },
+    now,
+);
+
+// Build + send
+client.trigger_dead_mans_switch(&payer, aura_core::accounts::TriggerDeadMansSwitch { treasury }, now)?;
+```
+
+---
+
+## transition_agent_state
+
+Move the treasury through its agent state machine.
+
+```rust
+// Build only
+let instruction = client.transition_agent_state_instruction(owner.pubkey(), treasury, target_state, now);
+
+// Build + send
+client.transition_agent_state(&owner, treasury, 1, now)?;
+```
+
+---
+
+## migrate_treasury
+
+Reallocate the treasury account to the latest schema version after a program upgrade.
+
+```rust
+// Build only
+let instruction = client.migrate_treasury_instruction(accounts);
+
+// Build + send
+client.migrate_treasury(&payer, accounts)?;
+```
+
+```rust
+client.migrate_treasury(
+    &payer,
+    aura_core::accounts::MigrateTreasury {
+        treasury,
+        payer: payer.pubkey(),
+        system_program: anchor_lang::system_program::ID,
+    },
+)?;
+```
+
+<Cards>
+  <Card title="Operations" description="Operator roles, liveness, health scores, and snapshots." href="/sdk-rs/instructions/operations" />
+  <Card title="Governance" description="Emergency shutdown and authority rotation." href="/sdk-rs/instructions/governance" />
+</Cards>

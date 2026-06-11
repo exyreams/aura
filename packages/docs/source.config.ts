@@ -6,7 +6,7 @@ import { z } from "zod";
 // Single unified collection — all sections are root folders in the page tree.
 // Fumadocs renders root folders as Layout Tabs (dropdown) automatically.
 export const docs = defineDocs({
-  dir: "content/docs",
+  dir: "content",
   docs: {
     // `status` powers the sidebar badge plugin (e.g. `status: new`).
     schema: pageSchema.extend({ status: z.string().optional() }),

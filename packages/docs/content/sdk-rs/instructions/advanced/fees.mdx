@@ -1,0 +1,94 @@
+---
+title: Fees
+description: Initialize, collect, and close protocol fee vaults.
+icon: Coins
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `aura-sdk` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+## init_fee_vault
+
+Initialize the protocol fee vault for a treasury.
+
+```rust
+// Build only
+let instruction = client.init_fee_vault_instruction(accounts, protocol_fee_recipient, now);
+
+// Build + send
+client.init_fee_vault(&owner, accounts, protocol_fee_recipient, now)?;
+```
+
+```rust
+client.init_fee_vault(
+    &owner,
+    aura_core::accounts::InitFeeVault {
+        owner: owner.pubkey(),
+        treasury,
+        fee_vault: fee_vault_pda,
+        system_program: anchor_lang::system_program::ID,
+    },
+    protocol_fee_recipient,
+    now,
+)?;
+```
+
+---
+
+## collect_fees
+
+Drain accumulated protocol fees from the vault. Only callable by the authorized `protocol_authority`.
+
+```rust
+// Build only
+let instruction = client.collect_fees_instruction(accounts, now);
+
+// Build + send
+client.collect_fees(&protocol_authority, accounts, now)?;
+```
+
+```rust
+client.collect_fees(
+    &protocol_authority,
+    aura_core::accounts::CollectFees {
+        protocol_authority: protocol_authority.pubkey(),
+        fee_vault: fee_vault_pda,
+        recipient: recipient_pubkey,
+    },
+    now,
+)?;
+```
+
+---
+
+## close_fee_vault
+
+Close the fee vault and reclaim rent. Only callable by the treasury owner.
+
+```rust
+// Build only
+let instruction = client.close_fee_vault_instruction(accounts);
+
+// Build + send
+client.close_fee_vault(&owner, accounts)?;
+```
+
+```rust
+client.close_fee_vault(
+    &owner,
+    aura_core::accounts::CloseFeeVault {
+        owner: owner.pubkey(),
+        treasury,
+        fee_vault: fee_vault_pda,
+    },
+)?;
+```
+
+<Cards>
+  <Card title="Treasury" description="Create and manage treasury lifecycle." href="/sdk-rs/instructions/treasury" />
+  <Card title="Operations" description="Operator roles and health monitoring." href="/sdk-rs/instructions/operations" />
+</Cards>
