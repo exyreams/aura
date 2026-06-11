@@ -1,0 +1,183 @@
+---
+title: Trust & Agents
+description: Multi-agent support, trust tiers, reputation scoring, and ownership handover for AURA treasuries.
+icon: BotMessageSquare
+status: new
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+AURA now supports **multi-agent treasuries** with a trust-based reputation system. Instead of a single AI authority, treasuries can register multiple agents with scoped capabilities, monitor their behavior through tripwires, and automatically adjust spending limits based on trust tiers.
+
+## Trust Tiers
+
+The trust system classifies agent behavior into five tiers stored in a `TrustIdentityAccount`:
+
+| Tier | Name | Impact | Path In | Path Out |
+|------|------|--------|---------|----------|
+| 0 | **New** | Limits start at policy baseline | Initial registration | Normal operation → Trusted |
+| 1 | **Trusted** | 1.0× multiplier (baseline) | Good history | Violation → Degraded |
+| 2 | **Degraded** | 0.75× limit multiplier | Single violation | Restore → Trusted, or 2nd violation → Restricted |
+| 3 | **Restricted** | 0.5× multiplier + mandatory approval | Repeated violations | Manual restore or → Lockdown |
+| 4 | **Lockdown** | All execution halted | Critical violation or 3+ flags | `restore_trust` by owner/guardian |
+
+Trust degradation is automatic when proposals trigger high-severity violations. Restoration requires explicit owner or guardian quorum action via `restore_trust`.
+
+<Callout title="Trust multipliers">
+Daily and per-tx limits are scaled by the trust tier multiplier. A treasury with `dailyLimitUsd = 10000` at Degraded tier operates at 7500 effective limit.
+</Callout>
+
+## Agent Registration
+
+Treasuries register secondary agents via `register_agent`, specifying:
+
+```typescript
+await aura.trust.registerAgent({
+  treasury,
+  agentAuthority: agentPubkey,
+  allowedChains: [0, 2, 3], // Solana, Ethereum, Polygon
+  allowedTxTypes: [0, 1], // Transfer, DeFiSwap
+  dailyCapUsd: 5000, // Optional per-agent cap (in addition to treasury cap)
+  label: "trading-agent-alpha",
+});
+```
+
+**Key features:**
+- Agents can only propose on their allowed chains and transaction types
+- Per-agent daily caps stack with treasury limits
+- Agents inherit the treasury's trust tier
+
+## Capability Manifests
+
+Agent capabilities define fine-grained permissions through a `CapabilityManifest`:
+
+```typescript
+await aura.trust.setAgentCapability({
+  treasury,
+  agentAuthority,
+  manifest: {
+    chains: [2], // Ethereum only
+    txTypes: [1], // DeFiSwap only
+    maxAmountUsd: 1000, // Per-tx cap
+    protocols: [0, 1], // Specific protocol whitelist
+    requiresApproval: false,
+  },
+});
+```
+
+**Tightening vs. Loosening:**
+- **Tightening** (reducing permissions) applies immediately
+- **Loosening** (expanding permissions) requires arming a timelock via `arm_capability_loosen` and waiting for it to elapse
+
+<Callout type="warn">
+Capability changes that expand agent power are timelocked to prevent compromised agents from escalating their own privileges.
+</Callout>
+
+## Tripwires & Behavior Monitoring
+
+Tripwires monitor agent behavior and automatically signal trust degradation when thresholds are crossed:
+
+```typescript
+await aura.trust.setAgentTripwires({
+  treasury,
+  velocityWeight: 30, // 0-100: contribution to trust score
+  slippageWeight: 20,
+  counterpartyWeight: 25,
+  frequencyWeight: 15,
+  protocolWeight: 10,
+});
+```
+
+**Tripwire signals:**
+- High velocity (approaching daily limits repeatedly)
+- Excessive slippage on swaps
+- High-risk counterparty interactions
+- Unusual transaction frequency patterns
+- Protocol violations or edge-case policy triggers
+
+When the weighted score crosses a threshold, the trust tier automatically degrades.
+
+## Ownership Handover
+
+Transfer treasury ownership securely with a timelocked nomination:
+
+```typescript
+// 1. Nominate successor (48h timelock)
+await aura.trust.nominateSuccessorOwner({
+  treasury,
+  nominatedOwner: newOwnerPubkey,
+});
+
+// 2. Accept after timelock elapses
+await aura.trust.acceptOwnershipHandover({
+  treasury,
+  signer: newOwnerKeypair,
+});
+
+// 3. Finalize migration (optional bulk treasury transfer)
+await aura.trust.migrateOwnership({
+  oldOwner: oldOwnerPubkey,
+  newOwner: newOwnerPubkey,
+  finalize: true, // decommissions old treasury
+});
+```
+
+**Safety:**
+- 48-hour timelock on nomination
+- Guardian quorum can nominate in emergency
+- Bulk migration across multiple agent IDs
+
+## Emergency Agent Revocation
+
+Instantly disable a compromised agent:
+
+```typescript
+await aura.trust.emergencyRevokeAgent({
+  treasury,
+  agentAuthority,
+});
+```
+
+Unlike `revoke_agent` (standard path with timelock), `emergency_revoke_agent` applies immediately and can be called by owner or guardian quorum.
+
+## Checking Trust State
+
+Read the trust tier and history from the `TrustIdentityAccount`:
+
+```typescript
+const trustAccount = await aura.trust.getTrustIdentity(treasury);
+
+console.log("Current tier:", trustAccount.trustTier); // 0-4
+console.log("Violation count:", trustAccount.violationCount);
+console.log("Last violation:", new Date(trustAccount.lastViolationTimestamp * 1000));
+console.log("Decay rate:", trustAccount.decayRateBps); // bps per day
+```
+
+## Use Cases
+
+**Multi-agent treasuries:**
+- Separate trading, yield, and payment agents with different capabilities
+- Independent daily caps per agent
+- Automatic trust degradation if one agent behaves anomalously
+
+**Ownership transitions:**
+- Sunset a development keypair and hand treasury to production infra
+- Migrate from custodial to self-hosted agent infrastructure
+- Transfer ownership after acquisition or team change
+
+**Compromise response:**
+- Emergency revoke suspicious agent
+- Lockdown entire treasury to halt spending
+- Guardian quorum restores trust tier after investigation
+
+## Related Instructions
+
+- `init_trust_identity` — Initialize trust tracking
+- `configure_trust_policy` — Set tier thresholds and decay
+- `restore_trust` — Step down trust tier
+- `register_agent` — Register secondary agent
+- `revoke_agent` / `emergency_revoke_agent` — Disable agent
+- `set_agent_capability` — Update capability manifest
+- `set_agent_tripwires` — Tune behavior monitoring weights
+- `nominate_successor_owner` / `accept_ownership_handover` / `migrate_ownership` — Ownership transfer
+

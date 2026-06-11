@@ -10,6 +10,10 @@
     "confidential-guardrails",
     "dwallet-execution",
     "policy-engine",
+    "---Advanced Features---",
+    "trust-and-agents",
+    "scheduled-conditional",
+    "fees-monetization",
     "---Guides---",
     "quickstart",
     "concepts"

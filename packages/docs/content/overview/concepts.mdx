@@ -114,6 +114,70 @@ A computed `u8` score (0–100) stored in a `HealthScore` PDA. Initialized via `
 
 ---
 
+## Trust Tier
+
+A reputation score (0–4) stored in `TrustIdentityAccount` that classifies agent behavior:
+
+- **0 - New**: Initial registration, baseline limits
+- **1 - Trusted**: Normal operation, 1.0× multiplier
+- **2 - Degraded**: Single violation, 0.75× limits
+- **3 - Restricted**: Repeated violations, 0.5× limits + mandatory approval
+- **4 - Lockdown**: Critical violation, all execution halted
+
+Trust tiers automatically adjust based on violation history and can be manually restored by the owner or guardian quorum.
+
+---
+
+## Scheduled Intent
+
+A `ScheduledIntent` PDA that represents a recurring transaction pattern with budget controls. Executes automatically when the next slot is due (via keeper or permissionless caller):
+
+- **Recurrence**: interval, cron-like, or slot-based
+- **Budget**: per-run cap and total lifetime cap
+- **Conditions**: min balance, max gas price, time windows
+
+Violations: `ScheduledIntentBudgetExceeded`, `ScheduledIntentExpired`.
+
+---
+
+## Conditional Proposal
+
+A proposal parked behind runtime conditions (`ConditionalProposal` PDA). Promoted into the pending queue via `try_trigger` when:
+
+- Price oracle crosses threshold
+- Time window opens
+- Treasury balance meets minimum
+- Custom oracle flag is set
+
+Avoids occupying the pending slot until conditions are satisfied.
+
+---
+
+## Fee Vault
+
+A `FeeVault` PDA storing prepaid fee balance and accrued protocol fees. Fees are charged on:
+
+- Treasury creation (one-time)
+- Proposal submission (per-proposal)
+- Execution finalization (per-execution, bps of amount)
+
+Fees can be split across protocol, integrator, and referral recipients via a `FeeSplit` table.
+
+---
+
+## Billing Template
+
+A reusable `FeeSchedule` definition that can be applied to multiple treasuries. Built-in profiles:
+
+- **Startup**: low creation fee, 0.1% execution
+- **Growth**: medium creation fee, 0.05% execution
+- **Enterprise**: high creation fee, 0.01% execution
+- **Custom**: operator-defined
+
+Templates can be forked and parameterized with overrides.
+
+---
+
 ## PDA Reference
 
 | Account | Seeds | Notes |
@@ -130,5 +194,11 @@ A computed `u8` score (0–100) stored in a `HealthScore` PDA. Initialized via `
 | Policy attestation | `["policy_attestation", treasury, attester, policyVersion_le64]` | Signed policy hash |
 | Batch proposal | `["batch_proposal", treasury, batchId_le64]` | Batch result |
 | Invariant report | `["invariant_report", treasury, reportId_le64]` | Invariant check result |
+| Trust identity | `["trust_identity", treasury]` | Trust tier and history |
+| Scheduled intent | `["scheduled_intent", treasury, intentId_le64]` | Recurring transaction |
+| Conditional proposal | `["conditional_proposal", treasury, proposalId_le64]` | Trigger-based proposal |
+| Fee vault | `["fee_vault", treasury]` | Prepaid + accrued fees |
+| Fee schedule | `["fee_schedule", treasury]` | Per-treasury rates |
+| Billing template | `["billing_template", authority, templateId]` | Reusable fee config |
 
 All derivation helpers are exported from `@aura-protocol/sdk-ts` — use them instead of computing seeds manually.

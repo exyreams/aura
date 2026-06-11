@@ -1,7 +1,7 @@
 ---
 title: Policy Engine
 description: All 27 ViolationCodes, evaluation order, public precheck vs full evaluation, and PolicyConfig defaults from the actual aura-policy source.
-icon: Shield
+icon: ScrollText
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
@@ -150,8 +150,102 @@ If `z_score_bps > z_score_threshold_bps`, the action is applied:
 | `FlagForReview` | Sets `risk_score = max(risk_score, 85)`, adds risk factor, continues |
 | `RequireGuardianCosign` | Requires guardian approval before execution |
 
+## Policy Templates & Canary Testing
+
+AURA now supports reusable policy templates and safe testing of policy changes through canary deployments.
+
+### Policy Templates
+
+Pre-defined or custom policy configurations that can be applied to multiple treasuries:
+
+```typescript
+// Create from scratch or fork a built-in preset
+await aura.policy.createTemplate({
+  authority: ownerPubkey,
+  template: {
+    name: "conservative-defi",
+    config: { /* full PolicyConfig */ },
+    metadata: "Low-risk DeFi strategy with tight limits",
+    version: 1,
+  },
+});
+
+// Apply to treasury
+await aura.policy.applyTemplate({
+  treasury,
+  templateAddress,
+});
+
+// Apply with parameterized scaling
+await aura.policy.applyTemplateParameterized({
+  treasury,
+  templateAddress,
+  scalingBps: 5000, // 50% of template limits
+  limitOverrides: { dailyLimitUsd: 20000 }, // override specific field
+});
+```
+
+**Built-in presets:**
+- `RiskAverse` — Tight limits, narrow time windows, low counterparty risk
+- `Balanced` — Default settings from PolicyConfig
+- `Aggressive` — Wider limits, 24/7 operation, higher risk tolerance
+- `DeFiOptimized` — Protocol-specific tuning for DEX/lending
+- `Payments` — High frequency, low amounts, instant settlement
+
+### Canary Deployments
+
+Test a candidate policy against live proposals without enforcing it:
+
+```typescript
+// 1. Start canary with candidate policy
+await aura.policy.startCanary({
+  treasury,
+  candidateConfig: { /* proposed PolicyConfig */ },
+  minSampleSize: 100, // must score 100 proposals before promotion
+});
+
+// 2. Proposals evaluated against both enforced and candidate policies
+// Canary tracks: pass/fail counts, deviation patterns, violation distribution
+
+// 3. Promote if canary performs well
+await aura.policy.promoteCanary({ treasury });
+
+// Or discard if results are poor
+await aura.policy.discardCanary({ treasury });
+```
+
+**Canary scoring:**
+- Runs in parallel with enforced policy (never blocks proposals)
+- Tracks pass rate, false positive rate, deviation score
+- Requires minimum sample size before promotion
+- Automatically records as new policy version on promotion
+
+### Policy Versioning & Rollback
+
+All policy changes create immutable version records:
+
+```typescript
+// Check version history
+const versions = await aura.policy.getVersionHistory(treasury);
+console.log("Current version:", versions.current);
+console.log("Previous versions:", versions.history);
+
+// Rollback to previous version (owner + guardian quorum)
+await aura.policy.rollbackToVersion({
+  treasury,
+  targetVersion: 3, // roll back to version 3
+});
+```
+
+**Version lifecycle:**
+- Every `configure_policy`, `apply_policy_template`, or `promote_canary` creates a new version
+- Versions are sequentially numbered and immutable
+- Rollback requires owner signature + guardian quorum for safety
+- Version metadata includes timestamp, author, change summary
+
 <Cards>
   <Card title="Confidential Guardrails" description="FHE evaluation for per_tx and daily limits." href="/overview/confidential-guardrails" />
   <Card title="Architecture" description="How aura-policy is called from aura-core." href="/overview/architecture" />
   <Card title="Quick Start" description="Create a treasury with a full PolicyConfig." href="/overview/quickstart" />
+  <Card title="Policy Instructions" description="All policy configuration and template instructions." href="/program/instructions/policy" />
 </Cards>
