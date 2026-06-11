@@ -144,6 +144,7 @@ const sdks = [
   },
   { label: "Rust SDK", href: "/docs/sdk-rs", desc: "aura-sdk" },
   { label: "CLI", href: "/docs/cli", desc: "@aura-protocol/cli" },
+  { label: "Program", href: "/docs/program", desc: "aura-core reference" },
 ];
 
 export default function HomePage() {
@@ -226,7 +227,7 @@ export default function HomePage() {
               Architecture
             </Link>
             <Link
-              href="https://github.com/aura-protocol/aura"
+              href="https://github.com/exyreams/aura"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-sm bg-(--card-bg) border border-(--border) px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-(--text-muted) transition-colors hover:border-(--primary) hover:bg-(--hover-bg)"
@@ -290,7 +291,7 @@ export default function HomePage() {
               Pick your interface
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-(--border)">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-(--border)">
             {sdks.map((sdk) => (
               <Link
                 key={sdk.label}

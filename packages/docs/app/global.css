@@ -133,6 +133,7 @@ body :not(pre) > code {
   from {
     transform: translateX(0);
   }
+
   to {
     transform: translateX(-50%);
   }
@@ -511,6 +512,18 @@ details[open] summary .faq-icon {
   cursor: grabbing;
 }
 
+.mermaid-modal-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .mermaid-modal-canvas svg {
-  display: block;
+  max-width: none !important;
+  pointer-events: auto !important;
 }

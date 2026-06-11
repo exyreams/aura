@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 
 const LINKS = [
   { label: "Introduction", href: "/docs/overview" },
+  { label: "Program", href: "/docs/program" },
   { label: "TypeScript SDK", href: "/docs/sdk-ts" },
   { label: "Rust SDK", href: "/docs/sdk-rs" },
   { label: "CLI", href: "/docs/cli" },
@@ -163,7 +164,7 @@ export function DocsNav() {
             <FullSearchTrigger />
             <ThemeSwitch />
             <Link
-              href="https://github.com/aura-protocol/aura"
+              href="https://github.com/exyreams/aura"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-(--text-muted) transition-colors hover:text-(--text-main)"
@@ -227,7 +228,7 @@ export function DocsNav() {
                   ))}
                   <div className="my-1 border-t border-(--border)" />
                   <Link
-                    href="https://github.com/aura-protocol/aura"
+                    href="https://github.com/exyreams/aura"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setMobileOpen(false)}

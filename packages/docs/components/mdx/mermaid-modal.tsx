@@ -34,26 +34,33 @@ export function MermaidModal({ svg, onClose }: Props) {
     ) as HTMLElement;
     if (!canvas) return;
 
-    const ro = new ResizeObserver(() => {
-      ro.disconnect();
+    let initialized = false;
+
+    const init = () => {
+      if (initialized) return;
       const svgEl = el.querySelector("svg");
       if (!svgEl) return;
 
       const svgRect = svgEl.getBoundingClientRect();
       const canvasRect = canvas.getBoundingClientRect();
 
+      if (!svgRect.width || !svgRect.height) return;
+      initialized = true;
+      ro.disconnect();
+
+      // We still calculate the perfect initial zoom level so the diagram fits fully
       const scale = Math.min(
-        (canvasRect.width - 64) / (svgRect.width || 800),
-        (canvasRect.height - 64) / (svgRect.height || 600),
+        (canvasRect.width - 64) / svgRect.width,
+        (canvasRect.height - 64) / svgRect.height,
         1,
       );
 
+      // By omitting startX/startY, it defaults to 0.
+      // Combined with Flexbox in the CSS above, Panzoom will elegantly shrink it from the direct center.
       const instance = Panzoom(el, {
         maxScale: 50,
         minScale: 0.01,
         startScale: scale,
-        startX: (canvasRect.width - (svgRect.width || 800) * scale) / 2,
-        startY: (canvasRect.height - (svgRect.height || 600) * scale) / 2,
         step: 0.15,
         cursor: "grab",
       });
@@ -65,9 +72,12 @@ export function MermaidModal({ svg, onClose }: Props) {
         instance.zoomWithWheel(e);
       };
       canvas.addEventListener("wheel", onWheel, { passive: false });
-    });
+    };
 
-    ro.observe(canvas);
+    const ro = new ResizeObserver(init);
+    ro.observe(el);
+    requestAnimationFrame(init);
+
     return () => {
       ro.disconnect();
       panzoomRef.current?.destroy();
@@ -182,8 +192,12 @@ export function MermaidModal({ svg, onClose }: Props) {
           </button>
         </div>
         <div className="mermaid-modal-canvas">
-          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: mermaid renders its own sanitized SVG */}
-          <div ref={wrapperRef} dangerouslySetInnerHTML={{ __html: svg }} />
+          <div
+            ref={wrapperRef}
+            className="mermaid-modal-wrapper"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: mermaid renders its own sanitized SVG
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
         </div>
       </div>
     </div>,
