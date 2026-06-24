@@ -27,6 +27,41 @@
       "import": "./dist/instructions/index.js",
       "default": "./dist/instructions/index.js"
     },
+    "./accounts": {
+      "types": "./dist/accounts/index.d.ts",
+      "import": "./dist/accounts/index.js",
+      "default": "./dist/accounts/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "import": "./dist/errors/index.js",
+      "default": "./dist/errors/index.js"
+    },
+    "./events": {
+      "types": "./dist/events/index.d.ts",
+      "import": "./dist/events/index.js",
+      "default": "./dist/events/index.js"
+    },
+    "./pda": {
+      "types": "./dist/pda.d.ts",
+      "import": "./dist/pda.js",
+      "default": "./dist/pda.js"
+    },
+    "./program-surface": {
+      "types": "./dist/program-surface.d.ts",
+      "import": "./dist/program-surface.js",
+      "default": "./dist/program-surface.js"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js",
+      "default": "./dist/constants.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.js",
+      "default": "./dist/validation.js"
+    },
     "./idl": {
       "default": "./dist/generated/aura_core.json"
     },
@@ -45,11 +80,16 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsx --test tests/bn.test.ts tests/pda.test.ts tests/client.test.ts tests/instructions.test.ts tests/errors.test.ts tests/events.test.ts tests/validation.test.ts",
-    "test:devnet": "tsx --test tests/devnet.test.ts",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "test": "tsx --test tests/unit/*.test.ts",
+    "test:devnet": "tsx --test tests/devnet/*.devnet.test.ts",
     "prepack": "npm run build",
     "generate-idl": "bash scripts/generate-idl.sh",
-    "generate-idl:win": "pwsh scripts/generate-idl.ps1"
+    "generate-idl:win": "pwsh scripts/generate-idl.ps1",
+    "generate-sdk": "node scripts/generate-sdk.js && biome check --write src"
   },
   "publishConfig": {
     "access": "public"
@@ -59,12 +99,14 @@
     "bn.js": "^5.2.3"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "0.32.1"
+    "@coral-xyz/anchor": "0.32.1",
+    "@noble/hashes": "^2.2.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.1",
     "@types/bn.js": "5.2.0",
-    "@types/node": "25.9.1",
-    "tsx": "4.22.3",
+    "@types/node": "26.0.0",
+    "tsx": "4.22.4",
     "typescript": "6.0.3"
   }
 }

@@ -6,6 +6,8 @@
  * transactions and wasting SOL on failed preflight checks.
  */
 
+import type { PublicKey } from "@solana/web3.js";
+
 /** Maximum byte length of an agent ID string. */
 export const MAX_AGENT_ID_LEN = 64;
 
@@ -20,6 +22,12 @@ export const MAX_GUARDIANS = 10;
 
 /** Maximum number of members in an agent swarm. */
 export const MAX_SWARM_MEMBERS = 16;
+
+/** Maximum byte length of a swarm ID string. */
+export const MAX_SWARM_ID_LEN = 64;
+
+/** Maximum byte length of a swarm member agent ID string. */
+export const MAX_SWARM_MEMBER_LEN = 64;
 
 /**
  * Validates that an `agentId` is non-empty and within the maximum length.
@@ -107,7 +115,7 @@ export function validateMultisigThreshold(
  *
  * @throws if the list is empty or exceeds `MAX_GUARDIANS`.
  */
-export function validateGuardians(guardians: unknown[]): void {
+export function validateGuardians(guardians: readonly PublicKey[]): void {
   if (guardians.length === 0) {
     throw new Error("guardians list must not be empty");
   }
@@ -119,11 +127,30 @@ export function validateGuardians(guardians: unknown[]): void {
 }
 
 /**
- * Validates that a swarm member list is non-empty and within the maximum count.
+ * Validates that a swarm ID is non-empty and within the maximum length.
  *
- * @throws if the list is empty or exceeds `MAX_SWARM_MEMBERS`.
+ * @throws if the swarm ID is empty or exceeds `MAX_SWARM_ID_LEN` bytes.
  */
-export function validateSwarmMembers(members: unknown[]): void {
+export function validateSwarmId(swarmId: string): void {
+  if (swarmId.length === 0) {
+    throw new Error("swarmId must not be empty");
+  }
+  const byteLength = Buffer.byteLength(swarmId, "utf8");
+  if (byteLength > MAX_SWARM_ID_LEN) {
+    throw new Error(
+      `swarmId exceeds maximum length of ${MAX_SWARM_ID_LEN} bytes (got ${byteLength})`,
+    );
+  }
+}
+
+/**
+ * Validates that a swarm member list is non-empty, within the maximum count,
+ * and that each member agent ID is within `MAX_SWARM_MEMBER_LEN` bytes.
+ *
+ * @throws if the list is empty, exceeds `MAX_SWARM_MEMBERS`, or any member ID
+ *   exceeds the maximum length.
+ */
+export function validateSwarmMembers(members: readonly string[]): void {
   if (members.length === 0) {
     throw new Error("swarm members list must not be empty");
   }
@@ -131,5 +158,13 @@ export function validateSwarmMembers(members: unknown[]): void {
     throw new Error(
       `swarm members list exceeds maximum of ${MAX_SWARM_MEMBERS} (got ${members.length})`,
     );
+  }
+  for (const member of members) {
+    const byteLength = Buffer.byteLength(member, "utf8");
+    if (byteLength > MAX_SWARM_MEMBER_LEN) {
+      throw new Error(
+        `swarm member "${member}" exceeds maximum length of ${MAX_SWARM_MEMBER_LEN} bytes (got ${byteLength})`,
+      );
+    }
   }
 }

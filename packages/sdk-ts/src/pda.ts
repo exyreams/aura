@@ -6,25 +6,47 @@
  * `PublicKey.findProgramAddressSync` — so callers can destructure as needed.
  */
 
+import { sha256 } from "@noble/hashes/sha2.js";
 import { PublicKey } from "@solana/web3.js";
 
 import {
+  ACTIVITY_LOG_SEED,
+  ADDRESS_LIST_SEED,
   AURA_PROGRAM_ID,
   BATCH_PROPOSAL_SEED,
+  BILLING_TEMPLATE_SEED,
   BUDGET_ENVELOPE_SEED,
+  CHAIN_PROFILE_SEED,
+  CONDITIONAL_PROPOSAL_SEED,
+  CONFIDENTIAL_GUARDRAILS_SEED,
   DWALLET_CPI_AUTHORITY_SEED,
   DWALLET_SEED,
+  DWALLET_STATE_SEED,
   ENCRYPT_CPI_AUTHORITY_SEED,
   ENCRYPT_EVENT_AUTHORITY_SEED,
-  EXTERNAL_LIVENESS_SEED,
   EXPOSURE_GROUP_SEED,
+  EXTERNAL_LIVENESS_SEED,
+  FEE_SCHEDULE_SEED,
+  FEE_VAULT_SEED,
+  HEALTH_SCORE_SEED,
   INVARIANT_REPORT_SEED,
   MESSAGE_APPROVAL_SEED,
   OPERATOR_ROLE_SEED,
   POLICY_ATTESTATION_SEED,
+  POLICY_CANARY_SEED,
+  POLICY_CHECK_SEED,
+  POLICY_HISTORY_SEED,
   POLICY_RECEIPT_SEED,
   POLICY_SIMULATION_SEED,
+  POLICY_TEMPLATE_SEED,
+  PROTOCOL_CONFIG_SEED,
+  SCHEDULED_INTENT_SEED,
+  SESSION_KEY_SEED,
+  SNAPSHOT_SEED,
+  SWARM_POOL_SEED,
+  TREASURY_ANALYTICS_SEED,
   TREASURY_SEED,
+  TRUST_IDENTITY_SEED,
 } from "./constants.js";
 
 /**
@@ -60,7 +82,10 @@ export function deriveTreasuryAddress(
 export function deriveDwalletCpiAuthorityAddress(
   programId: PublicKey = AURA_PROGRAM_ID,
 ): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync([DWALLET_CPI_AUTHORITY_SEED], programId);
+  return PublicKey.findProgramAddressSync(
+    [DWALLET_CPI_AUTHORITY_SEED],
+    programId,
+  );
 }
 
 /**
@@ -76,7 +101,10 @@ export function deriveDwalletCpiAuthorityAddress(
 export function deriveEncryptCpiAuthorityAddress(
   programId: PublicKey = AURA_PROGRAM_ID,
 ): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync([ENCRYPT_CPI_AUTHORITY_SEED], programId);
+  return PublicKey.findProgramAddressSync(
+    [ENCRYPT_CPI_AUTHORITY_SEED],
+    programId,
+  );
 }
 
 /**
@@ -92,7 +120,10 @@ export function deriveEncryptCpiAuthorityAddress(
 export function deriveEncryptEventAuthorityAddress(
   encryptProgramId: PublicKey,
 ): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync([ENCRYPT_EVENT_AUTHORITY_SEED], encryptProgramId);
+  return PublicKey.findProgramAddressSync(
+    [ENCRYPT_EVENT_AUTHORITY_SEED],
+    encryptProgramId,
+  );
 }
 
 function u64Le(value: bigint | number | string, label: string): Buffer {
@@ -117,6 +148,22 @@ function fixedBytes(value: Uint8Array, len: number, label: string): Buffer {
   return Buffer.from(value);
 }
 
+function u32Le(value: number, label: string): Buffer {
+  if (!Number.isInteger(value) || value < 0 || value > 0xffff_ffff) {
+    throw new Error(`${label} must be a u32 integer`);
+  }
+  const bytes = Buffer.alloc(4);
+  bytes.writeUInt32LE(value);
+  return bytes;
+}
+
+function u8Byte(value: number, label: string): Buffer {
+  if (!Number.isInteger(value) || value < 0 || value > 0xff) {
+    throw new Error(`${label} must be a u8 integer`);
+  }
+  return Buffer.from([value]);
+}
+
 /** Derives the policy simulation result PDA. */
 export function derivePolicySimulationAddress(
   treasury: PublicKey,
@@ -124,7 +171,11 @@ export function derivePolicySimulationAddress(
   programId: PublicKey = AURA_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [POLICY_SIMULATION_SEED, treasury.toBuffer(), u64Le(simulationId, "simulationId")],
+    [
+      POLICY_SIMULATION_SEED,
+      treasury.toBuffer(),
+      u64Le(simulationId, "simulationId"),
+    ],
     programId,
   );
 }
@@ -148,7 +199,11 @@ export function deriveBudgetEnvelopeAddress(
   programId: PublicKey = AURA_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [BUDGET_ENVELOPE_SEED, treasury.toBuffer(), u64Le(envelopeId, "envelopeId")],
+    [
+      BUDGET_ENVELOPE_SEED,
+      treasury.toBuffer(),
+      u64Le(envelopeId, "envelopeId"),
+    ],
     programId,
   );
 }
@@ -160,7 +215,11 @@ export function deriveExposureGroupAddress(
   programId: PublicKey = AURA_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [EXPOSURE_GROUP_SEED, authority.toBuffer(), fixedBytes(groupId, 16, "groupId")],
+    [
+      EXPOSURE_GROUP_SEED,
+      authority.toBuffer(),
+      fixedBytes(groupId, 16, "groupId"),
+    ],
     programId,
   );
 }
@@ -271,15 +330,23 @@ export function deriveMessageApprovalAddress(
     throw new Error("publicKey must not be empty");
   }
   if (messageDigest.length !== 32) {
-    throw new Error(`messageDigest must be 32 bytes, got ${messageDigest.length}`);
+    throw new Error(
+      `messageDigest must be 32 bytes, got ${messageDigest.length}`,
+    );
   }
-  if (messageMetadataDigest !== undefined && messageMetadataDigest.length !== 32) {
+  if (
+    messageMetadataDigest !== undefined &&
+    messageMetadataDigest.length !== 32
+  ) {
     throw new Error(
       `messageMetadataDigest must be 32 bytes, got ${messageMetadataDigest.length}`,
     );
   }
 
-  const payload = Buffer.concat([u16Le(curveCode, "curveCode"), Buffer.from(publicKey)]);
+  const payload = Buffer.concat([
+    u16Le(curveCode, "curveCode"),
+    Buffer.from(publicKey),
+  ]);
   const publicKeySeeds: Buffer[] = [];
   for (let offset = 0; offset < payload.length; offset += 32) {
     publicKeySeeds.push(payload.subarray(offset, offset + 32));
@@ -296,8 +363,314 @@ export function deriveMessageApprovalAddress(
     seeds.push(Buffer.from(messageMetadataDigest));
   }
 
+  return PublicKey.findProgramAddressSync(seeds, dwalletProgramId);
+}
+
+// ---------------------------------------------------------------------------
+// Per-treasury sidecar PDAs — seeds: `[SEED, treasury]`
+//
+// Each treasury has at most one of these accounts. The on-chain constraints
+// bind the sidecar to its parent treasury, so the address is fully determined
+// by the treasury PDA.
+// ---------------------------------------------------------------------------
+
+/** Derives the activity-log PDA for a treasury. Seeds: `[b"activity_log", treasury]`. */
+export function deriveActivityLogAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    seeds,
-    dwalletProgramId,
+    [ACTIVITY_LOG_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the address-list PDA for a treasury. Seeds: `[b"address_list", treasury]`. */
+export function deriveAddressListAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [ADDRESS_LIST_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the confidential guardrails sidecar PDA. Seeds: `[b"confidential_guardrails", treasury]`. */
+export function deriveConfidentialGuardrailsAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [CONFIDENTIAL_GUARDRAILS_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the fee-schedule sidecar PDA for a treasury. Seeds: `[b"fee_schedule", treasury]`. */
+export function deriveFeeScheduleAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [FEE_SCHEDULE_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the protocol-fee vault PDA for a treasury. Seeds: `[b"fee_vault", treasury]`. */
+export function deriveFeeVaultAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [FEE_VAULT_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the health-score PDA for a treasury. Seeds: `[b"health_score", treasury]`. */
+export function deriveHealthScoreAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [HEALTH_SCORE_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the shadow/canary policy candidate PDA. Seeds: `[b"policy_canary", treasury]`. */
+export function derivePolicyCanaryAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [POLICY_CANARY_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the policy-history PDA for a treasury. Seeds: `[b"policy_history", treasury]`. */
+export function derivePolicyHistoryAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [POLICY_HISTORY_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the analytics + audit-commitment sidecar PDA. Seeds: `[b"treasury_analytics", treasury]`. */
+export function deriveTreasuryAnalyticsAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [TREASURY_ANALYTICS_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives the trust + identity PDA for a treasury. Seeds: `[b"trust_identity", treasury]`. */
+export function deriveTrustIdentityAddress(
+  treasury: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [TRUST_IDENTITY_SEED, treasury.toBuffer()],
+    programId,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Per-treasury indexed PDAs — seeds: `[SEED, treasury, idLe]`
+// ---------------------------------------------------------------------------
+
+/** Derives a parked conditional proposal PDA. Seeds: `[b"conditional_proposal", treasury, proposalId(u64 le)]`. */
+export function deriveConditionalProposalAddress(
+  treasury: PublicKey,
+  proposalId: bigint | number | string,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      CONDITIONAL_PROPOSAL_SEED,
+      treasury.toBuffer(),
+      u64Le(proposalId, "proposalId"),
+    ],
+    programId,
+  );
+}
+
+/** Derives a scheduled intent PDA. Seeds: `[b"scheduled_intent", treasury, intentId(u64 le)]`. */
+export function deriveScheduledIntentAddress(
+  treasury: PublicKey,
+  intentId: bigint | number | string,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SCHEDULED_INTENT_SEED, treasury.toBuffer(), u64Le(intentId, "intentId")],
+    programId,
+  );
+}
+
+/**
+ * Derives a periodic snapshot PDA.
+ *
+ * Seeds: `[b"treasury_snapshot", treasury, snapshotIndex(u32 le)]`.
+ *
+ * Note: `snapshotIndex` is a `u32` on-chain (4-byte little-endian), unlike the
+ * `u64` proposal/intent identifiers.
+ */
+export function deriveSnapshotAddress(
+  treasury: PublicKey,
+  snapshotIndex: number,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SNAPSHOT_SEED, treasury.toBuffer(), u32Le(snapshotIndex, "snapshotIndex")],
+    programId,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Per-treasury keyed PDAs — seeds: `[SEED, treasury, pubkey]`
+// ---------------------------------------------------------------------------
+
+/** Derives a session-key PDA. Seeds: `[b"session_key", treasury, sessionKey]`. */
+export function deriveSessionKeyAddress(
+  treasury: PublicKey,
+  sessionKey: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SESSION_KEY_SEED, treasury.toBuffer(), sessionKey.toBuffer()],
+    programId,
+  );
+}
+
+/** Derives a policy-check result PDA for one treasury/caller pair. Seeds: `[b"policy_check", treasury, caller]`. */
+export function derivePolicyCheckAddress(
+  treasury: PublicKey,
+  caller: PublicKey,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [POLICY_CHECK_SEED, treasury.toBuffer(), caller.toBuffer()],
+    programId,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Owner-scoped template PDAs — seeds: `[SEED, owner, templateId(u64 le)]`
+// ---------------------------------------------------------------------------
+
+/** Derives a user-authored policy template PDA. Seeds: `[b"policy_template", owner, templateId(u64 le)]`. */
+export function derivePolicyTemplateAddress(
+  owner: PublicKey,
+  templateId: bigint | number | string,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [POLICY_TEMPLATE_SEED, owner.toBuffer(), u64Le(templateId, "templateId")],
+    programId,
+  );
+}
+
+/** Derives a user-authored billing template PDA. Seeds: `[b"billing_template", owner, templateId(u64 le)]`. */
+export function deriveBillingTemplateAddress(
+  owner: PublicKey,
+  templateId: bigint | number | string,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [BILLING_TEMPLATE_SEED, owner.toBuffer(), u64Le(templateId, "templateId")],
+    programId,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chain / dWallet / singleton PDAs
+// ---------------------------------------------------------------------------
+
+/**
+ * Derives a per-chain profile PDA.
+ *
+ * Seeds: `[b"chain_profile", [chainCode]]` — note there is **no treasury
+ * component**; chain profiles are global per `chainCode`.
+ *
+ * @param chainCode Ika chain code (u8).
+ */
+export function deriveChainProfileAddress(
+  chainCode: number,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [CHAIN_PROFILE_SEED, u8Byte(chainCode, "chainCode")],
+    programId,
+  );
+}
+
+/**
+ * Derives AURA's per-dWallet runtime state PDA.
+ *
+ * Seeds: `[b"dwallet_state", treasury, [chain]]`. One account per treasury per
+ * chain code. This is AURA's own state account, distinct from the external
+ * dWallet program's accounts derived by {@link deriveMessageApprovalAddress}.
+ *
+ * @param chain Chain code (u8) the dWallet is registered for.
+ */
+export function deriveDwalletStateAddress(
+  treasury: PublicKey,
+  chain: number,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [DWALLET_STATE_SEED, treasury.toBuffer(), u8Byte(chain, "chain")],
+    programId,
+  );
+}
+
+/** Derives the global protocol-config singleton PDA. Seeds: `[b"protocol_config"]`. */
+export function deriveProtocolConfigAddress(
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([PROTOCOL_CONFIG_SEED], programId);
+}
+
+// ---------------------------------------------------------------------------
+// Swarm pool PDA — seeds: `[SEED, sha256(swarmId)]`
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes the 32-byte swarm-pool id hash the program stores as
+ * `swarm_pool.swarm_id_hash` — `sha256(swarmId)`. This mirrors the on-chain
+ * `swarm_pool_seeds` helper.
+ */
+export function hashSwarmId(swarmId: string): Uint8Array {
+  return sha256(Buffer.from(swarmId, "utf8"));
+}
+
+/**
+ * Derives a shared swarm pool PDA.
+ *
+ * Seeds: `[b"swarm_pool", sha256(swarmId)]`.
+ *
+ * @param swarmId Either the raw swarm id string (hashed for you) or the
+ *                precomputed 32-byte `swarm_id_hash`.
+ */
+export function deriveSwarmPoolAddress(
+  swarmId: string | Uint8Array,
+  programId: PublicKey = AURA_PROGRAM_ID,
+): [PublicKey, number] {
+  const hash =
+    typeof swarmId === "string"
+      ? hashSwarmId(swarmId)
+      : fixedBytes(swarmId, 32, "swarmIdHash");
+  return PublicKey.findProgramAddressSync(
+    [SWARM_POOL_SEED, Buffer.from(hash)],
+    programId,
   );
 }
