@@ -1,367 +1,387 @@
 ---
 title: Examples
-description: End-to-end TypeScript SDK usage patterns for common AURA workflows.
+description: End-to-end devnet flows with the v3 functional SDK.
 icon: BookOpen
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-<Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
-</Callout>
-
-Complete, runnable examples using `@aura-protocol/sdk-ts`. Each example shows
-both the high-level `Aura` API and the low-level `AuraClient` equivalent where
-relevant.
+End-to-end recipes against devnet using the functional API
+(`instructions.<domain>.*`, `accounts.*`, `pda.*`).
 
 ## Setup
 
 ```typescript
-import BN from 'bn.js';
-import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import BN from "bn.js";
 import {
-  Aura,
-  AuraClient,
-  AURA_PROGRAM_ID,
-  ENCRYPT_DEVNET_PROGRAM_ID,
-  DWALLET_DEVNET_PROGRAM_ID,
-} from '@aura-protocol/sdk-ts';
+  ComputeBudgetProgram,
+  Connection,
+  Keypair,
+  Transaction,
+  type TransactionInstruction,
+} from "@solana/web3.js";
+import { AuraClient } from "@aura-protocol/sdk-ts";
 
-const rpcUrl = 'https://devnet.helius-rpc.com/?api-key=YOUR_KEY';
-const owner = Keypair.generate();
+const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const client = new AuraClient({ connection });
+const owner = Keypair.generate(); // fund this on devnet
 
-// High-level
-const aura = new Aura({ rpcUrl, keypair: owner });
-
-// Low-level
-const client = new AuraClient({
-  connection: new Connection(rpcUrl, 'confirmed'),
-  programId: AURA_PROGRAM_ID,
-});
+const now = () => new BN(Math.floor(Date.now() / 1000));
 ```
 
----
+### A send-and-confirm helper
 
-## Create a Treasury
-
-```typescript
-// High-level — plain numbers, timestamps auto-injected, limits default sensibly
-const { treasury, signature } = await aura.treasury.create({
-  agentId: 'agent-prod-1',
-  dailyLimitUsd: 10_000,
-  perTxLimitUsd: 1_000,
-});
-
-console.log('Treasury PDA:', treasury.toBase58());
-```
+`client.sendInstructions` returns before confirmation. To read state right after
+a write, confirm against the blockhash:
 
 ```typescript
-// Low-level — full control over every field
-const { treasury, signature } = await client.createTreasury(owner, {
-  agentId: 'agent-prod-1',
-  aiAuthority: owner.publicKey,
-  createdAt: new BN(Math.floor(Date.now() / 1000)),
-  pendingTransactionTtlSecs: new BN(900),
-  policyConfig: {
-    dailyLimitUsd: new BN(10_000),
-    perTxLimitUsd: new BN(1_000),
-    daytimeHourlyLimitUsd: new BN(2_500),
-    nighttimeHourlyLimitUsd: new BN(500),
-    velocityLimitUsd: new BN(5_000),
-    allowedProtocolBitmap: new BN(31),
-    maxSlippageBps: new BN(100),
-    maxQuoteAgeSecs: new BN(300),
-    maxCounterpartyRiskScore: 70,
-    bitcoinManualReviewThresholdUsd: new BN(5_000),
-    sharedPoolLimitUsd: null,
-    weeklyLimitUsd: null,
-    monthlyLimitUsd: null,
-    recipientLimits: [],
-    cooldownConfig: null,
-    anomalyConfig: null,
-    reputationPolicy: {
-      highScoreThreshold: new BN(80),
-      mediumScoreThreshold: new BN(50),
-      highMultiplierBps: new BN(15_000),
-      lowMultiplierBps: new BN(7_000),
-    },
-    budgetEnvelopes: [],
-    approvalLadder: null,
-    scopedPauseEntries: [],
-    livenessConfig: {
-      requireEncryptFreshness: false,
-      requireDwalletFreshness: false,
-      requireBalanceOracleFreshness: false,
-      requireComplianceOracleFreshness: false,
-      maxStalenessSecs: new BN(300),
-    },
-  },
-  protocolFees: {
-    treasuryCreationFeeUsd: new BN(100),
-    transactionFeeBps: new BN(10),
-    fheSubsidyBps: new BN(5_000),
-  },
-});
-```
-
----
-
-## Fetch and Inspect a Treasury
-
-```typescript
-const account = await client.getTreasuryAccount(treasury);
-
-console.log('Agent ID:       ', account.agentId);
-console.log('Owner:          ', account.owner.toBase58());
-console.log('Daily limit USD:', account.policyConfig.dailyLimitUsd.toString());
-console.log('Is paused:      ', account.executionPaused);
-console.log('Total executed: ', account.totalTransactions.toString());
-console.log('Daily spent:    ', account.policyState.spentTodayUsd.toString());
-
-const pending = account.pendingQueue[account.pendingQueue.length - 1];
-if (pending) {
-  console.log('Pending proposal:', pending.proposalId.toString());
-  console.log('Amount USD:      ', pending.amountUsd.toString());
-  console.log('Expires:         ', new Date(pending.expiresAt.toNumber() * 1000));
+async function sendAndConfirm(
+  instructions: TransactionInstruction[],
+  signers: Keypair[] = [],
+): Promise<string> {
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash("confirmed");
+  const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer: owner.publicKey });
+  tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }), ...instructions);
+  tx.sign(owner, ...signers);
+  const sig = await connection.sendRawTransaction(tx.serialize());
+  await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  return sig;
 }
 ```
 
----
-
-## Propose a Public Transaction
+## Create and activate a treasury
 
 ```typescript
-// High-level
-const signature = await aura.treasury.propose({
-  treasury,
-  amountUsd: 250,
-  chain: 2,                    // Ethereum
-  recipient: '0xdeadbeef...',
-  counterpartyRiskScore: 15,
+import { accounts, instructions } from "@aura-protocol/sdk-ts";
+
+const { treasury, input } = accounts.createTreasuryInput({
+  owner: owner.publicKey,
+  args: createTreasuryArgs, // see Instructions → Treasury for the full shape
 });
+
+await sendAndConfirm([await instructions.treasury.createTreasury(client, input)]);
+
+// Move the agent state machine to Active.
+await sendAndConfirm([
+  await instructions.lifecycle.transitionAgentState(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { targetState: 1, now: now() },
+  }),
+]);
+
+const state = await accounts.fetchTreasuryAccount(client, treasury);
+console.log("agentState:", state.agentState, "paused:", state.executionPaused);
 ```
 
-```typescript
-// Low-level
-const now = new BN(Math.floor(Date.now() / 1000));
+## Propose, then cancel
 
-await client.proposeTransaction(
-  aiAuthority,
-  { aiAuthority: aiAuthority.publicKey, treasury },
-  {
-    amountUsd: new BN(250),
+```typescript
+const proposeIx = await instructions.execution.proposeTransaction(client, {
+  accounts: {
+    aiAuthority: owner.publicKey,
+    treasury,
+    sessionKeyAccount: null,
+    swarmPool: null,
+    addressList: null,
+    complianceOracle: null,
+    parentTreasury: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    dwalletState: null,
+    chainProfile: null,
+    trustIdentity: null,
+    policyCanary: null,
+  },
+  args: {
+    amountUsd: new BN(100),
     targetChain: 2,
     txType: 0,
     protocolId: null,
-    currentTimestamp: now,
+    currentTimestamp: now(),
     expectedOutputUsd: null,
     actualOutputUsd: null,
     quoteAgeSecs: null,
-    counterpartyRiskScore: 15,
-    recipientOrContract: '0xdeadbeef...',
+    counterpartyRiskScore: null,
+    recipientOrContract: "0x000000000000000000000000000000000000dead",
     sanctionsProof: [],
   },
-);
-```
-
----
-
-## Execute a Pending Transaction (Public)
-
-```typescript
-const now = new BN(Math.floor(Date.now() / 1000));
-const [dwalletCpiAuthority] = client.deriveDwalletCpiAuthority();
-
-await client.executePending(
-  operator,
-  {
-    operator: operator.publicKey,
-    treasury,
-    callerProgram: client.programId,
-    systemProgram: SystemProgram.programId,
-    dwallet: dwalletAccountPDA,
-    cpiAuthority: dwalletCpiAuthority,
-    dwalletProgram: DWALLET_DEVNET_PROGRAM_ID,
-    messageApproval: messageApprovalPDA,
-  },
-  now,
-);
-
-await client.finalizeExecution(
-  operator,
-  {
-    operator: operator.publicKey,
-    treasury,
-    messageApproval: messageApprovalPDA,
-  },
-  now,
-);
-```
-
----
-
-## Pause and Resume Execution
-
-```typescript
-// High-level
-await aura.treasury.pause({ treasury, paused: true });
-await aura.treasury.pause({ treasury, paused: false });
-
-// Low-level
-const now = new BN(Math.floor(Date.now() / 1000));
-const accounts = { owner: owner.publicKey, treasury };
-
-await client.pauseExecution(owner, accounts, true, now);
-await client.pauseExecution(owner, accounts, false, now);
-```
-
----
-
-## Register a dWallet
-
-```typescript
-// High-level
-await aura.dwallet.register({
-  treasury,
-  chain: 2,                    // Ethereum
-  dwalletId: 'dwallet-abc123',
-  address: '0xdeadbeef...',
-  balanceUsd: 5_000,
 });
+await sendAndConfirm([proposeIx]);
 
-// Low-level
-await client.registerDwallet(
-  owner,
-  { owner: owner.publicKey, treasury },
-  {
-    chain: 2,
-    dwalletId: 'dwallet-abc123',
-    address: '0xdeadbeef...',
-    balanceUsd: new BN(5_000),
-    dwalletAccount: dwalletAccountPDA,
-    authorizedUserPubkey: null,
-    messageMetadataDigest: null,
-    publicKeyHex: null,
-    timestamp: new BN(Math.floor(Date.now() / 1000)),
-  },
-);
+const afterPropose = await accounts.fetchTreasuryAccount(client, treasury);
+console.log("pending:", afterPropose.pendingQueue.length);
+
+// Cancel it.
+await sendAndConfirm([
+  await instructions.execution.cancelPending(client, {
+    accounts: { owner: owner.publicKey, treasury, dwalletState: null },
+    args: { now: now() },
+  }),
+]);
 ```
 
----
-
-## Configure Guardian Multisig
+## Configure an emergency multisig
 
 ```typescript
-// High-level
-await aura.governance.configureMultisig({
-  treasury,
-  requiredSignatures: 2,
-  guardians: [guardian1.publicKey, guardian2.publicKey],
+const guardian1 = Keypair.generate().publicKey;
+const guardian2 = Keypair.generate().publicKey;
+
+await sendAndConfirm([
+  await instructions.governance.configureMultisig(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: {
+      requiredSignatures: 1,
+      guardians: [guardian1, guardian2],
+      guardianWeights: [1, 1],
+      requiredApprovalWeight: 1,
+      timestamp: now(),
+    },
+  }),
+]);
+
+const t = await accounts.fetchTreasuryAccount(client, treasury);
+console.log("guardians:", t.multisig?.guardians.map((g) => g.key.toBase58()));
+```
+
+## Compose multiple instructions
+
+Pack several instructions into one transaction — pause then cancel atomically:
+
+```typescript
+const pauseIx = await instructions.execution.pauseExecution(client, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { paused: true, now: now() },
 });
-
-// Low-level
-await client.configureMultisig(
-  owner,
-  { owner: owner.publicKey, treasury },
-  {
-    requiredSignatures: 2,
-    guardians: [guardian1.publicKey, guardian2.publicKey],
-    timestamp: new BN(Math.floor(Date.now() / 1000)),
-  },
-);
+const cancelIx = await instructions.execution.cancelPending(client, {
+  accounts: { owner: owner.publicKey, treasury, dwalletState: null },
+  args: { now: now() },
+});
+await sendAndConfirm([pauseIx, cancelIx]);
 ```
 
----
+## Use-case recipes
 
-## Issue a Session Key
+Each recipe builds on the `client`, `owner`, `now()`, `treasury`, and
+`sendAndConfirm` from [Setup](#setup) and uses `pda`/`instructions`/`accounts`
+from `@aura-protocol/sdk-ts`.
+
+### Set spending guardrails (budget + allowlist)
+
+Cap a chain's daily/weekly spend and restrict recipients to an allow list:
 
 ```typescript
-import { SystemProgram } from '@solana/web3.js';
+import { pda, instructions } from "@aura-protocol/sdk-ts";
+import { SystemProgram } from "@solana/web3.js";
 
-const sessionKeypair = Keypair.generate();
-const now = new BN(Math.floor(Date.now() / 1000));
+const envelopeId = new BN(1);
+const [budgetEnvelope] = pda.deriveBudgetEnvelopeAddress(treasury, envelopeId);
+const [addressList] = pda.deriveAddressListAddress(treasury);
 
-// Derive the session key PDA: seeds = [b"session_key", treasury, sessionKey]
-const [sessionKeyAccount] = PublicKey.findProgramAddressSync(
-  [
-    Buffer.from('session_key'),
-    treasury.toBuffer(),
-    sessionKeypair.publicKey.toBuffer(),
-  ],
-  client.programId,
-);
-
-await client.issueSessionKey(
-  owner,
-  {
-    authority: owner.publicKey,
-    treasury,
-    sessionKeyAccount,
-    systemProgram: SystemProgram.programId,
-  },
-  {
-    sessionKey: sessionKeypair.publicKey,
-    durationSecs: new BN(3600),          // 1-hour session
-    maxAmountUsdPerTx: new BN(500),      // max per transaction
-    maxDailySpendUsd: null,              // no daily cap on session
-    allowedChains: Buffer.from([0]),     // Solana only
-    allowedTxTypes: Buffer.from([0]),    // Transfer only
-    maxProposalCount: null,              // unlimited proposals
-    now,
-  },
-);
+await sendAndConfirm([
+  await instructions.budget.configureBudgetEnvelope(client, {
+    accounts: { owner: owner.publicKey, treasury, budgetEnvelope, systemProgram: SystemProgram.programId },
+    args: { envelopeId, scopeKind: 0, chain: 2, txType: null, protocolId: null, dailyLimitUsd: new BN(5_000), weeklyLimitUsd: new BN(20_000), now: now() },
+  }),
+  await instructions.addressLists.initAddressList(client, {
+    accounts: { owner: owner.publicKey, treasury, addressList, systemProgram: SystemProgram.programId },
+    args: { mode: 0, chain: 2, now: now() }, // 0 = allow list
+  }),
+]);
 ```
 
----
+### Delegate day-to-day ops with a session key
 
-## Emergency Shutdown
+Issue a short-lived, chain-scoped key an agent can use without the owner key:
 
 ```typescript
-const recoveryAuthority = Keypair.generate().publicKey;
+import { Keypair } from "@solana/web3.js";
 
-await client.emergencyShutdown(
-  owner,
-  { owner: owner.publicKey, treasury },
-  recoveryAuthority,
-  Math.floor(Date.now() / 1000),
-);
-console.log('Shutdown triggered, recovery authority:', recoveryAuthority.toBase58());
+const sessionKey = Keypair.generate();
+const [sessionKeyAccount] = pda.deriveSessionKeyAddress(treasury, sessionKey.publicKey);
+
+await sendAndConfirm([
+  await instructions.lifecycle.issueSessionKey(client, {
+    accounts: { authority: owner.publicKey, treasury, sessionKeyAccount, systemProgram: SystemProgram.programId },
+    args: {
+      sessionKey: sessionKey.publicKey,
+      durationSecs: new BN(3_600),
+      maxAmountUsdPerTx: new BN(500),
+      maxDailySpendUsd: new BN(2_000),
+      allowedChains: Buffer.from([2]),
+      allowedTxTypes: Buffer.from([0]),
+      maxProposalCount: 100,
+      now: now(),
+    },
+  }),
+]);
 ```
 
----
+### Schedule a recurring payment (DCA / payroll)
 
-## Enumerate the Program Surface
+Create a standing order; a keeper executes each due run through the normal
+policy + sign + finalize path:
 
 ```typescript
-import { AURA_FEATURE_DOMAINS } from '@aura-protocol/sdk-ts';
+const intentId = new BN(1);
+const [scheduledIntent] = pda.deriveScheduledIntentAddress(treasury, intentId);
 
-for (const domain of AURA_FEATURE_DOMAINS) {
-  console.log(`\n${domain.label}`);
-  for (const ix of domain.instructions) {
-    console.log(`  ${ix.name.padEnd(40)} ${ix.maturity}`);
+await sendAndConfirm([
+  await instructions.execution.createScheduledIntent(client, {
+    accounts: { owner: owner.publicKey, treasury, scheduledIntent, systemProgram: SystemProgram.programId },
+    args: {
+      intentId,
+      args: {
+        kind: 0, chain: 2, txType: 0,
+        intervalSecs: new BN(86_400), startAt: now(), endAt: null,
+        maxRuns: null, perRunLimitUsd: new BN(100), totalBudgetUsd: null,
+        recipients: [], amountUsd: new BN(100), skipOnDeny: true, catchUp: false,
+        keeper: null, conditions: [], combinator: 0,
+      },
+    },
+  }),
+]);
+
+// Later, when a run is due (any keeper can call):
+await sendAndConfirm([
+  await instructions.execution.executeScheduledIntent(client, {
+    accounts: { caller: owner.publicKey, treasury, scheduledIntent, conditionFeed: null },
+  }),
+]);
+```
+
+### Track a multi-chain dWallet and reserve spend
+
+Register a dWallet, create its per-chain state, and reserve → settle a spend:
+
+```typescript
+const chain = 2;
+const [dwalletState] = pda.deriveDwalletStateAddress(treasury, chain);
+
+await sendAndConfirm([
+  await instructions.dwallet.registerDwallet(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { chain, dwalletId: "eth-1", address: "0x...dead", balanceUsd: new BN(5_000), dwalletAccount: null, authorizedUserPubkey: null, messageMetadataDigest: null, publicKeyHex: null, timestamp: now() },
+  }),
+  await instructions.dwallet.initDwalletState(client, {
+    accounts: { owner: owner.publicKey, treasury, dwalletState, systemProgram: SystemProgram.programId },
+    args: { chain, now: now() },
+  }),
+]);
+
+await sendAndConfirm([
+  await instructions.dwallet.reserveDwalletSpend(client, {
+    accounts: { authority: owner.publicKey, treasury, dwalletState },
+    args: { chain, amountUsd: new BN(100), now: now() },
+  }),
+]);
+```
+
+### Coordinate an agent swarm
+
+Create a shared pool and attach this treasury to it:
+
+```typescript
+const swarmId = "trading-swarm-1";
+const [swarmPool] = pda.deriveSwarmPoolAddress(swarmId);
+
+await sendAndConfirm([
+  await instructions.swarm.initSwarmPool(client, {
+    accounts: { creator: owner.publicKey, swarmPool, systemProgram: SystemProgram.programId },
+    args: { swarmId, sharedPoolLimitUsd: new BN(50_000), timestamp: now() },
+  }),
+  await instructions.swarm.configureSwarm(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { swarmId, memberAgents: ["agent-prod-1"], sharedPoolLimitUsd: new BN(50_000), timestamp: now() },
+  }),
+  await instructions.swarm.joinSwarm(client, {
+    accounts: { owner: owner.publicKey, treasury, swarmPool },
+    args: { now: now() },
+  }),
+]);
+```
+
+### Emergency response
+
+Register a recovery destination while healthy, then pause, shut down, and (after
+the activation window) break-glass recover to that address:
+
+```typescript
+// 1. While healthy — register a per-chain cold wallet (48h lock on changes).
+await sendAndConfirm([
+  await instructions.governance.registerRecoveryDestination(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { chain: 2, address: "0x...coldwallet", now: now() },
+  }),
+]);
+
+// 2. Incident — pause, then arm recovery via shutdown.
+await sendAndConfirm([
+  await instructions.execution.pauseExecution(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { paused: true, now: now() },
+  }),
+]);
+await sendAndConfirm([
+  await instructions.governance.emergencyShutdown(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { recoveryPubkey: owner.publicKey, now: now() },
+  }),
+]);
+
+// 3. After the activation window — sweep to the registered destination.
+await sendAndConfirm([
+  await instructions.governance.breakGlassRecover(client, {
+    accounts: { owner: owner.publicKey, treasury },
+    args: { chain: 2, amountUsd: new BN(1_000), now: now() },
+  }),
+]);
+```
+
+## Handle errors
+
+```typescript
+import { isAuraError, parseAuraError, AuraErrorCode } from "@aura-protocol/sdk-ts";
+
+try {
+  await sendAndConfirm([proposeIx]);
+} catch (err) {
+  if (isAuraError(err, AuraErrorCode.ExecutionPaused)) {
+    console.warn("treasury is paused — resume it first");
+  } else {
+    const parsed = parseAuraError(err);
+    if (parsed) console.error(`${parsed.name}: ${parsed.message}`);
+    else throw err;
   }
 }
 ```
 
----
-
-## Batch Multiple Instructions
+## Parse events from a transaction
 
 ```typescript
-const now = new BN(Math.floor(Date.now() / 1000));
-const accounts = { owner: owner.publicKey, treasury };
+import { parseAuraEvents } from "@aura-protocol/sdk-ts";
 
-const pauseIx = await client.pauseExecutionInstruction(accounts, true, now);
-const cancelIx = await client.cancelPendingInstruction(accounts, now);
-
-const signature = await client.sendInstructions(owner, [pauseIx, cancelIx]);
-console.log('Batched tx:', signature);
+const sig = await sendAndConfirm([proposeIx]);
+const tx = await connection.getTransaction(sig, { maxSupportedTransactionVersion: 0 });
+const events = parseAuraEvents(client, tx?.meta?.logMessages ?? []);
+for (const event of events) console.log(event.name, event.data);
 ```
 
-<Cards>
-  <Card title="Aura (High-Level)" description="Simplified API with auto timestamps and plain numbers." href="/sdk-ts/aura" />
-  <Card title="Client Reference" description="Full AuraClient API — constructor, accounts, PDAs." href="/sdk-ts/client/overview" />
-  <Card title="Program API" description="All 67 instructions by domain." href="/sdk-ts/instructions" />
-  <Card title="Validation" description="Check policy rules before sending." href="/sdk-ts/client/validation" />
-</Cards>
+## Discover the surface at runtime
+
+```typescript
+import { AURA_FEATURE_DOMAINS, instructions } from "@aura-protocol/sdk-ts";
+
+for (const domain of AURA_FEATURE_DOMAINS) {
+  for (const feature of domain.instructions) {
+    const accountsNeeded = instructions.listInstructionAccounts(feature.name).length;
+    console.log(`${domain.label} / ${feature.name}: ${accountsNeeded} accounts`);
+  }
+}
+```
+
+<Callout type="info">
+  For the Ika-dependent flows (`executePending`, `finalizeExecution`,
+  confidential proposals, dWallet break-glass), see the Rust smoke binaries in
+  `smoke/aura-devnet/`, which exercise the full CPI paths against live devnet.
+</Callout>

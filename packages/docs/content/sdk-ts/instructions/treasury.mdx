@@ -1,0 +1,174 @@
+---
+title: Treasury
+description: Create and configure treasuries, analytics, and recipient limits.
+icon: Vault
+---
+
+The treasury domain creates the root account every other instruction hangs off
+of. Access it via `instructions.treasury.*`. All examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { accounts, instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+// `treasury` is the PDA from createTreasuryInput / deriveTreasuryAddress.
+```
+
+## createTreasury
+
+Initializes a treasury PDA with a full policy configuration. Accounts: `owner`
+(s, w), `treasury` (w), `systemProgram`.
+
+```typescript
+const { treasury, input } = accounts.createTreasuryInput({
+  owner: owner.publicKey,
+  args: {
+    agentId: "agent-prod-1",
+    aiAuthority: owner.publicKey,
+    createdAt: now(),
+    pendingTransactionTtlSecs: new BN(900),
+    policyConfig: {
+      dailyLimitUsd: new BN(10_000),
+      perTxLimitUsd: new BN(1_000),
+      daytimeHourlyLimitUsd: new BN(2_500),
+      nighttimeHourlyLimitUsd: new BN(500),
+      velocityLimitUsd: new BN(5_000),
+      allowedProtocolBitmap: new BN(31),
+      maxSlippageBps: new BN(100),
+      maxQuoteAgeSecs: new BN(300),
+      maxCounterpartyRiskScore: 70,
+      bitcoinManualReviewThresholdUsd: new BN(5_000),
+      sharedPoolLimitUsd: null,
+      weeklyLimitUsd: null,
+      monthlyLimitUsd: null,
+      recipientLimits: [],
+      cooldownConfig: null,
+      anomalyConfig: null,
+      reputationPolicy: {
+        highScoreThreshold: new BN(80),
+        mediumScoreThreshold: new BN(50),
+        highMultiplierBps: new BN(15_000),
+        lowMultiplierBps: new BN(7_000),
+      },
+      budgetEnvelopes: [],
+      approvalLadder: null,
+      scopedPauseEntries: [],
+      livenessConfig: {
+        requireEncryptFreshness: false,
+        requireDwalletFreshness: false,
+        requireBalanceOracleFreshness: false,
+        requireComplianceOracleFreshness: false,
+        maxStalenessSecs: new BN(300),
+      },
+      failureModes: {
+        quoteFreshness: 0,
+        counterpartyRisk: 0,
+        slippage: 0,
+        anomaly: 0,
+        balanceOracleStale: 0,
+        complianceOracle: 0,
+        encryptLiveness: 0,
+        dwalletLiveness: 0,
+        maxFailOpenUsd: new BN(0),
+        failOpenWindowSecs: new BN(0),
+        failOpenBudgetUsd: new BN(0),
+        failOpenMaxPerWindow: 0,
+        staleFallbackLimitUsd: new BN(0),
+      },
+    },
+    protocolFees: {
+      treasuryCreationFeeUsd: new BN(100),
+      transactionFeeBps: new BN(10),
+      fheSubsidyBps: new BN(5_000),
+    },
+  },
+});
+
+await instructions.treasury.sendCreateTreasury(client, owner, input);
+```
+
+The whole `args` object is typed as `CreateTreasuryArgs` (`policyConfig:
+PolicyConfigRecord`, `protocolFees: ProtocolFeesRecord`) — your editor flags any
+missing field. The example above reuses this `policyConfig` shape on the
+[Policy](/sdk-ts/instructions/policy) and
+[Governance](/sdk-ts/instructions/governance) pages.
+
+## initTreasuryAnalytics
+
+Creates the analytics + audit-commitment sidecar at
+`deriveTreasuryAnalyticsAddress(treasury)`. Accounts: `owner` (s, w),
+`treasury`, `analytics` (w), `systemProgram`.
+
+```typescript
+const [analytics] = pda.deriveTreasuryAnalyticsAddress(treasury);
+
+await instructions.treasury.sendInitTreasuryAnalytics(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, analytics, systemProgram: SystemProgram.programId },
+  args: { now: now() },
+});
+```
+
+## closeTreasuryAnalytics
+
+Closes the analytics sidecar and reclaims rent. Accounts: `owner` (s, w),
+`treasury`, `analytics` (w). No arguments.
+
+```typescript
+const [analytics] = pda.deriveTreasuryAnalyticsAddress(treasury);
+
+await instructions.treasury.sendCloseTreasuryAnalytics(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, analytics },
+});
+```
+
+## updateTreasuryMetadata
+
+Patches operational settings — all fields optional. Accounts: `owner` (s),
+`treasury` (w).
+
+```typescript
+await instructions.treasury.sendUpdateTreasuryMetadata(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    pendingTransactionTtlSecs: new BN(1_200),
+    highRiskThreshold: 80,
+    highRiskRequireGuardian: true,
+    sanctionsCheckEnabled: true,
+    now: now(),
+  },
+});
+```
+
+## setRecipientLimit
+
+Sets a per-recipient daily/per-tx cap. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.treasury.sendSetRecipientLimit(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    chain: 2, // Ethereum
+    address: "0x000000000000000000000000000000000000dead",
+    dailyLimitUsd: new BN(2_000),
+    perTxLimitUsd: new BN(500),
+    now: now(),
+  },
+});
+```
+
+## removeRecipientLimit
+
+Removes a per-recipient limit. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.treasury.sendRemoveRecipientLimit(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    chain: 2,
+    address: "0x000000000000000000000000000000000000dead",
+    now: now(),
+  },
+});
+```

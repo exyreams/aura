@@ -37,14 +37,28 @@ Expanded confidential posture sidecar: Encrypt epoch marker, enabled flag, and e
 
 `request_policy_decryption` can bind a decryption request to this epoch, and `confirm_policy_decryption` rejects stale-epoch results (`GuardrailEpochMismatch`).
 
+## ComplianceOracleAccount
+
+A sanctions/compliance oracle owned by `aura-core`. It stores a `sanctions_root`
+(a 32-byte merkle root of denied addresses), the maintaining `authority`, and
+`last_updated_at` / `update_count`. The proposal path checks recipients against
+this root, and `configure_liveness_guardrails` can require it to be fresh
+(`require_compliance_oracle_freshness`) so a stale oracle blocks spends.
+
+**Seed prefix:**
+```
+b"compliance_oracle"
+```
+
 ## Policy Verification Accounts
 
-Additional accounts for policy simulation and attestation:
+Additional `aura-core`-owned accounts for policy simulation, receipts, and
+attestation:
 
 | Account | Seeds | Purpose |
 |---|---|---|
 | `PolicyCheckResult` | `[b"policy_check", treasury, caller]` | CPI policy-check result |
 | `PolicySimulationResultAccount` | `[b"policy_simulation", treasury, simulation_id]` | Non-mutating simulation result |
-| `PolicyReceiptAccount` | `[b"policy_receipt", …]` | Compact policy decision receipt |
-| `AttestationAccount` | `[b"policy_attestation", …]` | Policy attestation |
-| `InvariantReportAccount` | `[b"invariant_report", …]` | Invariant check report |
+| `PolicyReceiptAccount` | `[b"policy_receipt", treasury, proposal_id]` | Compact policy decision receipt |
+| `PolicyAttestationAccount` | `[b"policy_attestation", treasury, attester, policy_version]` | Policy attestation |
+| `InvariantReportAccount` | `[b"invariant_report", treasury, report_id]` | Invariant check report |

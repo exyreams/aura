@@ -1,0 +1,208 @@
+---
+title: Governance
+description: Multisig, overrides, authority and guardian rotation, config changes, and recovery.
+icon: Landmark
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The governance domain covers the emergency multisig, guardian overrides,
+authority/guardian rotation, timelocked config changes, and break-glass
+recovery. Access it via `instructions.governance.*`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { instructions } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+// `treasury` is the treasury PDA; `owner`/`guardian` are Signers.
+```
+
+## configureMultisig
+
+Sets guardians, per-guardian weights, and the approval threshold. Accounts:
+`owner` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendConfigureMultisig(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    requiredSignatures: 1,
+    guardians: [guardian1.publicKey, guardian2.publicKey],
+    guardianWeights: [1, 1],
+    requiredApprovalWeight: 1,
+    timestamp: now(),
+  },
+});
+```
+
+## proposeOverride
+
+Guardian-proposes a temporary daily-limit override. Accounts: `guardian` (s),
+`treasury` (w).
+
+```typescript
+await instructions.governance.sendProposeOverride(client, guardian1, {
+  accounts: { guardian: guardian1.publicKey, treasury },
+  args: { newDailyLimitUsd: new BN(50_000), now: now() },
+});
+```
+
+## collectOverrideSignature
+
+Adds another guardian's signature to a pending override. Accounts: `guardian`
+(s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendCollectOverrideSignature(client, guardian2, {
+  accounts: { guardian: guardian2.publicKey, treasury },
+  args: { now: now() },
+});
+```
+
+## proposeAiRotation
+
+Proposes rotating the AI authority (starts the timelock). Accounts: `owner`
+(s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendProposeAiRotation(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { newAiAuthority: nextAi.publicKey, now: now() },
+});
+```
+
+## executeAiRotation
+
+Executes a matured AI-authority rotation. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendExecuteAiRotation(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { now: now() },
+});
+```
+
+## cancelAiRotation
+
+Cancels a pending AI-authority rotation. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendCancelAiRotation(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { now: now() },
+});
+```
+
+## proposeConfigChange
+
+Proposes a timelocked policy-config change. `newPolicyConfig` is a full
+`PolicyConfigRecord` (see [Treasury → createTreasury](/sdk-ts/instructions/treasury#createtreasury)).
+Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendProposeConfigChange(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { changeId: new BN(1), newPolicyConfig: policyConfig, now: now() },
+});
+```
+
+## executeConfigChange
+
+Executes a matured config change. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendExecuteConfigChange(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { changeId: new BN(1), now: now() },
+});
+```
+
+## vetoConfigChange
+
+Guardian-vetoes a pending config change during the timelock. Accounts:
+`guardian` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendVetoConfigChange(client, guardian1, {
+  accounts: { guardian: guardian1.publicKey, treasury },
+  args: { changeId: new BN(1), now: now() },
+});
+```
+
+## proposeGuardianRotation
+
+Proposes adding (`action: 0`) or removing (`action: 1`) a guardian. Accounts:
+`guardian` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendProposeGuardianRotation(client, guardian1, {
+  accounts: { guardian: guardian1.publicKey, treasury },
+  args: { action: 0, targetGuardian: guardian3.publicKey, now: now() },
+});
+```
+
+## executeGuardianRotation
+
+Executes a matured guardian rotation. Accounts: `guardian` (s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendExecuteGuardianRotation(client, guardian1, {
+  accounts: { guardian: guardian1.publicKey, treasury },
+  args: { now: now() },
+});
+```
+
+## emergencyShutdown
+
+Halts the treasury and records a recovery key. Accounts: `owner` (s), `treasury`
+(w).
+
+```typescript
+await instructions.governance.sendEmergencyShutdown(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { recoveryPubkey: recovery.publicKey, now: now() },
+});
+```
+
+## registerRecoveryDestination
+
+Registers a break-glass recovery destination for a chain. Accounts: `owner`
+(s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendRegisterRecoveryDestination(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { chain: 2, address: "0x000000000000000000000000000000000000dead", now: now() },
+});
+```
+
+## breakGlassRecover
+
+Break-glass recovers funds to the registered destination. Accounts: `owner`
+(s), `treasury` (w).
+
+```typescript
+await instructions.governance.sendBreakGlassRecover(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { chain: 2, amountUsd: new BN(1_000), now: now() },
+});
+```
+
+## breakGlassTransferAuthority
+
+Break-glass transfers dWallet authority (dWallet CPI). Accounts: `owner` (s),
+`treasury` (w), `dwallet` (w), `callerProgram`, `cpiAuthority`, `dwalletProgram`.
+
+```typescript
+await instructions.governance.sendBreakGlassTransferAuthority(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, dwallet, callerProgram, cpiAuthority, dwalletProgram },
+  args: { chain: 2, newAuthority: recovery.publicKey, now: now() },
+});
+```
+
+<Callout type="warn" title="Break-glass transfers use dWallet CPI">
+  `breakGlassTransferAuthority` co-signs through the Ika dWallet program — derive
+  the authorities with the
+  [dWallet PDA helpers](/sdk-ts/client/pda#external-cpi-authorities).
+</Callout>

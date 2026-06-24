@@ -1,0 +1,397 @@
+---
+title: Execution
+description: Proposals, approval, settlement, scheduled and conditional intents, and pause.
+icon: Play
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The execution domain drives the proposal lifecycle: propose → approve → execute
+→ finalize, plus pause/cancel, scheduled intents, and conditional proposals.
+Access it via `instructions.execution.*`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { accounts, instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+// `treasury` is the treasury PDA; `ai`, `owner`, `operator`, `caller` are Signers.
+```
+
+## proposeTransaction
+
+Creates a public spend proposal. Accounts: `aiAuthority` (s), `treasury` (w),
+plus many optional sidecars — pass `null` for any you don't use.
+
+```typescript
+await instructions.execution.sendProposeTransaction(client, ai, {
+  accounts: {
+    aiAuthority: ai.publicKey,
+    treasury,
+    sessionKeyAccount: null,
+    swarmPool: null,
+    addressList: null,
+    complianceOracle: null,
+    parentTreasury: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    dwalletState: null,
+    chainProfile: null,
+    trustIdentity: null,
+    policyCanary: null,
+  },
+  args: {
+    amountUsd: new BN(100),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: now(),
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: null,
+    recipientOrContract: "0x000000000000000000000000000000000000dead",
+    sanctionsProof: [],
+    // Optional chain-specific fields (EVM/BTC/Solana) default to null:
+    assetId: null,
+    nativeAmount: null,
+    decimals: null,
+    gasNativeAmount: null,
+    gasAssetId: null,
+    evmChainId: null,
+    replayNonce: null,
+    gasLimit: null,
+    maxFeeNative: null,
+    calldataHash: null,
+    utxoSetHash: null,
+    sighashType: null,
+    solanaRecentBlockhash: null,
+    solanaMessageHash: null,
+    confirmationsRequired: null,
+  },
+});
+```
+
+## proposeConditionalTransaction
+
+Parks a proposal behind on-chain conditions. Accounts: `aiAuthority` (s, w),
+`treasury` (w), `conditionalProposal` (w), `conditionFeed?`, `systemProgram`.
+
+```typescript
+const proposalId = new BN(1);
+const [conditionalProposal] = pda.deriveConditionalProposalAddress(treasury, proposalId);
+
+await instructions.execution.sendProposeConditionalTransaction(client, ai, {
+  accounts: { aiAuthority: ai.publicKey, treasury, conditionalProposal, conditionFeed: null, systemProgram: SystemProgram.programId },
+  args: {
+    proposalId,
+    args: {
+      amountUsd: new BN(100),
+      targetChain: 2,
+      txType: 0,
+      protocolId: null,
+      recipientOrContract: "0x...dead",
+      ttlSecs: new BN(3_600),
+      conditions: [],   // ConditionRecord[]
+      combinator: 0,
+      now: now(),
+    },
+  },
+});
+```
+
+## approvePendingExecution
+
+Approves a pending proposal at a given approval level. Accounts: `approver`
+(s), `treasury` (w).
+
+```typescript
+await instructions.execution.sendApprovePendingExecution(client, approver, {
+  accounts: { approver: approver.publicKey, treasury },
+  args: { proposalId: new BN(1), approvalLevel: 1, now: now() },
+});
+```
+
+## executePending
+
+Executes an approved proposal by co-signing through the Ika dWallet network.
+Accounts: `operator` (s), `treasury` (w), plus the dWallet CPI accounts (most
+optional).
+
+```typescript
+await instructions.execution.sendExecutePending(client, operator, {
+  accounts: {
+    operator: operator.publicKey,
+    treasury,
+    messageApproval: null,
+    dwallet: null,
+    callerProgram, // the AURA program id acting as caller
+    cpiAuthority: null,
+    dwalletProgram: null,
+    dwalletCoordinator: null,
+    externalLiveness: null,
+    dwalletState: null,
+    systemProgram: SystemProgram.programId,
+  },
+  args: { now: now() },
+});
+```
+
+<Callout type="warn" title="Requires the Ika dWallet network">
+  `executePending` and `finalizeExecution` perform CPIs to the Ika dWallet
+  program. Derive the authorities with
+  [`deriveDwalletCpiAuthorityAddress`/`deriveMessageApprovalAddress`](/sdk-ts/client/pda#external-cpi-authorities).
+  These flows are covered by the Rust smoke tests in `smoke/aura-devnet/`.
+</Callout>
+
+## finalizeExecution
+
+Finalizes after broadcast and settles fees. Accounts: `operator` (s),
+`treasury` (w), `messageApproval`, plus optional sidecars and fee accounts.
+
+```typescript
+await instructions.execution.sendFinalizeExecution(client, operator, {
+  accounts: {
+    operator: operator.publicKey,
+    treasury,
+    messageApproval,
+    swarmPool: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    externalLiveness: null,
+    dwalletState: null,
+    scheduledIntent: null,
+    feeVault: null,
+    feeSchedule: null,
+    protocolConfig: null,
+  },
+  args: { now: now() },
+});
+```
+
+## confirmSettlement
+
+Confirms an on-chain settlement (tx hash + confirmations). Accounts: `operator`
+(s), `treasury` (w), plus optional pool/budget/exposure/dwallet/intent accounts.
+
+```typescript
+await instructions.execution.sendConfirmSettlement(client, operator, {
+  accounts: {
+    operator: operator.publicKey,
+    treasury,
+    swarmPool: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    dwalletState: null,
+    scheduledIntent: null,
+  },
+  args: {
+    proposalId: new BN(1),
+    targetTxHash: new Uint8Array(32),
+    confirmationsObserved: 12,
+    reorged: false,
+    now: now(),
+  },
+});
+```
+
+## markSettlementBroadcast
+
+Records that a settlement transaction was broadcast. Accounts: `operator` (s),
+`treasury` (w).
+
+```typescript
+await instructions.execution.sendMarkSettlementBroadcast(client, operator, {
+  accounts: { operator: operator.publicKey, treasury },
+  args: { proposalId: new BN(1), targetTxHash: new Uint8Array(32), now: now() },
+});
+```
+
+## resubmitProposal
+
+Resubmits a failed proposal with refreshed chain parameters. Accounts:
+`operator` (s), `treasury` (w), `chainProfile?`.
+
+```typescript
+await instructions.execution.sendResubmitProposal(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, chainProfile: null },
+  args: {
+    proposalId: new BN(1),
+    evmChainId: null,
+    replayNonce: null,
+    gasLimit: null,
+    maxFeeNative: null,
+    calldataHash: null,
+    utxoSetHash: null,
+    sighashType: null,
+    solanaRecentBlockhash: null,
+    solanaMessageHash: null,
+    confirmationsRequired: null,
+    now: now(),
+  },
+});
+```
+
+## abandonProposal
+
+Abandons a stuck proposal. Accounts: `operator` (s), `treasury` (w),
+`dwalletState?`.
+
+```typescript
+await instructions.execution.sendAbandonProposal(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, dwalletState: null },
+  args: { proposalId: new BN(1), now: now() },
+});
+```
+
+## cancelPending
+
+Cancels the active pending proposal. Accounts: `owner` (s), `treasury` (w),
+`dwalletState?`.
+
+```typescript
+await instructions.execution.sendCancelPending(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, dwalletState: null },
+  args: { now: now() },
+});
+```
+
+## pauseExecution
+
+Pauses or resumes all execution. While paused, `proposeTransaction` fails with
+`ExecutionPaused`. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.execution.sendPauseExecution(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { paused: true, now: now() }, // false to resume
+});
+```
+
+## createScheduledIntent
+
+Creates a recurring/deferred intent at
+`deriveScheduledIntentAddress(treasury, intentId)`. Accounts: `owner` (s, w),
+`treasury`, `scheduledIntent` (w), `systemProgram`.
+
+```typescript
+const intentId = new BN(1);
+const [scheduledIntent] = pda.deriveScheduledIntentAddress(treasury, intentId);
+
+await instructions.execution.sendCreateScheduledIntent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, scheduledIntent, systemProgram: SystemProgram.programId },
+  args: {
+    intentId,
+    args: {
+      kind: 0,
+      chain: 2,
+      txType: 0,
+      intervalSecs: new BN(86_400),
+      startAt: now(),
+      endAt: null,
+      maxRuns: null,
+      perRunLimitUsd: new BN(100),
+      totalBudgetUsd: null,
+      recipients: [],     // ScheduleRecipient[]
+      amountUsd: new BN(100),
+      skipOnDeny: true,
+      catchUp: false,
+      keeper: null,
+      conditions: [],     // ConditionRecord[]
+      combinator: 0,
+    },
+  },
+});
+```
+
+## updateScheduledIntent
+
+Updates an existing scheduled intent (same `ScheduledIntentArgs` shape).
+Accounts: `owner` (s), `treasury`, `scheduledIntent` (w).
+
+```typescript
+await instructions.execution.sendUpdateScheduledIntent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, scheduledIntent },
+  args: { args: { /* ScheduledIntentArgs — see createScheduledIntent */ } },
+});
+```
+
+## pauseScheduledIntent
+
+Pauses a scheduled intent. Accounts: `owner` (s), `treasury`, `scheduledIntent`
+(w). No arguments.
+
+```typescript
+await instructions.execution.sendPauseScheduledIntent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, scheduledIntent },
+});
+```
+
+## resumeScheduledIntent
+
+Resumes a paused scheduled intent. Accounts: `owner` (s), `treasury`,
+`scheduledIntent` (w). No arguments.
+
+```typescript
+await instructions.execution.sendResumeScheduledIntent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, scheduledIntent },
+});
+```
+
+## executeScheduledIntent
+
+Executes a due scheduled intent (permissionless keeper). Accounts: `caller`
+(s), `treasury` (w), `scheduledIntent` (w), `conditionFeed?`. No arguments.
+
+```typescript
+await instructions.execution.sendExecuteScheduledIntent(client, caller, {
+  accounts: { caller: caller.publicKey, treasury, scheduledIntent, conditionFeed: null },
+});
+```
+
+## clearScheduledIntentInFlight
+
+Clears the in-flight flag on a scheduled intent. Accounts: `owner` (s),
+`treasury` (w), `scheduledIntent` (w).
+
+```typescript
+await instructions.execution.sendClearScheduledIntentInFlight(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, scheduledIntent },
+  args: { proposalId: new BN(1), now: now() },
+});
+```
+
+## closeScheduledIntent
+
+Closes a scheduled intent and reclaims rent. Accounts: `owner` (s, w),
+`treasury`, `scheduledIntent` (w). No arguments.
+
+```typescript
+await instructions.execution.sendCloseScheduledIntent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, scheduledIntent },
+});
+```
+
+## tryTrigger
+
+Attempts to trigger a conditional proposal once its conditions hold.
+Accounts: `caller` (s), `treasury` (w), `conditionalProposal` (w),
+`conditionFeed?`. No arguments.
+
+```typescript
+await instructions.execution.sendTryTrigger(client, caller, {
+  accounts: { caller: caller.publicKey, treasury, conditionalProposal, conditionFeed: null },
+});
+```
+
+## closeConditionalProposal
+
+Closes a conditional proposal. Accounts: `owner` (s, w), `treasury`,
+`conditionalProposal` (w). No arguments.
+
+```typescript
+await instructions.execution.sendCloseConditionalProposal(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, conditionalProposal },
+});
+```

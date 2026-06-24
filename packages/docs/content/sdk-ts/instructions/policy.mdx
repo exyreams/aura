@@ -1,0 +1,333 @@
+---
+title: Policy
+description: Presets, templates, simulations, receipts, attestations, history, canaries, and trust.
+icon: ScrollText
+---
+
+The policy domain manages the policy engine surface: presets and templates,
+simulation, receipts and attestations, version history with rollback, shadow
+canaries, and per-agent trust. Access it via `instructions.policy.*`. Examples
+assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+// `policyConfig` is a full PolicyConfigRecord (see Treasury → createTreasury).
+```
+
+## applyPolicyPreset
+
+Applies a built-in preset by kind. Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.policy.sendApplyPolicyPreset(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { presetKind: 0, now: now() },
+});
+```
+
+## createPolicyTemplate
+
+Authors a reusable template (owner-scoped PDA). Accounts: `owner` (s, w),
+`policyTemplate` (w), `systemProgram`.
+
+```typescript
+const templateId = new BN(1);
+const [policyTemplate] = pda.derivePolicyTemplateAddress(owner.publicKey, templateId);
+
+await instructions.policy.sendCreatePolicyTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, policyTemplate, systemProgram: SystemProgram.programId },
+  args: {
+    templateId,
+    name: "conservative",
+    description: "Low daily limits",
+    shared: false,
+    sourcePreset: null,
+    config: policyConfig, // or null to start empty
+    now: now(),
+  },
+});
+```
+
+## updatePolicyTemplate
+
+Updates a template. Accounts: `owner` (s), `policyTemplate` (w).
+
+```typescript
+await instructions.policy.sendUpdatePolicyTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, policyTemplate },
+  args: { name: "conservative-v2", description: "Updated", shared: true, config: policyConfig, now: now() },
+});
+```
+
+## closePolicyTemplate
+
+Closes a template and reclaims rent. Accounts: `owner` (s, w), `policyTemplate`
+(w). No arguments.
+
+```typescript
+await instructions.policy.sendClosePolicyTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, policyTemplate },
+});
+```
+
+## applyPolicyTemplate
+
+Applies a template to a treasury. Accounts: `owner` (s), `treasury` (w),
+`policyTemplate` (w).
+
+```typescript
+await instructions.policy.sendApplyPolicyTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyTemplate },
+  args: { now: now() },
+});
+```
+
+## applyPolicyTemplateParameterized
+
+Applies a template with scalar overrides. Accounts: `owner` (s), `treasury`
+(w), `policyTemplate` (w).
+
+```typescript
+await instructions.policy.sendApplyPolicyTemplateParameterized(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyTemplate },
+  args: {
+    overrides: { scaleBps: new BN(12_000), dailyLimitUsd: new BN(20_000), perTxLimitUsd: null },
+    now: now(),
+  },
+});
+```
+
+## simulatePolicy
+
+Simulates a proposal off the hot path; the result lands in a PDA. Accounts:
+`payer` (s, w), `treasury`, `operatorRole?`, `simulationResult` (w),
+`systemProgram`.
+
+```typescript
+const simulationId = new BN(1);
+const [simulationResult] = pda.derivePolicySimulationAddress(treasury, simulationId);
+
+await instructions.policy.sendSimulatePolicy(client, payer, {
+  accounts: { payer: payer.publicKey, treasury, operatorRole: null, simulationResult, systemProgram: SystemProgram.programId },
+  args: {
+    simulationId,
+    amountUsd: new BN(100),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: now(),
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: null,
+    recipientOrContract: "0x...dead",
+  },
+});
+```
+
+## writePolicyReceipt
+
+Commits a policy receipt for a proposal, optionally linking an attestation.
+Accounts: `payer` (s, w), `treasury`, `receipt` (w), `attestation?`,
+`systemProgram`.
+
+```typescript
+const proposalId = new BN(1);
+const [receipt] = pda.derivePolicyReceiptAddress(treasury, proposalId);
+
+await instructions.policy.sendWritePolicyReceipt(client, payer, {
+  accounts: { payer: payer.publicKey, treasury, receipt, attestation: null, systemProgram: SystemProgram.programId },
+  args: { proposalId, now: now() },
+});
+```
+
+## attestPolicy
+
+Attests a policy version. Accounts: `payer` (s, w), `attester` (s), `treasury`,
+`attestation` (w), `systemProgram`. The attestation PDA is keyed by the
+treasury's current policy version.
+
+```typescript
+const [attestation] = pda.derivePolicyAttestationAddress(treasury, attester.publicKey, policyVersion);
+
+await instructions.policy.sendAttestPolicy(client, payer, {
+  accounts: { payer: payer.publicKey, attester: attester.publicKey, treasury, attestation, systemProgram: SystemProgram.programId },
+  args: { attestationKind: 0, expectedPolicyHash: new Uint8Array(32), now: now() },
+}, [attester]); // attester is an extra signer
+```
+
+## checkInvariants
+
+Runs and records invariant checks. Accounts: `payer` (s, w), `treasury`,
+`report` (w), `systemProgram`.
+
+```typescript
+const reportId = new BN(1);
+const [report] = pda.deriveInvariantReportAddress(treasury, reportId);
+
+await instructions.policy.sendCheckInvariants(client, payer, {
+  accounts: { payer: payer.publicKey, treasury, report, systemProgram: SystemProgram.programId },
+  args: { reportId, now: now() },
+});
+```
+
+## checkPolicyCpi
+
+Runs a policy check via CPI and writes a `PolicyCheckResult`. Accounts:
+`caller` (the calling program), `treasury`, `feePayer` (s, w), `result` (w),
+`systemProgram`.
+
+```typescript
+const [result] = pda.derivePolicyCheckAddress(treasury, callerProgram);
+
+await instructions.policy.sendCheckPolicyCpi(client, feePayer, {
+  accounts: { caller: callerProgram, treasury, feePayer: feePayer.publicKey, result, systemProgram: SystemProgram.programId },
+  args: {
+    amountUsd: new BN(100),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: now(),
+    recipientOrContract: "0x...dead",
+  },
+});
+```
+
+## initPolicyHistory
+
+Creates the policy-history account. Accounts: `owner` (s, w), `treasury`,
+`policyHistory` (w), `systemProgram`. No arguments.
+
+```typescript
+const [policyHistory] = pda.derivePolicyHistoryAddress(treasury);
+
+await instructions.policy.sendInitPolicyHistory(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyHistory, systemProgram: SystemProgram.programId },
+});
+```
+
+## recordPolicySnapshot
+
+Snapshots the current policy version into history. Accounts: `owner` (s),
+`treasury`, `policyHistory` (w).
+
+```typescript
+await instructions.policy.sendRecordPolicySnapshot(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyHistory },
+  args: { now: now() },
+});
+```
+
+## rollbackPolicy
+
+Rolls back to a prior policy version. Accounts: `owner` (s, w), `treasury` (w),
+`policyHistory` (w).
+
+```typescript
+await instructions.policy.sendRollbackPolicy(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyHistory },
+  args: { targetVersion: 3, candidate: policyConfig, now: now() },
+});
+```
+
+## closePolicyHistory
+
+Closes the policy-history account. Accounts: `owner` (s, w), `treasury`,
+`policyHistory` (w). No arguments.
+
+```typescript
+await instructions.policy.sendClosePolicyHistory(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyHistory },
+});
+```
+
+## startCanary
+
+Starts a shadow policy candidate sampled against live traffic. Accounts:
+`owner` (s, w), `treasury`, `policyCanary` (w), `systemProgram`.
+
+```typescript
+const [policyCanary] = pda.derivePolicyCanaryAddress(treasury);
+
+await instructions.policy.sendStartCanary(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyCanary, systemProgram: SystemProgram.programId },
+  args: { candidate: policyConfig, sampleCap: 100, now: now() },
+});
+```
+
+## promoteCanary
+
+Promotes the canary to live policy. Accounts: `owner` (s, w), `treasury` (w),
+`policyHistory` (w), `policyCanary` (w).
+
+```typescript
+const [policyHistory] = pda.derivePolicyHistoryAddress(treasury);
+const [policyCanary] = pda.derivePolicyCanaryAddress(treasury);
+
+await instructions.policy.sendPromoteCanary(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyHistory, policyCanary },
+  args: { now: now() },
+});
+```
+
+## discardCanary
+
+Discards the canary candidate. Accounts: `owner` (s, w), `treasury`,
+`policyCanary` (w). No arguments.
+
+```typescript
+await instructions.policy.sendDiscardCanary(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyCanary },
+});
+```
+
+## initTrustIdentity
+
+Creates the trust + identity account. Accounts: `owner` (s, w), `treasury`,
+`trustIdentity` (w), `systemProgram`.
+
+```typescript
+const [trustIdentity] = pda.deriveTrustIdentityAddress(treasury);
+
+await instructions.policy.sendInitTrustIdentity(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity, systemProgram: SystemProgram.programId },
+  args: { now: now() },
+});
+```
+
+## configureTrustPolicy
+
+Configures trust thresholds and reputation scaling. Accounts: `owner` (s),
+`treasury`, `trustIdentity` (w).
+
+```typescript
+await instructions.policy.sendConfigureTrustPolicy(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: {
+    watchThreshold: 70,
+    restrictedThreshold: 50,
+    lockdownThreshold: 30,
+    watchMultiplierBps: new BN(8_000),
+    restrictedMultiplierBps: new BN(5_000),
+    decayPointsPerPeriod: 5,
+    decayPeriodSecs: new BN(86_400),
+    now: now(),
+  },
+});
+```
+
+## restoreTrust
+
+Restores trust after a tripwire. Accounts: `owner` (s), `treasury`,
+`trustIdentity` (w).
+
+```typescript
+await instructions.policy.sendRestoreTrust(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: { now: now() },
+});
+```

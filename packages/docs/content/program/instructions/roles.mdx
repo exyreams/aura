@@ -4,6 +4,11 @@ description: Operator roles, session keys, and permission management
 icon: KeyRound
 ---
 
+Roles and permissions delegate scoped, revocable authority below the owner.
+**Operator roles** grant a permission bitmap (with optional expiry) so a
+delegate can run specific operational instructions; **session keys** issue
+short-lived, narrowly-scoped credentials an agent can use without the owner key.
+
 ## Operator roles
 
 | Instruction | Description | |

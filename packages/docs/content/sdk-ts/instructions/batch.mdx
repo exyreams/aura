@@ -1,0 +1,71 @@
+---
+title: Batch
+description: Batch policy simulation and proposal records.
+icon: Layers
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The batch domain proposes multiple transactions as a single record. Access it
+via `instructions.batch.*`. The batch PDA is
+`deriveBatchProposalAddress(treasury, batchId)`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const batchId = new BN(1);
+const [batch] = pda.deriveBatchProposalAddress(treasury, batchId);
+```
+
+## proposeBatch
+
+Proposes a public batch of transactions. Accounts: `payer` (s, w), `treasury`,
+`batch` (w), `systemProgram`.
+
+```typescript
+await instructions.batch.sendProposeBatch(client, payer, {
+  accounts: { payer: payer.publicKey, treasury, batch, systemProgram: SystemProgram.programId },
+  args: {
+    batchId,
+    now: now(),
+    items: [], // BatchProposalItemArgs[]
+  },
+});
+```
+
+## proposeConfidentialBatch
+
+Proposes a batch evaluated against FHE ciphertexts. Accounts: `payer` (s, w),
+`treasury`, `batch` (w), the amount/limit/violation vector ciphertexts, the
+Encrypt CPI accounts, and `systemProgram`.
+
+```typescript
+await instructions.batch.sendProposeConfidentialBatch(client, payer, {
+  accounts: {
+    payer: payer.publicKey,
+    treasury,
+    batch,
+    amountVectorCiphertext,
+    perItemLimitVectorCiphertext,
+    itemViolationVectorCiphertext,
+    encryptProgram,
+    config,
+    deposit,
+    callerProgram,
+    cpiAuthority,
+    networkEncryptionKey,
+    eventAuthority,
+    systemProgram: SystemProgram.programId,
+  },
+  args: { batchId, now: now(), itemCount: 2 },
+});
+```
+
+<Callout type="warn" title="Confidential batches require the Ika Encrypt network">
+  `proposeConfidentialBatch` takes the Encrypt CPI accounts and vector
+  ciphertexts — see the [Confidential](/sdk-ts/instructions/confidential)
+  domain.
+</Callout>

@@ -1,0 +1,95 @@
+---
+title: Swarm Pools
+description: Shared agent-pool initialization and membership.
+icon: Users
+---
+
+The swarm domain manages shared spending pools across a group of agents. Access
+it via `instructions.swarm.*`. The pool PDA is keyed by `sha256(swarmId)` —
+derive it with `deriveSwarmPoolAddress(swarmId)`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const swarmId = "trading-swarm-1";
+const [swarmPool] = pda.deriveSwarmPoolAddress(swarmId);
+```
+
+## initSwarmPool
+
+Creates a shared swarm pool. Accounts: `creator` (s, w), `swarmPool` (w),
+`systemProgram`.
+
+```typescript
+await instructions.swarm.sendInitSwarmPool(client, creator, {
+  accounts: { creator: creator.publicKey, swarmPool, systemProgram: SystemProgram.programId },
+  args: { swarmId, sharedPoolLimitUsd: new BN(50_000), timestamp: now() },
+});
+```
+
+## configureSwarm
+
+Attaches swarm config (members + shared limit) to a treasury. Accounts:
+`owner` (s), `treasury` (w).
+
+```typescript
+await instructions.swarm.sendConfigureSwarm(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    swarmId,
+    memberAgents: ["agent-prod-1", "agent-prod-2"],
+    sharedPoolLimitUsd: new BN(50_000),
+    timestamp: now(),
+  },
+});
+```
+
+## joinSwarm
+
+Joins a treasury to a pool. Accounts: `owner` (s), `treasury` (w), `swarmPool`
+(w).
+
+```typescript
+await instructions.swarm.sendJoinSwarm(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, swarmPool },
+  args: { now: now() },
+});
+```
+
+## leaveSwarm
+
+Removes a treasury from a pool. Accounts: `owner` (s), `treasury` (w),
+`swarmPool` (w).
+
+```typescript
+await instructions.swarm.sendLeaveSwarm(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, swarmPool },
+  args: { now: now() },
+});
+```
+
+## updateSwarm
+
+Updates the shared pool limit. Accounts: `owner` (s), `treasury` (w),
+`swarmPool` (w).
+
+```typescript
+await instructions.swarm.sendUpdateSwarm(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, swarmPool },
+  args: { sharedPoolLimitUsd: new BN(75_000), now: now() },
+});
+```
+
+## closeSwarmPool
+
+Closes an empty pool and reclaims rent. Accounts: `creator` (s, w), `swarmPool`
+(w). No arguments.
+
+```typescript
+await instructions.swarm.sendCloseSwarmPool(client, creator, {
+  accounts: { creator: creator.publicKey, swarmPool },
+});
+```

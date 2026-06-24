@@ -1,198 +1,77 @@
 ---
 title: Errors
-description: AURA program error codes and TypeScript SDK error handling patterns.
-icon: CircleAlert
+description: Parse Anchor program errors into typed AURA error codes.
+icon: TriangleAlert
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-<Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+The `errors` namespace turns raw Anchor/RPC failures into typed AURA error
+codes. All **140** program errors are mirrored in `AuraErrorCode` and
+`AURA_ERROR_DEFINITIONS`, generated directly from the IDL.
+
+## AuraErrorCode
+
+A TypeScript enum mapping every error name to its on-chain code.
+
+```typescript
+import { AuraErrorCode } from "@aura-protocol/sdk-ts";
+
+AuraErrorCode.ExecutionPaused;       // e.g. 6000-range custom code
+AuraErrorCode.NoPendingTransaction;
+```
+
+`AURA_ERROR_DEFINITIONS` is the full table — `{ code, name, message }[]` — handy
+for building error dictionaries or UI lookups.
+
+## getAuraErrorCode
+
+Extracts a numeric error code from the many shapes Anchor and `@solana/web3.js`
+throw — `AnchorError`, `{ code }`, `{ error: { errorCode: { number } } }`, or a
+`custom program error: 0x...` message string. Returns `null` when no code is
+found.
+
+```typescript
+import { getAuraErrorCode } from "@aura-protocol/sdk-ts";
+
+try {
+  await instructions.execution.sendProposeTransaction(client, ai, input);
+} catch (err) {
+  const code = getAuraErrorCode(err); // number | null
+}
+```
+
+## parseAuraError
+
+Resolves an error to its `AURA_ERROR_DEFINITIONS` entry (`{ code, name,
+message }`), or `null` if the code isn't an AURA error.
+
+```typescript
+import { parseAuraError } from "@aura-protocol/sdk-ts";
+
+const parsed = parseAuraError(err);
+if (parsed) {
+  console.error(`${parsed.name} (#${parsed.code}): ${parsed.message}`);
+}
+```
+
+## isAuraError
+
+A boolean guard — optionally narrowed to a specific code.
+
+```typescript
+import { isAuraError, AuraErrorCode } from "@aura-protocol/sdk-ts";
+
+if (isAuraError(err, AuraErrorCode.ExecutionPaused)) {
+  // treasury is paused — surface a resume action
+}
+
+if (isAuraError(err)) {
+  // any known AURA error
+}
+```
+
+<Callout type="info">
+  Codes that aren't AURA errors (system program, compute budget, RPC transport,
+  etc.) return `null`/`false` — handle those with your normal error paths.
 </Callout>
-
-AURA emits Anchor error codes from the on-chain program. The TypeScript SDK
-exports `AuraErrorCode`, `isAuraError()`, and `getAuraErrorCode()` for
-matching specific errors without hard-coding numbers.
-
-## Program Error Codes
-
-These are emitted by the `aura-core` program and arrive as a
-`SendTransactionError` whose `logs` array contains the code.
-
-```typescript
-import { AuraErrorCode, isAuraError, getAuraErrorCode } from '@aura-protocol/sdk-ts';
-```
-
-| Code | Name | Description |
-|------|------|-------------|
-| 6000 | `UnauthorizedAi` | Caller is not the registered AI authority |
-| 6001 | `UnauthorizedOwner` | Caller is not the treasury owner |
-| 6002 | `UnauthorizedGuardian` | Caller is not a registered guardian |
-| 6003 | `UnauthorizedExecutor` | Caller is not an authorized executor |
-| 6004 | `PendingTransactionExists` | A proposal is already pending; resolve it first |
-| 6005 | `NoPendingTransaction` | No pending proposal to act on |
-| 6006 | `DWalletNotConfigured` | No dWallet registered for the requested chain |
-| 6007 | `DWalletAlreadyRegistered` | A dWallet is already registered for this chain |
-| 6008 | `PolicyGraphMismatch` | FHE policy graph digest does not match |
-| 6009 | `PolicyDigestMismatch` | Policy digest mismatch on verification |
-| 6010 | `DecryptionNotReady` | Decryption result is not yet available |
-| 6011 | `MessageApprovalNotReady` | dWallet message approval is not ready |
-| 6012 | `SignatureVerificationFailed` | Signature verification failed |
-| 6013 | `InvalidDeployment` | Invalid deployment configuration |
-| 6014 | `InvalidExternalAccountData` | Invalid external account data |
-| 6015 | `ConfidentialGuardrailsNotConfigured` | Confidential guardrails must be set up first |
-| 6016 | `PolicyOutputNotReady` | Encrypted policy output is not ready yet |
-| 6017 | `ExecutionPaused` | Treasury execution is currently paused |
-| 6018 | `PendingTransactionExpired` | The pending proposal TTL has elapsed |
-| 6019 | `NoActiveOverride` | No active guardian override to act on |
-| 6020 | `InvalidChain` | Invalid chain value |
-| 6021 | `InvalidTransactionType` | Invalid transaction type value |
-| 6022 | `InvalidCurve` | Invalid dWallet curve value |
-| 6023 | `InvalidSignatureScheme` | Invalid signature scheme value |
-| 6024 | `InvalidViolationCode` | Invalid violation code |
-| 6025 | `InvalidProposalStatus` | Invalid proposal status transition |
-| 6026 | `InvalidGuardianConfiguration` | Invalid guardian configuration |
-| 6027 | `TimelockNotElapsed` | Timelock period has not elapsed |
-| 6028 | `SanctionedAddress` | Recipient address is on the sanctions list |
-| 6029 | `RecipientBlacklisted` | Recipient is on the address deny list |
-| 6030 | `RecipientNotWhitelisted` | Recipient is not on the address allow list |
-| 6031 | `CooldownNotElapsed` | Cooldown period between large transactions has not elapsed |
-| 6032 | `HighRiskTransactionRequiresGuardian` | High-risk transaction requires guardian co-signature |
-| 6033 | `InvalidStateTransition` | Invalid agent state transition |
-| 6034 | `ParentLimitExceeded` | Parent treasury limit would be exceeded |
-| 6035 | `AnomalyDetected` | Anomaly detected in transaction pattern |
-| 6036 | `SessionKeyInactive` | Session key has expired or was revoked |
-| 6037 | `SessionKeyScopeViolation` | Session key scope does not permit this proposal |
-| 6038 | `AccountStillActive` | Account cannot be closed while still active |
-| 6039 | `BudgetEnvelopeLimitExceeded` | Budget envelope limit would be exceeded |
-| 6040 | `ApprovalLevelNotSatisfied` | Approval ladder level has not been satisfied |
-| 6041 | `PendingExecutionTimelockActive` | Pending execution timelock is still active |
-| 6042 | `ExecutionScopePaused` | Execution scope is paused |
-| 6043 | `OperatorRoleMissing` | Operator role is missing required permission |
-| 6044 | `OperatorRoleExpired` | Operator role has expired or was revoked |
-| 6045 | `ExternalDependencyStale` | External dependency freshness check failed |
-| 6046 | `InvalidPolicyPreset` | Policy preset kind is invalid |
-| 6047 | `PolicyAttestationMismatch` | Policy attestation hash or version mismatch |
-| 6048 | `EmptyBatch` | Batch proposal cannot be empty |
-| 6049 | `BatchTooLarge` | Batch proposal exceeds maximum item count |
-| 6050 | `ExposureGroupLimitExceeded` | Cross-treasury exposure group limit exceeded |
-| 6051 | `ExposureGroupUnauthorized` | Treasury is not a member of the exposure group |
-
-## Catching Program Errors
-
-Use `isAuraError()` or `getAuraErrorCode()` to match specific codes:
-
-```typescript
-import { AuraClient, AuraErrorCode, isAuraError, getAuraErrorCode } from '@aura-protocol/sdk-ts';
-import BN from 'bn.js';
-
-const client = new AuraClient({ connection });
-const now = new BN(Math.floor(Date.now() / 1000));
-
-try {
-  await client.proposeTransaction(
-    aiAuthority,
-    { aiAuthority: aiAuthority.publicKey, treasury },
-    {
-      amountUsd: new BN(250),
-      targetChain: 2,
-      txType: 0,
-      protocolId: null,
-      currentTimestamp: now,
-      expectedOutputUsd: null,
-      actualOutputUsd: null,
-      quoteAgeSecs: null,
-      counterpartyRiskScore: 15,
-      recipientOrContract: '0xdeadbeef...',
-      sanctionsProof: [],
-    },
-  );
-} catch (err) {
-  const code = getAuraErrorCode(err);
-  if (code !== null) {
-    switch (code) {
-      case AuraErrorCode.ExecutionPaused:
-        console.error('Treasury is paused — resume before proposing');
-        break;
-      case AuraErrorCode.PendingTransactionExists:
-        console.error('Resolve the existing pending proposal first');
-        break;
-      case AuraErrorCode.UnauthorizedAi:
-        console.error('Wrong AI authority signer');
-        break;
-      case AuraErrorCode.SanctionedAddress:
-        console.error('Recipient is on the sanctions list');
-        break;
-      default:
-        console.error('Program error code:', code);
-    }
-  } else {
-    throw err;
-  }
-}
-```
-
-### `isAuraError`
-
-Check whether a caught error matches a specific code:
-
-```typescript
-import { isAuraError, AuraErrorCode } from '@aura-protocol/sdk-ts';
-
-try {
-  await client.pauseExecution(owner, { owner: owner.publicKey, treasury }, true, now);
-} catch (err) {
-  if (isAuraError(err, AuraErrorCode.UnauthorizedOwner)) {
-    console.error('Only the treasury owner can pause execution');
-  } else {
-    throw err;
-  }
-}
-```
-
-`isAuraError` checks `error.code` directly. Anchor wraps program errors in a `SendTransactionError` — if you're catching at the raw RPC level, use `getAuraErrorCode` which handles the nested structure more robustly.
-
-### `getAuraErrorCode`
-
-Extract the numeric code from any caught error, returning `null` for non-program errors:
-
-```typescript
-import { getAuraErrorCode } from '@aura-protocol/sdk-ts';
-
-const code = getAuraErrorCode(err);
-if (code !== null) {
-  console.log('AURA error code:', code);
-}
-```
-
-## Checking for Errors Before Sending
-
-Simulate a transaction to surface errors without spending SOL:
-
-```typescript
-import { Transaction } from '@solana/web3.js';
-import BN from 'bn.js';
-
-const now = new BN(Math.floor(Date.now() / 1000));
-
-const { treasury, instruction } = await client.createTreasuryInstruction({
-  owner: owner.publicKey,
-  args,
-});
-
-const tx = new Transaction().add(instruction);
-tx.feePayer = owner.publicKey;
-tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-const simResult = await connection.simulateTransaction(tx);
-if (simResult.value.err) {
-  console.error('Simulation failed:', simResult.value.logs);
-}
-```
-
-<Cards>
-  <Card title="Validation" description="Client-side input validation before sending." href="/sdk-ts/client/validation" />
-  <Card title="Events" description="Parse events from transaction logs." href="/sdk-ts/client/events" />
-  <Card title="Examples" description="Full error handling patterns in context." href="/sdk-ts/examples" />
-</Cards>

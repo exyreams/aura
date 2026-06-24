@@ -1,0 +1,93 @@
+---
+title: Metadata & Discovery
+description: Enumerate domains, instructions, and required accounts at runtime.
+icon: Compass
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The SDK ships a runtime catalog of its own surface. Use it to build dynamic UIs,
+CLIs, and agents that discover instructions and their account requirements
+without hard-coding anything.
+
+## Program surface (domains)
+
+`programSurface` (also re-exported at the root) describes the 13 instruction
+domains and the complete instruction → domain map.
+
+```typescript
+import {
+  AURA_FEATURE_DOMAINS,
+  AURA_INSTRUCTION_FEATURES,
+  AURA_INSTRUCTION_DOMAINS,
+  getAuraFeatureDomain,
+  getInstructionDomain,
+} from "@aura-protocol/sdk-ts";
+
+// Walk every domain and its instructions.
+for (const domain of AURA_FEATURE_DOMAINS) {
+  console.log(`${domain.label} — ${domain.description}`);
+  for (const ix of domain.instructions) {
+    console.log(`  ${ix.name} (${ix.maturity}): ${ix.label}`);
+  }
+}
+
+// Flat, annotated list of all 161 instructions.
+AURA_INSTRUCTION_FEATURES.length; // 161
+
+// Look up a single instruction's domain.
+getInstructionDomain("propose_transaction"); // "execution"
+AURA_INSTRUCTION_DOMAINS["configure_multisig"]; // "governance"
+
+// Resolve a domain definition by id.
+getAuraFeatureDomain("policy")?.label; // "Policy Services"
+```
+
+Each feature has a `name`, `label`, `description`, and `maturity` (`wallet`,
+`backend`, `read_only`, or `external_cpi`).
+
+## Instruction definitions (accounts & args)
+
+The `instructions` namespace exposes per-instruction metadata derived from the
+IDL — the discriminator, every account (with `signer`/`writable`/`optional`
+flags), and every argument.
+
+```typescript
+import { instructions } from "@aura-protocol/sdk-ts";
+
+// Full definition (throws if the name is unknown).
+const def = instructions.requireInstructionDefinition("propose_transaction");
+def.discriminator; // number[]
+def.accounts;      // [{ name, propertyName, signer, writable, optional }, ...]
+def.args;          // [{ name, propertyName, type }, ...]
+
+// Or the nullable lookup by snake_case name or camelCase method name.
+instructions.getAuraInstructionDefinition("proposeTransaction");
+
+// Account helpers.
+instructions.listInstructionAccounts("propose_transaction");
+instructions.listRequiredInstructionAccounts("propose_transaction");
+instructions.listOptionalInstructionAccounts("propose_transaction");
+instructions.listInstructionArgs("propose_transaction");
+```
+
+<Callout type="info" title="Building accounts dynamically">
+  Combine the metadata with the [PDA helpers](/sdk-ts/client/pda) to assemble an
+  `accounts` object generically: iterate `listInstructionAccounts(name)`,
+  derive each PDA, and set optional accounts you don't use to `null`.
+</Callout>
+
+## Example: a capability matrix
+
+```typescript
+import { AURA_FEATURE_DOMAINS, instructions } from "@aura-protocol/sdk-ts";
+
+const matrix = AURA_FEATURE_DOMAINS.map((domain) => ({
+  domain: domain.label,
+  instructions: domain.instructions.map((ix) => ({
+    name: ix.name,
+    accounts: instructions.listInstructionAccounts(ix.name).length,
+    optional: instructions.listOptionalInstructionAccounts(ix.name).length,
+  })),
+}));
+```

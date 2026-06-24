@@ -1,159 +1,147 @@
 ---
 title: PDA Derivation
-description: Derive treasury and authority program-derived addresses off-chain.
+description: Derive every program account address — seeds, signatures, and helpers.
 icon: KeyRound
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-<Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+The `pda` namespace derives Program Derived Addresses for every account the
+program owns. Each helper returns a `[PublicKey, number]` tuple (`[address,
+bump]`) and accepts an optional final `programId` argument that defaults to
+`AURA_PROGRAM_ID`.
+
+```typescript
+import { deriveTreasuryAddress } from "@aura-protocol/sdk-ts";
+
+const [treasury, bump] = deriveTreasuryAddress(owner.publicKey, "agent-prod-1");
+```
+
+All helpers are re-exported at the root, and also available under the `pda`
+namespace (`pda.deriveTreasuryAddress(...)`).
+
+## Treasury
+
+```typescript
+deriveTreasuryAddress(owner: PublicKey, agentId: string, programId?): [PublicKey, number]
+```
+
+Seeds: `["treasury", owner, agentId]`. The treasury is the anchor for almost
+every other account.
+
+## Per-treasury sidecars
+
+Each treasury has at most one of these; the address is fully determined by the
+treasury PDA. Seeds: `[<seed>, treasury]`.
+
+| Helper | Account |
+| --- | --- |
+| `deriveTreasuryAnalyticsAddress(treasury)` | analytics + audit commitment |
+| `deriveConfidentialGuardrailsAddress(treasury)` | confidential guardrails |
+| `deriveTrustIdentityAddress(treasury)` | trust + identity |
+| `derivePolicyHistoryAddress(treasury)` | policy history |
+| `derivePolicyCanaryAddress(treasury)` | shadow/canary policy |
+| `deriveHealthScoreAddress(treasury)` | health score |
+| `deriveActivityLogAddress(treasury)` | activity log |
+| `deriveAddressListAddress(treasury)` | address allow/deny list |
+| `deriveExternalLivenessAddress(treasury)` | external liveness |
+| `deriveFeeVaultAddress(treasury)` | protocol-fee vault |
+| `deriveFeeScheduleAddress(treasury)` | fee schedule |
+
+## Indexed per-treasury PDAs
+
+Seeds: `[<seed>, treasury, idLe]`. Identifiers are `u64` little-endian unless
+noted.
+
+| Helper | Index type |
+| --- | --- |
+| `deriveScheduledIntentAddress(treasury, intentId)` | `u64` |
+| `deriveConditionalProposalAddress(treasury, proposalId)` | `u64` |
+| `deriveBatchProposalAddress(treasury, batchId)` | `u64` |
+| `derivePolicyReceiptAddress(treasury, proposalId)` | `u64` |
+| `derivePolicySimulationAddress(treasury, simulationId)` | `u64` |
+| `deriveBudgetEnvelopeAddress(treasury, envelopeId)` | `u64` |
+| `deriveInvariantReportAddress(treasury, reportId)` | `u64` |
+| `deriveSnapshotAddress(treasury, snapshotIndex)` | **`u32`** |
+
+<Callout type="warn">
+  `deriveSnapshotAddress` takes a `u32` index (4-byte LE), unlike the `u64`
+  identifiers above. Its seed prefix is `"treasury_snapshot"`.
 </Callout>
 
-All AURA PDAs can be derived off-chain — synchronously and cheaply. The SDK
-exports standalone helper functions and `AuraClient` exposes equivalent
-instance methods.
+## Key-scoped PDAs
 
-## Standalone Helpers
+Seeds: `[<seed>, treasury, pubkey]`.
+
+| Helper | Keyed by |
+| --- | --- |
+| `deriveSessionKeyAddress(treasury, sessionKey)` | session key pubkey |
+| `deriveOperatorRoleAddress(treasury, operator)` | operator pubkey |
+| `derivePolicyCheckAddress(treasury, caller)` | caller pubkey |
+| `derivePolicyAttestationAddress(treasury, attester, policyVersion)` | attester + `u64` version |
+
+## Owner-scoped templates
+
+Seeds: `[<seed>, owner, templateId]` (`u64`). Templates are authored per owner,
+not per treasury.
 
 ```typescript
-import {
-  deriveTreasuryAddress,
-  deriveDwalletCpiAuthorityAddress,
-  deriveEncryptCpiAuthorityAddress,
-  deriveEncryptEventAuthorityAddress,
-  AURA_PROGRAM_ID,
-  ENCRYPT_DEVNET_PROGRAM_ID,
-  DWALLET_DEVNET_PROGRAM_ID,
-} from '@aura-protocol/sdk-ts';
+derivePolicyTemplateAddress(owner: PublicKey, templateId: BNish, programId?)
+deriveBillingTemplateAddress(owner: PublicKey, templateId: BNish, programId?)
 ```
 
-## deriveTreasuryAddress
-
-Derives the treasury PDA for a given owner and agent ID.
-
-**Seeds:** `[b"treasury", owner, agentId]`
+## Chain, dWallet, and singletons
 
 ```typescript
-function deriveTreasuryAddress(
-  owner: PublicKey,
-  agentId: string,
-  programId?: PublicKey,
-): [PublicKey, number]
+// Global per-chain profile — note: no treasury component. chainCode is a u8.
+deriveChainProfileAddress(chainCode: number, programId?)
+
+// AURA's per-dWallet runtime state. Seeds: ["dwallet_state", treasury, [chain]].
+deriveDwalletStateAddress(treasury: PublicKey, chain: number, programId?)
+
+// The global protocol-config singleton. Seeds: ["protocol_config"].
+deriveProtocolConfigAddress(programId?)
 ```
 
-```typescript
-const [treasury, bump] = deriveTreasuryAddress(ownerPublicKey, 'agent-prod-1');
-console.log('Treasury PDA:', treasury.toBase58());
+## Swarm pools
 
-// Via client instance (uses client's programId automatically)
-const [treasury2] = client.deriveTreasuryAddress(ownerPublicKey, 'agent-prod-1');
+A swarm pool is keyed by `sha256(swarmId)`. Pass the id string and the SDK
+hashes it, or pass a precomputed 32-byte hash.
+
+```typescript
+import { deriveSwarmPoolAddress, hashSwarmId } from "@aura-protocol/sdk-ts";
+
+const [pool] = deriveSwarmPoolAddress("trading-swarm-1");
+const hash = hashSwarmId("trading-swarm-1"); // Uint8Array(32) — the stored swarm_id_hash
+const [same] = deriveSwarmPoolAddress(hash);
 ```
 
-## deriveDwalletCpiAuthorityAddress
+## External CPI authorities
 
-PDA used as the CPI authority for dWallet cross-program calls.
-
-**Seeds:** `[b"__ika_cpi_authority"]`
-
-```typescript
-function deriveDwalletCpiAuthorityAddress(programId?: PublicKey): [PublicKey, number]
-```
+These derive addresses on the AURA program and the external Ika programs for the
+dWallet and Encrypt cross-program calls.
 
 ```typescript
-const [dwalletAuthority] = deriveDwalletCpiAuthorityAddress();
+// AURA-side CPI signer authorities.
+deriveDwalletCpiAuthorityAddress(programId?)
+deriveEncryptCpiAuthorityAddress(programId?)
 
-// Via client instance
-const [dwalletAuthority2] = client.deriveDwalletCpiAuthority();
-```
+// Encrypt program's event authority (scoped to the encrypt program id).
+deriveEncryptEventAuthorityAddress(encryptProgramId)
 
-## deriveEncryptCpiAuthorityAddress
-
-PDA used as the CPI authority for Encrypt cross-program calls.
-
-**Seeds:** `[b"__encrypt_cpi_authority"]`
-
-```typescript
-function deriveEncryptCpiAuthorityAddress(programId?: PublicKey): [PublicKey, number]
-```
-
-```typescript
-const [encryptAuthority] = deriveEncryptCpiAuthorityAddress();
-
-// Via client instance
-const [encryptAuthority2] = client.deriveEncryptCpiAuthority();
-```
-
-## deriveEncryptEventAuthorityAddress
-
-Derives the Encrypt program's event authority PDA.
-
-**Seeds:** `[b"__event_authority"]` — scoped to the **Encrypt program**, not AURA.
-
-```typescript
-function deriveEncryptEventAuthorityAddress(
-  encryptProgramId: PublicKey,
-): [PublicKey, number]
-```
-
-```typescript
-import { ENCRYPT_DEVNET_PROGRAM_ID } from '@aura-protocol/sdk-ts';
-
-const [eventAuthority] = deriveEncryptEventAuthorityAddress(ENCRYPT_DEVNET_PROGRAM_ID);
-
-// Via client instance
-const [eventAuthority2] = client.deriveEncryptEventAuthority(ENCRYPT_DEVNET_PROGRAM_ID);
-```
-
-## Additional PDA Helpers
-
-The SDK also exports helpers for auxiliary accounts:
-
-```typescript
-import {
-  derivePolicySimulationAddress,   // [b"policy_simulation", treasury, simulationId]
-  derivePolicyReceiptAddress,       // [b"policy_receipt", treasury, proposalId]
-  deriveBudgetEnvelopeAddress,      // [b"budget_envelope", treasury, envelopeId]
-  deriveExposureGroupAddress,       // [b"exposure_group", authority, groupId]
-  deriveOperatorRoleAddress,        // [b"operator_role", treasury, operator]
-  deriveExternalLivenessAddress,    // [b"external_liveness", treasury]
-  derivePolicyAttestationAddress,   // [b"policy_attestation", treasury, attester, version]
-  deriveBatchProposalAddress,       // [b"batch_proposal", treasury, batchId]
-  deriveInvariantReportAddress,     // [b"invariant_report", treasury, reportId]
-  deriveMessageApprovalAddress,     // dWallet MessageApproval PDA
-} from '@aura-protocol/sdk-ts';
-```
-
-## Program Constants
-
-```typescript
-import {
-  AURA_PROGRAM_ID,              // AURA Anchor program (devnet)
-  ENCRYPT_DEVNET_PROGRAM_ID,    // Ika Encrypt FHE program (devnet)
-  DWALLET_DEVNET_PROGRAM_ID,    // Ika dWallet program (devnet)
-} from '@aura-protocol/sdk-ts';
-```
-
-## Batching Derivations
-
-All derivations are synchronous — batch freely before any async RPC calls:
-
-```typescript
-const agentIds = ['agent-1', 'agent-2', 'agent-3'];
-
-const pdas = agentIds.map((id) => {
-  const [pda] = deriveTreasuryAddress(owner, id);
-  return { id, pda };
-});
-
-// Fetch all in parallel
-const accounts = await Promise.all(
-  pdas.map(({ pda }) => client.getTreasuryAccountNullable(pda)),
-);
+// Ika dWallet message-approval PDA (mirrors aura-core's find_message_approval_pda).
+deriveMessageApprovalAddress(
+  dwalletProgramId,
+  curveCode,        // u16
+  publicKey,        // Uint8Array (the dWallet public key bytes)
+  schemeCode,       // u16
+  digest,           // Uint8Array(32) — message digest
+  metadataDigest?,  // Uint8Array(32) — included only when non-zero
+)
 ```
 
 <Cards>
-  <Card title="Accounts & Fetching" description="Fetch treasury accounts by PDA or owner." href="/sdk-ts/client/accounts" />
-  <Card title="AuraClient Overview" description="Constructor, properties, and sendInstructions." href="/sdk-ts/client/overview" />
+  <Card title="Accounts" description="Fetch the state behind these addresses." href="/sdk-ts/client/accounts" />
+  <Card title="dWallet Instructions" description="Multi-chain execution and CPI flows." href="/sdk-ts/instructions/dwallet" />
 </Cards>

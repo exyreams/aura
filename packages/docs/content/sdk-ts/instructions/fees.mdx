@@ -1,0 +1,227 @@
+---
+title: Protocol Fees
+description: Fee schedules, vaults, billing templates, collection, and payouts.
+icon: Coins
+---
+
+The fees domain manages protocol monetization. Access it via
+`instructions.fees.*`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const [feeVault] = pda.deriveFeeVaultAddress(treasury);
+const [feeSchedule] = pda.deriveFeeScheduleAddress(treasury);
+
+// A complete FeeScheduleRecord (reused below).
+const feeSchedule_record = {
+  baseBps: new BN(10),
+  perTypeBps: [],          // FeeTypeRateRecord[]
+  tiers: [],               // FeeTierRecord[]
+  minFeeUsd: new BN(0),
+  maxFeeUsd: null,
+  creationFeeUsd: new BN(100),
+  subscriptionUsdPerPeriod: new BN(0),
+  subscriptionPeriodSecs: new BN(0),
+  aumBpsPerPeriod: new BN(0),
+  fheSubsidyBps: new BN(5_000),
+  reputationDiscountBps: new BN(0),
+  referralDiscountBps: new BN(0),
+  discountCapBps: new BN(0),
+  integratorBps: new BN(0),
+  ownerSurchargeBps: new BN(0),
+};
+```
+
+## initFeeVault
+
+Creates the fee vault. Accounts: `owner` (s, w), `treasury`, `feeVault` (w),
+`systemProgram`.
+
+```typescript
+await instructions.fees.sendInitFeeVault(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeVault, systemProgram: SystemProgram.programId },
+  args: { protocolFeeRecipient: recipient.publicKey, now: now() },
+});
+```
+
+## depositFees
+
+Deposits lamports into the vault. Accounts: `owner` (s, w), `treasury`,
+`feeVault` (w), `systemProgram`.
+
+```typescript
+await instructions.fees.sendDepositFees(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeVault, systemProgram: SystemProgram.programId },
+  args: { amount: new BN(1_000) },
+});
+```
+
+## collectFees
+
+Pays out accrued fees to the recipient (signed by the protocol authority).
+Accounts: `protocolAuthority` (s, w), `feeVault` (w), `recipient` (w).
+
+```typescript
+await instructions.fees.sendCollectFees(client, protocolAuthority, {
+  accounts: { protocolAuthority: protocolAuthority.publicKey, feeVault, recipient: recipient.publicKey },
+  args: { now: now() },
+});
+```
+
+## withdrawUnusedFees
+
+Withdraws unused vault balance. Accounts: `owner` (s, w), `treasury`, `feeVault`
+(w), `systemProgram`.
+
+```typescript
+await instructions.fees.sendWithdrawUnusedFees(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeVault, systemProgram: SystemProgram.programId },
+  args: { amount: new BN(500) },
+});
+```
+
+## setFeeSplits
+
+Configures split recipients and the low-balance mode. Accounts: `owner` (s, w),
+`treasury`, `feeVault` (w), `systemProgram`.
+
+```typescript
+await instructions.fees.sendSetFeeSplits(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeVault, systemProgram: SystemProgram.programId },
+  args: { splits: [], low_balance_mode: 0 }, // FeeSplitRecord[]
+});
+```
+
+## updateFeeRecipient
+
+Changes the fee recipient. Accounts: `owner` (s), `treasury`, `feeVault` (w).
+
+```typescript
+await instructions.fees.sendUpdateFeeRecipient(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeVault },
+  args: { newRecipient: recipient.publicKey },
+});
+```
+
+## closeFeeVault
+
+Closes the vault. Accounts: `owner` (s, w), `treasury`, `feeVault` (w). No
+arguments.
+
+```typescript
+await instructions.fees.sendCloseFeeVault(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeVault },
+});
+```
+
+## initFeeSchedule
+
+Creates the fee schedule. Accounts: `owner` (s, w), `treasury`, `feeSchedule`
+(w), `protocolConfig?`, `systemProgram`.
+
+```typescript
+await instructions.fees.sendInitFeeSchedule(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeSchedule, protocolConfig: null, systemProgram: SystemProgram.programId },
+  args: { schedule: feeSchedule_record, now: now() },
+});
+```
+
+## updateFeeSchedule
+
+Updates the fee schedule. Accounts: `owner` (s), `treasury`, `feeSchedule` (w),
+`protocolConfig?`.
+
+```typescript
+await instructions.fees.sendUpdateFeeSchedule(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeSchedule, protocolConfig: null },
+  args: { schedule: feeSchedule_record, now: now() },
+});
+```
+
+## closeFeeSchedule
+
+Closes the fee schedule. Accounts: `owner` (s, w), `treasury`, `feeSchedule`
+(w). No arguments.
+
+```typescript
+await instructions.fees.sendCloseFeeSchedule(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, feeSchedule },
+});
+```
+
+## createBillingTemplate
+
+Authors a billing template (owner-scoped:
+`deriveBillingTemplateAddress(owner, templateId)`). Accounts: `owner` (s, w),
+`billingTemplate` (w), `systemProgram`.
+
+```typescript
+const templateId = new BN(1);
+const [billingTemplate] = pda.deriveBillingTemplateAddress(owner.publicKey, templateId);
+
+await instructions.fees.sendCreateBillingTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, billingTemplate, systemProgram: SystemProgram.programId },
+  args: {
+    templateId,
+    name: "standard",
+    description: "Standard billing",
+    shared: false,
+    sourceKind: null,
+    schedule: feeSchedule_record, // or null
+    now: now(),
+  },
+});
+```
+
+## updateBillingTemplate
+
+Updates a billing template. Accounts: `owner` (s), `billingTemplate` (w).
+
+```typescript
+await instructions.fees.sendUpdateBillingTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, billingTemplate },
+  args: { name: "standard-v2", description: "Updated", shared: true, schedule: feeSchedule_record, now: now() },
+});
+```
+
+## closeBillingTemplate
+
+Closes a billing template. Accounts: `owner` (s, w), `billingTemplate` (w). No
+arguments.
+
+```typescript
+await instructions.fees.sendCloseBillingTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, billingTemplate },
+});
+```
+
+## applyBillingTemplate
+
+Applies a billing template to a treasury's fee schedule. Accounts: `owner` (s),
+`treasury`, `billingTemplate` (w), `feeSchedule` (w), `protocolConfig?`.
+
+```typescript
+await instructions.fees.sendApplyBillingTemplate(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, billingTemplate, feeSchedule, protocolConfig: null },
+  args: { now: now() },
+});
+```
+
+## applyOrgProfile
+
+Applies a combined policy + billing profile in one step. Accounts: `owner` (s),
+`treasury` (w), `policyTemplate` (w), `billingTemplate` (w), `feeSchedule` (w),
+`protocolConfig?`.
+
+```typescript
+const [policyTemplate] = pda.derivePolicyTemplateAddress(owner.publicKey, new BN(1));
+
+await instructions.fees.sendApplyOrgProfile(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, policyTemplate, billingTemplate, feeSchedule, protocolConfig: null },
+  args: { now: now() },
+});
+```

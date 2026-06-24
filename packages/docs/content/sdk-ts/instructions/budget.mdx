@@ -1,0 +1,156 @@
+---
+title: Budget & Exposure
+description: Budget envelopes, exposure groups, approval ladders, and liveness guardrails.
+icon: WalletCards
+---
+
+The budget domain manages spending envelopes, cross-treasury exposure groups,
+approval ladders, and liveness guardrails. Access it via
+`instructions.budget.*`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+```
+
+## configureBudgetEnvelope
+
+Creates or updates a budget envelope at
+`deriveBudgetEnvelopeAddress(treasury, envelopeId)`. Accounts: `owner` (s, w),
+`treasury` (w), `budgetEnvelope` (w), `systemProgram`.
+
+```typescript
+const envelopeId = new BN(1);
+const [budgetEnvelope] = pda.deriveBudgetEnvelopeAddress(treasury, envelopeId);
+
+await instructions.budget.sendConfigureBudgetEnvelope(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, budgetEnvelope, systemProgram: SystemProgram.programId },
+  args: {
+    envelopeId,
+    scopeKind: 0,
+    chain: 2,
+    txType: null,
+    protocolId: null,
+    dailyLimitUsd: new BN(5_000),
+    weeklyLimitUsd: new BN(20_000),
+    now: now(),
+  },
+});
+```
+
+## removeBudgetEnvelope
+
+Removes a budget envelope. Accounts: `owner` (s, w), `treasury` (w),
+`budgetEnvelope` (w).
+
+```typescript
+await instructions.budget.sendRemoveBudgetEnvelope(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, budgetEnvelope },
+  args: { envelopeId: new BN(1), now: now() },
+});
+```
+
+## configureApprovalLadder
+
+Configures tiered approval thresholds (guardian / multisig / timelock / deny).
+Accounts: `owner` (s), `treasury` (w).
+
+```typescript
+await instructions.budget.sendConfigureApprovalLadder(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    guardianAboveUsd: new BN(10_000),
+    multisigAboveUsd: new BN(50_000),
+    timelockAboveUsd: new BN(100_000),
+    denyAboveUsd: new BN(500_000),
+    riskGuardianBps: 5_000,
+    riskMultisigBps: 7_000,
+    riskTimelockBps: 9_000,
+    timelockSecs: new BN(3_600),
+    now: now(),
+  },
+});
+```
+
+## configureLivenessGuardrails
+
+Configures freshness requirements for Encrypt/dWallet/oracle inputs. Accounts:
+`owner` (s), `treasury` (w).
+
+```typescript
+await instructions.budget.sendConfigureLivenessGuardrails(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    requireEncryptFreshness: true,
+    requireDwalletFreshness: true,
+    requireBalanceOracleFreshness: false,
+    requireComplianceOracleFreshness: false,
+    maxStalenessSecs: new BN(300),
+    now: now(),
+  },
+});
+```
+
+## initExposureGroup
+
+Creates a shared exposure group keyed by a 16-byte group id
+(`deriveExposureGroupAddress(authority, groupId)`). Accounts: `authority`
+(s, w), `exposureGroup` (w), `systemProgram`.
+
+```typescript
+const groupId = new Uint8Array(16).fill(1);
+const [exposureGroup] = pda.deriveExposureGroupAddress(authority.publicKey, groupId);
+
+await instructions.budget.sendInitExposureGroup(client, authority, {
+  accounts: { authority: authority.publicKey, exposureGroup, systemProgram: SystemProgram.programId },
+  args: { groupId, dailyLimitUsd: new BN(100_000), nowDay: now() },
+});
+```
+
+## joinExposureGroup
+
+Joins a treasury to a group. Accounts: `authority` (s), `exposureGroup` (w),
+`treasury`. No arguments.
+
+```typescript
+await instructions.budget.sendJoinExposureGroup(client, authority, {
+  accounts: { authority: authority.publicKey, exposureGroup, treasury },
+});
+```
+
+## leaveExposureGroup
+
+Removes a treasury from a group. Accounts: `authority` (s), `exposureGroup`
+(w), `treasury`. No arguments.
+
+```typescript
+await instructions.budget.sendLeaveExposureGroup(client, authority, {
+  accounts: { authority: authority.publicKey, exposureGroup, treasury },
+});
+```
+
+## updateExposureGroup
+
+Updates the group's daily limit (optional). Accounts: `authority` (s),
+`exposureGroup` (w), `treasury`.
+
+```typescript
+await instructions.budget.sendUpdateExposureGroup(client, authority, {
+  accounts: { authority: authority.publicKey, exposureGroup, treasury },
+  args: { dailyLimitUsd: new BN(150_000) },
+});
+```
+
+## closeExposureGroup
+
+Closes an empty group. Accounts: `authority` (s, w), `exposureGroup` (w). No
+arguments.
+
+```typescript
+await instructions.budget.sendCloseExposureGroup(client, authority, {
+  accounts: { authority: authority.publicKey, exposureGroup },
+});
+```

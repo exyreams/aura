@@ -6,6 +6,13 @@ icon: Shield
 
 ## Governance & rotation
 
+Governance instructions change a treasury's **control structure** without
+touching the spend path: attach an emergency multisig, override the daily limit
+by guardian quorum, and rotate the AI authority or guardian set behind
+timelocks. Custody recovery and break-glass live in
+[Authorization](/program/instructions/authorization); `emergency_shutdown` is in
+[Treasury](/program/instructions/treasury).
+
 | Instruction | Description | |
 |---|---|---|
 | `configure_multisig` | Attach the emergency multisig + guardians. | |

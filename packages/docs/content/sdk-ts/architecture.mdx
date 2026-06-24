@@ -1,0 +1,124 @@
+---
+title: Architecture
+description: How AuraClient, accounts, instructions, and PDAs compose the functional SDK.
+icon: Boxes
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The SDK is intentionally small and functional. Rather than a large client
+object with one method per instruction, it exposes a thin client plus
+namespaced free functions. This keeps the API tree-shakeable and makes every
+instruction's accounts and arguments explicit and fully typed.
+
+## Layers
+
+| Namespace | Responsibility |
+| --- | --- |
+| `AuraClient` | RPC connection, the Anchor `Program`, the Borsh coder, and transaction sending. Holds no per-instruction logic. |
+| `instructions.<domain>` | Typed instruction builders, `*Instruction` aliases, and `send*` helpers. |
+| `accounts` | Typed account fetchers (`fetch*`) and the `createTreasuryInput` helper. |
+| `pda` | PDA derivation for every program account. |
+| `errors` | Anchor error-code table and parsing helpers. |
+| `events` | Event discriminators and log parsing. |
+| `validation` | Pre-flight input validators mirroring the program's limits. |
+| `programSurface` | Runtime catalog: domains, labels, and the instruction → domain map. |
+| `constants` | Program id, IDL, PDA seeds, devnet endpoints, and generated type aliases. |
+
+## The builder / send pattern
+
+Every instruction is generated in three forms:
+
+```typescript
+import { instructions } from "@aura-protocol/sdk-ts";
+
+// 1. Builder — returns a TransactionInstruction (compose it yourself).
+const ix = await instructions.treasury.createTreasury(client, input);
+
+// 2. Alias — identical to the builder, named for readability.
+const ix2 = await instructions.treasury.createTreasuryInstruction(client, input);
+
+// 3. Send helper — builds, signs, and sends in one call, returns the signature.
+const sig = await instructions.treasury.sendCreateTreasury(client, owner, input);
+```
+
+The `send*` helper signature is uniform:
+
+```typescript
+send<Name>(
+  client: AuraClient,
+  payer: Signer,
+  input: <Name>Input,
+  extraSigners?: Signer[],
+  options?: SendOptions,
+): Promise<string>;
+```
+
+## Instruction inputs
+
+Each builder takes a single `input` object with two fields:
+
+```typescript
+type CreateTreasuryInput = {
+  accounts: MethodAccounts<"createTreasury">; // every account, fully typed
+  args: MethodArgs<"createTreasury">[0];       // the instruction arguments
+};
+```
+
+- **`accounts`** is the complete, strict account set (Anchor `accountsStrict`).
+  You must supply every account the instruction declares.
+- **`args`** is the typed argument payload. Instructions with no arguments use
+  `args?: undefined`.
+
+### Optional accounts
+
+Many instructions declare optional accounts (sidecar PDAs that only apply in
+certain flows). Pass `null` when they don't apply:
+
+```typescript
+const ix = await instructions.execution.cancelPending(client, {
+  accounts: { owner, treasury, dwalletState: null },
+  args: { now },
+});
+```
+
+<Callout type="info">
+  Unsure which accounts an instruction needs? Use the runtime metadata:
+  `instructions.listInstructionAccounts("propose_transaction")` returns every
+  account with its `signer`, `writable`, and `optional` flags. See
+  [Metadata](/sdk-ts/client/metadata).
+</Callout>
+
+## Numbers: `BN` and `BNish`
+
+On-chain `u64`/`u128`/`i64` values map to `BN` (`bn.js`). Argument objects
+expect `BN`. PDA helpers and validators accept `BNish` — a `BN`, `number`,
+`bigint`, or decimal string — and the SDK normalizes it with `toBN`.
+
+```typescript
+import BN from "bn.js";
+import { toBN } from "@aura-protocol/sdk-ts";
+
+const a = new BN(1_000);
+const b = toBN("18446744073709551615"); // safe for values beyond Number
+```
+
+## Reading state
+
+Account fetchers decode on-chain data into typed records:
+
+```typescript
+import { accounts, deriveTreasuryAddress } from "@aura-protocol/sdk-ts";
+
+const [treasury] = deriveTreasuryAddress(owner, "agent-prod-1");
+const state = await accounts.fetchTreasuryAccount(client, treasury);
+const maybe = await accounts.fetchTreasuryAccountNullable(client, treasury);
+```
+
+<Cards>
+  <Card title="AuraClient" description="The thin client in detail." href="/sdk-ts/client/overview" />
+  <Card title="Accounts" description="Fetchers and the treasury input helper." href="/sdk-ts/client/accounts" />
+  <Card title="PDAs" description="Derive every program account address." href="/sdk-ts/client/pda" />
+  <Card title="Metadata" description="Discover instructions and accounts at runtime." href="/sdk-ts/client/metadata" />
+</Cards>

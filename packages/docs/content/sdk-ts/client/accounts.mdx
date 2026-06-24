@@ -1,294 +1,110 @@
 ---
-title: Accounts & Fetching
-description: Fetch and deserialize on-chain AURA treasury accounts.
+title: Accounts
+description: Typed fetchers for every program account, plus the treasury input helper.
 icon: Database
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-<Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+The `accounts` namespace decodes on-chain data into fully typed records. Every
+one of the program's **32** account types has two fetchers:
+
+```typescript
+import { accounts } from "@aura-protocol/sdk-ts";
+
+// Throws if the account does not exist.
+const treasury = await accounts.fetchTreasuryAccount(client, address);
+
+// Returns null instead of throwing.
+const maybe = await accounts.fetchTreasuryAccountNullable(client, address);
+```
+
+The decoded record types are generated from the IDL (`IdlAccounts<AuraCore>`),
+so fields like `owner: PublicKey`, `agentId: string`, and `dailyLimitUsd: BN`
+are typed exactly as the program stores them.
+
+## Reading state
+
+```typescript
+import { accounts, deriveTreasuryAddress } from "@aura-protocol/sdk-ts";
+
+const [treasury] = deriveTreasuryAddress(owner.publicKey, "agent-prod-1");
+
+const state = await accounts.fetchTreasuryAccount(client, treasury);
+console.log(state.agentId, state.agentState, state.executionPaused);
+console.log("daily limit:", state.policyConfig.dailyLimitUsd.toString());
+
+// Sidecar accounts live at their own PDAs.
+const [analytics] = pda.deriveTreasuryAnalyticsAddress(treasury);
+const stats = await accounts.fetchTreasuryAnalyticsAccountNullable(client, analytics);
+```
+
+## The treasury input helper
+
+`createTreasuryInput` is a convenience that derives the treasury PDA and shapes
+the full `create_treasury` account set for you:
+
+```typescript
+const { treasury, input } = accounts.createTreasuryInput({
+  owner: owner.publicKey,
+  args: createTreasuryArgs,
+  // treasury?: PublicKey  — optional override; derived if omitted
+});
+
+await instructions.treasury.sendCreateTreasury(client, owner, input);
+```
+
+It returns `{ treasury, input }` where `input` is ready to pass straight to the
+`createTreasury` builder.
+
+## Account → fetcher → PDA reference
+
+Each account is fetched with `fetch<Name>` / `fetch<Name>Nullable` and its
+address is derived with the linked [PDA helper](/sdk-ts/client/pda).
+
+| Account | Fetcher | PDA helper |
+| --- | --- | --- |
+| `TreasuryAccount` | `fetchTreasuryAccount` | `deriveTreasuryAddress(owner, agentId)` |
+| `TreasuryAnalyticsAccount` | `fetchTreasuryAnalyticsAccount` | `deriveTreasuryAnalyticsAddress(treasury)` |
+| `ConfidentialGuardrailsAccount` | `fetchConfidentialGuardrailsAccount` | `deriveConfidentialGuardrailsAddress(treasury)` |
+| `DWalletAccount` | `fetchDWalletAccount` | `deriveDwalletStateAddress(treasury, chain)` |
+| `ScheduledIntent` | `fetchScheduledIntent` | `deriveScheduledIntentAddress(treasury, intentId)` |
+| `ConditionalProposal` | `fetchConditionalProposal` | `deriveConditionalProposalAddress(treasury, proposalId)` |
+| `BatchProposalAccount` | `fetchBatchProposalAccount` | `deriveBatchProposalAddress(treasury, batchId)` |
+| `PolicyReceiptAccount` | `fetchPolicyReceiptAccount` | `derivePolicyReceiptAddress(treasury, proposalId)` |
+| `PolicySimulationResultAccount` | `fetchPolicySimulationResultAccount` | `derivePolicySimulationAddress(treasury, simulationId)` |
+| `PolicyAttestationAccount` | `fetchPolicyAttestationAccount` | `derivePolicyAttestationAddress(treasury, attester, policyVersion)` |
+| `PolicyHistoryAccount` | `fetchPolicyHistoryAccount` | `derivePolicyHistoryAddress(treasury)` |
+| `PolicyCanaryAccount` | `fetchPolicyCanaryAccount` | `derivePolicyCanaryAddress(treasury)` |
+| `PolicyCheckResult` | `fetchPolicyCheckResult` | `derivePolicyCheckAddress(treasury, caller)` |
+| `PolicyTemplate` | `fetchPolicyTemplate` | `derivePolicyTemplateAddress(owner, templateId)` |
+| `TrustIdentityAccount` | `fetchTrustIdentityAccount` | `deriveTrustIdentityAddress(treasury)` |
+| `InvariantReportAccount` | `fetchInvariantReportAccount` | `deriveInvariantReportAddress(treasury, reportId)` |
+| `BudgetEnvelopeAccount` | `fetchBudgetEnvelopeAccount` | `deriveBudgetEnvelopeAddress(treasury, envelopeId)` |
+| `ExposureGroupAccount` | `fetchExposureGroupAccount` | `deriveExposureGroupAddress(authority, groupId)` |
+| `OperatorRoleAccount` | `fetchOperatorRoleAccount` | `deriveOperatorRoleAddress(treasury, operator)` |
+| `SessionKeyAccount` | `fetchSessionKeyAccount` | `deriveSessionKeyAddress(treasury, sessionKey)` |
+| `ExternalLivenessAccount` | `fetchExternalLivenessAccount` | `deriveExternalLivenessAddress(treasury)` |
+| `HealthScoreAccount` | `fetchHealthScoreAccount` | `deriveHealthScoreAddress(treasury)` |
+| `SnapshotAccount` | `fetchSnapshotAccount` | `deriveSnapshotAddress(treasury, snapshotIndex)` |
+| `ActivityLogAccount` | `fetchActivityLogAccount` | `deriveActivityLogAddress(treasury)` |
+| `AddressListAccount` | `fetchAddressListAccount` | `deriveAddressListAddress(treasury)` |
+| `SwarmPoolAccount` | `fetchSwarmPoolAccount` | `deriveSwarmPoolAddress(swarmId)` |
+| `FeeVaultAccount` | `fetchFeeVaultAccount` | `deriveFeeVaultAddress(treasury)` |
+| `FeeScheduleAccount` | `fetchFeeScheduleAccount` | `deriveFeeScheduleAddress(treasury)` |
+| `BillingTemplate` | `fetchBillingTemplate` | `deriveBillingTemplateAddress(owner, templateId)` |
+| `ChainProfileAccount` | `fetchChainProfileAccount` | `deriveChainProfileAddress(chainCode)` |
+| `ProtocolConfigAccount` | `fetchProtocolConfigAccount` | `deriveProtocolConfigAddress()` |
+| `ComplianceOracleAccount` | `fetchComplianceOracleAccount` | external oracle (address provided by integrator) |
+
+<Callout type="info">
+  Record types are exported too — e.g. import the `AuraCore` IDL type and use
+  `IdlAccounts<AuraCore>["treasuryAccount"]`, or rely on the inferred return
+  type of each fetcher.
 </Callout>
 
-`AuraClient` provides three methods for fetching treasury accounts. All return
-typed `TreasuryAccountRecord` objects deserialized from the Anchor IDL.
-
-## Fetching Methods
-
-### getTreasuryAccount
-
-Fetch by PDA. Throws if the account does not exist on-chain.
-
-```typescript
-async getTreasuryAccount(treasury: PublicKey): Promise<TreasuryAccountRecord>
-```
-
-```typescript
-const account = await client.getTreasuryAccount(treasuryPDA);
-console.log('Agent ID:', account.agentId);
-console.log('Is paused:', account.executionPaused);
-```
-
-### getTreasuryAccountNullable
-
-Fetch by PDA, returning `null` if the account doesn't exist.
-
-```typescript
-async getTreasuryAccountNullable(treasury: PublicKey): Promise<TreasuryAccountRecord | null>
-```
-
-```typescript
-const account = await client.getTreasuryAccountNullable(treasuryPDA);
-if (!account) {
-  console.log('Treasury not yet created');
-}
-```
-
-### getTreasuryForOwner
-
-Derive the PDA from `owner` + `agentId` and fetch in one call. Returns
-`account: null` if the treasury has not been created yet.
-
-```typescript
-async getTreasuryForOwner(
-  owner: PublicKey,
-  agentId: string,
-): Promise<{ treasury: PublicKey; account: TreasuryAccountRecord | null }>
-```
-
-```typescript
-const { treasury, account } = await client.getTreasuryForOwner(
-  ownerPublicKey,
-  'agent-prod-1',
-);
-if (account) {
-  console.log('Daily limit:', account.policyConfig.dailyLimitUsd.toString());
-}
-```
-
----
-
-## Account Types
-
-### TreasuryAccountRecord
-
-The root on-chain account for an AI agent treasury.
-
-```typescript
-interface TreasuryAccountRecord {
-  schemaVersion: number;
-  bump: number;
-  owner: PublicKey;
-  aiAuthority: PublicKey;
-  agentId: string;
-  createdAt: BN;
-  updatedAt: BN;
-  nextProposalId: BN;
-  totalTransactions: BN;
-  executionPaused: boolean;
-  agentState: number;
-  pendingTransactionTtlSecs: BN;
-  currentPolicyVersion: number;
-  policyConfig: PolicyConfigRecord;
-  policyState: PolicyStateRecord;
-  confidentialGuardrails: ConfidentialGuardrailsRecord | null;
-  pendingAiRotation: PendingAiRotationRecord | null;
-  pendingConfigChange: PendingConfigChangeRecord | null;
-  circuitBreaker: CircuitBreakerRecord;
-  lastOwnerActivityAt: BN;
-  deadMansSwitch: DeadMansSwitchRecord | null;
-  highRiskThreshold: number;
-  highRiskRequireGuardian: boolean;
-  lastLargeTxAt: BN | null;
-  lastLargeTxAmountUsd: BN;
-  parentTreasury: string | null;
-  childAgents: string[];
-  childSpendBudgetUsd: BN | null;
-  sanctionsCheckEnabled: boolean;
-  complianceOracle: PublicKey | null;
-  shutdownInitiatedAt: BN | null;
-  shutdownRecoveryPubkey: PublicKey | null;
-  lastSnapshotAt: BN | null;
-  reputation: AgentReputationRecord;
-  fees: ProtocolFeesRecord;
-  dwallets: DWalletRecord[];
-  pendingQueue: PendingProposalRecord[];
-  multisig: MultisigConfigRecord | null;
-  swarm: SwarmConfigRecord | null;
-}
-```
-
-### PolicyConfigRecord
-
-All policy rules for a treasury.
-
-```typescript
-interface PolicyConfigRecord {
-  dailyLimitUsd: BN;
-  perTxLimitUsd: BN;
-  daytimeHourlyLimitUsd: BN;
-  nighttimeHourlyLimitUsd: BN;
-  velocityLimitUsd: BN;
-  allowedProtocolBitmap: BN;
-  maxSlippageBps: BN;
-  maxQuoteAgeSecs: BN | null;
-  maxCounterpartyRiskScore: number | null;
-  bitcoinManualReviewThresholdUsd: BN;
-  sharedPoolLimitUsd: BN | null;
-  weeklyLimitUsd: BN | null;
-  monthlyLimitUsd: BN | null;
-  recipientLimits: RecipientLimitRecord[];
-  cooldownConfig: CooldownConfigRecord | null;
-  anomalyConfig: AnomalyConfigRecord | null;
-  reputationPolicy: ReputationPolicyRecord;
-  budgetEnvelopes: BudgetEnvelopeRecord[];
-  approvalLadder: ApprovalLadderRecord | null;
-  scopedPauseEntries: ScopedPauseEntryRecord[];
-  livenessConfig: LivenessConfigRecord;
-}
-```
-
-### PolicyStateRecord
-
-Current execution and spending counters — updated every time a proposal is
-submitted or finalized.
-
-```typescript
-interface PolicyStateRecord {
-  spentTodayUsd: BN;
-  lastResetTimestamp: BN;
-  hourlySpentUsd: BN;
-  hourlyBucketStartedAt: BN;
-  recentAmounts: BN[];
-  dailyBuckets: BN[];        // 7-element ring buffer
-  dailyBucketHead: number;
-  sevenDayWindowStartedAt: BN;
-  thirtyDaySpentUsd: BN;
-  thirtyDayWindowStartedAt: BN;
-  peakSingleTxUsd: BN;
-  peakDaySpendUsd: BN;
-  recipientSpend: RecipientSpendRecord[];  // per-address spend tracking
-}
-```
-
-### PendingProposalRecord
-
-A proposal queued for execution or policy evaluation. Stored in
-`account.pendingQueue` (a `Vec`).
-
-```typescript
-interface PendingProposalRecord {
-  proposalId: BN;
-  proposalDigest: string;
-  policyGraphName: string;
-  policyOutputDigest: string;
-  policyOutputCiphertextAccount: string | null;
-  policyOutputFheType: number | null;
-  targetChain: number;
-  txType: number;
-  amountUsd: BN;
-  recipientOrContract: string;
-  protocolId: number | null;
-  submittedAt: BN;
-  expiresAt: BN;
-  lastUpdatedAt: BN;
-  executionAttempts: number;
-  status: number;            // 0=Pending, 1=Approved, 2=Denied, 3=Cancelled, 4=Expired
-  decision: PolicyDecisionRecord;
-  riskScore: number;
-  requiredApprovalLevel: number;
-  satisfiedApprovalLevel: number;
-  earliestExecutionAt: BN;
-  requiresGuardianCosign: boolean;
-  policyVersion: number;
-}
-```
-
-```typescript
-const account = await client.getTreasuryAccount(treasury);
-
-// Most recent pending proposal (queue is ordered by submission time)
-const pending = account.pendingQueue[account.pendingQueue.length - 1];
-if (pending) {
-  console.log('Proposal ID:', pending.proposalId.toString());
-  console.log('Amount USD:', pending.amountUsd.toString());
-  console.log('Expires:', new Date(pending.expiresAt.toNumber() * 1000));
-  console.log('Status:', pending.status);
-}
-```
-
-### DWalletRecord
-
-A registered dWallet reference on the treasury.
-
-```typescript
-interface DWalletRecord {
-  chain: number;
-  dwalletId: string;
-  address: string;
-  balanceUsd: BN;
-  balanceUpdatedAt: BN;
-  balanceOracle: PublicKey | null;
-  dwalletAccount: PublicKey | null;
-  authorizedUserPubkey: PublicKey | null;
-  messageMetadataDigest: string | null;
-  publicKeyHex: string | null;
-  curve: number;
-  signatureScheme: number;
-}
-```
-
-### MultisigConfigRecord
-
-Emergency guardian multisig configuration, when set.
-
-```typescript
-interface MultisigConfigRecord {
-  requiredSignatures: number;
-  guardians: PublicKey[];
-  pendingOverride: PendingOverrideRecord | null;
-  pendingGuardianChange: PendingGuardianChangeRecord | null;
-}
-```
-
-### SwarmConfigRecord
-
-Shared agent swarm configuration, when set.
-
-```typescript
-interface SwarmConfigRecord {
-  swarmId: string;
-  memberAgents: string[];
-  sharedPoolLimitUsd: BN;
-  totalSwarmSpentUsd: BN;
-}
-```
-
----
-
-## Working with BN Values
-
-All on-chain numeric fields use `BN` from `bn.js`. Use `.toString()` for
-display and `.toNumber()` only for values you know fit in a JS number.
-
-```typescript
-const daily = account.policyConfig.dailyLimitUsd;
-
-console.log(daily.toString());   // "10000"
-console.log(daily.toNumber());   // 10000
-
-// Arithmetic stays in BN
-const remaining = daily.sub(account.policyState.spentTodayUsd);
-console.log('Remaining:', remaining.toString());
-```
-
-## A note on account type definitions
-
-All account types (`TreasuryAccountRecord`, `PolicyConfigRecord`, etc.) are IDL-derived via `IdlAccounts<AuraCore>` and `IdlTypes<AuraCore>`. The interfaces shown on this page are accurate approximations based on the current IDL, but the canonical source of truth is the generated `packages/sdk-ts/src/generated/aura_core.ts`. If a field type looks wrong at runtime, check the generated types directly.
-
 <Cards>
-  <Card title="PDA Derivation" description="Derive treasury and authority addresses." href="/sdk-ts/client/pda" />
-  <Card title="Validation" description="Check inputs before sending." href="/sdk-ts/client/validation" />
-  <Card title="Errors" description="Handle account-not-found and decode errors." href="/sdk-ts/client/errors" />
+  <Card title="PDA Derivation" description="Every derive helper and its seed layout." href="/sdk-ts/client/pda" />
+  <Card title="Instructions" description="Build the instructions that create these accounts." href="/sdk-ts/instructions" />
 </Cards>

@@ -1,0 +1,289 @@
+---
+title: dWallet
+description: dWallet state, balances, oracle feeds, and spend reservations.
+icon: Wallet
+---
+
+The dWallet domain manages AURA's per-chain dWallet runtime state. Access it via
+`instructions.dwallet.*`. Most instructions operate on the per-chain state PDA
+and assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const chain = 2; // Ethereum
+const [dwalletState] = pda.deriveDwalletStateAddress(treasury, chain);
+const dwAccounts = { owner: owner.publicKey, treasury, dwalletState };
+```
+
+## registerDwallet
+
+Registers a dWallet reference on a treasury (metadata only). Accounts: `owner`
+(s), `treasury` (w).
+
+```typescript
+await instructions.dwallet.sendRegisterDwallet(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    chain,
+    dwalletId: "dwallet-eth-1",
+    address: "0x000000000000000000000000000000000000dead",
+    balanceUsd: new BN(5_000),
+    dwalletAccount: null,
+    authorizedUserPubkey: null,
+    messageMetadataDigest: null,
+    publicKeyHex: null,
+    timestamp: now(),
+  },
+});
+```
+
+## initDwalletState
+
+Creates the per-chain runtime state PDA. Accounts: `owner` (s, w), `treasury`,
+`dwalletState` (w), `systemProgram`.
+
+```typescript
+await instructions.dwallet.sendInitDwalletState(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, dwalletState, systemProgram: SystemProgram.programId },
+  args: { chain, now: now() },
+});
+```
+
+## setDwalletStatus
+
+Sets the status code (e.g. active/frozen). Accounts: `owner` (s), `treasury`
+(w), `dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendSetDwalletStatus(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, statusCode: 1, now: now() },
+});
+```
+
+## setDwalletLimits
+
+Sets per-chain daily/per-tx limits (both optional). Accounts: `owner` (s),
+`treasury` (w), `dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendSetDwalletLimits(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, dailyLimitUsd: new BN(2_000), perTxLimitUsd: new BN(500), now: now() },
+});
+```
+
+## setDwalletLabel
+
+Sets a human label (optional). Accounts: `owner` (s), `treasury` (w),
+`dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendSetDwalletLabel(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, label: "treasury-eth", now: now() },
+});
+```
+
+## setDefaultChain
+
+Sets the treasury's default chain (optional). Accounts: `owner` (s), `treasury`
+(w).
+
+```typescript
+await instructions.dwallet.sendSetDefaultChain(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { chain, now: now() },
+});
+```
+
+## removeDwallet
+
+Removes a dWallet and closes its state. Accounts: `owner` (s, w), `treasury`
+(w), `dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendRemoveDwallet(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, now: now() },
+});
+```
+
+## rotateDwalletAuthority
+
+Rotates the dWallet's authority and CPI authority seed. Accounts: `owner` (s),
+`treasury` (w), `dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendRotateDwalletAuthority(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, newAuthority: nextAuthority.publicKey, newCpiAuthoritySeed: "rotated", now: now() },
+});
+```
+
+## recordDeposit
+
+Records an asset deposit. Accounts: `owner` (s), `treasury` (w), `dwalletState`
+(w).
+
+```typescript
+await instructions.dwallet.sendRecordDeposit(client, owner, {
+  accounts: dwAccounts,
+  args: {
+    chain,
+    assetId: "USDC",
+    symbol: "USDC",
+    decimals: 6,
+    nativeAmount: new BN("1000000"),
+    usdValue: new BN(1),
+    now: now(),
+  },
+});
+```
+
+## refreshAssetBalance
+
+Refreshes a tracked asset balance, optionally with a price feed. Accounts:
+`owner` (s), `treasury` (w), `dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendRefreshAssetBalance(client, owner, {
+  accounts: dwAccounts,
+  args: {
+    chain,
+    assetId: "USDC",
+    symbol: "USDC",
+    decimals: 6,
+    nativeAmount: new BN("1000000"),
+    usdValue: new BN(1),
+    feed: null,
+    now: now(),
+  },
+});
+```
+
+## refreshVerifiedAssetBalance
+
+Refreshes a balance verified against a price feed. Accounts: `authority` (s),
+`treasury` (w), `dwalletState` (w), `priceFeed`.
+
+```typescript
+await instructions.dwallet.sendRefreshVerifiedAssetBalance(client, authority, {
+  accounts: { authority: authority.publicKey, treasury, dwalletState, priceFeed },
+  args: {
+    chain,
+    assetId: "USDC",
+    symbol: "USDC",
+    decimals: 6,
+    nativeAmount: new BN("1000000"),
+    provider: 0,
+    programId: null,
+    maxStalenessSecs: new BN(300),
+    maxConfidenceBps: 100,
+    expoExpected: null,
+    now: now(),
+  },
+});
+```
+
+## refreshDwalletBalance
+
+Refreshes from a balance oracle (keeper-callable; no owner signer). Accounts:
+`treasury` (w), `balanceOracle`. Pass any fee payer as the signer.
+
+```typescript
+await instructions.dwallet.sendRefreshDwalletBalance(client, payer, {
+  accounts: { treasury, balanceOracle },
+  args: { chainCode: chain, now: now() },
+});
+```
+
+## reconcileDwalletBalance
+
+Reconciles recorded vs actual balance. Accounts: `owner` (s), `treasury` (w),
+`dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendReconcileDwalletBalance(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, now: now() },
+});
+```
+
+## setAssetFeed
+
+Sets an asset's price feed (optional). Accounts: `owner` (s), `treasury` (w),
+`dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendSetAssetFeed(client, owner, {
+  accounts: dwAccounts,
+  args: { chain, assetId: "USDC", feed: null, now: now() },
+});
+```
+
+## setAssetOracleFeed
+
+Configures an oracle feed for an asset. Accounts: `owner` (s), `treasury` (w),
+`dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendSetAssetOracleFeed(client, owner, {
+  accounts: dwAccounts,
+  args: {
+    chain,
+    args: {
+      assetId: "USDC",
+      provider: 0,
+      feed: null,
+      programId: null,
+      maxStalenessSecs: new BN(300),
+      maxConfidenceBps: 100,
+      expoExpected: null,
+      now: now(),
+    },
+  },
+});
+```
+
+## reserveDwalletSpend
+
+Reserves spend headroom (signed by the dWallet `authority`). Accounts:
+`authority` (s), `treasury` (w), `dwalletState` (w).
+
+```typescript
+const spendAccounts = { authority: ai.publicKey, treasury, dwalletState };
+
+await instructions.dwallet.sendReserveDwalletSpend(client, ai, {
+  accounts: spendAccounts,
+  args: { chain, amountUsd: new BN(100), now: now() },
+});
+```
+
+## settleDwalletSpend
+
+Settles a reserved spend with the realized asset amount. Accounts: `authority`
+(s), `treasury` (w), `dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendSettleDwalletSpend(client, ai, {
+  accounts: spendAccounts,
+  args: { chain, amountUsd: new BN(100), assetId: "USDC", nativeAmount: new BN("100000000"), now: now() },
+});
+```
+
+## releaseDwalletSpend
+
+Releases an unused reservation. Accounts: `authority` (s), `treasury` (w),
+`dwalletState` (w).
+
+```typescript
+await instructions.dwallet.sendReleaseDwalletSpend(client, ai, {
+  accounts: spendAccounts,
+  args: { chain, amountUsd: new BN(100), now: now() },
+});
+```

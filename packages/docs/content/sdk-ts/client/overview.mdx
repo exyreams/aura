@@ -1,117 +1,117 @@
 ---
-title: Overview
-description: AuraClient constructor, properties, transaction sending, and dual-form instruction pattern.
-icon: LayoutList
+title: AuraClient
+description: The thin RPC + Anchor client — constructor, properties, and transaction sending.
+icon: Cpu
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-<Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
-</Callout>
-
-`AuraClient` is the low-level AURA SDK client. It gives you full control over
-every instruction parameter, supports composing multiple instructions into a
-single transaction, and exposes the complete 67-instruction surface.
-
-If you want sensible defaults and plain-number inputs, use the
-[Aura high-level API](/sdk-ts/aura) instead. Access it from a client
-instance via `aura.lowLevel`.
+`AuraClient` is a thin wrapper around a Solana `Connection` and the Anchor
+`Program`. It holds no per-instruction logic — instruction building lives in the
+[`instructions`](/sdk-ts/instructions) namespace and account reads in
+[`accounts`](/sdk-ts/client/accounts). The client's job is to provide the
+program, the coder, and a way to send transactions.
 
 ## Constructor
 
 ```typescript
-import { Connection } from '@solana/web3.js';
-import { AuraClient, AURA_PROGRAM_ID } from '@aura-protocol/sdk-ts';
+import { Connection } from "@solana/web3.js";
+import { AuraClient, AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
 
-const connection = new Connection(
-  'https://devnet.helius-rpc.com/?api-key=YOUR_KEY',
-  'confirmed',
-);
+// Defaults to the devnet AURA program id.
+const client = new AuraClient({
+  connection: new Connection("https://api.devnet.solana.com", "confirmed"),
+});
 
-// Default — targets devnet AURA_PROGRAM_ID
-const client = new AuraClient({ connection });
-
-// Custom program ID (e.g. localnet)
+// Override the program id (e.g. localnet) and confirm options.
 const localClient = new AuraClient({
-  connection: new Connection('http://localhost:8899', 'confirmed'),
+  connection: new Connection("http://localhost:8899", "confirmed"),
   programId: myLocalProgramId,
+  confirmOptions: { commitment: "confirmed", skipPreflight: false },
 });
 ```
 
 `AuraClientOptions`:
 
 | Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `connection` | `Connection` | ✓ | Solana RPC connection |
-| `programId` | `PublicKey` | — | Override program ID (defaults to devnet `AURA_PROGRAM_ID`) |
-| `confirmOptions` | `ConfirmOptions` | — | Anchor confirm options |
+| --- | --- | --- | --- |
+| `connection` | `Connection` | ✓ | Solana RPC connection. |
+| `programId` | `PublicKey` | — | Program id override. Defaults to `AURA_PROGRAM_ID`. |
+| `confirmOptions` | `ConfirmOptions` | — | Anchor confirm options. |
 
 ## Properties
 
 | Property | Type | Description |
-|----------|------|-------------|
-| `connection` | `Connection` | Underlying Solana RPC connection |
-| `programId` | `PublicKey` | AURA program ID in use |
-| `confirmOptions` | `ConfirmOptions` | Anchor confirm options |
-| `provider` | `AnchorProvider` | Read-only Anchor provider (never used to sign) |
-| `program` | `Program<AuraCore>` | Anchor program instance for building typed instructions |
-| `coder` | `BorshInstructionCoder` | Borsh coder for decoding raw instruction data |
+| --- | --- | --- |
+| `connection` | `Connection` | The underlying RPC connection. |
+| `programId` | `PublicKey` | The program id in use. |
+| `confirmOptions` | `ConfirmOptions` | Resolved confirm options. |
+| `provider` | `AnchorProvider` | Read-only provider. Its wallet **cannot sign** — it throws if asked. |
+| `program` | `Program<AuraCore>` | Anchor program used by every instruction builder. |
+| `coder` | `BorshInstructionCoder` | Decodes raw instruction data (see below). |
 
-## Dual-Form Instructions
+<Callout type="info" title="The provider never signs">
+  The client builds a read-only provider so it can never accidentally sign with
+  an unexpected key. You always pass an explicit `Signer` to `sendInstructions`
+  and to every `send*` helper.
+</Callout>
 
-Every instruction on `AuraClient` is available in two forms:
+## Sending transactions
 
-**`*Instruction()` — returns a `TransactionInstruction`** for composing into
-custom transactions, batching, or signing with external wallets.
-
-**Method without suffix — builds, signs, and sends** in one call, returning
-the transaction signature.
-
-```typescript
-// Form 1: instruction only — compose freely
-const { treasury, instruction } = await client.createTreasuryInstruction({
-  owner: owner.publicKey,
-  args,
-});
-const tx = new Transaction().add(instruction).add(anotherInstruction);
-
-// Form 2: build + send in one call
-const { treasury, signature } = await client.createTreasury(owner, args);
-console.log('Signature:', signature);
-```
-
-## sendInstructions
-
-Send one or more instructions in a single transaction. Returns the signature immediately — does not wait for confirmation.
+`sendInstructions` packs one or more instructions into a single transaction,
+signs with the payer (plus any extra signers), and sends it. It returns the
+signature immediately — it does **not** wait for confirmation, so await
+confirmation yourself if you need to read state right after.
 
 ```typescript
+import BN from "bn.js";
+import { instructions } from "@aura-protocol/sdk-ts";
+
 const now = new BN(Math.floor(Date.now() / 1000));
 
-const pauseIx = await client.pauseExecutionInstruction(
-  { owner: owner.publicKey, treasury },
-  true,
-  now,
-);
-const cancelIx = await client.cancelPendingInstruction(
-  { owner: owner.publicKey, treasury },
-  now,
-);
+// Compose multiple instructions into one transaction.
+const pauseIx = await instructions.execution.pauseExecution(client, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { paused: true, now },
+});
+const cancelIx = await instructions.execution.cancelPending(client, {
+  accounts: { owner: owner.publicKey, treasury, dwalletState: null },
+  args: { now },
+});
 
 const signature = await client.sendInstructions(owner, [pauseIx, cancelIx]);
-console.log('Batched tx:', signature);
 ```
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
-| `payer` | `Signer` | Fee payer and primary signer |
-| `instructions` | `TransactionInstruction[]` | Instructions to include |
-| `extraSigners` | `Signer[]` | Additional signers (optional) |
-| `options` | `SendOptions` | Send options e.g. `skipPreflight` (optional) |
+| --- | --- | --- |
+| `payer` | `Signer` | Fee payer and primary signer. |
+| `instructions` | `TransactionInstruction[]` | Instructions to include. |
+| `extraSigners` | `Signer[]` | Additional signers (optional). |
+| `options` | `SendOptions` | e.g. `{ skipPreflight: true }` (optional). |
+
+`sendInstruction(payer, instruction, extraSigners?, options?)` is the
+single-instruction convenience form.
+
+<Callout type="warn" title="Confirm before reading state">
+  `sendInstructions` returns before the validator processes the transaction. To
+  assert on-chain state immediately afterwards, confirm against the blockhash
+  (see the [Examples](/sdk-ts/examples) page) or fetch with a short retry.
+</Callout>
+
+## Decoding instruction data
+
+The Borsh coder decodes raw instruction data back into a name + arguments —
+useful for inspecting transactions or building explorers.
+
+```typescript
+const ix = await instructions.treasury.createTreasury(client, input);
+const decoded = client.coder.decode(ix.data);
+console.log(decoded?.name); // "create_treasury"
+```
 
 <Cards>
-  <Card title="Accounts & Fetching" description="getTreasuryAccount, getTreasuryForOwner, and account types." href="/sdk-ts/client/accounts" />
-  <Card title="PDA Derivation" description="Derive treasury and authority addresses." href="/sdk-ts/client/pda" />
-  <Card title="Program API" description="All 67 instruction methods by domain." href="/sdk-ts/instructions" />
+  <Card title="Accounts" description="Fetch and decode on-chain account state." href="/sdk-ts/client/accounts" />
+  <Card title="Instructions" description="Build every instruction by domain." href="/sdk-ts/instructions" />
+  <Card title="Errors" description="Parse Anchor errors into typed AURA codes." href="/sdk-ts/client/errors" />
 </Cards>

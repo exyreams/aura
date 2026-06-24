@@ -1,0 +1,220 @@
+---
+title: Confidential
+description: Encrypted guardrails, FHE proposals, and the policy decryption flow.
+icon: Lock
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The confidential domain stores spending guardrails as FHE ciphertexts and
+evaluates policy over the encrypted values through the Ika **Encrypt** network.
+Access it via `instructions.confidential.*`.
+
+<Callout type="warn" title="Requires the Ika Encrypt network">
+  Every instruction here except `disable`/`close` takes ciphertext accounts and
+  the Encrypt CPI accounts. Derive the AURA-side authority with
+  `deriveEncryptCpiAuthorityAddress()` and the event authority with
+  `deriveEncryptEventAuthorityAddress(encryptProgramId)`. These flows are
+  covered by the Rust smoke tests in `smoke/aura-devnet/`.
+</Callout>
+
+Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const [guardrails] = pda.deriveConfidentialGuardrailsAddress(treasury);
+
+// Encrypt CPI accounts (from the Ika Encrypt deployment + your ciphertexts).
+const encryptCpi = {
+  encryptProgram,
+  config,
+  deposit,
+  callerProgram,
+  cpiAuthority,
+  networkEncryptionKey,
+  eventAuthority,
+};
+```
+
+## initConfidentialGuardrails
+
+Creates the encrypted guardrails account for an epoch. Accounts: `owner` (s, w),
+`treasury`, `guardrails` (w), the three limit ciphertexts, `systemProgram`.
+
+```typescript
+await instructions.confidential.sendInitConfidentialGuardrails(client, owner, {
+  accounts: {
+    owner: owner.publicKey,
+    treasury,
+    guardrails,
+    dailyLimitCiphertext,
+    perTxLimitCiphertext,
+    spentTodayCiphertext,
+    systemProgram: SystemProgram.programId,
+  },
+  args: { epochId: new BN(1), now: now() },
+});
+```
+
+## configureConfidentialGuardrails
+
+Sets the encrypted daily/per-tx limits. Accounts: `owner` (s), `treasury` (w),
+`dailyLimitCiphertext`, `perTxLimitCiphertext`, `spentTodayCiphertext` (w).
+
+```typescript
+await instructions.confidential.sendConfigureConfidentialGuardrails(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, dailyLimitCiphertext, perTxLimitCiphertext, spentTodayCiphertext },
+  args: { now: now() },
+});
+```
+
+## updateConfidentialGuardrails
+
+Updates limit ciphertexts. Accounts: `owner` (s, w), `treasury` (w),
+`guardrails` (w), plus the full set of **optional** limit/spend ciphertexts —
+pass only the ones you're changing and `null` for the rest.
+
+```typescript
+await instructions.confidential.sendUpdateConfidentialGuardrails(client, owner, {
+  accounts: {
+    owner: owner.publicKey,
+    treasury,
+    guardrails,
+    dailyLimitCiphertext,
+    perTxLimitCiphertext: null,
+    velocityLimitCiphertext: null,
+    hourlyLimitCiphertext: null,
+    weeklyLimitCiphertext: null,
+    spentTodayCiphertext: null,
+    weeklySpentCiphertext: null,
+    hourlySpentCiphertext: null,
+    velocityWindowCiphertext: null,
+  },
+  args: { now: now() },
+});
+```
+
+## rotateConfidentialGuardrails
+
+Rotates to a new encryption epoch (same optional-ciphertext account set as
+`update`). Accounts: `owner` (s, w), `treasury` (w), `guardrails` (w), optional
+ciphertexts.
+
+```typescript
+await instructions.confidential.sendRotateConfidentialGuardrails(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, guardrails, /* …optional ciphertexts: null */ },
+  args: { newEpochId: new BN(2), now: now() },
+});
+```
+
+## resetConfidentialCounters
+
+Resets the encrypted spend counters (same optional-ciphertext account set).
+Accounts: `owner` (s, w), `treasury` (w), `guardrails` (w), optional ciphertexts.
+
+```typescript
+await instructions.confidential.sendResetConfidentialCounters(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, guardrails, /* …optional ciphertexts: null */ },
+  args: { now: now() },
+});
+```
+
+## disableConfidentialGuardrails
+
+Disables confidential guardrails while keeping the account. Accounts: `owner`
+(s, w), `treasury` (w), `guardrails` (w). No Encrypt CPI.
+
+```typescript
+await instructions.confidential.sendDisableConfidentialGuardrails(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, guardrails },
+  args: { now: now() },
+});
+```
+
+## closeConfidentialGuardrails
+
+Closes the guardrails account and reclaims rent. Accounts: `owner` (s, w),
+`treasury`, `guardrails` (w). No arguments, no Encrypt CPI.
+
+```typescript
+await instructions.confidential.sendCloseConfidentialGuardrails(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, guardrails },
+});
+```
+
+## proposeConfidentialTransaction
+
+Proposes a spend evaluated against encrypted limits via the Encrypt CPI,
+producing an encrypted policy-output ciphertext. Accounts: `aiAuthority` (s),
+`treasury` (w), the limit/amount/output ciphertexts, the Encrypt CPI accounts,
+and optional sidecars.
+
+```typescript
+await instructions.confidential.sendProposeConfidentialTransaction(client, ai, {
+  accounts: {
+    aiAuthority: ai.publicKey,
+    treasury,
+    dailyLimitCiphertext,
+    perTxLimitCiphertext,
+    spentTodayCiphertext,
+    amountCiphertext,
+    policyOutputCiphertext,
+    ...encryptCpi,
+    externalLiveness: null,
+    weeklyLimitCiphertext: null,
+    weeklySpentCiphertext: null,
+    confidentialGuardrails: null,
+    systemProgram: SystemProgram.programId,
+  },
+  args: {
+    amountUsd: new BN(100),
+    targetChain: 2,
+    txType: 0,
+    protocolId: null,
+    currentTimestamp: now(),
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: null,
+    recipientOrContract: "0x000000000000000000000000000000000000dead",
+  },
+});
+```
+
+## requestPolicyDecryption
+
+Requests decryption of an encrypted policy result. Accounts: `operator` (s),
+`treasury` (w), `requestAccount` (w), `ciphertext`, the Encrypt CPI accounts,
+`confidentialGuardrails?`, `systemProgram`.
+
+```typescript
+await instructions.confidential.sendRequestPolicyDecryption(client, operator, {
+  accounts: {
+    operator: operator.publicKey,
+    treasury,
+    requestAccount,
+    ciphertext,
+    ...encryptCpi,
+    confidentialGuardrails: null,
+    systemProgram: SystemProgram.programId,
+  },
+  args: { now: now(), currentEpochId: new BN(1) },
+});
+```
+
+## confirmPolicyDecryption
+
+Confirms a completed decryption once the network returns the plaintext.
+Accounts: `operator` (s), `treasury` (w), `requestAccount`,
+`confidentialGuardrails?`.
+
+```typescript
+await instructions.confidential.sendConfirmPolicyDecryption(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, requestAccount, confidentialGuardrails: null },
+  args: { now: now(), currentEpochId: new BN(1) },
+});
+```

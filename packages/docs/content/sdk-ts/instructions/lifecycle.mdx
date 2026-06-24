@@ -1,0 +1,395 @@
+---
+title: Lifecycle & Roles
+description: Agent identity, operator roles, session keys, agent state, chain and protocol config.
+icon: GitBranch
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The lifecycle domain manages agent identity and capabilities, ownership
+handover, operator roles, session keys, agent-state transitions, and the global
+chain/protocol configuration. Access it via `instructions.lifecycle.*`.
+Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const [trustIdentity] = pda.deriveTrustIdentityAddress(treasury);
+```
+
+## registerAgent
+
+Registers an agent identity with allowed chains/tx-types. Accounts: `owner`
+(s), `treasury`, `trustIdentity` (w). `allowedChains`/`allowedTxTypes` are byte
+arrays.
+
+```typescript
+await instructions.lifecycle.sendRegisterAgent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: {
+    key: agent.publicKey,
+    label: "trading-agent",
+    allowedChains: Buffer.from([2]),
+    allowedTxTypes: Buffer.from([0]),
+    dailyLimitUsd: new BN(5_000),
+    now: now(),
+  },
+});
+```
+
+## revokeAgent
+
+Revokes an agent. Accounts: `owner` (s), `treasury`, `trustIdentity` (w).
+
+```typescript
+await instructions.lifecycle.sendRevokeAgent(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: { key: agent.publicKey, now: now() },
+});
+```
+
+## emergencyRevokeAgent
+
+Emergency-revokes an agent (callable by an authorized caller). Accounts:
+`caller` (s), `treasury`, `trustIdentity` (w).
+
+```typescript
+await instructions.lifecycle.sendEmergencyRevokeAgent(client, caller, {
+  accounts: { caller: caller.publicKey, treasury, trustIdentity },
+  args: { key: agent.publicKey, now: now() },
+});
+```
+
+## setAgentCapability
+
+Sets fine-grained capabilities for an agent. Accounts: `owner` (s), `treasury`,
+`trustIdentity` (w).
+
+```typescript
+await instructions.lifecycle.sendSetAgentCapability(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: {
+    key: agent.publicKey,
+    allowedChains: Buffer.from([2]),
+    allowedTxTypes: Buffer.from([0]),
+    dailyLimitUsd: new BN(5_000),
+    allowedProtocols: new BN(31),
+    allowedInstructions: 0xffff,
+    perTxLimitUsd: new BN(1_000),
+    recipientList: null,
+    allowedAssets: null,
+    activeWindowStart: null,
+    activeWindowEnd: null,
+    now: now(),
+  },
+});
+```
+
+## armCapabilityLoosen
+
+Arms a delayed capability-loosening for an agent. Accounts: `owner` (s),
+`treasury`, `trustIdentity` (w).
+
+```typescript
+await instructions.lifecycle.sendArmCapabilityLoosen(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: { key: agent.publicKey, now: now() },
+});
+```
+
+## setAgentTripwires
+
+Configures the tripwire weights that throttle an agent's trust. Accounts:
+`owner` (s), `treasury`, `trustIdentity` (w).
+
+```typescript
+await instructions.lifecycle.sendSetAgentTripwires(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, trustIdentity },
+  args: {
+    policyDenialWeight: 10,
+    anomalyWeight: 20,
+    failOpenAbuseWeight: 30,
+    approvalMissWeight: 5,
+    now: now(),
+  },
+});
+```
+
+## nominateSuccessorOwner
+
+Nominates a successor owner (first step of handover). Accounts: `caller` (s),
+`treasury` (w), `trustIdentity` (w).
+
+```typescript
+await instructions.lifecycle.sendNominateSuccessorOwner(client, owner, {
+  accounts: { caller: owner.publicKey, treasury, trustIdentity },
+  args: { newOwner: successor.publicKey, now: now() },
+});
+```
+
+## executeOwnershipHandover
+
+Executes ownership handover (dWallet CPI). Accounts: `caller` (s), `treasury`
+(w), `trustIdentity` (w), `dwallet` (w), `callerProgram`, `cpiAuthority`,
+`dwalletProgram`.
+
+```typescript
+await instructions.lifecycle.sendExecuteOwnershipHandover(client, successor, {
+  accounts: { caller: successor.publicKey, treasury, trustIdentity, dwallet, callerProgram, cpiAuthority, dwalletProgram },
+  args: { chain: 2, finalize: true, now: now() },
+});
+```
+
+<Callout type="warn" title="Handover uses dWallet CPI">
+  `executeOwnershipHandover` co-signs through the Ika dWallet program — derive
+  the authorities with the
+  [dWallet PDA helpers](/sdk-ts/client/pda#external-cpi-authorities).
+</Callout>
+
+## grantOperatorRole
+
+Grants an operator role at `deriveOperatorRoleAddress(treasury, operator)`.
+Accounts: `owner` (s, w), `operator`, `treasury`, `operatorRole` (w),
+`systemProgram`.
+
+```typescript
+const [operatorRole] = pda.deriveOperatorRoleAddress(treasury, operator.publicKey);
+
+await instructions.lifecycle.sendGrantOperatorRole(client, owner, {
+  accounts: { owner: owner.publicKey, operator: operator.publicKey, treasury, operatorRole, systemProgram: SystemProgram.programId },
+  args: { permissionMask: new BN(0xff), expiresAt: new BN(0), now: now() },
+});
+```
+
+## updateOperatorRole
+
+Updates an operator role (optional fields). Accounts: `owner` (s), `treasury`,
+`operatorRole` (w).
+
+```typescript
+const [operatorRole] = pda.deriveOperatorRoleAddress(treasury, operator.publicKey);
+
+await instructions.lifecycle.sendUpdateOperatorRole(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, operatorRole },
+  args: { permissionMask: new BN(0x0f), expiresAt: null, now: now() },
+});
+```
+
+## revokeOperatorRole
+
+Revokes an operator role. Accounts: `owner` (s), `treasury`, `operatorRole` (w).
+
+```typescript
+const [operatorRole] = pda.deriveOperatorRoleAddress(treasury, operator.publicKey);
+
+await instructions.lifecycle.sendRevokeOperatorRole(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, operatorRole },
+  args: { now: now() },
+});
+```
+
+## issueSessionKey
+
+Issues a scoped session key at `deriveSessionKeyAddress(treasury, sessionKey)`.
+Accounts: `authority` (s, w), `treasury`, `sessionKeyAccount` (w),
+`systemProgram`.
+
+```typescript
+const [sessionKeyAccount] = pda.deriveSessionKeyAddress(treasury, sessionKey.publicKey);
+
+await instructions.lifecycle.sendIssueSessionKey(client, owner, {
+  accounts: { authority: owner.publicKey, treasury, sessionKeyAccount, systemProgram: SystemProgram.programId },
+  args: {
+    sessionKey: sessionKey.publicKey,
+    durationSecs: new BN(3_600),
+    maxAmountUsdPerTx: new BN(500),
+    maxDailySpendUsd: new BN(2_000),
+    allowedChains: Buffer.from([2]),
+    allowedTxTypes: Buffer.from([0]),
+    maxProposalCount: 100,
+    now: now(),
+  },
+});
+```
+
+## updateSessionKey
+
+Updates a session key. Each field is optional (`null` = leave unchanged).
+Accounts: `authority` (s), `treasury`, `sessionKeyAccount` (w).
+
+```typescript
+const [sessionKeyAccount] = pda.deriveSessionKeyAddress(treasury, sessionKey.publicKey);
+
+await instructions.lifecycle.sendUpdateSessionKey(client, owner, {
+  accounts: { authority: owner.publicKey, treasury, sessionKeyAccount },
+  args: {
+    extendDurationSecs: new BN(3_600),
+    maxAmountUsdPerTx: null,
+    maxDailySpendUsd: null,
+    allowedChains: null,
+    allowedTxTypes: null,
+    maxProposalCount: null,
+    now: now(),
+  },
+});
+```
+
+## revokeSessionKey
+
+Revokes a session key. Accounts: `authority` (s), `treasury`,
+`sessionKeyAccount` (w).
+
+```typescript
+const [sessionKeyAccount] = pda.deriveSessionKeyAddress(treasury, sessionKey.publicKey);
+
+await instructions.lifecycle.sendRevokeSessionKey(client, owner, {
+  accounts: { authority: owner.publicKey, treasury, sessionKeyAccount },
+  args: { now: now() },
+});
+```
+
+## closeSessionKey
+
+Closes a session-key account. Accounts: `authority` (s, w), `treasury`,
+`sessionKeyAccount` (w). No arguments.
+
+```typescript
+const [sessionKeyAccount] = pda.deriveSessionKeyAddress(treasury, sessionKey.publicKey);
+
+await instructions.lifecycle.sendCloseSessionKey(client, owner, {
+  accounts: { authority: owner.publicKey, treasury, sessionKeyAccount },
+});
+```
+
+## transitionAgentState
+
+Transitions the agent state machine (e.g. `1` = Active). Accounts: `owner` (s),
+`treasury` (w).
+
+```typescript
+await instructions.lifecycle.sendTransitionAgentState(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: { targetState: 1, now: now() },
+});
+```
+
+## triggerDeadMansSwitch
+
+Triggers the dead-man's switch — permissionless once due. Accounts: `treasury`
+(w). Pass any fee payer as the signer.
+
+```typescript
+await instructions.lifecycle.sendTriggerDeadMansSwitch(client, payer, {
+  accounts: { treasury },
+  args: { now: now() },
+});
+```
+
+## migrateTreasury
+
+Migrates a treasury to the current account layout. Accounts: `treasury` (w),
+`payer` (s, w), `systemProgram`. No arguments.
+
+```typescript
+await instructions.lifecycle.sendMigrateTreasury(client, payer, {
+  accounts: { treasury, payer: payer.publicKey, systemProgram: SystemProgram.programId },
+});
+```
+
+## registerChainProfile
+
+Registers a global per-chain profile (`deriveChainProfileAddress(chainCode)`;
+no treasury). Accounts: `authority` (s, w), `chainProfile` (w), `systemProgram`.
+
+```typescript
+const [chainProfile] = pda.deriveChainProfileAddress(2);
+
+await instructions.lifecycle.sendRegisterChainProfile(client, authority, {
+  accounts: { authority: authority.publicKey, chainProfile, systemProgram: SystemProgram.programId },
+  args: {
+    chainCode: 2,
+    enabled: true,
+    addressFormat: 0,
+    replayScheme: 0,
+    finalityModel: 0,
+    curve: 0,
+    signatureScheme: 0,
+    nativeGasAsset: "ETH",
+    evmChainId: new BN(1),
+    confirmationsRequired: 12,
+    now: now(),
+  },
+});
+```
+
+## updateChainProfile
+
+Updates a chain profile (same `ChainProfileArgs`). Accounts: `authority` (s),
+`chainProfile` (w).
+
+```typescript
+const [chainProfile] = pda.deriveChainProfileAddress(2);
+
+await instructions.lifecycle.sendUpdateChainProfile(client, authority, {
+  accounts: { authority: authority.publicKey, chainProfile },
+  args: { /* ChainProfileArgs — see registerChainProfile */ },
+});
+```
+
+## initProtocolConfig
+
+Initializes the global protocol-config singleton
+(`deriveProtocolConfigAddress()`). Accounts: `payer` (s, w), `protocolConfig`
+(w), `systemProgram`.
+
+```typescript
+const [protocolConfig] = pda.deriveProtocolConfigAddress();
+
+await instructions.lifecycle.sendInitProtocolConfig(client, payer, {
+  accounts: { payer: payer.publicKey, protocolConfig, systemProgram: SystemProgram.programId },
+  args: {
+    args: {
+      protocolAuthority: authority.publicKey,
+      protocolRecipient: recipient.publicKey,
+      protocolFeeBps: new BN(10),
+      creationFeeUsd: new BN(100),
+      minIntegratorBps: 0,
+      maxIntegratorBps: 1_000,
+      settlementAsset: 0,
+      enabled: true,
+    },
+    now: now(),
+  },
+});
+```
+
+## updateProtocolConfig
+
+Updates the protocol config (staged). Accounts: `authority` (s),
+`protocolConfig` (w).
+
+```typescript
+const [protocolConfig] = pda.deriveProtocolConfigAddress();
+
+await instructions.lifecycle.sendUpdateProtocolConfig(client, authority, {
+  accounts: { authority: authority.publicKey, protocolConfig },
+  args: { args: { /* ProtocolConfigArgs — see initProtocolConfig */ }, now: now() },
+});
+```
+
+## commitProtocolConfig
+
+Commits a staged protocol-config change. Accounts: `authority` (s),
+`protocolConfig` (w).
+
+```typescript
+const [protocolConfig] = pda.deriveProtocolConfigAddress();
+
+await instructions.lifecycle.sendCommitProtocolConfig(client, authority, {
+  accounts: { authority: authority.publicKey, protocolConfig },
+  args: { now: now() },
+});
+```

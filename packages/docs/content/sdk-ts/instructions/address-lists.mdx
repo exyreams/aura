@@ -1,0 +1,83 @@
+---
+title: Address Lists
+description: Recipient and contract allow/deny lists.
+icon: ListChecks
+---
+
+The address-lists domain manages per-treasury allow/deny lists evaluated during
+`proposeTransaction`. Access it via `instructions.addressLists.*`. The list PDA
+is `deriveAddressListAddress(treasury)`. Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+const [addressList] = pda.deriveAddressListAddress(treasury);
+```
+
+## initAddressList
+
+Creates an address list. `mode`: `0` = allow, `1` = deny. `chain` is the Ika
+chain code. Accounts: `owner` (s, w), `treasury`, `addressList` (w),
+`systemProgram`.
+
+```typescript
+await instructions.addressLists.sendInitAddressList(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, addressList, systemProgram: SystemProgram.programId },
+  args: { mode: 0, chain: 2, now: now() },
+});
+```
+
+## manageAddressList
+
+Replaces the list's addresses. Accounts: `operator` (s), `treasury`,
+`operatorRole?`, `addressList` (w).
+
+```typescript
+await instructions.addressLists.sendManageAddressList(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, operatorRole: null, addressList },
+  args: {
+    mode: 0,
+    chain: 2,
+    addresses: ["0x000000000000000000000000000000000000dead"],
+    now: now(),
+  },
+});
+```
+
+## updateAddressListEntry
+
+Adds (`add: true`) or removes (`add: false`) a single address. Accounts:
+`operator` (s), `treasury`, `operatorRole?`, `addressList` (w).
+
+```typescript
+await instructions.addressLists.sendUpdateAddressListEntry(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, operatorRole: null, addressList },
+  args: { address: "0x000000000000000000000000000000000000beef", add: true, now: now() },
+});
+```
+
+## clearAddressList
+
+Removes all addresses. Accounts: `operator` (s), `treasury`, `operatorRole?`,
+`addressList` (w).
+
+```typescript
+await instructions.addressLists.sendClearAddressList(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, operatorRole: null, addressList },
+  args: { now: now() },
+});
+```
+
+## closeAddressList
+
+Closes the list account and reclaims rent. Accounts: `owner` (s, w),
+`treasury`, `addressList` (w). No arguments.
+
+```typescript
+await instructions.addressLists.sendCloseAddressList(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, addressList },
+});
+```

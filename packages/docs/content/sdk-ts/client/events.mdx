@@ -1,212 +1,60 @@
 ---
 title: Events
-description: Parse and subscribe to on-chain AURA program events from transaction logs.
+description: Decode AURA program events from transaction logs.
 icon: Radio
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-<Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
-</Callout>
+The `events` namespace decodes the program's **4** events from transaction logs
+and exposes their 8-byte discriminators for low-level matching.
 
-AURA emits three typed Anchor events from its instruction handlers. The SDK
-exports typed event definitions, discriminator constants, and a helper for
-matching raw log bytes.
+| Event | Emitted when |
+| --- | --- |
+| `treasuryAuditEvent` | Any audited state change on a treasury. |
+| `proposalLifecycleEvent` | A proposal is created, approved, or resolved. |
+| `executionLifecycleEvent` | A proposal moves through signing/finalization. |
+| `policyReceiptWrittenEvent` | A policy receipt is committed. |
+
+## parseAuraEvents
+
+Decodes all AURA events from a list of program logs (e.g. from
+`getTransaction(...).meta.logMessages`).
+
+```typescript
+import { parseAuraEvents } from "@aura-protocol/sdk-ts";
+
+const tx = await client.connection.getTransaction(signature, {
+  maxSupportedTransactionVersion: 0,
+});
+const events = parseAuraEvents(client, tx?.meta?.logMessages ?? []);
+
+for (const event of events) {
+  console.log(event.name, event.data);
+}
+```
+
+Returns `[]` when there are no AURA events in the logs.
+
+## Discriminators
+
+`EventDiscriminator` (also exported as `EVENT_DISCRIMINATORS`) maps each event
+name to its 8-byte `Buffer`. Use `matchesEventDiscriminator` to test a raw
+buffer's prefix — useful when scanning CPI event data directly.
 
 ```typescript
 import {
-  AuraEvents,
-  TreasuryAuditEvent,
-  ProposalLifecycleEvent,
-  ExecutionLifecycleEvent,
   EventDiscriminator,
   matchesEventDiscriminator,
-} from '@aura-protocol/sdk-ts';
-```
+} from "@aura-protocol/sdk-ts";
 
-## Event Types
-
-All event types are IDL-derived via `AuraEvents`. The actual field shapes depend on the compiled IDL — do not hand-write these types. Use the exported aliases directly:
-
-```typescript
-import type {
-  AuraEvents,
-  TreasuryAuditEvent,
-  ProposalLifecycleEvent,
-  ExecutionLifecycleEvent,
-} from '@aura-protocol/sdk-ts';
-
-// Use these as type assertions when handling parsed events:
-// event.data as TreasuryAuditEvent
-// event.data as ProposalLifecycleEvent
-// event.data as ExecutionLifecycleEvent
-```
-
-### TreasuryAuditEvent
-
-Emitted once after every instruction that mutates treasury state. Clients and
-indexers subscribe to this event to build an off-chain audit trail.
-
-### ProposalLifecycleEvent
-
-Emitted after every proposal state change: propose, execute, deny, cancel,
-and expire. Allows clients to track proposal status without polling the account.
-
-### ExecutionLifecycleEvent
-
-Emitted after `finalize_execution` completes. Carries the full execution
-outcome including signature and decryption account references for off-chain
-verification.
-
-## Event Discriminators
-
-Eight-byte prefixes used to identify event type in raw transaction logs.
-
-```typescript
-import { EventDiscriminator } from '@aura-protocol/sdk-ts';
-
-// Buffers: [209, 27, 57, 147, 169, 125, 166, 58]
-EventDiscriminator.treasuryAuditEvent
-
-// Buffer: [198, 23, 28, 210, 232, 47, 7, 199]
-EventDiscriminator.proposalLifecycleEvent
-
-// Buffer: [170, 155, 187, 106, 242, 102, 71, 103]
-EventDiscriminator.executionLifecycleEvent
-```
-
-### `matchesEventDiscriminator`
-
-Check whether raw event data starts with a given discriminator:
-
-```typescript
-function matchesEventDiscriminator(data: Buffer, discriminator: Buffer): boolean
-```
-
-```typescript
-import { EventDiscriminator, matchesEventDiscriminator } from '@aura-protocol/sdk-ts';
-
-const data = Buffer.from(rawEventBytes);
-if (matchesEventDiscriminator(data, EventDiscriminator.proposalLifecycleEvent)) {
-  // decode as ProposalLifecycleEvent
-}
-```
-
-## Parsing Events from a Transaction
-
-Use Anchor's `EventParser` to decode events from a confirmed transaction's logs. `client.coder` is a `BorshInstructionCoder` (for instructions only) — event parsing requires `EventParser` from `@coral-xyz/anchor`:
-
-```typescript
-import { EventParser } from '@coral-xyz/anchor';
-import {
-  AuraClient,
-  AURA_IDL,
-  AURA_PROGRAM_ID,
-  type ProposalLifecycleEvent,
-  type TreasuryAuditEvent,
-  type ExecutionLifecycleEvent,
-} from '@aura-protocol/sdk-ts';
-import { Connection } from '@solana/web3.js';
-
-const client = new AuraClient({ connection });
-const parser = new EventParser(client.programId, client.program.coder);
-
-async function parseTransactionEvents(signature: string) {
-  const tx = await connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
-
-  if (!tx?.meta?.logMessages) return [];
-
-  const events: ReturnType<typeof parser.parseLogs> extends Iterable<infer E> ? E[] : never[] = [];
-  for (const event of parser.parseLogs(tx.meta.logMessages)) {
-    events.push(event);
-  }
-  return events;
-}
-
-const events = await parseTransactionEvents(txSignature);
-for (const event of events) {
-  switch (event.name) {
-    case 'proposalLifecycleEvent': {
-      const data = event.data as ProposalLifecycleEvent;
-      console.log('Proposal:', data.proposalId.toString());
-      console.log('Approved:', data.approved, 'Status:', data.status);
-      break;
-    }
-    case 'executionLifecycleEvent': {
-      const data = event.data as ExecutionLifecycleEvent;
-      console.log('Finalized proposal:', data.proposalId.toString());
-      break;
-    }
-    case 'treasuryAuditEvent': {
-      const data = event.data as TreasuryAuditEvent;
-      console.log(`Audit [${data.kind}]:`, data.detail);
-      break;
-    }
-  }
-}
-```
-
-## Subscribing to Program Logs (WebSocket)
-
-Subscribe to all AURA events in real time using the Solana WebSocket API:
-
-```typescript
-import { EventParser } from '@coral-xyz/anchor';
-import {
-  AuraClient,
-  AURA_PROGRAM_ID,
-  type ProposalLifecycleEvent,
-  type TreasuryAuditEvent,
-  type ExecutionLifecycleEvent,
-} from '@aura-protocol/sdk-ts';
-import { Connection } from '@solana/web3.js';
-
-const wsConnection = new Connection(
-  'wss://devnet.helius-rpc.com/?api-key=YOUR_KEY',
-  'confirmed',
+const isAudit = matchesEventDiscriminator(
+  data,
+  EventDiscriminator.treasuryAuditEvent,
 );
-const client = new AuraClient({ connection: wsConnection });
-const parser = new EventParser(client.programId, client.program.coder);
-
-const subscriptionId = wsConnection.onLogs(
-  AURA_PROGRAM_ID,
-  ({ logs, err }) => {
-    if (err) return;
-
-    for (const event of parser.parseLogs(logs)) {
-      switch (event.name) {
-        case 'treasuryAuditEvent': {
-          const data = event.data as TreasuryAuditEvent;
-          console.log(`[${data.kind}] ${data.treasury.toBase58()} — ${data.detail}`);
-          break;
-        }
-        case 'proposalLifecycleEvent': {
-          const data = event.data as ProposalLifecycleEvent;
-          console.log(`Proposal ${data.proposalId}: approved=${data.approved}`);
-          break;
-        }
-        case 'executionLifecycleEvent': {
-          const data = event.data as ExecutionLifecycleEvent;
-          console.log(`Execution finalized: proposal ${data.proposalId}`);
-          break;
-        }
-      }
-    }
-  },
-  'confirmed',
-);
-
-// Later: unsubscribe
-await wsConnection.removeOnLogsListener(subscriptionId);
 ```
 
-<Cards>
-  <Card title="Accounts & Fetching" description="Typed on-chain account records." href="/sdk-ts/client/accounts" />
-  <Card title="Errors" description="Error codes and handling patterns." href="/sdk-ts/client/errors" />
-  <Card title="Examples" description="End-to-end usage patterns including event handling." href="/sdk-ts/examples" />
-</Cards>
+<Callout type="info">
+  Event log parsing uses the Anchor `EventParser`. It expects well-formed
+  program-log sequences; pass the raw `logMessages` array straight through.
+</Callout>

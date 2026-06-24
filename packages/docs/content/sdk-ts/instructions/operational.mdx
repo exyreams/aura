@@ -1,0 +1,174 @@
+---
+title: Operational
+description: Scoped pauses, external liveness, health scores, snapshots, and activity logs.
+icon: Activity
+---
+
+The operational domain covers observability and safety surfaces. Access it via
+`instructions.operational.*`. Many refresh instructions accept an optional
+`operatorRole` (pass `null` to act as owner). Examples assume:
+
+```typescript
+import BN from "bn.js";
+import { SystemProgram } from "@solana/web3.js";
+import { instructions, pda } from "@aura-protocol/sdk-ts";
+
+const now = () => new BN(Math.floor(Date.now() / 1000));
+```
+
+## setScopedPause
+
+Pauses/resumes a specific scope (chain, tx type, recipient, protocol). Accounts:
+`operator` (s), `treasury` (w), `operatorRole?`.
+
+```typescript
+await instructions.operational.sendSetScopedPause(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, operatorRole: null },
+  args: {
+    scopeKind: 0,
+    chain: 2,
+    txType: null,
+    recipient: null,
+    protocolId: null,
+    paused: true,
+    expiresAt: null,
+    now: now(),
+  },
+});
+```
+
+## initExternalLiveness
+
+Creates the external-liveness record. Accounts: `owner` (s, w), `treasury`,
+`liveness` (w), `systemProgram`.
+
+```typescript
+const [liveness] = pda.deriveExternalLivenessAddress(treasury);
+
+await instructions.operational.sendInitExternalLiveness(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, liveness, systemProgram: SystemProgram.programId },
+  args: { maxStalenessSecs: new BN(300), now: now() },
+});
+```
+
+## refreshExternalLiveness
+
+Refreshes a liveness dependency. Accounts: `operator` (s), `treasury`,
+`operatorRole?`, `liveness` (w).
+
+```typescript
+const [liveness] = pda.deriveExternalLivenessAddress(treasury);
+
+await instructions.operational.sendRefreshExternalLiveness(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, operatorRole: null, liveness },
+  args: { dependency: 0, now: now() },
+});
+```
+
+## closeExternalLiveness
+
+Closes the liveness record. Accounts: `owner` (s, w), `treasury`, `liveness`
+(w). No arguments.
+
+```typescript
+const [liveness] = pda.deriveExternalLivenessAddress(treasury);
+
+await instructions.operational.sendCloseExternalLiveness(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, liveness },
+});
+```
+
+## initHealthScore
+
+Creates the health-score account. Accounts: `owner` (s, w), `treasury`,
+`healthScore` (w), `systemProgram`.
+
+```typescript
+const [healthScore] = pda.deriveHealthScoreAddress(treasury);
+
+await instructions.operational.sendInitHealthScore(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, healthScore, systemProgram: SystemProgram.programId },
+  args: { now: now() },
+});
+```
+
+## refreshHealthScore
+
+Recomputes the health score. Accounts: `operator` (s), `treasury`,
+`operatorRole?`, `healthScore` (w).
+
+```typescript
+const [healthScore] = pda.deriveHealthScoreAddress(treasury);
+
+await instructions.operational.sendRefreshHealthScore(client, operator, {
+  accounts: { operator: operator.publicKey, treasury, operatorRole: null, healthScore },
+  args: { now: now() },
+});
+```
+
+## closeHealthScore
+
+Closes the health-score account. Accounts: `owner` (s, w), `treasury`,
+`healthScore` (w). No arguments.
+
+```typescript
+const [healthScore] = pda.deriveHealthScoreAddress(treasury);
+
+await instructions.operational.sendCloseHealthScore(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, healthScore },
+});
+```
+
+## takeSnapshot
+
+Takes a periodic snapshot (indexed by a `u32`). Accounts: `payer` (s, w),
+`treasury` (w), `operatorRole?`, `healthScore`, `snapshot` (w), `systemProgram`.
+
+```typescript
+const [healthScore] = pda.deriveHealthScoreAddress(treasury);
+const [snapshot] = pda.deriveSnapshotAddress(treasury, 0);
+
+await instructions.operational.sendTakeSnapshot(client, payer, {
+  accounts: { payer: payer.publicKey, treasury, operatorRole: null, healthScore, snapshot, systemProgram: SystemProgram.programId },
+  args: { snapshotIndex: 0, now: now() },
+});
+```
+
+## closeSnapshot
+
+Closes a snapshot account. Accounts: `owner` (s, w), `treasury`, `snapshot`
+(w). No arguments.
+
+```typescript
+const [snapshot] = pda.deriveSnapshotAddress(treasury, 0);
+
+await instructions.operational.sendCloseSnapshot(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, snapshot },
+});
+```
+
+## initActivityLog
+
+Creates the activity-log ring buffer. Accounts: `owner` (s, w), `treasury`,
+`activityLog` (w), `systemProgram`. No arguments.
+
+```typescript
+const [activityLog] = pda.deriveActivityLogAddress(treasury);
+
+await instructions.operational.sendInitActivityLog(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, activityLog, systemProgram: SystemProgram.programId },
+});
+```
+
+## closeActivityLog
+
+Closes the activity log. Accounts: `owner` (s, w), `treasury`, `activityLog`
+(w). No arguments.
+
+```typescript
+const [activityLog] = pda.deriveActivityLogAddress(treasury);
+
+await instructions.operational.sendCloseActivityLog(client, owner, {
+  accounts: { owner: owner.publicKey, treasury, activityLog },
+});
+```

@@ -1,6 +1,6 @@
 ---
 title: Overview
-description: All AURA program instructions grouped by domain.
+description: All 161 AURA instructions, grouped into 13 domains.
 icon: LayoutList
 ---
 
@@ -8,55 +8,65 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 <Callout type="warn" title="Pre-alpha — not production ready">
-  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without notice. Do not use for real funds until a stable release and audit are published.
+  `@aura-protocol/sdk-ts` targets Solana **devnet** only. APIs may change without
+  notice. Do not use for real funds until a stable release and audit are
+  published.
 </Callout>
 
-The TypeScript SDK mirrors the current AURA Anchor IDL and groups all 67
-instruction builders by domain. Every instruction is available in two forms —
-build-only (`*Instruction()`) and build-and-send.
-
-## Domains
-
-| Domain | Key methods | Page |
-| --- | --- | --- |
-| Treasury | `createTreasury`, `pauseExecution`, `cancelPending` | [Treasury](/sdk-ts/instructions/treasury) |
-| Confidential | `configureConfidentialGuardrails`, `proposeConfidentialTransaction`, `requestPolicyDecryption`, `confirmPolicyDecryption` | [Confidential](/sdk-ts/instructions/confidential) |
-| Execution | `proposeTransaction`, `approvePendingExecution`, `executePending`, `finalizeExecution`, `setScopedPause` | [Execution](/sdk-ts/instructions/execution) |
-| Governance | `configureMultisig`, `proposeAiRotation`, `executeConfigChange`, `vetoConfigChange`, `emergencyShutdown`, `proposeGuardianRotation`, `configureApprovalLadder` | [Governance](/sdk-ts/instructions/governance) |
-| Swarm | `configureSwarm`, `initSwarmPool`, `joinSwarm` | [Swarm](/sdk-ts/instructions/swarm) |
-| dWallet | `registerDwallet`, `refreshDwalletBalance` | [dWallet](/sdk-ts/instructions/dwallet) |
-| Policy | `simulatePolicy`, `writePolicyReceipt`, `attestPolicy`, `checkInvariants`, `checkPolicyCpi`, `applyPolicyPreset` | [Policy](/sdk-ts/instructions/policy) |
-| Budget | `configureBudgetEnvelope`, `initExposureGroup`, `joinExposureGroup`, `configureApprovalLadder` | [Budget](/sdk-ts/instructions/budget) |
-| Operations | `grantOperatorRole`, `revokeOperatorRole`, `initExternalLiveness`, `refreshExternalLiveness`, `configureLivenessGuardrails`, `initHealthScore`, `refreshHealthScore`, `takeSnapshot`, `initActivityLog`, `initPolicyHistory`, `recordPolicySnapshot` | [Operations](/sdk-ts/instructions/operations) |
-| Lifecycle | `issueSessionKey`, `revokeSessionKey`, `closeSessionKey`, `triggerDeadMansSwitch`, `transitionAgentState`, `migrateTreasury` | [Lifecycle](/sdk-ts/instructions/lifecycle) |
-| Fees | `initFeeVault`, `collectFees`, `closeFeeVault` | [Fees](/sdk-ts/instructions/fees) |
-| Address Lists | `initAddressList`, `manageAddressList`, `closeAddressList` | [Address Lists](/sdk-ts/instructions/address-lists) |
-| Batch | `proposeBatch` | [Batch](/sdk-ts/instructions/batch) |
-
-## Dual-Form Pattern
-
-Every instruction has two forms:
+The SDK exposes **161** instruction builders generated from the `aura-core`
+Anchor IDL, grouped into **13 domains**. Every builder is fully typed and
+follows the same [builder / send pattern](/sdk-ts/architecture#the-builder--send-pattern).
 
 ```typescript
-// Build only — compose into custom transactions
-const { instruction } = await client.emergencyShutdownInstruction(
-  { owner: owner.publicKey, treasury },
-  recoveryAuthority,
-  Math.floor(Date.now() / 1000),
-);
+import { instructions } from "@aura-protocol/sdk-ts";
 
-// Build + send in one call
-const signature = await client.emergencyShutdown(
+// Build a TransactionInstruction…
+const ix = await instructions.governance.configureMultisig(client, {
+  accounts: { owner: owner.publicKey, treasury },
+  args,
+});
+
+// …or build + sign + send in one call.
+const sig = await instructions.governance.sendConfigureMultisig(
+  client,
   owner,
-  { owner: owner.publicKey, treasury },
-  recoveryAuthority,
-  Math.floor(Date.now() / 1000),
+  { accounts: { owner: owner.publicKey, treasury }, args },
 );
 ```
 
-## Discovery
+## Domains
 
-Use the built-in catalog to enumerate all instructions at runtime:
+| Domain | Count | What it covers |
+| --- | --- | --- |
+| [Treasury](/sdk-ts/instructions/treasury) | 6 | Create/migrate treasuries, analytics, recipient limits. |
+| [Execution](/sdk-ts/instructions/execution) | 20 | Proposals, settlement, scheduled & conditional intents, pause. |
+| [Confidential](/sdk-ts/instructions/confidential) | 10 | Encrypted guardrails, FHE proposals, policy decryption. |
+| [Governance](/sdk-ts/instructions/governance) | 15 | Multisig, overrides, rotations, config changes, recovery. |
+| [dWallet](/sdk-ts/instructions/dwallet) | 18 | dWallet state, balances, oracle feeds, spend reservations. |
+| [Policy](/sdk-ts/instructions/policy) | 21 | Presets, templates, simulations, receipts, canaries, trust. |
+| [Budget](/sdk-ts/instructions/budget) | 9 | Budget envelopes, exposure groups, approval ladders, liveness. |
+| [Operational](/sdk-ts/instructions/operational) | 11 | Scoped pauses, liveness, health, snapshots, activity logs. |
+| [Lifecycle](/sdk-ts/instructions/lifecycle) | 23 | Agent identity, roles, session keys, chain & protocol config. |
+| [Swarm](/sdk-ts/instructions/swarm) | 6 | Shared agent pools and membership. |
+| [Fees](/sdk-ts/instructions/fees) | 15 | Fee schedules, vaults, billing templates, collection. |
+| [Address Lists](/sdk-ts/instructions/address-lists) | 5 | Recipient/contract allow & deny lists. |
+| [Batch](/sdk-ts/instructions/batch) | 2 | Batch policy simulation and proposals. |
+
+## Reading the per-domain tables
+
+Each domain page lists **every** instruction with its purpose, signer, and key
+arguments. Account columns use these markers:
+
+- **(s)** signer · **(w)** writable · **?** optional (pass `null` when unused)
+
+For the exact, machine-readable account set of any instruction, use the runtime
+[metadata helpers](/sdk-ts/client/metadata):
+
+```typescript
+instructions.listInstructionAccounts("propose_transaction");
+```
+
+## Discovery
 
 ```typescript
 import { AURA_FEATURE_DOMAINS } from "@aura-protocol/sdk-ts";
@@ -69,8 +79,8 @@ for (const domain of AURA_FEATURE_DOMAINS) {
 ```
 
 <Cards>
-  <Card title="Treasury" description="Create, pause, cancel, and configure swarms." href="/sdk-ts/instructions/treasury" />
-  <Card title="Proposals" description="Public and confidential transaction proposals." href="/sdk-ts/instructions/proposals" />
-  <Card title="Execution" description="Drive the full proposal → sign → finalize flow." href="/sdk-ts/instructions/execution" />
-  <Card title="Governance" description="Multisig overrides, rotations, and emergency shutdown." href="/sdk-ts/instructions/governance" />
+  <Card title="Treasury" description="Create and manage treasuries." href="/sdk-ts/instructions/treasury" />
+  <Card title="Execution" description="Proposals, settlement, scheduled intents." href="/sdk-ts/instructions/execution" />
+  <Card title="Confidential" description="Encrypted guardrails and FHE proposals." href="/sdk-ts/instructions/confidential" />
+  <Card title="Governance" description="Multisig, rotations, and recovery." href="/sdk-ts/instructions/governance" />
 </Cards>
