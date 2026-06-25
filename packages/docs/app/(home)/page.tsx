@@ -1,4 +1,6 @@
+import { Cpu } from "lucide-react";
 import Link from "next/link";
+import { CliLogo, RustLogo, TypeScriptLogo } from "@/components/logo";
 import { StreamingText } from "@/components/StreamingText";
 
 const features = [
@@ -108,7 +110,7 @@ const features = [
     ),
     title: "TypeScript SDK",
     description:
-      "67 typed instruction builders, PDA helpers, event parsing, and the high-level Aura facade with auto timestamps and plain-number inputs.",
+      "161 typed instruction builders, PDA helpers, event parsing, and the high-level Aura facade with auto timestamps and plain-number inputs.",
     href: "/sdk-ts",
   },
   {
@@ -137,14 +139,34 @@ const features = [
 ];
 
 const sdks = [
-  { label: "Program", href: "/program", desc: "aura-core reference" },
+  {
+    label: "Program",
+    href: "/program",
+    desc: "aura-core reference",
+    icon: <Cpu className="size-6" />,
+    colorMode: "lucide" as const,
+  },
   {
     label: "TypeScript SDK",
     href: "/sdk-ts",
     desc: "@aura-protocol/sdk-ts",
+    icon: <TypeScriptLogo size={24} />,
+    colorMode: "logo" as const,
   },
-  { label: "CLI", href: "/cli", desc: "@aura-protocol/cli" },
-  { label: "Rust SDK", href: "/sdk-rs", desc: "aura-sdk" },
+  {
+    label: "CLI",
+    href: "/cli",
+    desc: "@aura-protocol/cli",
+    icon: <CliLogo size={24} />,
+    colorMode: "themed" as const,
+  },
+  {
+    label: "Rust SDK",
+    href: "/sdk-rs",
+    desc: "aura-sdk",
+    icon: <RustLogo size={24} />,
+    colorMode: "logo" as const,
+  },
 ];
 
 export default function HomePage() {
@@ -298,13 +320,27 @@ export default function HomePage() {
                 href={sdk.href}
                 className="group bg-(--bg) p-8 hover:bg-(--card-bg) transition-colors flex flex-col justify-between min-h-[140px]"
               >
-                <div>
-                  <h3 className="font-semibold text-(--text-main) mb-1">
-                    {sdk.label}
-                  </h3>
-                  <p className="font-mono text-xs text-(--text-muted)">
-                    {sdk.desc}
-                  </p>
+                <div className="flex items-start gap-4">
+                  <div
+                    className={[
+                      "shrink-0 mt-0.5",
+                      sdk.colorMode === "logo"
+                        ? "grayscale opacity-60 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
+                        : sdk.colorMode === "lucide"
+                          ? "text-(--text-muted) transition-colors group-hover:text-(--primary)"
+                          : "opacity-60 transition-opacity duration-300 group-hover:opacity-100",
+                    ].join(" ")}
+                  >
+                    {sdk.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-(--text-main) mb-1">
+                      {sdk.label}
+                    </h3>
+                    <p className="font-mono text-xs text-(--text-muted)">
+                      {sdk.desc}
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-6 font-mono text-xs text-(--primary) uppercase tracking-widest flex items-center gap-1 group-hover:gap-2 transition-all">
                   View docs
