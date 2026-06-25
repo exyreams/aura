@@ -1,8 +1,11 @@
+import { instructions } from "@aura-protocol/sdk-ts";
 import { PublicKey } from "@solana/web3.js";
-import { type Command } from "commander";
+import BN from "bn.js";
+import type { Command } from "commander";
 
-import { buildCliContext } from "../context.js";
-import { emitJson, printSuccess, serializeInstruction, startSpinner } from "../output.js";
+import { buildCliContext } from "../core/context.js";
+import { CliError } from "../core/errors.js";
+import { runInstructions } from "../core/runner.js";
 import {
   buildConfigureMultisigArgs,
   buildConfigureSwarmArgs,
@@ -13,11 +16,26 @@ import {
 } from "./helpers.js";
 
 function parsePublicKeys(values: string[]): PublicKey[] {
-  return values.map((value) => new PublicKey(value));
+  return values.map((value) => {
+    try {
+      return new PublicKey(value);
+    } catch {
+      throw CliError.invalidInput(
+        "--guardians",
+        `base58 public key (got "${value}")`,
+      );
+    }
+  });
+}
+
+function nowSeconds(): BN {
+  return new BN(Math.floor(Date.now() / 1000));
 }
 
 export function registerGovernanceCommands(program: Command): void {
-  const governance = program.command("governance").description("Manage treasury governance settings");
+  const governance = program
+    .command("governance")
+    .description("Manage treasury governance settings");
 
   governance
     .command("multisig")
@@ -28,54 +46,51 @@ export function registerGovernanceCommands(program: Command): void {
     .option("--guardians <pk,pk,...>", "comma-separated guardian pubkeys")
     .action(async function governanceMultisig() {
       const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to configure multisig.");
+      const wallet = ctx.wallet;
+      if (!wallet) {
+        throw new CliError("A wallet is required to configure multisig.", {
+          code: "WALLET_REQUIRED",
+        });
       }
       const options = this.opts() as Record<string, unknown>;
       const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+        agentId:
+          typeof options.agentId === "string" ? options.agentId : undefined,
+        treasury:
+          typeof options.treasury === "string" ? options.treasury : undefined,
       });
 
       const guardiansInput = await promptString(
-        typeof options["guardians"] === "string" ? options["guardians"] : undefined,
+        typeof options.guardians === "string" ? options.guardians : undefined,
         "Guardian pubkeys (comma-separated)",
       );
       const guardians = parsePublicKeys(parseCsv(guardiansInput));
       const requiredSignatures = await promptNumber(
-        typeof options["required"] === "number" ? options["required"] : undefined,
+        typeof options.required === "number" ? options.required : undefined,
         "Required signatures",
       );
-      const args = buildConfigureMultisigArgs({ requiredSignatures, guardians });
+      const args = buildConfigureMultisigArgs({
+        requiredSignatures,
+        guardians,
+      });
 
-      if (ctx.dryRun) {
-        const instruction = await ctx.client.configureMultisigInstruction(
-          { owner: ctx.wallet.publicKey, treasury: treasuryState.treasury },
+      const instruction = await instructions.governance.configureMultisig(
+        ctx.client,
+        {
+          accounts: {
+            owner: wallet.publicKey,
+            treasury: treasuryState.treasury,
+          },
           args,
-        );
-        emitJson(ctx.output, {
-          action: "governance.multisig",
-          treasury: treasuryState.treasury,
-          args,
-          instruction: serializeInstruction(instruction),
-        });
-        return;
-      }
-
-      const spinner = startSpinner(ctx.output, "Configuring multisig...");
-      const signature = await ctx.client.configureMultisig(
-        ctx.wallet,
-        { owner: ctx.wallet.publicKey, treasury: treasuryState.treasury },
-        args,
+        },
       );
-      spinner.succeed("Multisig configured");
 
-      if (ctx.output.json) {
-        emitJson(ctx.output, { treasury: treasuryState.treasury, signature });
-        return;
-      }
-
-      printSuccess(ctx.output, `Multisig configured: ${signature}`);
+      await runInstructions(ctx, [instruction], {
+        action: "Configure multisig",
+        instructionName: "configure_multisig",
+        summary: [["quorum", `${requiredSignatures}-of-${guardians.length}`]],
+        result: { treasury: treasuryState.treasury },
+      });
     });
 
   governance
@@ -88,25 +103,30 @@ export function registerGovernanceCommands(program: Command): void {
     .option("--pool-limit <usd>", "shared pool limit in USD", Number)
     .action(async function governanceSwarm() {
       const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to configure a swarm.");
+      const wallet = ctx.wallet;
+      if (!wallet) {
+        throw new CliError("A wallet is required to configure a swarm.", {
+          code: "WALLET_REQUIRED",
+        });
       }
       const options = this.opts() as Record<string, unknown>;
       const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+        agentId:
+          typeof options.agentId === "string" ? options.agentId : undefined,
+        treasury:
+          typeof options.treasury === "string" ? options.treasury : undefined,
       });
 
       const swarmId = await promptString(
-        typeof options["swarmId"] === "string" ? options["swarmId"] : undefined,
+        typeof options.swarmId === "string" ? options.swarmId : undefined,
         "Swarm ID",
       );
       const membersInput = await promptString(
-        typeof options["members"] === "string" ? options["members"] : undefined,
+        typeof options.members === "string" ? options.members : undefined,
         "Member agent IDs (comma-separated)",
       );
       const sharedPoolLimitUsd = await promptNumber(
-        typeof options["poolLimit"] === "number" ? options["poolLimit"] : undefined,
+        typeof options.poolLimit === "number" ? options.poolLimit : undefined,
         "Shared pool limit (USD)",
       );
       const args = buildConfigureSwarmArgs({
@@ -115,37 +135,25 @@ export function registerGovernanceCommands(program: Command): void {
         sharedPoolLimitUsd,
       });
 
-      if (ctx.dryRun) {
-        const instruction = await ctx.client.configureSwarmInstruction(
-          { owner: ctx.wallet.publicKey, treasury: treasuryState.treasury },
-          args,
-        );
-        emitJson(ctx.output, {
-          action: "governance.swarm",
-          treasury: treasuryState.treasury,
-          args,
-          instruction: serializeInstruction(instruction),
-        });
-        return;
-      }
-
-      const spinner = startSpinner(ctx.output, "Configuring swarm...");
-      const signature = await ctx.client.configureSwarm(
-        ctx.wallet,
-        { owner: ctx.wallet.publicKey, treasury: treasuryState.treasury },
+      const instruction = await instructions.swarm.configureSwarm(ctx.client, {
+        accounts: { owner: wallet.publicKey, treasury: treasuryState.treasury },
         args,
-      );
-      spinner.succeed("Swarm configured");
+      });
 
-      if (ctx.output.json) {
-        emitJson(ctx.output, { treasury: treasuryState.treasury, signature });
-        return;
-      }
-
-      printSuccess(ctx.output, `Swarm configured: ${signature}`);
+      await runInstructions(ctx, [instruction], {
+        action: "Configure swarm",
+        instructionName: "configure_swarm",
+        summary: [
+          ["swarm", swarmId],
+          ["pool", `$${sharedPoolLimitUsd}`],
+        ],
+        result: { treasury: treasuryState.treasury },
+      });
     });
 
-  const override = governance.command("override").description("Manage emergency override proposals");
+  const override = governance
+    .command("override")
+    .description("Manage emergency override proposals");
 
   override
     .command("propose")
@@ -155,50 +163,46 @@ export function registerGovernanceCommands(program: Command): void {
     .option("--new-daily-limit <usd>", "new daily limit in USD", Number)
     .action(async function governanceOverridePropose() {
       const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to propose an override.");
+      const wallet = ctx.wallet;
+      if (!wallet) {
+        throw new CliError("A wallet is required to propose an override.", {
+          code: "WALLET_REQUIRED",
+        });
       }
       const options = this.opts() as Record<string, unknown>;
       const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+        agentId:
+          typeof options.agentId === "string" ? options.agentId : undefined,
+        treasury:
+          typeof options.treasury === "string" ? options.treasury : undefined,
       });
       const newDailyLimitUsd = await promptNumber(
-        typeof options["newDailyLimit"] === "number" ? options["newDailyLimit"] : undefined,
+        typeof options.newDailyLimit === "number"
+          ? options.newDailyLimit
+          : undefined,
         "New daily limit (USD)",
       );
-      const now = Math.floor(Date.now() / 1000);
 
-      if (ctx.dryRun) {
-        const instruction = await ctx.client.proposeOverrideInstruction(
-          { guardian: ctx.wallet.publicKey, treasury: treasuryState.treasury },
-          newDailyLimitUsd,
-          now,
-        );
-        emitJson(ctx.output, {
-          action: "governance.override.propose",
-          treasury: treasuryState.treasury,
-          newDailyLimitUsd,
-          instruction: serializeInstruction(instruction),
-        });
-        return;
-      }
-
-      const spinner = startSpinner(ctx.output, "Submitting override proposal...");
-      const signature = await ctx.client.proposeOverride(
-        ctx.wallet,
-        { guardian: ctx.wallet.publicKey, treasury: treasuryState.treasury },
-        newDailyLimitUsd,
-        now,
+      const instruction = await instructions.governance.proposeOverride(
+        ctx.client,
+        {
+          accounts: {
+            guardian: wallet.publicKey,
+            treasury: treasuryState.treasury,
+          },
+          args: {
+            newDailyLimitUsd: new BN(newDailyLimitUsd),
+            now: nowSeconds(),
+          },
+        },
       );
-      spinner.succeed("Override proposed");
 
-      if (ctx.output.json) {
-        emitJson(ctx.output, { treasury: treasuryState.treasury, signature });
-        return;
-      }
-
-      printSuccess(ctx.output, `Override proposed: ${signature}`);
+      await runInstructions(ctx, [instruction], {
+        action: "Propose override",
+        instructionName: "propose_override",
+        summary: [["new daily", `$${newDailyLimitUsd}`]],
+        result: { treasury: treasuryState.treasury },
+      });
     });
 
   override
@@ -208,42 +212,36 @@ export function registerGovernanceCommands(program: Command): void {
     .option("--treasury <pda>", "treasury PDA")
     .action(async function governanceOverrideCollect() {
       const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to collect an override signature.");
+      const wallet = ctx.wallet;
+      if (!wallet) {
+        throw new CliError(
+          "A wallet is required to collect an override signature.",
+          {
+            code: "WALLET_REQUIRED",
+          },
+        );
       }
       const options = this.opts() as Record<string, unknown>;
       const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+        agentId:
+          typeof options.agentId === "string" ? options.agentId : undefined,
+        treasury:
+          typeof options.treasury === "string" ? options.treasury : undefined,
       });
-      const now = Math.floor(Date.now() / 1000);
 
-      if (ctx.dryRun) {
-        const instruction = await ctx.client.collectOverrideSignatureInstruction(
-          { guardian: ctx.wallet.publicKey, treasury: treasuryState.treasury },
-          now,
-        );
-        emitJson(ctx.output, {
-          action: "governance.override.collect",
-          treasury: treasuryState.treasury,
-          instruction: serializeInstruction(instruction),
+      const instruction =
+        await instructions.governance.collectOverrideSignature(ctx.client, {
+          accounts: {
+            guardian: wallet.publicKey,
+            treasury: treasuryState.treasury,
+          },
+          args: { now: nowSeconds() },
         });
-        return;
-      }
 
-      const spinner = startSpinner(ctx.output, "Collecting override signature...");
-      const signature = await ctx.client.collectOverrideSignature(
-        ctx.wallet,
-        { guardian: ctx.wallet.publicKey, treasury: treasuryState.treasury },
-        now,
-      );
-      spinner.succeed("Override signature collected");
-
-      if (ctx.output.json) {
-        emitJson(ctx.output, { treasury: treasuryState.treasury, signature });
-        return;
-      }
-
-      printSuccess(ctx.output, `Override signature collected: ${signature}`);
+      await runInstructions(ctx, [instruction], {
+        action: "Collect override signature",
+        instructionName: "collect_override_signature",
+        result: { treasury: treasuryState.treasury },
+      });
     });
 }

@@ -1,94 +1,35 @@
+import {
+  accounts,
+  instructions,
+  type TreasuryAccountRecord,
+} from "@aura-protocol/sdk-ts";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
-import {
-  PublicKey,
-  SystemProgram,
-  TransactionInstruction,
-  type AccountMeta,
-} from "@solana/web3.js";
-import { type Command } from "commander";
+import type { Command } from "commander";
 
-import { buildCliContext } from "../context.js";
+import { buildCliContext, type CliContext } from "../core/context.js";
+import { CliError } from "../core/errors.js";
+import { runInstructions } from "../core/runner.js";
 import {
-  createTable,
-  emitJson,
-  printBanner,
-  printSuccess,
-  serializeInstruction,
-  startSpinner,
-} from "../output.js";
-import {
-  buildMessageDigestHex,
   deriveApprovedExecutionAccounts,
   getActivePendingProposal,
   getMessageApprovalState,
   parseCiphertextVerified,
   parseDecryptionReady,
   resolvePendingProposal,
-  sendInstructionsWithBudget,
   waitForMessageApproval,
-} from "../protocol.js";
-import { requestDwalletSign } from "../ika.js";
-import type { TreasuryAccountRecord } from "../sdk.js";
-import { renderTreasurySections } from "../treasury-view.js";
+} from "../lib/protocol.js";
+import { renderTreasurySections } from "../lib/treasury-view.js";
+import {
+  createTable,
+  printBanner,
+  printInfo,
+  startSpinner,
+} from "../ui/output.js";
 import { resolveTreasuryAccount } from "./helpers.js";
 
-function buildExecutePendingInstruction(options: {
-  ctx: ReturnType<typeof buildCliContext>;
-  treasury: PublicKey;
-  now: number;
-  approvedAccounts?: ReturnType<typeof deriveApprovedExecutionAccounts>;
-}): TransactionInstruction {
-  const keys: AccountMeta[] = [
-    { pubkey: options.ctx.wallet!.publicKey, isSigner: true, isWritable: false },
-    { pubkey: options.treasury, isSigner: false, isWritable: true },
-  ];
-
-  if (options.approvedAccounts) {
-    keys.push(
-      {
-        pubkey: options.approvedAccounts.messageApproval,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: options.approvedAccounts.dwalletAccount,
-        isSigner: false,
-        isWritable: false,
-      },
-      { pubkey: options.ctx.programId, isSigner: false, isWritable: false },
-      {
-        pubkey: options.approvedAccounts.cpiAuthority,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
-        pubkey: options.approvedAccounts.dwalletProgram,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
-        pubkey: options.approvedAccounts.dwalletCoordinator,
-        isSigner: false,
-        isWritable: false,
-      },
-    );
-  } else {
-    keys.push({ pubkey: options.ctx.programId, isSigner: false, isWritable: false });
-  }
-
-  keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false });
-
-  return new TransactionInstruction({
-    programId: options.ctx.programId,
-    keys,
-    data: options.ctx.client.coder.encode("executePending", {
-      now: new BN(options.now),
-    }),
-  });
-}
-
 async function renderExecutionWatch(
-  ctx: ReturnType<typeof buildCliContext>,
+  ctx: CliContext,
   treasury: PublicKey,
   account: TreasuryAccountRecord,
 ): Promise<void> {
@@ -99,27 +40,34 @@ async function renderExecutionWatch(
   if (pending?.policyOutputCiphertextAccount) {
     const policyOutput = new PublicKey(pending.policyOutputCiphertextAccount);
     const info = await ctx.connection.getAccountInfo(policyOutput, "confirmed");
-    live.push(["Policy output verified", parseCiphertextVerified(info) ? "Yes" : "No"]);
+    live.push([
+      "Policy output verified",
+      parseCiphertextVerified(info) ? "Yes" : "No",
+    ]);
   }
-
   if (pending?.decryptionRequest?.requestAccount) {
-    const requestAccount = new PublicKey(pending.decryptionRequest.requestAccount);
-    const info = await ctx.connection.getAccountInfo(requestAccount, "confirmed");
+    const requestAccount = new PublicKey(
+      pending.decryptionRequest.requestAccount,
+    );
+    const info = await ctx.connection.getAccountInfo(
+      requestAccount,
+      "confirmed",
+    );
     live.push(["Decryption ready", parseDecryptionReady(info) ? "Yes" : "No"]);
   }
-
   if (pending?.signatureRequest?.messageApprovalAccount) {
-    const messageApproval = new PublicKey(pending.signatureRequest.messageApprovalAccount);
-    const state = await getMessageApprovalState(ctx.connection, messageApproval);
+    const messageApproval = new PublicKey(
+      pending.signatureRequest.messageApprovalAccount,
+    );
+    const state = await getMessageApprovalState(
+      ctx.connection,
+      messageApproval,
+    );
     live.push(["Message approval", state]);
   }
 
   printBanner(ctx.output, `Execution Watch: ${account.agentId}`);
-  if (sections.pending) {
-    console.log(sections.pending);
-  } else {
-    console.log("No pending proposal.");
-  }
+  console.log(sections.pending ?? "No pending proposal.");
   if (live.length > 0) {
     console.log("");
     console.log(live.toString());
@@ -136,145 +84,104 @@ export function registerExecutionCommands(program: Command): void {
     .description("Run execute_pending for the current proposal")
     .option("--agent-id <id>", "treasury agent ID")
     .option("--treasury <pda>", "treasury PDA")
-    .option("--wait", "wait until message approval exists (approved) or pending clears (denied)")
-    .option("--wait-signed", "wait until the message approval reaches signed status")
+    .option("--wait", "wait until the message approval account exists")
+    .option(
+      "--wait-signed",
+      "wait until the message approval reaches signed status",
+    )
     .action(async function executionExecute() {
       const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to execute pending proposals.");
+      const wallet = ctx.wallet;
+      if (!wallet) {
+        throw new CliError(
+          "A wallet is required to execute pending proposals.",
+          {
+            code: "WALLET_REQUIRED",
+          },
+        );
       }
 
       const options = this.opts() as Record<string, unknown>;
       const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+        agentId:
+          typeof options.agentId === "string" ? options.agentId : undefined,
+        treasury:
+          typeof options.treasury === "string" ? options.treasury : undefined,
       });
       const pending = resolvePendingProposal(treasuryState.account);
-      const approvedAccounts = pending.decision.approved
+      const approved = pending.decision.approved;
+      const approvedAccounts = approved
         ? deriveApprovedExecutionAccounts(treasuryState.account, {
-          auraProgramId: ctx.programId,
-        })
+            auraProgramId: ctx.programId,
+          })
         : undefined;
-      const now = Math.floor(Date.now() / 1000);
-      const instruction = buildExecutePendingInstruction({
-        ctx,
-        treasury: treasuryState.treasury,
-        now,
-        approvedAccounts,
-      });
 
-      if (ctx.dryRun) {
-        emitJson(ctx.output, {
-          action: "execution.execute",
-          treasury: treasuryState.treasury,
-          approved: pending.decision.approved,
-          messageApproval: approvedAccounts?.messageApproval,
-          instruction: serializeInstruction(instruction),
-        });
-        return;
-      }
-
-      const spinner = startSpinner(
-        ctx.output,
-        pending.decision.approved
-          ? "Submitting execute_pending for live dWallet signing..."
-          : "Submitting denial execution...",
+      const instruction = await instructions.execution.executePending(
+        ctx.client,
+        {
+          accounts: {
+            operator: wallet.publicKey,
+            treasury: treasuryState.treasury,
+            messageApproval: approvedAccounts?.messageApproval ?? null,
+            dwallet: approvedAccounts?.dwalletAccount ?? null,
+            callerProgram: ctx.programId,
+            cpiAuthority: approvedAccounts?.cpiAuthority ?? null,
+            dwalletProgram: approvedAccounts?.dwalletProgram ?? null,
+            dwalletCoordinator: approvedAccounts?.dwalletCoordinator ?? null,
+            externalLiveness: null,
+            dwalletState: null,
+            systemProgram: SystemProgram.programId,
+          },
+          args: { now: new BN(Math.floor(Date.now() / 1000)) },
+        },
       );
-      const signature = await sendInstructionsWithBudget({
-        connection: ctx.connection,
-        payer: ctx.wallet,
-        instructions: [instruction],
+
+      const outcome = await runInstructions(ctx, [instruction], {
+        action: approved
+          ? "Execute pending (request dWallet signing)"
+          : "Execute denial",
+        instructionName: "execute_pending",
+        summary: [
+          ["decision", approved ? "approved" : "denied"],
+          ...(approvedAccounts
+            ? ([["approval", approvedAccounts.messageApproval.toBase58()]] as [
+                string,
+                string,
+              ][])
+            : []),
+        ],
+        result: {
+          treasury: treasuryState.treasury,
+          approved,
+          messageApproval: approvedAccounts?.messageApproval,
+        },
       });
 
-      if (pending.decision.approved && approvedAccounts && options["waitSigned"] === true) {
-        spinner.setText("Waiting for message approval signature...");
-        await waitForMessageApproval(
-          ctx.connection,
-          approvedAccounts.messageApproval,
-          "signed",
-          { timeoutMs: 180_000 },
+      if (
+        outcome.signature &&
+        approvedAccounts &&
+        (options.wait === true || options.waitSigned === true)
+      ) {
+        const target = options.waitSigned === true ? "signed" : "pending";
+        const spinner = startSpinner(
+          ctx.output,
+          `Waiting for message approval (${target})...`,
         );
-      } else if (pending.decision.approved && approvedAccounts && options["wait"] === true) {
-        spinner.setText("Waiting for message approval account...");
-        await waitForMessageApproval(
-          ctx.connection,
-          approvedAccounts.messageApproval,
-          "pending",
-          { timeoutMs: 120_000 },
-        );
-
-        // Drive the dWallet presign + sign flow via the Ika gRPC network.
-        // Requires DKG session data (sessionIdentifier + dkgAttestation) which
-        // is only available when the dWallet was provisioned in this process.
-        // The CLI delegates signing to the backend; this path is a best-effort
-        // fallback for direct CLI usage with a freshly provisioned dWallet.
-        spinner.setText("Requesting dWallet presign + sign via Ika network...");
         try {
-          const messageDigest = Buffer.from(
-            buildMessageDigestHex(approvedAccounts.pending, approvedAccounts.dwallet),
-            "hex",
-          );
-          const txSigBytes = Buffer.from(
-            Buffer.from(signature, "base64").length === 64
-              ? Buffer.from(signature, "base64")
-              : Buffer.alloc(64), // fallback for non-base64 signatures
-          );
-          // sessionIdentifier and dkgAttestation are not available in the CLI
-          // (they come from DKG provisioning which happens in the backend).
-          // Pass undefined — requestDwalletSign will throw a descriptive error
-          // that is caught below and treated as non-fatal.
-          const secretKey = (ctx.wallet as { secretKey?: Uint8Array }).secretKey;
-          await requestDwalletSign(
-            ctx.wallet.publicKey,
-            approvedAccounts.dwalletAccount,
-            messageDigest,
-            txSigBytes,
-            undefined, // grpcUrl — use default
-            secretKey,
-            undefined, // sessionIdentifier — not available in CLI
-            undefined, // dkgAttestation — not available in CLI
-          );
-          spinner.setText("Waiting for message approval to be signed...");
           await waitForMessageApproval(
             ctx.connection,
             approvedAccounts.messageApproval,
-            "signed",
-            { timeoutMs: 180_000 },
+            target,
+            {
+              timeoutMs: 180_000,
+            },
           );
-        } catch (err) {
-          // Non-fatal — the message approval may already be signed or the
-          // dWallet network may process it asynchronously. When using the
-          // backend service, signing is triggered server-side instead.
-          spinner.setText(`dWallet sign request: ${err instanceof Error ? err.message : String(err)}`);
+          spinner.succeed(`Message approval ${target}`);
+        } catch (error) {
+          spinner.fail(`Timed out waiting for message approval (${target})`);
+          throw error;
         }
       }
-
-      spinner.succeed("Execution request submitted");
-
-      const refreshed = await ctx.client.getTreasuryAccount(treasuryState.treasury);
-      const refreshedPending = getActivePendingProposal(refreshed);
-      if (ctx.output.json) {
-        emitJson(ctx.output, {
-          treasury: treasuryState.treasury,
-          signature,
-          approved: pending.decision.approved,
-          messageApproval: approvedAccounts?.messageApproval,
-          pending: refreshedPending,
-        });
-        return;
-      }
-
-      if (!pending.decision.approved && !refreshedPending) {
-        printSuccess(ctx.output, `Denied proposal cleared: ${signature}`);
-        return;
-      }
-
-      printSuccess(
-        ctx.output,
-        pending.decision.approved
-          ? `Execution request submitted: ${signature}`
-          : `Execution request submitted: ${signature}`,
-      );
     });
 
   execution
@@ -282,75 +189,85 @@ export function registerExecutionCommands(program: Command): void {
     .description("Finalize an approved proposal after dWallet signing")
     .option("--agent-id <id>", "treasury agent ID")
     .option("--treasury <pda>", "treasury PDA")
-    .option("--message-approval <pubkey>", "override the pending message approval account")
+    .option(
+      "--message-approval <pubkey>",
+      "override the pending message approval account",
+    )
     .action(async function executionFinalize() {
       const ctx = buildCliContext(this);
-      if (!ctx.wallet) {
-        throw new Error("A wallet is required to finalize execution.");
+      const wallet = ctx.wallet;
+      if (!wallet) {
+        throw new CliError("A wallet is required to finalize execution.", {
+          code: "WALLET_REQUIRED",
+        });
       }
 
       const options = this.opts() as Record<string, unknown>;
       const treasuryState = await resolveTreasuryAccount(ctx, {
-        agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-        treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+        agentId:
+          typeof options.agentId === "string" ? options.agentId : undefined,
+        treasury:
+          typeof options.treasury === "string" ? options.treasury : undefined,
       });
       const pending = resolvePendingProposal(treasuryState.account);
       const messageApproval =
-        typeof options["messageApproval"] === "string"
-          ? new PublicKey(options["messageApproval"])
+        typeof options.messageApproval === "string"
+          ? new PublicKey(options.messageApproval)
           : pending.signatureRequest?.messageApprovalAccount
             ? new PublicKey(pending.signatureRequest.messageApprovalAccount)
             : undefined;
       if (!messageApproval) {
-        throw new Error("No message approval account is available for finalize_execution.");
-      }
-      const now = Math.floor(Date.now() / 1000);
-
-      if (ctx.dryRun) {
-        const instruction = await ctx.client.finalizeExecutionInstruction(
+        throw new CliError(
+          "No message approval account is available for finalize_execution.",
           {
-            operator: ctx.wallet.publicKey,
+            code: "NO_MESSAGE_APPROVAL",
+            tip: "Run `aura execution execute --wait-signed` first, or pass --message-approval <pubkey>.",
+          },
+        );
+      }
+
+      const instruction = await instructions.execution.finalizeExecution(
+        ctx.client,
+        {
+          accounts: {
+            operator: wallet.publicKey,
             treasury: treasuryState.treasury,
             messageApproval,
+            swarmPool: null,
+            budgetEnvelope: null,
+            exposureGroup: null,
+            externalLiveness: null,
+            dwalletState: null,
+            scheduledIntent: null,
+            feeVault: null,
+            feeSchedule: null,
+            protocolConfig: null,
           },
-          now,
-        );
-        emitJson(ctx.output, {
-          action: "execution.finalize",
-          treasury: treasuryState.treasury,
-          messageApproval,
-          instruction: serializeInstruction(instruction),
-        });
-        return;
-      }
-
-      const spinner = startSpinner(ctx.output, "Finalizing execution...");
-      const signature = await ctx.client.finalizeExecution(
-        ctx.wallet,
-        {
-          operator: ctx.wallet.publicKey,
-          treasury: treasuryState.treasury,
-          messageApproval,
+          args: { now: new BN(Math.floor(Date.now() / 1000)) },
         },
-        now,
       );
-      const refreshed = await ctx.client.getTreasuryAccount(treasuryState.treasury);
-      spinner.succeed("Execution finalized");
 
-      if (ctx.output.json) {
-        emitJson(ctx.output, {
-          treasury: treasuryState.treasury,
-          signature,
-          totalTransactions: refreshed.totalTransactions,
-          pending: getActivePendingProposal(refreshed),
-        });
-        return;
+      const outcome = await runInstructions(ctx, [instruction], {
+        action: "Finalize execution",
+        instructionName: "finalize_execution",
+        summary: [["approval", messageApproval.toBase58()]],
+        result: { treasury: treasuryState.treasury },
+      });
+
+      if (outcome.signature && !ctx.output.json) {
+        try {
+          const refreshed = await accounts.fetchTreasuryAccount(
+            ctx.client,
+            treasuryState.treasury,
+          );
+          printInfo(
+            ctx.output,
+            `total transactions: ${refreshed.totalTransactions}`,
+          );
+        } catch {
+          // Non-fatal — confirmation already succeeded.
+        }
       }
-
-      printSuccess(
-        ctx.output,
-        `Execution finalized: ${signature} (total tx ${refreshed.totalTransactions})`,
-      );
     });
 
   execution
@@ -363,19 +280,25 @@ export function registerExecutionCommands(program: Command): void {
       const ctx = buildCliContext(this);
       const options = this.opts() as Record<string, unknown>;
       const intervalMs =
-        typeof options["interval"] === "number" && options["interval"] > 0
-          ? Math.floor(options["interval"] * 1000)
+        typeof options.interval === "number" && options.interval > 0
+          ? Math.floor(options.interval * 1000)
           : 5000;
 
-      while (true) {
+      for (;;) {
         const treasuryState = await resolveTreasuryAccount(ctx, {
-          agentId: typeof options["agentId"] === "string" ? options["agentId"] : undefined,
-          treasury: typeof options["treasury"] === "string" ? options["treasury"] : undefined,
+          agentId:
+            typeof options.agentId === "string" ? options.agentId : undefined,
+          treasury:
+            typeof options.treasury === "string" ? options.treasury : undefined,
         });
         if (!ctx.output.json) {
           console.clear();
         }
-        await renderExecutionWatch(ctx, treasuryState.treasury, treasuryState.account);
+        await renderExecutionWatch(
+          ctx,
+          treasuryState.treasury,
+          treasuryState.account,
+        );
         await new Promise((resolve) => setTimeout(resolve, intervalMs));
       }
     });

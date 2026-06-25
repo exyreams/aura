@@ -18,12 +18,16 @@ including automatic FHE ciphertext creation, policy decryption, and dWallet co-s
 ## Features
 
 - Config-driven wallet and RPC resolution via `~/.aura/config.json`
-- Interactive prompts when flags are omitted; fully scriptable with flags
+- Complete coverage of every `aura-core` instruction through generated, IDL-backed
+  per-domain commands (`aura <domain> <instruction>`) — always in sync with the program
+- Ergonomic verb commands for the common treasury, dWallet, confidential, execution,
+  and governance flows
+- A secure send pipeline on every write: a transaction preview, preflight simulation,
+  a mainnet guard, and confirmations for sensitive (authority/governance/closure) actions
+- Interactive prompts when flags are omitted; fully scriptable with flags and `--yes`
 - Auto-encryption of guardrail and transaction amounts via `@encrypt.xyz/pre-alpha-solana-client`
-- Automatic dWallet presign + sign via `@ika.xyz/pre-alpha-solana-client`
-- Readable tables, spinners, and actionable error messages
-- `--json` output for piping and scripting
-- `--dry-run` to preview instructions without sending
+- Readable color-blocked output, spinners, and actionable error messages with tips
+- `--json` output for piping and scripting; `--dry-run` to preview without sending
 - PDA derivation for treasury, CPI, dWallet message approval, and policy-control records
 - Full-screen `ink` dashboard for live treasury monitoring
 
@@ -81,41 +85,44 @@ Config resolution order (highest wins):
 
 ## Commands
 
-### Feature and Instruction Surface
+### Instruction Surface (full coverage)
 
-The CLI exposes the full current AURA program surface through SDK/IDL-backed
-commands. Use these when a new policy, account, or control instruction does not
-need a bespoke workflow.
+Every program instruction is reachable two ways: a generated per-domain command
+(`aura <domain> <instruction>`) and the raw `aura ix` surface (alias of
+`aura instruction`). Both are driven directly by the program IDL, so coverage
+never drifts from the deployed program.
 
 ```bash
-# Show all domains and instruction coverage
-aura features
-aura features --domain policy-control
-aura features --maturity wallet
+# Discover the surface
+aura features                              # domains + maturity summary
+aura features --domain policy              # filter to one domain
+aura ix list                               # every instruction grouped by domain
 
-# List every current aura-core instruction grouped by domain
-aura instruction list
+# Inspect an instruction's accounts and arguments
+aura ix schema configure_budget_envelope
+aura budget configure-budget-envelope --schema   # same, via the generated command
 
-# Inspect one instruction's account and argument schema
-aura instruction schema configure_budget_envelope
+# Build a serialized instruction without sending (offline)
+aura ix build configure_budget_envelope --accounts @accounts.json --args @args.json
 
-# Build a serialized instruction without sending it
-aura instruction build configure_budget_envelope \
-  --accounts @accounts.json \
-  --args @args.json
+# Send any instruction — through the secure pipeline (preview + simulate + confirm)
+aura policy create-policy-template \
+  --account owner='$wallet' \
+  --account policy_template=<pda> \
+  --arg name=conservative --arg shared=false
 
-# Send any wallet-compatible instruction using the configured keypair
-aura instruction send transition_agent_state \
+# Equivalent via the raw surface
+aura ix send transition_agent_state \
   --account treasury=<treasury-pda> \
-  --account authority=<wallet-pubkey> \
-  --arg newState=active \
-  --compute-units 600000
+  --account authority='$wallet' \
+  --arg newState=active
 ```
 
-`aura instruction send` enforces signer requirements before broadcast. If an
-instruction needs extra signers, pass one or more `--extra-signer <keypair>`
-paths. Instructions that require external Encrypt or dWallet CPI state still
-need those accounts to exist on devnet before the transaction can succeed.
+Signer accounts accept the literal `$wallet` (the configured keypair). When an
+instruction needs additional signers, pass one or more `--extra-signer <keypair>`
+paths; the CLI verifies all required signers are present before broadcasting.
+Use `--account key=value` / `--arg key=value` for individual fields, or
+`--accounts @file.json` / `--args @file.json` for whole objects.
 
 ### Treasury
 
@@ -218,13 +225,14 @@ aura confidential confirm-decryption --agent-id my-agent
 ### Execution
 
 ```bash
-# Execute the pending proposal
-# For approved proposals: submits execute_pending, then automatically drives
-# the dWallet presign + sign flow via the Ika dWallet gRPC network
+# Execute the pending proposal.
+# Approved proposals submit execute_pending, which requests dWallet co-signing
+# through the message-approval account; the dWallet signature itself is produced
+# by the backend / Ika dWallet network.
 aura execution execute --agent-id my-agent
 
 # --wait: waits for the message approval account to be created
-# --wait-signed: waits for the full dWallet signature
+# --wait-signed: waits until the message approval reaches signed status
 aura execution execute --agent-id my-agent --wait
 aura execution execute --agent-id my-agent --wait-signed
 
@@ -321,18 +329,13 @@ aura confidential propose \
   --agent-id my-agent --amount 250 --chain ethereum \
   --recipient 0xdeadbeef... --wait
 
-# Vector guardrails use the matching vector proposal flow instead:
-aura confidential propose-vector \
-  --agent-id my-agent --amount 250 --chain ethereum \
-  --recipient 0xdeadbeef... --wait
-
 # 6. Request decryption
 aura confidential request-decryption --agent-id my-agent --wait
 
 # 7. Confirm decryption (shows approved/denied)
 aura confidential confirm-decryption --agent-id my-agent
 
-# 8. Execute (drives dWallet presign + sign automatically)
+# 8. Execute (requests dWallet co-signing via the message-approval account)
 aura execution execute --agent-id my-agent --wait-signed
 
 # 9. Finalize
@@ -341,16 +344,40 @@ aura execution finalize --agent-id my-agent
 
 ---
 
+## Safety and security
+
+Every command that sends a transaction runs through one pipeline with guard rails:
+
+- **Preview** — before anything is sent, the CLI prints exactly what will be
+  signed: network, program, fee payer, and each instruction's account/signer counts.
+- **Preflight simulation** — the transaction is simulated and its compute units
+  and any program error/logs are surfaced. Skip with `--no-simulate`.
+- **Mainnet guard** — writes against a mainnet RPC require an explicit confirmation.
+- **Sensitive-action confirmation** — authority changes, governance updates, and
+  account closures prompt before sending. Bypass non-interactively with `--yes`.
+- **Keypair hygiene** — warns when a keypair file is readable by group/others (POSIX).
+- **`--dry-run`** — build and preview without sending or simulating.
+
+Secrets are never printed: keypairs are referenced by public key only.
+
+---
+
 ## Global Flags
 
 ```
---rpc-url <url>     Override RPC endpoint
---wallet <path>     Override keypair file path
---program-id <id>   Override program ID
---json              Output raw JSON (for piping)
---quiet             Suppress all output except errors
---dry-run           Build and display the transaction without sending
---help              Show help
+--rpc-url <url>      Override the RPC endpoint
+--wallet <path>      Override the keypair file path
+--program-id <id>    Override the program ID
+--cluster <name>     Cluster label for display
+--json               Output machine-readable JSON (implies --no-color)
+--quiet              Suppress non-error terminal output
+--dry-run            Build and preview the transaction without sending
+-y, --yes            Skip confirmation prompts (non-interactive / CI)
+--no-simulate        Skip the preflight simulation before sending
+--no-color           Disable colored output
+--compute-units <n>  Override the compute-unit limit
+-v, --version        Print the CLI version
+--help               Show help
 ```
 
 ---

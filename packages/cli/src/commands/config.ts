@@ -1,18 +1,21 @@
 import { input } from "@inquirer/prompts";
-import { type Command } from "commander";
+import type { Command } from "commander";
 
 import {
+  type AuraCliConfig,
   compactHome,
-  DEFAULT_CONFIG,
   flattenResolvedConfig,
-  getConfigPath,
   readConfigFile,
   resolveConfig,
-  type AuraCliConfig,
   writeConfigFile,
-} from "../config.js";
-import { resolveGlobalConfig } from "../context.js";
-import { createTable, emitJson, printBanner, printSuccess } from "../output.js";
+} from "../core/config.js";
+import { resolveGlobalConfig } from "../core/context.js";
+import {
+  createTable,
+  emitJson,
+  printBanner,
+  printSuccess,
+} from "../ui/output.js";
 
 const CONFIG_KEYS = new Map<string, keyof AuraCliConfig>([
   ["rpc-url", "rpcUrl"],
@@ -23,7 +26,9 @@ const CONFIG_KEYS = new Map<string, keyof AuraCliConfig>([
 ]);
 
 export function registerConfigCommands(program: Command): void {
-  const config = program.command("config").description("Manage AURA CLI configuration");
+  const config = program
+    .command("config")
+    .description("Manage AURA CLI configuration");
 
   config
     .command("init")
@@ -59,7 +64,8 @@ export function registerConfigCommands(program: Command): void {
         walletPath,
         cluster: current.cluster,
         programId,
-        defaultAgentId: defaultAgentId.trim().length > 0 ? defaultAgentId.trim() : null,
+        defaultAgentId:
+          defaultAgentId.trim().length > 0 ? defaultAgentId.trim() : null,
       });
 
       if (output.json) {
@@ -70,7 +76,8 @@ export function registerConfigCommands(program: Command): void {
             walletPath,
             cluster: current.cluster,
             programId,
-            defaultAgentId: defaultAgentId.trim().length > 0 ? defaultAgentId.trim() : null,
+            defaultAgentId:
+              defaultAgentId.trim().length > 0 ? defaultAgentId.trim() : null,
           },
         });
         return;
@@ -83,7 +90,11 @@ export function registerConfigCommands(program: Command): void {
     .command("show")
     .description("Display the resolved CLI configuration")
     .action(async function configShow() {
-      const { globals, resolvedConfig, config: flattened } = resolveGlobalConfig(this);
+      const {
+        globals,
+        resolvedConfig,
+        config: flattened,
+      } = resolveGlobalConfig(this);
       const output = {
         json: globals.json === true,
         quiet: globals.quiet === true,
@@ -107,9 +118,21 @@ export function registerConfigCommands(program: Command): void {
       const table = createTable(["Field", "Value", "Source"]);
       table.push(
         ["RPC URL", resolvedConfig.rpcUrl.value, resolvedConfig.rpcUrl.source],
-        ["Wallet", compactHome(resolvedConfig.walletPath.value), resolvedConfig.walletPath.source],
-        ["Cluster", resolvedConfig.cluster.value, resolvedConfig.cluster.source],
-        ["Program ID", resolvedConfig.programId.value, resolvedConfig.programId.source],
+        [
+          "Wallet",
+          compactHome(resolvedConfig.walletPath.value),
+          resolvedConfig.walletPath.source,
+        ],
+        [
+          "Cluster",
+          resolvedConfig.cluster.value,
+          resolvedConfig.cluster.source,
+        ],
+        [
+          "Program ID",
+          resolvedConfig.programId.value,
+          resolvedConfig.programId.source,
+        ],
         [
           "Default Agent",
           resolvedConfig.defaultAgentId.value ?? "—",
@@ -122,7 +145,10 @@ export function registerConfigCommands(program: Command): void {
   config
     .command("set")
     .description("Set a single config value")
-    .argument("<key>", "rpc-url | wallet-path | cluster | program-id | default-agent-id")
+    .argument(
+      "<key>",
+      "rpc-url | wallet-path | cluster | program-id | default-agent-id",
+    )
     .argument("<value>", "value to persist")
     .action(async function configSet(key: string, value: string) {
       const { globals } = resolveGlobalConfig(this);
@@ -145,7 +171,12 @@ export function registerConfigCommands(program: Command): void {
       const resolved = flattenResolvedConfig(resolveConfig());
 
       if (output.json) {
-        emitJson(output, { path: filePath, key: field, value: next[field], config: resolved });
+        emitJson(output, {
+          path: filePath,
+          key: field,
+          value: next[field],
+          config: resolved,
+        });
         return;
       }
 

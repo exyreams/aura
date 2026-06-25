@@ -1,14 +1,19 @@
-import { type Command } from "commander";
-
-import { buildCliContext } from "../context.js";
 import {
   AURA_FEATURE_DOMAINS,
   AURA_INSTRUCTION_FEATURES,
   type AuraFeatureDomainId,
   type AuraFeatureMaturity,
   getAuraFeatureDomain,
-} from "../sdk.js";
-import { createTable, emitJson, printBanner, printInfo, printTable } from "../output.js";
+} from "@aura-protocol/sdk-ts";
+import type { Command } from "commander";
+import { buildCliContext } from "../core/context.js";
+import {
+  createTable,
+  emitJson,
+  printBanner,
+  printInfo,
+  printTable,
+} from "../ui/output.js";
 
 const maturityLabels: Record<AuraFeatureMaturity, string> = {
   wallet: "wallet",
@@ -33,7 +38,9 @@ function parseMaturity(input: unknown): AuraFeatureMaturity | undefined {
   ) {
     return normalized;
   }
-  throw new Error("--maturity must be wallet, backend, read-only, or external-cpi.");
+  throw new Error(
+    "--maturity must be wallet, backend, read-only, or external-cpi.",
+  );
 }
 
 function parseDomain(input: unknown): AuraFeatureDomainId | undefined {
@@ -66,16 +73,18 @@ export function registerFeatureCommands(program: Command): void {
     .action(async function featuresList() {
       const ctx = buildCliContext(this, { needsWallet: false });
       const options = this.opts() as Record<string, unknown>;
-      const domainFilter = parseDomain(options["domain"]);
-      const maturityFilter = parseMaturity(options["maturity"]);
+      const domainFilter = parseDomain(options.domain);
+      const maturityFilter = parseMaturity(options.maturity);
       const domains = AURA_FEATURE_DOMAINS.filter((domain) =>
         domainFilter ? domain.id === domainFilter : true,
-      ).map((domain) => ({
-        ...domain,
-        instructions: domain.instructions.filter((instruction) =>
-          maturityFilter ? instruction.maturity === maturityFilter : true,
-        ),
-      })).filter((domain) => domain.instructions.length > 0);
+      )
+        .map((domain) => ({
+          ...domain,
+          instructions: domain.instructions.filter((instruction) =>
+            maturityFilter ? instruction.maturity === maturityFilter : true,
+          ),
+        }))
+        .filter((domain) => domain.instructions.length > 0);
       const instructionCount = domains.reduce(
         (total, domain) => total + domain.instructions.length,
         0,
@@ -110,8 +119,12 @@ export function registerFeatureCommands(program: Command): void {
         summary.push([
           `${domain.label}\n${domain.id}`,
           domain.instructions.length.toString(),
-          domain.instructions.filter((entry) => entry.maturity === "wallet").length.toString(),
-          domain.instructions.filter((entry) => entry.maturity === "backend").length.toString(),
+          domain.instructions
+            .filter((entry) => entry.maturity === "wallet")
+            .length.toString(),
+          domain.instructions
+            .filter((entry) => entry.maturity === "backend")
+            .length.toString(),
           domain.instructions
             .filter((entry) => entry.maturity === "external_cpi")
             .length.toString(),
