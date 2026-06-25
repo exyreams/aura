@@ -14,28 +14,29 @@ import { Callout } from 'fumadocs-ui/components/callout';
 ## aura execution execute
 
 Run `execute_pending` for the current proposal. If the proposal was approved,
-submits the dWallet co-signing CPI. If denied, clears the pending state.
+it requests dWallet co-signing through the message-approval account (the
+signature itself is produced by the backend / Ika dWallet network). If denied,
+it clears the pending state. Runs through the [secure pipeline](/cli/safety).
 
 ```bash
 aura execution execute --agent-id agent-1
-aura execution execute --agent-id agent-1 --wait         # wait for message approval
-aura execution execute --agent-id agent-1 --wait-signed  # wait for dWallet signature
+aura execution execute --agent-id agent-1 --wait         # wait for the message approval account
+aura execution execute --agent-id agent-1 --wait-signed  # wait until it reaches signed status
 ```
 
 <small>Example output:</small>
 ```
 $ aura execution execute
-⠋ Submitting execute_pending for live dWallet signing...
-⠙ Waiting for message approval signature...
-✓ Execution request submitted: 3rGh…Lw5T
+✓ Execute pending (request dWallet signing) confirmed — 3rGh…Lw5T
+ℹ https://explorer.solana.com/tx/3rGh…Lw5T?cluster=devnet
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--agent-id <id>` | Treasury agent ID |
 | `--treasury <pda>` | Treasury PDA |
-| `--wait` | Wait until message approval account exists, then drives the Ika dWallet gRPC presign and sign flow automatically |
-| `--wait-signed` | Wait until message approval reaches signed status (does not drive dWallet gRPC) |
+| `--wait` | After sending, wait until the message approval account exists |
+| `--wait-signed` | After sending, wait until the message approval reaches signed status |
 
 ---
 

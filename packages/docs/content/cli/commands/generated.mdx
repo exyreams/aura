@@ -1,0 +1,100 @@
+---
+title: generated commands
+description: IDL-driven per-domain commands that cover every aura-core instruction.
+icon: Boxes
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+In addition to the ergonomic verb commands, the CLI generates a command for
+**every** instruction in the program, grouped by domain:
+
+```
+aura <domain> <instruction>
+```
+
+These are derived directly from the program IDL and the SDK's program-surface
+catalog, so coverage never drifts — when the program gains an instruction and the
+SDK is regenerated, the command appears automatically.
+
+## Domains
+
+| Domain | Command prefix | Example instruction command |
+|--------|----------------|------------------------------|
+| Treasury | `aura treasury` | `aura treasury create-treasury` |
+| Confidential | `aura confidential` | `aura confidential rotate-confidential-guardrails` |
+| Execution | `aura execution` | `aura execution propose-conditional-transaction` |
+| Governance | `aura governance` | `aura governance propose-config-change` |
+| dWallet | `aura dwallet` | `aura dwallet reserve-dwallet-spend` |
+| Policy | `aura policy` | `aura policy create-policy-template` |
+| Budgets & Exposure | `aura budget` | `aura budget configure-budget-envelope` |
+| Operations | `aura operational` | `aura operational set-scoped-pause` |
+| Lifecycle & Roles | `aura lifecycle` | `aura lifecycle issue-session-key` |
+| Swarm Pools | `aura swarm` | `aura swarm init-swarm-pool` |
+| Protocol Fees | `aura fees` | `aura fees init-fee-schedule` |
+| Address Lists | `aura address-lists` | `aura address-lists init-address-list` |
+| Batch | `aura batch` | `aura batch propose-batch` |
+
+Instruction names are kebab-cased from the on-chain (snake_case) names:
+`create_policy_template` → `create-policy-template`.
+
+<Callout type="info">
+  The ergonomic verbs (e.g. `aura treasury create`) live alongside the generated
+  commands (e.g. `aura treasury create-treasury`) in the same group — friendly
+  flows where they exist, full coverage everywhere else.
+</Callout>
+
+## Discovering commands
+
+```bash
+# Every instruction grouped by domain (with maturity)
+aura ix list
+aura ix list --domain policy
+
+# Inspect the accounts and arguments of any instruction
+aura policy create-policy-template --schema
+aura ix schema create_policy_template
+```
+
+## Passing accounts and arguments
+
+Generated commands share one flag set:
+
+| Flag | Description |
+|------|-------------|
+| `--account <key=value>` | Set or override one account (repeatable) |
+| `--arg <key=value>` | Set or override one argument (repeatable) |
+| `--accounts <json\|@file>` | Whole accounts object as JSON or `@path/to/file.json` |
+| `--args <json\|@file>` | Whole args object/array as JSON or `@path/to/file.json` |
+| `--extra-signer <path>` | Additional signer keypair file (repeatable) |
+| `--schema` | Print the account/argument schema and exit |
+
+Signer accounts accept the literal `$wallet`, which resolves to the configured
+keypair. Address-default and program accounts (system program, the caller
+program) are filled automatically; optional accounts default to `null`.
+
+```bash
+# Individual fields
+aura budget configure-budget-envelope \
+  --account treasury=<pda> \
+  --account owner='$wallet' \
+  --arg envelopeId=1 \
+  --arg amountUsd=5000
+
+# Whole objects from files
+aura policy create-policy-template \
+  --accounts @accounts.json \
+  --args @args.json
+
+# Preview without sending
+aura lifecycle issue-session-key --account treasury=<pda> --arg ... --dry-run
+```
+
+Every generated command runs through the same [secure pipeline](/cli/safety):
+preview, simulation, mainnet guard, and confirmation for sensitive instructions.
+If an instruction needs more signers, the CLI verifies them before broadcasting
+and tells you which `--extra-signer` keypairs are missing.

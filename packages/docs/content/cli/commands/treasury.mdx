@@ -24,9 +24,18 @@ aura treasury create \
 
 <small>Example output:</small>
 ```
-$ aura treasury create
-⠋ Creating treasury on devnet...
-✓ Treasury created: 3xKp…mF9z
+$ aura treasury create --agent-id agent-1 --daily-limit 10000 --per-tx-limit 1000
+╭─ Create treasury ───────────────────────────────────────────╮
+│ network    [devnet] https://api.devnet.solana.com           │
+│ agent      agent-1                                          │
+│ treasury   9mTq…Wr4K                                        │
+│ daily      $10000                                           │
+│ per-tx     $1000                                            │
+╰──────────────────────────────────────────────────────────────╯
+✓ Simulation ok (38,420 compute units)
+✓ Create treasury — 3xKp…mF9z
+ℹ https://explorer.solana.com/tx/3xKp…mF9z?cluster=devnet
+treasury  9mTq…Wr4K
 ```
 
 | Flag | Description |
@@ -136,9 +145,15 @@ aura treasury propose \
 
 <small>Example output:</small>
 ```
-$ aura treasury propose
-⠋ Submitting proposal...
-✓ Proposal submitted: 5vBn…Kx2P
+$ aura treasury propose --agent-id agent-1 --amount 250 --chain ethereum --recipient 0xdead…
+╭─ Propose transaction ───────────────────────────────────────╮
+│ network    [devnet] https://api.devnet.solana.com           │
+│ amount     $250                                             │
+│ recipient  0xdead…beef                                      │
+╰──────────────────────────────────────────────────────────────╯
+✓ Simulation ok (61,204 compute units)
+✓ Propose transaction — 5vBn…Kx2P
+ℹ https://explorer.solana.com/tx/5vBn…Kx2P?cluster=devnet
 ```
 
 | Flag | Description |
@@ -159,7 +174,8 @@ $ aura treasury propose
 
 ## aura treasury cancel
 
-Cancel the current pending transaction.
+Cancel the current pending transaction. Prompts for confirmation (it discards
+the pending proposal); pass the global `--yes` to skip the prompt.
 
 ```bash
 aura treasury cancel --agent-id agent-1
@@ -168,17 +184,20 @@ aura treasury cancel --agent-id agent-1 --yes    # skip confirmation
 
 <small>Example output:</small>
 ```
-$ aura treasury cancel
-? Cancel the current pending transaction? (y/N) y
-⠋ Cancelling pending transaction...
-✓ Pending transaction cancelled: 2wQj…Tz7R
+$ aura treasury cancel --agent-id agent-1
+╭─ Cancel pending transaction ────────────────────────────────╮
+│ network    [devnet] https://api.devnet.solana.com           │
+│ #1 auraEgX8…W1ce (3 accts · 1 signer · 2 writable)          │
+╰──────────────────────────────────────────────────────────────╯
+? Confirm "Cancel pending transaction"? (y/N) y
+✓ Cancel pending transaction — 2wQj…Tz7R
 ```
 
 ---
 
 ## aura treasury pause
 
-Pause or unpause treasury execution.
+Pause or unpause treasury execution. Prompts for confirmation; pass `--yes` to skip.
 
 ```bash
 aura treasury pause --agent-id agent-1            # pause
@@ -188,8 +207,7 @@ aura treasury pause --agent-id agent-1 --yes      # skip confirmation
 
 <small>Example output:</small>
 ```
-$ aura treasury pause
-? Pause this treasury? (y/N) y
-⠋ Pausing treasury...
-✓ Treasury paused: 4hLm…Vp3N
+$ aura treasury pause --agent-id agent-1
+? Confirm "Pause treasury"? (y/N) y
+✓ Pause treasury — 4hLm…Vp3N
 ```

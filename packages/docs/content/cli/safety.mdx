@@ -1,0 +1,82 @@
+---
+title: Safety & Security
+description: The preview, simulation, mainnet guard, and confirmation pipeline that protects every write.
+icon: ShieldCheck
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — not production ready">
+  `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
+</Callout>
+
+Every command that sends a transaction — ergonomic verbs, generated per-domain
+commands, and `ix send` alike — runs through one pipeline with guard rails. You
+always see what will happen before it happens.
+
+## The pipeline
+
+1. **Preview** — before anything is signed, the CLI prints exactly what will be
+   sent: the network, program, fee payer, and each instruction's account, signer,
+   and writable counts.
+2. **Preflight simulation** — the transaction is simulated against the cluster and
+   its compute-unit usage and any program error/logs are surfaced. Disable with
+   `--no-simulate`.
+3. **Mainnet guard** — a write against a mainnet RPC requires an explicit
+   confirmation, regardless of other flags.
+4. **Sensitive-action confirmation** — authority changes, governance updates, and
+   account closures prompt before sending. Bypass non-interactively with `--yes`.
+5. **Send + confirm** — the transaction is signed, sent, confirmed, and the
+   signature plus an explorer link are printed.
+
+```
+$ aura governance multisig --agent-id agent-1 --required 2 --guardians pk1,pk2,pk3
+╭─ Configure multisig ──────────────────────────────────────────╮
+│ network    [devnet] https://api.devnet.solana.com             │
+│ program    auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce        │
+│ payer      7mNv…QrSt                                          │
+│ quorum     2-of-3                                             │
+│ ──────────────────────────────────────                        │
+│ #1 auraEgX8…W1ce (2 accts · 1 signer · 1 writable)            │
+╰───────────────────────────────────────────────────────────────╯
+? Confirm "Configure multisig" (modifies governance / access control)? (y/N)
+```
+
+## Confirmation levels
+
+The CLI classifies each instruction by blast radius:
+
+| Level | Examples | Behavior |
+|-------|----------|----------|
+| `normal` | `create_treasury`, `propose_transaction`, `set_recipient_limit` | Sent after preview + simulation |
+| `caution` | `configure_multisig`, `propose_override`, `grant_operator_role`, `close_*`, `remove_*`, `migrate_treasury` | Requires confirmation |
+| `danger` | `emergency_*`, `break_glass_*`, `*_transfer_authority`, `revoke_*`, `rotate_*`, `trigger_dead_mans_switch`, ownership handover | Requires confirmation |
+
+A **mainnet** RPC always adds an extra confirmation on top of the level above.
+
+## Keypair hygiene
+
+On POSIX systems the CLI warns when a keypair file is readable by group or others:
+
+```
+⚠ Keypair /home/me/.config/solana/id.json is readable by group/others (mode 644). Run: chmod 600 /home/me/.config/solana/id.json
+```
+
+Secrets are never printed — keypairs are referenced by public key only.
+
+## Non-interactive use (CI)
+
+In scripts and CI, combine `--yes` (skip confirmations) with `--json` (structured
+output). Use `--dry-run` in pre-merge checks to validate an instruction builds
+without sending it.
+
+```bash
+aura --yes --json treasury create --agent-id ci-agent --daily-limit 1000 --per-tx-limit 100
+aura --dry-run --json budget configure-budget-envelope --account treasury=<pda> --arg ...
+```
+
+<Callout type="info">
+  Confirmations require an interactive terminal. In a non-TTY context (CI), a
+  sensitive action without `--yes` fails fast with a clear error rather than
+  hanging.
+</Callout>

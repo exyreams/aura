@@ -1,6 +1,6 @@
 ---
-title: instruction
-description: Build and send any aura-core instruction directly from the IDL.
+title: ix (instruction)
+description: Build, inspect, and send any aura-core instruction directly from the IDL.
 icon: Terminal
 ---
 
@@ -12,155 +12,119 @@ import { Callout } from "fumadocs-ui/components/callout";
   audit are published.
 </Callout>
 
-The `instruction` command (alias: `instructions`) gives raw access to every
-instruction in the AURA IDL. Useful for advanced operations not covered by the
-domain commands, or for scripting arbitrary instruction sequences.
+`aura ix` (aliases: `instruction`, `instructions`) is the power-user surface: it
+can list, inspect, build, and send **any** instruction in the AURA IDL by name.
+It is the universal companion to the [generated per-domain commands](/cli/commands/generated)
+and the ergonomic verbs.
 
 ```bash
-# Both forms work identically
+# These are equivalent
+aura ix list
 aura instruction list
-aura instructions list
 ```
 
-## aura instruction list
+## aura ix list
 
-List every instruction grouped by domain.
+List every instruction grouped by domain, with maturity.
 
 ```bash
-aura instruction list
-aura instruction list --json
+aura ix list
+aura ix list --domain policy
+aura ix list --json
 ```
 
 <small>Example output:</small>
-```bash $ aura instruction list AURA :: Instruction Surface
+```
+$ aura ix list
+AURA :: Instruction Surface  161 instructions · 13 domains
 
-┌──────────────┬──────────────────────────────────────────────────────────┐
-│ Domain │ Instructions │
-├──────────────┼──────────────────────────────────────────────────────────┤
-│ Treasury │ createTreasury │
-│ │ pauseExecution │
-│ │ proposeTransaction │
-│ │ cancelPending │
-├──────────────┼──────────────────────────────────────────────────────────┤
-│ Confidential │ configureConfidentialGuardrails │
-│ │ proposeConfidentialTransaction │
-│ │ requestPolicyDecryption │
-│ │ confirmPolicyDecryption │
-└──────────────┴──────────────────────────────────────────────────────────┘
-
-````
+[Treasury Lifecycle  (treasury)]
+┌────────────────────────┬──────────┐
+│ Instruction            │ Maturity │
+├────────────────────────┼──────────┤
+│ create_treasury        │ wallet   │
+│ propose_transaction    │ wallet   │
+│ …                      │          │
+└────────────────────────┴──────────┘
+```
 
 ---
 
-## aura instruction schema
+## aura ix schema
 
-Show the account and argument schema for a specific instruction.
+Show the account and argument schema for one instruction. Alias: `inspect`. No
+wallet required.
 
 ```bash
-aura instruction schema configure_budget_envelope
-aura instruction schema propose_transaction --json
-````
+aura ix schema configure_budget_envelope
+aura ix schema propose_transaction --json
+```
 
-Output includes each account (name, signer, writable, optional, default) and
-each argument (name, type, sample value).
-
-<small>Example output:</small>
-```bash $ aura instruction schema AURA :: proposeTransaction
-
-┌──────────────┬────────┬──────────┬──────────┬─────────┐
-│ Account │ Signer │ Writable │ Optional │ Default │
-├──────────────┼────────┼──────────┼──────────┼─────────┤
-│ aiAuthority │ yes │ no │ no │ │
-│ treasury │ no │ yes │ no │ │
-│ systemProgram│ no │ no │ no │ 1111…11 │
-└──────────────┴────────┴──────────┴──────────┴─────────┘
-
-┌──────────────────────┬────────┬──────────────┐
-│ Arg │ Type │ Sample │
-├──────────────────────┼────────┼──────────────┤
-│ amountUsd │ u64 │ 100 │
-│ targetChain │ u8 │ 2 │
-│ txType │ u8 │ 0 │
-│ recipientOrContract │ string │ "0xdeadbeef" │
-└──────────────────────┴────────┴──────────────┘
-
-````
+Output lists each account (name, signer, writable, optional, default) and each
+argument (name, type, sample value).
 
 ---
 
-## aura instruction build
+## aura ix build
 
-Build an instruction and print the serialized data without sending.
+Build an instruction and print it serialized — **offline, never sends**.
 
 ```bash
-aura instruction build cancel_pending \
-  --account owner=<pubkey> \
+aura ix build cancel_pending \
+  --account owner='$wallet' \
   --account treasury=<pubkey> \
   --arg now=1234567890
 
-# Or pass accounts/args as JSON
-aura instruction build cancel_pending \
-  --accounts '{"owner":"<pubkey>","treasury":"<pubkey>"}' \
-  --args '{"now":1234567890}'
-
-# Or load from a file
-aura instruction build cancel_pending \
-  --accounts @accounts.json \
-  --args @args.json
-````
-
-| Flag                       | Description                                    |
-| -------------------------- | ---------------------------------------------- |
-| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file   |
-| `--args <json\|@file>`     | Args as a JSON object/array or `@path` to file |
-| `--account <key=value>`    | Single account override, repeatable            |
-| `--arg <key=value>`        | Single argument override, repeatable           |
+# Whole objects, or load from files
+aura ix build cancel_pending --accounts @accounts.json --args @args.json
+```
 
 ```json
 {
-  "instruction": "cancelPending",
-  "programId": "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce",
-  "accounts": [
-    { "pubkey": "7mNv…QrSt", "isSigner": true, "isWritable": false },
-    { "pubkey": "9mTq…Wr4K", "isSigner": false, "isWritable": true }
-  ],
-  "dataBase64": "3ySm...Kx=="
+  "schema": { "name": "cancel_pending", "accounts": [/* … */], "args": [/* … */] },
+  "instruction": {
+    "programId": "auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce",
+    "accounts": [
+      { "pubkey": "7mNv…QrSt", "isSigner": true, "isWritable": false },
+      { "pubkey": "9mTq…Wr4K", "isSigner": false, "isWritable": true }
+    ],
+    "dataBase64": "3ySm…Kx=="
+  },
+  "requiredSigners": ["7mNv…QrSt"]
 }
 ```
 
 ---
 
-## aura instruction send
+## aura ix send
 
-Build and send any instruction using the configured wallet.
+Build and send any instruction through the [secure pipeline](/cli/safety)
+(preview → simulate → confirm → send).
 
 ```bash
-aura instruction send cancel_pending \
-  --account owner=<pubkey> \
+aura ix send transition_agent_state \
+  --account owner='$wallet' \
   --account treasury=<pubkey> \
-  --arg now=1234567890
+  --arg newState=active
 
-# With extra signers (e.g. for instructions requiring multiple keypairs)
-aura instruction send propose_confidential_transaction \
+# Instructions that create accounts need extra signers
+aura ix send propose_confidential_transaction \
   --accounts @accounts.json \
   --args @args.json \
   --extra-signer ~/.config/solana/policy-output.json
-
-# Override compute units
-aura instruction send configure_confidential_guardrails \
-  --accounts @accounts.json \
-  --args @args.json \
-  --compute-units 800000
 ```
 
-<small>Example output:</small>
-``` $ aura instruction send ✓ Instruction sent: 2pVk…Hn6Z ```
+| Flag | Description |
+|------|-------------|
+| `--account <key=value>` | Set or override one account (repeatable) |
+| `--arg <key=value>` | Set or override one argument (repeatable) |
+| `--accounts <json\|@file>` | Whole accounts object as JSON or `@path` |
+| `--args <json\|@file>` | Whole args object/array as JSON or `@path` |
+| `--extra-signer <path>` | Additional signer keypair (repeatable) |
+| `--schema` | Print the schema and exit instead of sending |
 
-| Flag                       | Description                                    |
-| -------------------------- | ---------------------------------------------- |
-| `--accounts <json\|@file>` | Accounts as a JSON object or `@path` to file   |
-| `--args <json\|@file>`     | Args as a JSON object/array or `@path` to file |
-| `--account <key=value>`    | Single account override, repeatable            |
-| `--arg <key=value>`        | Single argument override, repeatable           |
-| `--extra-signer <path>`    | Additional keypair path, repeatable            |
-| `--compute-units <units>`  | Compute unit limit (default: 600,000)          |
+<Callout type="info">
+  Signer accounts accept the literal `$wallet` (the configured keypair). The
+  compute-unit limit is set with the global `--compute-units <n>` flag. The CLI
+  verifies every required signer is present before broadcasting.
+</Callout>

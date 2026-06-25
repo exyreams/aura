@@ -11,11 +11,15 @@ import { Callout } from 'fumadocs-ui/components/callout';
   `@aura-protocol/cli` targets Solana **devnet** only. APIs and commands may change without notice. Do not use for real funds until a stable release and audit are published.
 </Callout>
 
-Every command supports the global `--rpc-url`, `--wallet`, `--program-id`,
-`--json`, `--quiet`, and `--dry-run` flags. Commands that submit transactions
-require a wallet; `config`, `features`, and `dashboard` can run without one.
+Every command supports the global flags (`--rpc-url`, `--wallet`, `--program-id`,
+`--json`, `--quiet`, `--dry-run`, `-y/--yes`, `--no-simulate`, `--no-color`,
+`--compute-units`). Commands that submit transactions require a wallet and run
+through the [secure pipeline](/cli/safety); `config`, `features`, `pda`, `ix list`,
+and `ix schema` run without one.
 
-## Command Groups
+## Ergonomic command groups
+
+Friendly verbs for the highest-traffic flows:
 
 | Group | Purpose |
 |-------|---------|
@@ -25,35 +29,53 @@ require a wallet; `config`, `features`, and `dashboard` can run without one.
 | `confidential` | Encrypt deposits, guardrails, and confidential proposals |
 | `execution` | Execute, finalize, and watch pending proposals |
 | `governance` | Multisig, swarms, and override proposals |
-| `instruction` | Build and send any IDL instruction directly |
+
+## Full instruction coverage
+
+Beyond the ergonomic verbs, **every** instruction is reachable:
+
+| Surface | Example |
+|---------|---------|
+| Generated per-domain commands | `aura policy create-policy-template …` |
+| Raw instruction surface (`ix`) | `aura ix send transition_agent_state …` |
+
+The generated commands cover all 13 domains — including `policy`, `budget`,
+`operational`, `lifecycle`, `swarm`, `fees`, `address-lists`, and `batch`. See
+[Generated Commands](/cli/commands/generated).
+
+## Utilities
+
+| Group | Purpose |
+|-------|---------|
+| `ix` (`instruction`) | Build, inspect, and send any IDL instruction directly |
 | `pda` | Derive any AURA, dWallet, or Encrypt PDA |
-| `features` | Inspect the SDK-backed program surface |
+| `features` | Inspect the program surface and maturity breakdown |
 | `dashboard` | Live terminal treasury dashboard |
 
 ## Automation Pattern
 
-Use `--json` for scripts and CI. Use `--dry-run` before high-value or
-governance actions to inspect the built instruction without sending.
+Use `--json` for scripts and CI, `--yes` to skip confirmations, and `--dry-run`
+to inspect a built instruction without sending it.
 
 ```bash
-# Inspect program surface as JSON
+# Inspect the program surface as JSON
 aura features --json
-aura features --domain governance --json
+aura ix list --json
 
 # Show treasury state as JSON
 aura treasury show --agent-id agent-1 --json
 
-# Dry-run a proposal
+# Dry-run a proposal (preview only, no send)
 aura treasury propose --agent-id agent-1 --amount 250 --chain ethereum \
   --recipient 0xdeadbeef... --dry-run
 
-# Watch execution state
-aura execution watch --agent-id agent-1
+# Non-interactive governance change in CI
+aura --yes --json governance multisig --agent-id agent-1 --required 2 --guardians pk1,pk2,pk3
 ```
 
 <Cards>
   <Card title="treasury" description="Create, propose, pause, and cancel." href="/cli/commands/treasury" />
   <Card title="execution" description="Execute, finalize, and watch proposals." href="/cli/commands/execution" />
   <Card title="governance" description="Multisig, swarms, and overrides." href="/cli/commands/governance" />
-  <Card title="confidential" description="FHE guardrails and confidential proposals." href="/cli/commands/confidential" />
+  <Card title="generated" description="Per-domain commands for every instruction." href="/cli/commands/generated" />
 </Cards>

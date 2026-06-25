@@ -12,8 +12,9 @@ import { Callout } from 'fumadocs-ui/components/callout';
 </Callout>
 
 `@aura-protocol/cli` is the terminal interface for AURA operators. It wraps the
-TypeScript SDK, supports `--json` output for automation and CI, and exposes the
-full program surface through domain-grouped commands.
+TypeScript SDK, exposes **every** `aura-core` instruction, and routes each write
+through a secure pipeline — transaction preview, preflight simulation, a mainnet
+guard, and confirmations for sensitive actions. `--json` output makes it scriptable.
 
 ## Install
 
@@ -29,35 +30,48 @@ aura config set rpc-url https://devnet.helius-rpc.com/?api-key=YOUR_KEY
 aura config set wallet-path ~/.config/solana/id.json
 ```
 
+## Three ways to run an instruction
+
+Every program instruction is reachable three ways — pick the level of ergonomics
+you want:
+
+```bash
+# 1. Ergonomic verbs for the common flows
+aura treasury create --agent-id agent-1 --daily-limit 10000 --per-tx-limit 1000
+
+# 2. Generated per-domain commands — full coverage, IDL-accurate
+aura budget configure-budget-envelope --account treasury=<pda> --arg ...
+
+# 3. The raw instruction surface (alias: ix) for anything
+aura ix send transition_agent_state --account treasury=<pda> --arg newState=active
+```
+
+See [Generated Commands](/cli/commands/generated) for how the per-domain surface
+is derived from the program IDL (so it never drifts).
+
 ## Common Workflows
 
 ```bash
-# Create a treasury
+# Create a treasury and inspect it
 aura treasury create --agent-id agent-1 --daily-limit 10000 --per-tx-limit 1000
-
-# Show treasury state
 aura treasury show --agent-id agent-1
 
-# Propose a transaction
+# Propose, execute, and finalize
 aura treasury propose --agent-id agent-1 --amount 250 --chain ethereum --recipient 0x...
-
-# Execute and finalize
 aura execution execute --agent-id agent-1 --wait-signed
 aura execution finalize --agent-id agent-1
 
-# Register a dWallet
-aura dwallet register --agent-id agent-1 --chain ethereum --dwallet-id eth-main --address 0x...
-
-# Submit a scalar confidential proposal
+# Confidential (FHE) proposal
+aura confidential guardrails scalar --agent-id agent-1 --daily-limit 10000 --per-tx-limit 1000
 aura confidential propose --agent-id agent-1 --amount 250 --chain ethereum --recipient 0x...
 
-# Configure multisig
-aura governance multisig --agent-id agent-1 --required 2 --guardians pk1,pk2,pk3
+# Preview anything without sending
+aura treasury propose --agent-id agent-1 --amount 250 --chain ethereum --recipient 0x... --dry-run
 ```
 
 ## Global Flags
 
-These flags work on every command:
+These flags work on every command (before or after the subcommand):
 
 | Flag | Description |
 |------|-------------|
@@ -65,9 +79,13 @@ These flags work on every command:
 | `--wallet <path>` | Override wallet keypair path |
 | `--program-id <id>` | Override AURA program ID |
 | `--cluster <name>` | Cluster label for display |
-| `--json` | Print machine-readable JSON output |
+| `--json` | Print machine-readable JSON (implies `--no-color`) |
 | `--quiet` | Suppress non-error terminal output |
-| `--dry-run` | Build instructions without sending |
+| `--dry-run` | Build and preview the transaction without sending |
+| `-y, --yes` | Skip confirmation prompts (non-interactive / CI) |
+| `--no-simulate` | Skip the preflight simulation before sending |
+| `--no-color` | Disable colored output |
+| `--compute-units <n>` | Override the compute-unit limit |
 
 ## Command Groups
 
@@ -79,12 +97,14 @@ These flags work on every command:
 | `confidential` | Encrypt deposits, guardrails, and confidential proposals |
 | `execution` | Execute, finalize, and watch pending proposals |
 | `governance` | Multisig, swarms, and override proposals |
-| `instruction` | Build and send any IDL instruction directly |
+| `policy` · `budget` · `operational` · `lifecycle` · `swarm` · `fees` · `address-lists` · `batch` | Generated per-domain instruction commands |
+| `ix` (`instruction`) | Build, inspect, and send any IDL instruction directly |
 | `pda` | Derive any AURA, dWallet, or Encrypt PDA |
-| `features` | Inspect the SDK-backed program surface |
+| `features` | Inspect the program surface and maturity breakdown |
 | `dashboard` | Live terminal treasury dashboard |
 
 <Cards>
   <Card title="Configuration" description="Config file, environment variables, and resolution order." href="/cli/configuration" />
+  <Card title="Safety" description="The preview, simulation, mainnet guard, and confirmation pipeline." href="/cli/safety" />
   <Card title="Commands" description="Full command reference for all groups." href="/cli/commands" />
 </Cards>
