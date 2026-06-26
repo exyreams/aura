@@ -15,7 +15,7 @@ import {
   AURA_INSTRUCTION_FEATURES,
   getAuraFeatureDomain,
   getInstructionDomain,
-} from "../../src/index.js";
+} from "../../../src/index.js";
 
 const DOMAIN_IDS = [
   "treasury",

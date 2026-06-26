@@ -11,9 +11,9 @@ import {
   accounts,
   deriveTreasuryAddress,
   instructions,
-} from "../../src/index.js";
-import { offlineClient, pk } from "../support/offline.js";
-import { buildCreateTreasuryArgs } from "../support/sample.js";
+} from "../../../src/index.js";
+import { offlineClient, pk } from "../../support/offline.js";
+import { buildCreateTreasuryArgs } from "../../support/sample.js";
 
 test("AuraClient defaults to the IDL program id", () => {
   const client = offlineClient();

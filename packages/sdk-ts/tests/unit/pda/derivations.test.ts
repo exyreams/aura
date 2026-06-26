@@ -77,7 +77,7 @@ import {
   TREASURY_ANALYTICS_SEED,
   TREASURY_SEED,
   TRUST_IDENTITY_SEED,
-} from "../../src/index.js";
+} from "../../../src/index.js";
 
 const PROGRAM = Keypair.generate().publicKey;
 
@@ -183,26 +183,26 @@ test("deriveEncryptEventAuthorityAddress is scoped to the encrypt program", () =
 const SIDECARS: ReadonlyArray<
   [string, (t: PublicKey, p?: PublicKey) => [PublicKey, number], Buffer]
 > = [
-  ["activityLog", deriveActivityLogAddress, ACTIVITY_LOG_SEED],
-  ["addressList", deriveAddressListAddress, ADDRESS_LIST_SEED],
-  [
-    "confidentialGuardrails",
-    deriveConfidentialGuardrailsAddress,
-    CONFIDENTIAL_GUARDRAILS_SEED,
-  ],
-  ["feeSchedule", deriveFeeScheduleAddress, FEE_SCHEDULE_SEED],
-  ["feeVault", deriveFeeVaultAddress, FEE_VAULT_SEED],
-  ["healthScore", deriveHealthScoreAddress, HEALTH_SCORE_SEED],
-  ["policyCanary", derivePolicyCanaryAddress, POLICY_CANARY_SEED],
-  ["policyHistory", derivePolicyHistoryAddress, POLICY_HISTORY_SEED],
-  [
-    "treasuryAnalytics",
-    deriveTreasuryAnalyticsAddress,
-    TREASURY_ANALYTICS_SEED,
-  ],
-  ["trustIdentity", deriveTrustIdentityAddress, TRUST_IDENTITY_SEED],
-  ["externalLiveness", deriveExternalLivenessAddress, EXTERNAL_LIVENESS_SEED],
-];
+    ["activityLog", deriveActivityLogAddress, ACTIVITY_LOG_SEED],
+    ["addressList", deriveAddressListAddress, ADDRESS_LIST_SEED],
+    [
+      "confidentialGuardrails",
+      deriveConfidentialGuardrailsAddress,
+      CONFIDENTIAL_GUARDRAILS_SEED,
+    ],
+    ["feeSchedule", deriveFeeScheduleAddress, FEE_SCHEDULE_SEED],
+    ["feeVault", deriveFeeVaultAddress, FEE_VAULT_SEED],
+    ["healthScore", deriveHealthScoreAddress, HEALTH_SCORE_SEED],
+    ["policyCanary", derivePolicyCanaryAddress, POLICY_CANARY_SEED],
+    ["policyHistory", derivePolicyHistoryAddress, POLICY_HISTORY_SEED],
+    [
+      "treasuryAnalytics",
+      deriveTreasuryAnalyticsAddress,
+      TREASURY_ANALYTICS_SEED,
+    ],
+    ["trustIdentity", deriveTrustIdentityAddress, TRUST_IDENTITY_SEED],
+    ["externalLiveness", deriveExternalLivenessAddress, EXTERNAL_LIVENESS_SEED],
+  ];
 
 for (const [name, fn, seed] of SIDECARS) {
   test(`derive${name} matches [seed, treasury] and defaults program id`, () => {
@@ -225,18 +225,18 @@ const INDEXED: ReadonlyArray<
     Buffer,
   ]
 > = [
-  ["policySimulation", derivePolicySimulationAddress, POLICY_SIMULATION_SEED],
-  ["policyReceipt", derivePolicyReceiptAddress, POLICY_RECEIPT_SEED],
-  ["budgetEnvelope", deriveBudgetEnvelopeAddress, BUDGET_ENVELOPE_SEED],
-  ["batchProposal", deriveBatchProposalAddress, BATCH_PROPOSAL_SEED],
-  ["invariantReport", deriveInvariantReportAddress, INVARIANT_REPORT_SEED],
-  [
-    "conditionalProposal",
-    deriveConditionalProposalAddress,
-    CONDITIONAL_PROPOSAL_SEED,
-  ],
-  ["scheduledIntent", deriveScheduledIntentAddress, SCHEDULED_INTENT_SEED],
-];
+    ["policySimulation", derivePolicySimulationAddress, POLICY_SIMULATION_SEED],
+    ["policyReceipt", derivePolicyReceiptAddress, POLICY_RECEIPT_SEED],
+    ["budgetEnvelope", deriveBudgetEnvelopeAddress, BUDGET_ENVELOPE_SEED],
+    ["batchProposal", deriveBatchProposalAddress, BATCH_PROPOSAL_SEED],
+    ["invariantReport", deriveInvariantReportAddress, INVARIANT_REPORT_SEED],
+    [
+      "conditionalProposal",
+      deriveConditionalProposalAddress,
+      CONDITIONAL_PROPOSAL_SEED,
+    ],
+    ["scheduledIntent", deriveScheduledIntentAddress, SCHEDULED_INTENT_SEED],
+  ];
 
 for (const [name, fn, seed] of INDEXED) {
   test(`derive${name} matches [seed, treasury, u64Le(id)]`, () => {

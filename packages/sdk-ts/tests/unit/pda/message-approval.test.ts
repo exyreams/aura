@@ -14,7 +14,7 @@ import {
   DWALLET_SEED,
   deriveMessageApprovalAddress,
   MESSAGE_APPROVAL_SEED,
-} from "../../src/index.js";
+} from "../../../src/index.js";
 
 function u16Le(value: number): Buffer {
   const b = Buffer.alloc(2);

@@ -51,7 +51,7 @@ import {
   TREASURY_ANALYTICS_SEED,
   TREASURY_SEED,
   TRUST_IDENTITY_SEED,
-} from "../../src/index.js";
+} from "../../../src/index.js";
 
 test("AURA_PROGRAM_ID is read from the IDL address", () => {
   assert.equal(AURA_PROGRAM_ID.toBase58(), AURA_IDL.address);
