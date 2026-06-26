@@ -1,0 +1,406 @@
+---
+title: Lifecycle & Roles
+description: Agent identity, operator roles, session keys, agent state, chain and protocol config.
+icon: GitBranch
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The lifecycle domain manages agent identity and capabilities, ownership
+handover, operator roles, session keys, agent-state transitions, and the global
+chain/protocol configuration. Builders span `instructions::agent`,
+`instructions::lifecycle`, `instructions::chain_profiles`, and
+`instructions::protocol_config`. Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+// `trust_identity` is the treasury's trust-identity PDA.
+```
+
+## register_agent
+
+Registers an agent identity with allowed chains/tx-types. Accounts: `owner` (s),
+`treasury`, `trust_identity` (w) via `AgentManage`.
+
+```rust
+let sig = client.register_agent(
+    &owner,
+    accounts::AgentManage { owner: owner.pubkey(), treasury, trust_identity },
+    RegisterAgentArgs {
+        key: agent.pubkey(),
+        label: "trading-agent".to_string(),
+        allowed_chains: vec![2],
+        allowed_tx_types: vec![0],
+        daily_limit_usd: Some(5_000),
+        now,
+    },
+)?;
+```
+
+## revoke_agent
+
+Revokes an agent (positional `key`). Accounts: `owner` (s), `treasury`,
+`trust_identity` (w).
+
+```rust
+let sig = client.revoke_agent(
+    &owner,
+    accounts::AgentManage { owner: owner.pubkey(), treasury, trust_identity },
+    agent.pubkey(),
+    now,
+)?;
+```
+
+## emergency_revoke_agent
+
+Emergency-revokes an agent (callable by an authorized caller). Accounts:
+`caller` (s), `treasury`, `trust_identity` (w) via `EmergencyRevokeAgent`.
+
+```rust
+let sig = client.emergency_revoke_agent(
+    &caller,
+    accounts::EmergencyRevokeAgent { caller: caller.pubkey(), treasury, trust_identity },
+    agent.pubkey(),
+    now,
+)?;
+```
+
+## set_agent_capability
+
+Sets fine-grained capabilities for an agent. Accounts: `owner` (s), `treasury`,
+`trust_identity` (w).
+
+```rust
+let sig = client.set_agent_capability(
+    &owner,
+    accounts::AgentManage { owner: owner.pubkey(), treasury, trust_identity },
+    SetAgentCapabilityArgs {
+        key: agent.pubkey(),
+        allowed_chains: vec![2],
+        allowed_tx_types: vec![0],
+        daily_limit_usd: Some(5_000),
+        allowed_protocols: 31,
+        allowed_instructions: 0xffff,
+        per_tx_limit_usd: Some(1_000),
+        recipient_list: None,
+        allowed_assets: None,
+        active_window_start: None,
+        active_window_end: None,
+        now,
+    },
+)?;
+```
+
+## arm_capability_loosen
+
+Arms a delayed capability-loosening for an agent (positional `key`). Accounts:
+`owner` (s), `treasury`, `trust_identity` (w).
+
+```rust
+let sig = client.arm_capability_loosen(
+    &owner,
+    accounts::AgentManage { owner: owner.pubkey(), treasury, trust_identity },
+    agent.pubkey(),
+    now,
+)?;
+```
+
+## set_agent_tripwires
+
+Configures the tripwire weights that throttle an agent's trust. Accounts:
+`owner` (s), `treasury`, `trust_identity` (w) via `TrustEnvelopeConfig`.
+
+```rust
+let sig = client.set_agent_tripwires(
+    &owner,
+    accounts::TrustEnvelopeConfig { owner: owner.pubkey(), treasury, trust_identity },
+    SetAgentTripwiresArgs {
+        policy_denial_weight: 10,
+        anomaly_weight: 20,
+        fail_open_abuse_weight: 30,
+        approval_miss_weight: 5,
+        now,
+    },
+)?;
+```
+
+## nominate_successor_owner
+
+Nominates a successor owner (first step of handover). Accounts: `caller` (s),
+`treasury` (w), `trust_identity` (w) via `OwnershipHandover`.
+
+```rust
+let sig = client.nominate_successor_owner(
+    &owner,
+    accounts::OwnershipHandover { caller: owner.pubkey(), treasury, trust_identity },
+    NominateSuccessorArgs { new_owner: successor.pubkey(), now },
+)?;
+```
+
+## execute_ownership_handover
+
+Executes ownership handover (dWallet CPI). Accounts: `caller` (s), `treasury`
+(w), `trust_identity` (w), `dwallet` (w), `caller_program`, `cpi_authority`,
+`dwallet_program`.
+
+```rust
+let sig = client.execute_ownership_handover(
+    &successor,
+    accounts::ExecuteOwnershipHandover {
+        caller: successor.pubkey(),
+        treasury,
+        trust_identity,
+        dwallet,
+        caller_program,
+        cpi_authority,
+        dwallet_program,
+    },
+    ExecuteHandoverArgs { chain: 2, finalize: true, now },
+)?;
+```
+
+<Callout type="warn" title="Handover uses dWallet CPI">
+  `execute_ownership_handover` co-signs through the Ika dWallet program — derive
+  the authorities with the [dWallet PDA helpers](/sdk-rs/client/pda).
+</Callout>
+
+## grant_operator_role
+
+Grants an operator role. Accounts: `owner` (s, w), `operator`, `treasury`,
+`operator_role` (w), `system_program`.
+
+```rust
+let sig = client.grant_operator_role(
+    &owner,
+    accounts::GrantOperatorRole {
+        owner: owner.pubkey(),
+        operator: operator.pubkey(),
+        treasury,
+        operator_role,
+        system_program: sys,
+    },
+    GrantOperatorRoleArgs { permission_mask: 0xff, expires_at: 0, now },
+)?;
+```
+
+## update_operator_role
+
+Updates an operator role (optional fields). Accounts: `owner` (s), `treasury`,
+`operator_role` (w).
+
+```rust
+let sig = client.update_operator_role(
+    &owner,
+    accounts::UpdateOperatorRole { owner: owner.pubkey(), treasury, operator_role },
+    UpdateOperatorRoleArgs { permission_mask: Some(0x0f), expires_at: None, now },
+)?;
+```
+
+## revoke_operator_role
+
+Revokes an operator role. Accounts: `owner` (s), `treasury`, `operator_role`
+(w).
+
+```rust
+let sig = client.revoke_operator_role(
+    &owner,
+    accounts::RevokeOperatorRole { owner: owner.pubkey(), treasury, operator_role },
+    now,
+)?;
+```
+
+## issue_session_key
+
+Issues a scoped session key. Accounts: `authority` (s, w), `treasury`,
+`session_key_account` (w), `system_program`.
+
+```rust
+let sig = client.issue_session_key(
+    &owner,
+    accounts::IssueSessionKey {
+        authority: owner.pubkey(),
+        treasury,
+        session_key_account,
+        system_program: sys,
+    },
+    IssueSessionKeyArgs {
+        session_key: session_key.pubkey(),
+        duration_secs: 3_600,
+        max_amount_usd_per_tx: Some(500),
+        max_daily_spend_usd: Some(2_000),
+        allowed_chains: vec![2],
+        allowed_tx_types: vec![0],
+        max_proposal_count: Some(100),
+        now,
+    },
+)?;
+```
+
+## update_session_key
+
+Updates a session key. Each field is optional (`None` = leave unchanged).
+Accounts: `authority` (s), `treasury`, `session_key_account` (w).
+
+```rust
+let sig = client.update_session_key(
+    &owner,
+    accounts::UpdateSessionKey { authority: owner.pubkey(), treasury, session_key_account },
+    UpdateSessionKeyArgs {
+        extend_duration_secs: Some(3_600),
+        max_amount_usd_per_tx: None,
+        max_daily_spend_usd: None,
+        allowed_chains: None,
+        allowed_tx_types: None,
+        max_proposal_count: None,
+        now,
+    },
+)?;
+```
+
+## revoke_session_key
+
+Revokes a session key. Accounts: `authority` (s), `treasury`,
+`session_key_account` (w).
+
+```rust
+let sig = client.revoke_session_key(
+    &owner,
+    accounts::RevokeSessionKey { authority: owner.pubkey(), treasury, session_key_account },
+    now,
+)?;
+```
+
+## close_session_key
+
+Closes a session-key account. Accounts: `authority` (s, w), `treasury`,
+`session_key_account` (w). No arguments.
+
+```rust
+let sig = client.close_session_key(
+    &owner,
+    accounts::CloseSessionKey { authority: owner.pubkey(), treasury, session_key_account },
+)?;
+```
+
+## transition_agent_state
+
+Transitions the agent state machine (e.g. `1` = Active). Accounts: `owner` (s),
+`treasury` (w).
+
+```rust
+let sig = client.transition_agent_state(&owner, treasury, 1 /* target_state */, now)?;
+```
+
+## trigger_dead_mans_switch
+
+Triggers the dead-man's switch — permissionless once due (pass any fee payer).
+Accounts: `treasury` (w).
+
+```rust
+let sig = client.trigger_dead_mans_switch(&payer, treasury, now)?;
+```
+
+## migrate_treasury
+
+Migrates a treasury to the current account layout. Accounts: `treasury` (w),
+`payer` (s, w), `system_program`. No arguments.
+
+```rust
+let sig = client.migrate_treasury(
+    &payer,
+    accounts::MigrateTreasury { treasury, payer: payer.pubkey(), system_program: sys },
+)?;
+```
+
+## register_chain_profile
+
+Registers a global per-chain profile (no treasury). Accounts: `authority`
+(s, w), `chain_profile` (w), `system_program`.
+
+```rust
+let sig = client.register_chain_profile(
+    &authority,
+    accounts::RegisterChainProfile { authority: authority.pubkey(), chain_profile, system_program: sys },
+    ChainProfileArgs {
+        chain_code: 2,
+        enabled: true,
+        address_format: 0,
+        replay_scheme: 0,
+        finality_model: 0,
+        curve: 0,
+        signature_scheme: 0,
+        native_gas_asset: "ETH".to_string(),
+        evm_chain_id: Some(1),
+        confirmations_required: 12,
+        now,
+    },
+)?;
+```
+
+## update_chain_profile
+
+Updates a chain profile (same `ChainProfileArgs`). Accounts: `authority` (s),
+`chain_profile` (w).
+
+```rust
+let sig = client.update_chain_profile(
+    &authority,
+    accounts::UpdateChainProfile { authority: authority.pubkey(), chain_profile },
+    args, // ChainProfileArgs — see register_chain_profile
+)?;
+```
+
+## init_protocol_config
+
+Initializes the global protocol-config singleton. Accounts: `payer` (s, w),
+`protocol_config` (w), `system_program`.
+
+```rust
+let sig = client.init_protocol_config(
+    &payer,
+    accounts::InitProtocolConfig { payer: payer.pubkey(), protocol_config, system_program: sys },
+    ProtocolConfigArgs {
+        protocol_authority: authority.pubkey(),
+        protocol_recipient: recipient.pubkey(),
+        protocol_fee_bps: 10,
+        creation_fee_usd: 100,
+        min_integrator_bps: 0,
+        max_integrator_bps: 1_000,
+        settlement_asset: 0,
+        enabled: true,
+    },
+    now,
+)?;
+```
+
+## update_protocol_config
+
+Updates the protocol config (staged). Accounts: `authority` (s),
+`protocol_config` (w) via `ProtocolConfigAuthority`.
+
+```rust
+let sig = client.update_protocol_config(
+    &authority,
+    accounts::ProtocolConfigAuthority { authority: authority.pubkey(), protocol_config },
+    args, // ProtocolConfigArgs — see init_protocol_config
+    now,
+)?;
+```
+
+## commit_protocol_config
+
+Commits a staged protocol-config change. Accounts: `authority` (s),
+`protocol_config` (w).
+
+```rust
+let sig = client.commit_protocol_config(
+    &authority,
+    accounts::ProtocolConfigAuthority { authority: authority.pubkey(), protocol_config },
+    now,
+)?;
+```

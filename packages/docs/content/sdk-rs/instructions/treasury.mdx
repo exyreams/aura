@@ -1,0 +1,141 @@
+---
+title: Treasury
+description: Create and configure treasuries, analytics, and recipient limits.
+icon: Vault
+---
+
+The treasury domain creates the root account every other instruction hangs off
+of. Builders live under `instructions::treasury::*`; client send-helpers are
+`client.<name>(...)`. All examples assume:
+
+```rust
+use aura_sdk::{
+    anchor_accounts as accounts,
+    types::{CreateTreasuryArgs, PolicyConfig, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord},
+    AuraClient,
+};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let owner = Keypair::new();
+let now = chrono::Utc::now().timestamp(); // any i64 unix seconds
+// `treasury` is the PDA from `client.derive_treasury_address(&owner.pubkey(), agent_id)`.
+```
+
+The account structs come from `aura_sdk::anchor_accounts` (re-exported from the
+program's `aura_core::accounts`). PDAs without a dedicated helper in
+[`aura_sdk::pda`](/sdk-rs/client/pda) are derived with
+`Pubkey::find_program_address` using the program seeds.
+
+## create_treasury
+
+Initializes a treasury PDA with a full policy configuration. The send-helper
+derives the PDA internally and returns it. Accounts: `owner` (s, w), `treasury`
+(w), `system_program`.
+
+```rust
+let args = CreateTreasuryArgs {
+    agent_id: "agent-prod-1".to_string(),
+    ai_authority: owner.pubkey(),
+    created_at: now,
+    pending_transaction_ttl_secs: 900,
+    policy_config: PolicyConfigRecord::from_domain(&PolicyConfig::default()),
+    protocol_fees: ProtocolFeesRecord::from_domain(&ProtocolFees::default()),
+};
+
+// Build only (returns the derived PDA + instruction)…
+let (treasury, ix) = client.create_treasury_instruction(owner.pubkey(), args.clone());
+
+// …or build + send in one call.
+let (treasury, sig) = client.create_treasury(&owner, args)?;
+```
+
+`PolicyConfigRecord` / `ProtocolFeesRecord` are the serialized on-chain records;
+`from_domain` converts from the rich [`PolicyConfig`](/sdk-rs/client/types)
+domain type so you set only the fields you care about.
+
+## init_treasury_analytics
+
+Creates the analytics + audit-commitment sidecar. Accounts: `owner` (s, w),
+`treasury`, `analytics` (w), `system_program`.
+
+```rust
+let sig = client.init_treasury_analytics(
+    &owner,
+    accounts::InitTreasuryAnalytics {
+        owner: owner.pubkey(),
+        treasury,
+        analytics,
+        system_program: solana_sdk::system_program::ID,
+    },
+    now,
+)?;
+```
+
+## close_treasury_analytics
+
+Closes the analytics sidecar and reclaims rent. Accounts: `owner` (s, w),
+`treasury`, `analytics` (w). No arguments.
+
+```rust
+let sig = client.close_treasury_analytics(
+    &owner,
+    accounts::CloseTreasuryAnalytics { owner: owner.pubkey(), treasury, analytics },
+)?;
+```
+
+## update_treasury_metadata
+
+Patches operational settings — all fields on `UpdateTreasuryMetadataArgs` are
+optional. Accounts: `owner` (s), `treasury` (w) via `OwnerTreasury`.
+
+```rust
+use aura_sdk::types::UpdateTreasuryMetadataArgs;
+
+let sig = client.update_treasury_metadata(
+    &owner,
+    accounts::OwnerTreasury { owner: owner.pubkey(), treasury },
+    UpdateTreasuryMetadataArgs {
+        pending_transaction_ttl_secs: Some(1_200),
+        high_risk_threshold: Some(80),
+        high_risk_require_guardian: Some(true),
+        sanctions_check_enabled: Some(true),
+        now,
+    },
+)?;
+```
+
+## set_recipient_limit
+
+Sets a per-recipient daily/per-tx cap. Accounts: `owner` (s), `treasury` (w).
+
+```rust
+use aura_sdk::types::SetRecipientLimitArgs;
+
+let sig = client.set_recipient_limit(
+    &owner,
+    accounts::OwnerTreasury { owner: owner.pubkey(), treasury },
+    SetRecipientLimitArgs {
+        chain: 2, // Ethereum
+        address: "0x000000000000000000000000000000000000dead".to_string(),
+        daily_limit_usd: 2_000,
+        per_tx_limit_usd: Some(500),
+        now,
+    },
+)?;
+```
+
+## remove_recipient_limit
+
+Removes a per-recipient limit (positional args). Accounts: `owner` (s),
+`treasury` (w).
+
+```rust
+let sig = client.remove_recipient_limit(
+    &owner,
+    accounts::OwnerTreasury { owner: owner.pubkey(), treasury },
+    2, // chain
+    "0x000000000000000000000000000000000000dead".to_string(),
+    now,
+)?;
+```

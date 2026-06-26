@@ -225,6 +225,13 @@ client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
     quote_age_secs: None,
     counterparty_risk_score: None,
     recipient_or_contract: "0xdeadbeef...".to_string(),
+    sanctions_proof: vec![],
+    // Optional chain-native transfer payload — all default to None:
+    asset_id: None, native_amount: None, decimals: None,
+    gas_native_amount: None, gas_asset_id: None,
+    evm_chain_id: None, replay_nonce: None, gas_limit: None, max_fee_native: None,
+    calldata_hash: None, utxo_set_hash: None, sighash_type: None,
+    solana_recent_blockhash: None, solana_message_hash: None, confirmations_required: None,
 })?;
 
 // Confidential proposal (scalar FHE — requires Ika Encrypt network)
@@ -270,6 +277,8 @@ use aura_sdk::types::ConfigureMultisigArgs;
 client.configure_multisig(&owner, treasury, ConfigureMultisigArgs {
     required_signatures: 2,
     guardians: vec![guardian1, guardian2, guardian3],
+    guardian_weights: vec![1, 1, 1],
+    required_approval_weight: 2,
     timestamp: now,
 })?;
 

@@ -1,0 +1,392 @@
+---
+title: Execution
+description: Proposals, approval, settlement, scheduled and conditional intents, and pause.
+icon: Play
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The execution domain drives the proposal lifecycle: propose → approve → execute
+→ finalize, plus pause/cancel, scheduled intents, and conditional proposals.
+Builders live under `instructions::execution::*` (with scheduled-intent and
+conditional builders under `instructions::scheduled_intents` / `conditional`).
+Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+// `treasury` is the treasury PDA; `ai`, `owner`, `operator`, `caller` are Keypairs.
+```
+
+## propose_transaction
+
+Creates a public spend proposal. The send-helper wires every optional sidecar
+account to `None`; use `propose_transaction_instruction` + a custom
+`accounts::ProposeTransaction { .. }` when you need them. Accounts:
+`ai_authority` (s), `treasury` (w), plus optional sidecars.
+
+```rust
+let sig = client.propose_transaction(&ai, treasury, ProposeTransactionArgs {
+    amount_usd: 100,
+    target_chain: 2,
+    tx_type: 0,
+    protocol_id: None,
+    current_timestamp: now,
+    expected_output_usd: None,
+    actual_output_usd: None,
+    quote_age_secs: None,
+    counterparty_risk_score: None,
+    recipient_or_contract: "0x000000000000000000000000000000000000dead".to_string(),
+    sanctions_proof: vec![],
+    // Optional chain-native transfer payload — all default to None:
+    asset_id: None, native_amount: None, decimals: None,
+    gas_native_amount: None, gas_asset_id: None,
+    evm_chain_id: None, replay_nonce: None, gas_limit: None, max_fee_native: None,
+    calldata_hash: None, utxo_set_hash: None, sighash_type: None,
+    solana_recent_blockhash: None, solana_message_hash: None, confirmations_required: None,
+})?;
+```
+
+## propose_conditional_transaction
+
+Parks a proposal behind on-chain conditions. Accounts: `ai_authority` (s, w),
+`treasury` (w), `conditional_proposal` (w), `condition_feed?`, `system_program`.
+
+```rust
+let sig = client.propose_conditional_transaction(
+    &ai,
+    accounts::ProposeConditionalTransaction {
+        ai_authority: ai.pubkey(),
+        treasury,
+        conditional_proposal,
+        condition_feed: None,
+        system_program: solana_sdk::system_program::ID,
+    },
+    1, // proposal_id
+    ConditionalProposalArgs {
+        amount_usd: 100,
+        target_chain: 2,
+        tx_type: 0,
+        protocol_id: None,
+        recipient_or_contract: "0x...dead".to_string(),
+        ttl_secs: 3_600,
+        conditions: vec![],
+        combinator: 0,
+        now,
+    },
+)?;
+```
+
+## approve_pending_execution
+
+Approves a pending proposal at a given approval level. Accounts: `approver`
+(s), `treasury` (w).
+
+```rust
+let sig = client.approve_pending_execution(
+    &approver,
+    accounts::ApprovePendingExecution { approver: approver.pubkey(), treasury },
+    ApprovePendingExecutionArgs { proposal_id: 1, approval_level: 1, now },
+)?;
+```
+
+## execute_pending
+
+Executes an approved proposal by co-signing through the Ika dWallet network.
+Accounts: `operator` (s), `treasury` (w), plus the dWallet CPI accounts (most
+optional).
+
+```rust
+let sig = client.execute_pending(
+    &operator,
+    accounts::ExecutePending {
+        operator: operator.pubkey(),
+        treasury,
+        message_approval: None,
+        dwallet: None,
+        caller_program, // the AURA program id acting as caller
+        cpi_authority: None,
+        dwallet_program: None,
+        dwallet_coordinator: None,
+        external_liveness: None,
+        dwallet_state: None,
+        system_program: solana_sdk::system_program::ID,
+    },
+    now,
+)?;
+```
+
+<Callout type="warn" title="Requires the Ika dWallet network">
+  `execute_pending` and `finalize_execution` perform CPIs to the Ika dWallet
+  program. Derive the authorities with
+  [`derive_dwallet_cpi_authority_pda` / `derive_message_approval_pda`](/sdk-rs/client/pda).
+  These flows are exercised by the Rust smoke tests in `smoke/aura-devnet/`.
+</Callout>
+
+## finalize_execution
+
+Finalizes after broadcast and settles fees. Accounts: `operator` (s),
+`treasury` (w), `message_approval`, plus optional sidecars and fee accounts.
+
+```rust
+let sig = client.finalize_execution(
+    &operator,
+    accounts::FinalizeExecution {
+        operator: operator.pubkey(),
+        treasury,
+        message_approval,
+        swarm_pool: None,
+        budget_envelope: None,
+        exposure_group: None,
+        external_liveness: None,
+        dwallet_state: None,
+        scheduled_intent: None,
+        fee_vault: None,
+        fee_schedule: None,
+        protocol_config: None,
+    },
+    now,
+)?;
+```
+
+## confirm_settlement
+
+Confirms an on-chain settlement (tx hash + confirmations). Accounts: `operator`
+(s), `treasury` (w), plus optional pool/budget/exposure/dwallet/intent accounts.
+
+```rust
+let sig = client.confirm_settlement(
+    &operator,
+    accounts::ConfirmSettlement {
+        operator: operator.pubkey(),
+        treasury,
+        swarm_pool: None,
+        budget_envelope: None,
+        exposure_group: None,
+        dwallet_state: None,
+        scheduled_intent: None,
+    },
+    ConfirmSettlementArgs {
+        proposal_id: 1,
+        target_tx_hash: [0u8; 32],
+        confirmations_observed: 12,
+        reorged: false,
+        now,
+    },
+)?;
+```
+
+## mark_settlement_broadcast
+
+Records that a settlement transaction was broadcast. Accounts: `operator` (s),
+`treasury` (w).
+
+```rust
+let sig = client.mark_settlement_broadcast(
+    &operator,
+    accounts::MarkSettlementBroadcast { operator: operator.pubkey(), treasury },
+    MarkSettlementBroadcastArgs { proposal_id: 1, target_tx_hash: [0u8; 32], now },
+)?;
+```
+
+## resubmit_proposal
+
+Resubmits a failed proposal with refreshed chain parameters. Accounts:
+`operator` (s), `treasury` (w), `chain_profile?`.
+
+```rust
+let sig = client.resubmit_proposal(
+    &operator,
+    accounts::ResubmitProposal { operator: operator.pubkey(), treasury, chain_profile: None },
+    ResubmitProposalArgs {
+        proposal_id: 1,
+        evm_chain_id: None, replay_nonce: None, gas_limit: None, max_fee_native: None,
+        calldata_hash: None, utxo_set_hash: None, sighash_type: None,
+        solana_recent_blockhash: None, solana_message_hash: None, confirmations_required: None,
+        now,
+    },
+)?;
+```
+
+## abandon_proposal
+
+Abandons a stuck proposal (positional args). Accounts: `operator` (s),
+`treasury` (w), `dwallet_state?`.
+
+```rust
+let sig = client.abandon_proposal(
+    &operator,
+    accounts::AbandonProposal { operator: operator.pubkey(), treasury, dwallet_state: None },
+    1, // proposal_id
+    now,
+)?;
+```
+
+## cancel_pending
+
+Cancels the active pending proposal. Builder lives under
+`instructions::treasury`. Accounts: `owner` (s), `treasury` (w),
+`dwallet_state?` (the send-helper passes `None`).
+
+```rust
+let sig = client.cancel_pending(&owner, treasury, now)?;
+```
+
+## pause_execution
+
+Pauses or resumes all execution. While paused, `propose_transaction` fails with
+`ExecutionPaused`. Accounts: `owner` (s), `treasury` (w).
+
+```rust
+client.pause_execution(&owner, treasury, true,  now)?; // pause
+client.pause_execution(&owner, treasury, false, now)?; // resume
+```
+
+## create_scheduled_intent
+
+Creates a recurring/deferred intent (positional `intent_id`). Accounts: `owner`
+(s, w), `treasury`, `scheduled_intent` (w), `system_program`.
+
+```rust
+let sig = client.create_scheduled_intent(
+    &owner,
+    accounts::CreateScheduledIntent {
+        owner: owner.pubkey(),
+        treasury,
+        scheduled_intent,
+        system_program: solana_sdk::system_program::ID,
+    },
+    1, // intent_id
+    ScheduledIntentArgs {
+        kind: 0,
+        chain: 2,
+        tx_type: 0,
+        interval_secs: 86_400,
+        start_at: now,
+        end_at: None,
+        max_runs: None,
+        per_run_limit_usd: 100,
+        total_budget_usd: None,
+        recipients: vec![],
+        amount_usd: 100,
+        skip_on_deny: true,
+        catch_up: false,
+        keeper: None,
+        conditions: vec![],
+        combinator: 0,
+    },
+)?;
+```
+
+## update_scheduled_intent
+
+Updates an existing scheduled intent (same `ScheduledIntentArgs`). Accounts:
+`owner` (s), `treasury`, `scheduled_intent` (w) via `ManageScheduledIntent`.
+
+```rust
+let sig = client.update_scheduled_intent(
+    &owner,
+    accounts::ManageScheduledIntent { owner: owner.pubkey(), treasury, scheduled_intent },
+    args, // ScheduledIntentArgs — see create_scheduled_intent
+)?;
+```
+
+## pause_scheduled_intent
+
+Pauses a scheduled intent. Accounts: `owner` (s), `treasury`, `scheduled_intent`
+(w). No arguments.
+
+```rust
+let sig = client.pause_scheduled_intent(
+    &owner,
+    accounts::ManageScheduledIntent { owner: owner.pubkey(), treasury, scheduled_intent },
+)?;
+```
+
+## resume_scheduled_intent
+
+Resumes a paused scheduled intent. Accounts: `owner` (s), `treasury`,
+`scheduled_intent` (w). No arguments.
+
+```rust
+let sig = client.resume_scheduled_intent(
+    &owner,
+    accounts::ManageScheduledIntent { owner: owner.pubkey(), treasury, scheduled_intent },
+)?;
+```
+
+## execute_scheduled_intent
+
+Executes a due scheduled intent (permissionless keeper). Accounts: `caller`
+(s), `treasury` (w), `scheduled_intent` (w), `condition_feed?`. No arguments.
+
+```rust
+let sig = client.execute_scheduled_intent(
+    &caller,
+    accounts::ExecuteScheduledIntent {
+        caller: caller.pubkey(),
+        treasury,
+        scheduled_intent,
+        condition_feed: None,
+    },
+)?;
+```
+
+## clear_scheduled_intent_in_flight
+
+Clears the in-flight flag on a scheduled intent (positional args). Accounts:
+`owner` (s), `treasury` (w), `scheduled_intent` (w).
+
+```rust
+let sig = client.clear_scheduled_intent_in_flight(
+    &owner,
+    accounts::ClearScheduledIntentInFlight { owner: owner.pubkey(), treasury, scheduled_intent },
+    1, // proposal_id
+    now,
+)?;
+```
+
+## close_scheduled_intent
+
+Closes a scheduled intent and reclaims rent. Accounts: `owner` (s, w),
+`treasury`, `scheduled_intent` (w). No arguments.
+
+```rust
+let sig = client.close_scheduled_intent(
+    &owner,
+    accounts::CloseScheduledIntent { owner: owner.pubkey(), treasury, scheduled_intent },
+)?;
+```
+
+## try_trigger
+
+Attempts to trigger a conditional proposal once its conditions hold. Accounts:
+`caller` (s), `treasury` (w), `conditional_proposal` (w), `condition_feed?`. No
+arguments.
+
+```rust
+let sig = client.try_trigger(
+    &caller,
+    accounts::TryTrigger {
+        caller: caller.pubkey(),
+        treasury,
+        conditional_proposal,
+        condition_feed: None,
+    },
+)?;
+```
+
+## close_conditional_proposal
+
+Closes a conditional proposal. Accounts: `owner` (s, w), `treasury`,
+`conditional_proposal` (w). No arguments.
+
+```rust
+let sig = client.close_conditional_proposal(
+    &owner,
+    accounts::CloseConditionalProposal { owner: owner.pubkey(), treasury, conditional_proposal },
+)?;
+```

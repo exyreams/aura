@@ -1,0 +1,367 @@
+---
+title: Policy
+description: Presets, templates, simulations, receipts, attestations, history, canaries, and trust.
+icon: ScrollText
+---
+
+The policy domain manages the policy-engine surface: presets and templates,
+simulation, receipts and attestations, version history with rollback, shadow
+canaries, and per-agent trust. Builders live under `instructions::policy::*`
+(trust builders under `instructions::trust`). Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+// `policy_config` is a full PolicyConfigRecord (see Treasury → create_treasury).
+```
+
+## apply_policy_preset
+
+Applies a built-in preset by kind. Accounts: `owner` (s), `treasury` (w).
+
+```rust
+let sig = client.apply_policy_preset(
+    &owner,
+    accounts::ApplyPolicyPreset { owner: owner.pubkey(), treasury },
+    ApplyPolicyPresetArgs { preset_kind: 0, now },
+)?;
+```
+
+## create_policy_template
+
+Authors a reusable template (owner-scoped PDA). Accounts: `owner` (s, w),
+`policy_template` (w), `system_program`.
+
+```rust
+let sig = client.create_policy_template(
+    &owner,
+    accounts::CreatePolicyTemplate { owner: owner.pubkey(), policy_template, system_program: sys },
+    CreatePolicyTemplateArgs {
+        template_id: 1,
+        name: "conservative".to_string(),
+        description: "Low daily limits".to_string(),
+        shared: false,
+        source_preset: None,
+        config: Some(policy_config.clone()), // or None to start empty
+        now,
+    },
+)?;
+```
+
+## update_policy_template
+
+Updates a template. Accounts: `owner` (s), `policy_template` (w) via
+`ManagePolicyTemplate`.
+
+```rust
+let sig = client.update_policy_template(
+    &owner,
+    accounts::ManagePolicyTemplate { owner: owner.pubkey(), policy_template },
+    UpdatePolicyTemplateArgs {
+        name: "conservative-v2".to_string(),
+        description: "Updated".to_string(),
+        shared: true,
+        config: policy_config.clone(),
+        now,
+    },
+)?;
+```
+
+## close_policy_template
+
+Closes a template and reclaims rent. Accounts: `owner` (s, w), `policy_template`
+(w). No arguments.
+
+```rust
+let sig = client.close_policy_template(
+    &owner,
+    accounts::ClosePolicyTemplate { owner: owner.pubkey(), policy_template },
+)?;
+```
+
+## apply_policy_template
+
+Applies a template to a treasury. Accounts: `owner` (s), `treasury` (w),
+`policy_template` (w).
+
+```rust
+let sig = client.apply_policy_template(
+    &owner,
+    accounts::ApplyPolicyTemplate { owner: owner.pubkey(), treasury, policy_template },
+    now,
+)?;
+```
+
+## apply_policy_template_parameterized
+
+Applies a template with scalar overrides. Accounts: `owner` (s), `treasury` (w),
+`policy_template` (w).
+
+```rust
+let sig = client.apply_policy_template_parameterized(
+    &owner,
+    accounts::ApplyPolicyTemplate { owner: owner.pubkey(), treasury, policy_template },
+    ParameterizedOverrides {
+        scale_bps: Some(12_000),
+        daily_limit_usd: Some(20_000),
+        per_tx_limit_usd: None,
+    },
+    now,
+)?;
+```
+
+## simulate_policy
+
+Simulates a proposal off the hot path; the result lands in a PDA. Accounts:
+`payer` (s, w), `treasury`, `operator_role?`, `simulation_result` (w),
+`system_program`.
+
+```rust
+let sig = client.simulate_policy(
+    &payer,
+    accounts::SimulatePolicy {
+        payer: payer.pubkey(),
+        treasury,
+        operator_role: None,
+        simulation_result,
+        system_program: sys,
+    },
+    SimulatePolicyArgs {
+        simulation_id: 1,
+        amount_usd: 100,
+        target_chain: 2,
+        tx_type: 0,
+        protocol_id: None,
+        current_timestamp: now,
+        expected_output_usd: None,
+        actual_output_usd: None,
+        quote_age_secs: None,
+        counterparty_risk_score: None,
+        recipient_or_contract: "0x...dead".to_string(),
+    },
+)?;
+```
+
+## write_policy_receipt
+
+Commits a policy receipt for a proposal, optionally linking an attestation.
+Accounts: `payer` (s, w), `treasury`, `receipt` (w), `attestation?`,
+`system_program`.
+
+```rust
+let sig = client.write_policy_receipt(
+    &payer,
+    accounts::WritePolicyReceipt {
+        payer: payer.pubkey(),
+        treasury,
+        receipt,
+        attestation: None,
+        system_program: sys,
+    },
+    WritePolicyReceiptArgs { proposal_id: 1, now },
+)?;
+```
+
+## attest_policy
+
+Attests a policy version. Both `payer` and `attester` sign. Accounts: `payer`
+(s, w), `attester` (s), `treasury`, `attestation` (w), `system_program`.
+
+```rust
+let sig = client.attest_policy(
+    &payer,
+    &attester,
+    accounts::AttestPolicy {
+        payer: payer.pubkey(),
+        attester: attester.pubkey(),
+        treasury,
+        attestation,
+        system_program: sys,
+    },
+    AttestPolicyArgs { attestation_kind: 0, expected_policy_hash: [0u8; 32], now },
+)?;
+```
+
+## check_invariants
+
+Runs and records invariant checks. Accounts: `payer` (s, w), `treasury`,
+`report` (w), `system_program`.
+
+```rust
+let sig = client.check_invariants(
+    &payer,
+    accounts::CheckInvariants { payer: payer.pubkey(), treasury, report, system_program: sys },
+    CheckInvariantsArgs { report_id: 1, now },
+)?;
+```
+
+## check_policy_cpi
+
+Runs a policy check via CPI and writes a `PolicyCheckResult`. Accounts: `caller`
+(the calling program), `treasury`, `fee_payer` (s, w), `result` (w),
+`system_program`.
+
+```rust
+let sig = client.check_policy_cpi(
+    &fee_payer,
+    accounts::CheckPolicyCpi {
+        caller: caller_program,
+        treasury,
+        fee_payer: fee_payer.pubkey(),
+        result,
+        system_program: sys,
+    },
+    CheckPolicyCpiArgs {
+        amount_usd: 100,
+        target_chain: 2,
+        tx_type: 0,
+        protocol_id: None,
+        current_timestamp: now,
+        recipient_or_contract: "0x...dead".to_string(),
+    },
+)?;
+```
+
+## init_policy_history
+
+Creates the policy-history account. Accounts: `owner` (s, w), `treasury`,
+`policy_history` (w), `system_program`. No arguments.
+
+```rust
+let sig = client.init_policy_history(
+    &owner,
+    accounts::InitPolicyHistory { owner: owner.pubkey(), treasury, policy_history, system_program: sys },
+)?;
+```
+
+## record_policy_snapshot
+
+Snapshots the current policy version into history. Accounts: `owner` (s),
+`treasury`, `policy_history` (w) — passed via `InitPolicyHistory`.
+
+```rust
+let sig = client.record_policy_snapshot(
+    &owner,
+    accounts::InitPolicyHistory { owner: owner.pubkey(), treasury, policy_history, system_program: sys },
+    now,
+)?;
+```
+
+## rollback_policy
+
+Rolls back to a prior policy version. Accounts: `owner` (s, w), `treasury` (w),
+`policy_history` (w).
+
+```rust
+let sig = client.rollback_policy(
+    &owner,
+    accounts::RollbackPolicy { owner: owner.pubkey(), treasury, policy_history },
+    3, // target_version
+    policy_config.clone(), // candidate
+    now,
+)?;
+```
+
+## close_policy_history
+
+Closes the policy-history account. Accounts: `owner` (s, w), `treasury`,
+`policy_history` (w). No arguments.
+
+```rust
+let sig = client.close_policy_history(
+    &owner,
+    accounts::ClosePolicyHistory { owner: owner.pubkey(), treasury, policy_history },
+)?;
+```
+
+## start_canary
+
+Starts a shadow policy candidate sampled against live traffic. Accounts: `owner`
+(s, w), `treasury`, `policy_canary` (w), `system_program`.
+
+```rust
+let sig = client.start_canary(
+    &owner,
+    accounts::StartCanary { owner: owner.pubkey(), treasury, policy_canary, system_program: sys },
+    policy_config.clone(), // candidate
+    100,                   // sample_cap
+    now,
+)?;
+```
+
+## promote_canary
+
+Promotes the canary to live policy. Accounts: `owner` (s, w), `treasury` (w),
+`policy_history` (w), `policy_canary` (w).
+
+```rust
+let sig = client.promote_canary(
+    &owner,
+    accounts::PromoteCanary { owner: owner.pubkey(), treasury, policy_history, policy_canary },
+    now,
+)?;
+```
+
+## discard_canary
+
+Discards the canary candidate. Accounts: `owner` (s, w), `treasury`,
+`policy_canary` (w). No arguments.
+
+```rust
+let sig = client.discard_canary(
+    &owner,
+    accounts::DiscardCanary { owner: owner.pubkey(), treasury, policy_canary },
+)?;
+```
+
+## init_trust_identity
+
+Creates the trust + identity account. Accounts: `owner` (s, w), `treasury`,
+`trust_identity` (w), `system_program`.
+
+```rust
+let sig = client.init_trust_identity(
+    &owner,
+    accounts::InitTrustIdentity { owner: owner.pubkey(), treasury, trust_identity, system_program: sys },
+    now,
+)?;
+```
+
+## configure_trust_policy
+
+Configures trust thresholds and reputation scaling. Accounts: `owner` (s),
+`treasury`, `trust_identity` (w) via `TrustEnvelopeConfig`.
+
+```rust
+let sig = client.configure_trust_policy(
+    &owner,
+    accounts::TrustEnvelopeConfig { owner: owner.pubkey(), treasury, trust_identity },
+    ConfigureTrustPolicyArgs {
+        watch_threshold: 70,
+        restricted_threshold: 50,
+        lockdown_threshold: 30,
+        watch_multiplier_bps: 8_000,
+        restricted_multiplier_bps: 5_000,
+        decay_points_per_period: 5,
+        decay_period_secs: 86_400,
+        now,
+    },
+)?;
+```
+
+## restore_trust
+
+Restores trust after a tripwire. Accounts: `owner` (s), `treasury`,
+`trust_identity` (w).
+
+```rust
+let sig = client.restore_trust(
+    &owner,
+    accounts::TrustEnvelopeConfig { owner: owner.pubkey(), treasury, trust_identity },
+    now,
+)?;
+```

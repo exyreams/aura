@@ -1,0 +1,174 @@
+---
+title: Operational
+description: Scoped pauses, external liveness, health scores, snapshots, and activity logs.
+icon: Activity
+---
+
+The operational domain covers observability and safety surfaces. Builders live
+under `instructions::operational::*`. Many refresh instructions accept an
+optional `operator_role` (pass `None` to act as owner). Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+```
+
+## set_scoped_pause
+
+Pauses/resumes a specific scope (chain, tx type, recipient, protocol). Accounts:
+`operator` (s), `treasury` (w), `operator_role?`.
+
+```rust
+let sig = client.set_scoped_pause(
+    &operator,
+    accounts::SetScopedPause { operator: operator.pubkey(), treasury, operator_role: None },
+    SetScopedPauseArgs {
+        scope_kind: 0,
+        chain: Some(2),
+        tx_type: None,
+        recipient: None,
+        protocol_id: None,
+        paused: true,
+        expires_at: None,
+        now,
+    },
+)?;
+```
+
+## init_external_liveness
+
+Creates the external-liveness record. Accounts: `owner` (s, w), `treasury`,
+`liveness` (w), `system_program`.
+
+```rust
+let sig = client.init_external_liveness(
+    &owner,
+    accounts::InitExternalLiveness { owner: owner.pubkey(), treasury, liveness, system_program: sys },
+    InitExternalLivenessArgs { max_staleness_secs: 300, now },
+)?;
+```
+
+## refresh_external_liveness
+
+Refreshes a liveness dependency. Accounts: `operator` (s), `treasury`,
+`operator_role?`, `liveness` (w).
+
+```rust
+let sig = client.refresh_external_liveness(
+    &operator,
+    accounts::RefreshExternalLiveness { operator: operator.pubkey(), treasury, operator_role: None, liveness },
+    RefreshExternalLivenessArgs { dependency: 0, now },
+)?;
+```
+
+## close_external_liveness
+
+Closes the liveness record. Accounts: `owner` (s, w), `treasury`, `liveness`
+(w). No arguments.
+
+```rust
+let sig = client.close_external_liveness(
+    &owner,
+    accounts::CloseExternalLiveness { owner: owner.pubkey(), treasury, liveness },
+)?;
+```
+
+## init_health_score
+
+Creates the health-score account. Accounts: `owner` (s, w), `treasury`,
+`health_score` (w), `system_program`.
+
+```rust
+let sig = client.init_health_score(
+    &owner,
+    accounts::InitHealthScore { owner: owner.pubkey(), treasury, health_score, system_program: sys },
+    now,
+)?;
+```
+
+## refresh_health_score
+
+Recomputes the health score. Accounts: `operator` (s), `treasury`,
+`operator_role?`, `health_score` (w) via `UpdateHealthScore`.
+
+```rust
+let sig = client.refresh_health_score(
+    &operator,
+    accounts::UpdateHealthScore { operator: operator.pubkey(), treasury, operator_role: None, health_score },
+    now,
+)?;
+```
+
+## close_health_score
+
+Closes the health-score account. Accounts: `owner` (s, w), `treasury`,
+`health_score` (w). No arguments.
+
+```rust
+let sig = client.close_health_score(
+    &owner,
+    accounts::CloseHealthScore { owner: owner.pubkey(), treasury, health_score },
+)?;
+```
+
+## take_snapshot
+
+Takes a periodic snapshot (indexed by a `u32`). Accounts: `payer` (s, w),
+`treasury` (w), `operator_role?`, `health_score`, `snapshot` (w),
+`system_program`.
+
+```rust
+let sig = client.take_snapshot(
+    &payer,
+    accounts::TakeSnapshot {
+        payer: payer.pubkey(),
+        treasury,
+        operator_role: None,
+        health_score,
+        snapshot,
+        system_program: sys,
+    },
+    0, // snapshot_index
+    now,
+)?;
+```
+
+## close_snapshot
+
+Closes a snapshot account. Accounts: `owner` (s, w), `treasury`, `snapshot` (w).
+No arguments.
+
+```rust
+let sig = client.close_snapshot(
+    &owner,
+    accounts::CloseSnapshot { owner: owner.pubkey(), treasury, snapshot },
+)?;
+```
+
+## init_activity_log
+
+Creates the activity-log ring buffer. Accounts: `owner` (s, w), `treasury`,
+`activity_log` (w), `system_program`. No arguments.
+
+```rust
+let sig = client.init_activity_log(
+    &owner,
+    accounts::InitActivityLog { owner: owner.pubkey(), treasury, activity_log, system_program: sys },
+)?;
+```
+
+## close_activity_log
+
+Closes the activity log. Accounts: `owner` (s, w), `treasury`, `activity_log`
+(w). No arguments.
+
+```rust
+let sig = client.close_activity_log(
+    &owner,
+    accounts::CloseActivityLog { owner: owner.pubkey(), treasury, activity_log },
+)?;
+```

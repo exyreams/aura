@@ -1,0 +1,270 @@
+---
+title: Protocol Fees
+description: Fee schedules, vaults, billing templates, collection, and payouts.
+icon: Coins
+---
+
+The fees domain manages protocol monetization. Builders live under
+`instructions::fees::*` (billing templates under `instructions::billing`,
+protocol config under `instructions::protocol_config`). Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+
+// A complete FeeScheduleRecord (reused below).
+let fee_schedule_record = FeeScheduleRecord {
+    base_bps: 10,
+    per_type_bps: vec![],
+    tiers: vec![],
+    min_fee_usd: 0,
+    max_fee_usd: None,
+    creation_fee_usd: 100,
+    subscription_usd_per_period: 0,
+    subscription_period_secs: 0,
+    aum_bps_per_period: 0,
+    fhe_subsidy_bps: 5_000,
+    reputation_discount_bps: 0,
+    referral_discount_bps: 0,
+    discount_cap_bps: 0,
+    integrator_bps: 0,
+    owner_surcharge_bps: 0,
+};
+```
+
+## init_fee_vault
+
+Creates the fee vault (positional `protocol_fee_recipient`). Accounts: `owner`
+(s, w), `treasury`, `fee_vault` (w), `system_program`.
+
+```rust
+let sig = client.init_fee_vault(
+    &owner,
+    accounts::InitFeeVault { owner: owner.pubkey(), treasury, fee_vault, system_program: sys },
+    recipient.pubkey(), // protocol_fee_recipient
+    now,
+)?;
+```
+
+## deposit_fees
+
+Deposits lamports into the vault (positional `amount`). Accounts: `owner` (s, w),
+`treasury`, `fee_vault` (w), `system_program` via `ManageFeeVault`.
+
+```rust
+let sig = client.deposit_fees(
+    &owner,
+    accounts::ManageFeeVault { owner: owner.pubkey(), treasury, fee_vault, system_program: sys },
+    1_000, // amount
+)?;
+```
+
+## collect_fees
+
+Pays out accrued fees to the recipient (signed by the protocol authority).
+Accounts: `protocol_authority` (s, w), `fee_vault` (w), `recipient` (w).
+
+```rust
+let sig = client.collect_fees(
+    &protocol_authority,
+    accounts::CollectFees {
+        protocol_authority: protocol_authority.pubkey(),
+        fee_vault,
+        recipient: recipient.pubkey(),
+    },
+    now,
+)?;
+```
+
+## withdraw_unused_fees
+
+Withdraws unused vault balance. Accounts: `owner` (s, w), `treasury`, `fee_vault`
+(w), `system_program`.
+
+```rust
+let sig = client.withdraw_unused_fees(
+    &owner,
+    accounts::ManageFeeVault { owner: owner.pubkey(), treasury, fee_vault, system_program: sys },
+    500, // amount
+)?;
+```
+
+## set_fee_splits
+
+Configures split recipients and the low-balance mode (positional). Accounts:
+`owner` (s, w), `treasury`, `fee_vault` (w), `system_program`.
+
+```rust
+let sig = client.set_fee_splits(
+    &owner,
+    accounts::ManageFeeVault { owner: owner.pubkey(), treasury, fee_vault, system_program: sys },
+    vec![], // Vec<FeeSplitRecord>
+    0,      // low_balance_mode
+)?;
+```
+
+## update_fee_recipient
+
+Changes the fee recipient. Accounts: `owner` (s), `treasury`, `fee_vault` (w).
+
+```rust
+let sig = client.update_fee_recipient(
+    &owner,
+    accounts::UpdateFeeRecipient { owner: owner.pubkey(), treasury, fee_vault },
+    recipient.pubkey(), // new_recipient
+)?;
+```
+
+## close_fee_vault
+
+Closes the vault. Accounts: `owner` (s, w), `treasury`, `fee_vault` (w). No
+arguments.
+
+```rust
+let sig = client.close_fee_vault(
+    &owner,
+    accounts::CloseFeeVault { owner: owner.pubkey(), treasury, fee_vault },
+)?;
+```
+
+## init_fee_schedule
+
+Creates the fee schedule. Accounts: `owner` (s, w), `treasury`, `fee_schedule`
+(w), `protocol_config?`, `system_program`.
+
+```rust
+let sig = client.init_fee_schedule(
+    &owner,
+    accounts::InitFeeSchedule {
+        owner: owner.pubkey(),
+        treasury,
+        fee_schedule,
+        protocol_config: None,
+        system_program: sys,
+    },
+    fee_schedule_record.clone(),
+    now,
+)?;
+```
+
+## update_fee_schedule
+
+Updates the fee schedule. Accounts: `owner` (s), `treasury`, `fee_schedule` (w),
+`protocol_config?`.
+
+```rust
+let sig = client.update_fee_schedule(
+    &owner,
+    accounts::UpdateFeeSchedule { owner: owner.pubkey(), treasury, fee_schedule, protocol_config: None },
+    fee_schedule_record.clone(),
+    now,
+)?;
+```
+
+## close_fee_schedule
+
+Closes the fee schedule. Accounts: `owner` (s, w), `treasury`, `fee_schedule`
+(w). No arguments.
+
+```rust
+let sig = client.close_fee_schedule(
+    &owner,
+    accounts::CloseFeeSchedule { owner: owner.pubkey(), treasury, fee_schedule },
+)?;
+```
+
+## create_billing_template
+
+Authors a billing template (owner-scoped). Accounts: `owner` (s, w),
+`billing_template` (w), `system_program`.
+
+```rust
+let sig = client.create_billing_template(
+    &owner,
+    accounts::CreateBillingTemplate { owner: owner.pubkey(), billing_template, system_program: sys },
+    CreateBillingTemplateArgs {
+        template_id: 1,
+        name: "standard".to_string(),
+        description: "Standard billing".to_string(),
+        shared: false,
+        source_kind: None,
+        schedule: Some(fee_schedule_record.clone()), // or None when source_kind is set
+        now,
+    },
+)?;
+```
+
+## update_billing_template
+
+Updates a billing template. Accounts: `owner` (s), `billing_template` (w) via
+`ManageBillingTemplate`.
+
+```rust
+let sig = client.update_billing_template(
+    &owner,
+    accounts::ManageBillingTemplate { owner: owner.pubkey(), billing_template },
+    UpdateBillingTemplateArgs {
+        name: "standard-v2".to_string(),
+        description: "Updated".to_string(),
+        shared: true,
+        schedule: fee_schedule_record.clone(),
+        now,
+    },
+)?;
+```
+
+## close_billing_template
+
+Closes a billing template. Accounts: `owner` (s, w), `billing_template` (w). No
+arguments.
+
+```rust
+let sig = client.close_billing_template(
+    &owner,
+    accounts::CloseBillingTemplate { owner: owner.pubkey(), billing_template },
+)?;
+```
+
+## apply_billing_template
+
+Applies a billing template to a treasury's fee schedule. Accounts: `owner` (s),
+`treasury`, `billing_template` (w), `fee_schedule` (w), `protocol_config?`.
+
+```rust
+let sig = client.apply_billing_template(
+    &owner,
+    accounts::ApplyBillingTemplate {
+        owner: owner.pubkey(),
+        treasury,
+        billing_template,
+        fee_schedule,
+        protocol_config: None,
+    },
+    now,
+)?;
+```
+
+## apply_org_profile
+
+Applies a combined policy + billing profile in one step. Accounts: `owner` (s),
+`treasury` (w), `policy_template` (w), `billing_template` (w), `fee_schedule`
+(w), `protocol_config?`.
+
+```rust
+let sig = client.apply_org_profile(
+    &owner,
+    accounts::ApplyOrgProfile {
+        owner: owner.pubkey(),
+        treasury,
+        policy_template,
+        billing_template,
+        fee_schedule,
+        protocol_config: None,
+    },
+    now,
+)?;
+```

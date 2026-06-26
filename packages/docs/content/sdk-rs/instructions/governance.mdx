@@ -1,0 +1,189 @@
+---
+title: Governance
+description: Multisig, overrides, authority and guardian rotation, config changes, and recovery.
+icon: Landmark
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The governance domain covers the emergency multisig, guardian overrides,
+authority/guardian rotation, timelocked config changes, and break-glass
+recovery. Builders live under `instructions::governance::*` (recovery builders
+under `instructions::recovery`). Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+// `treasury` is the treasury PDA; `owner`/`guardian` are Keypairs.
+```
+
+## configure_multisig
+
+Sets guardians, per-guardian weights, and the approval threshold. Accounts:
+`owner` (s), `treasury` (w).
+
+```rust
+let sig = client.configure_multisig(&owner, treasury, ConfigureMultisigArgs {
+    required_signatures: 1,
+    guardians: vec![guardian1.pubkey(), guardian2.pubkey()],
+    guardian_weights: vec![1, 1], // empty = plain M-of-N
+    required_approval_weight: 1,  // 0 falls back to the count quorum
+    timestamp: now,
+})?;
+```
+
+## propose_override
+
+Guardian-proposes a temporary daily-limit override (positional args). Accounts:
+`guardian` (s), `treasury` (w).
+
+```rust
+let sig = client.propose_override(&guardian1, treasury, 50_000 /* new_daily_limit_usd */, now)?;
+```
+
+## collect_override_signature
+
+Adds another guardian's signature to a pending override. Accounts: `guardian`
+(s), `treasury` (w).
+
+```rust
+let sig = client.collect_override_signature(&guardian2, treasury, now)?;
+```
+
+## propose_ai_rotation
+
+Proposes rotating the AI authority (starts the timelock). Accounts: `owner` (s),
+`treasury` (w).
+
+```rust
+let sig = client.propose_ai_rotation(&owner, treasury, next_ai.pubkey(), now)?;
+```
+
+## execute_ai_rotation
+
+Executes a matured AI-authority rotation. Accounts: `owner` (s), `treasury` (w).
+
+```rust
+let sig = client.execute_ai_rotation(&owner, treasury, now)?;
+```
+
+## cancel_ai_rotation
+
+Cancels a pending AI-authority rotation. Accounts: `owner` (s), `treasury` (w).
+
+```rust
+let sig = client.cancel_ai_rotation(&owner, treasury, now)?;
+```
+
+## propose_config_change
+
+Proposes a timelocked policy-config change. `new_policy_config` is a full
+[`PolicyConfigRecord`](/sdk-rs/instructions/treasury#create_treasury). Accounts:
+`owner` (s), `treasury` (w).
+
+```rust
+let sig = client.propose_config_change(&owner, treasury, 1 /* change_id */, new_policy_config, now)?;
+```
+
+## execute_config_change
+
+Executes a matured config change. Accounts: `owner` (s), `treasury` (w).
+
+```rust
+let sig = client.execute_config_change(&owner, treasury, 1 /* change_id */, now)?;
+```
+
+## veto_config_change
+
+Guardian-vetoes a pending config change during the timelock. Accounts:
+`guardian` (s), `treasury` (w).
+
+```rust
+let sig = client.veto_config_change(&guardian1, treasury, 1 /* change_id */, now)?;
+```
+
+## propose_guardian_rotation
+
+Proposes adding (`action: 0`) or removing (`action: 1`) a guardian. Accounts:
+`guardian` (s), `treasury` (w).
+
+```rust
+let sig = client.propose_guardian_rotation(&guardian1, treasury, 0, guardian3.pubkey(), now)?;
+```
+
+## execute_guardian_rotation
+
+Executes a matured guardian rotation. Accounts: `guardian` (s), `treasury` (w).
+
+```rust
+let sig = client.execute_guardian_rotation(&guardian1, treasury, now)?;
+```
+
+## emergency_shutdown
+
+Halts the treasury and records a recovery key. Accounts: `owner` (s), `treasury`
+(w).
+
+```rust
+let sig = client.emergency_shutdown(&owner, treasury, recovery.pubkey(), now)?;
+```
+
+## register_recovery_destination
+
+Registers a break-glass recovery destination for a chain. Accounts: `owner` (s),
+`treasury` (w) via `RecoveryConfig`.
+
+```rust
+let sig = client.register_recovery_destination(
+    &owner,
+    accounts::RecoveryConfig { owner: owner.pubkey(), treasury },
+    RegisterRecoveryDestinationArgs {
+        chain: 2,
+        address: "0x000000000000000000000000000000000000dead".to_string(),
+        now,
+    },
+)?;
+```
+
+## break_glass_recover
+
+Break-glass recovers funds to the registered destination. Accounts: `owner` (s),
+`treasury` (w) via `BreakGlassRecover`.
+
+```rust
+let sig = client.break_glass_recover(
+    &owner,
+    accounts::BreakGlassRecover { owner: owner.pubkey(), treasury },
+    BreakGlassRecoverArgs { chain: 2, amount_usd: 1_000, now },
+)?;
+```
+
+## break_glass_transfer_authority
+
+Break-glass transfers dWallet authority (dWallet CPI). Accounts: `owner` (s),
+`treasury` (w), `dwallet` (w), `caller_program`, `cpi_authority`,
+`dwallet_program`.
+
+```rust
+let sig = client.break_glass_transfer_authority(
+    &owner,
+    accounts::BreakGlassTransferAuthority {
+        owner: owner.pubkey(),
+        treasury,
+        dwallet,
+        caller_program,
+        cpi_authority,
+        dwallet_program,
+    },
+    BreakGlassTransferAuthorityArgs { chain: 2, new_authority: recovery.pubkey(), now },
+)?;
+```
+
+<Callout type="warn" title="Break-glass transfers use dWallet CPI">
+  `break_glass_transfer_authority` co-signs through the Ika dWallet program —
+  derive the authorities with the
+  [dWallet PDA helpers](/sdk-rs/client/pda).
+</Callout>

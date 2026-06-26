@@ -1,0 +1,236 @@
+---
+title: Confidential
+description: Encrypted guardrails, FHE proposals, and the policy decryption flow.
+icon: Lock
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The confidential domain stores spending guardrails as FHE ciphertexts and
+evaluates policy over the encrypted values through the Ika **Encrypt** network.
+Builders live under `instructions::confidential::*`.
+
+<Callout type="warn" title="Requires the Ika Encrypt network">
+  Every instruction except `disable` / `close` takes ciphertext accounts and the
+  Encrypt CPI accounts. Derive the AURA-side authority with
+  [`derive_encrypt_cpi_authority_pda`](/sdk-rs/client/pda) and the event
+  authority with `derive_encrypt_event_authority_pda(&encrypt_program_id)`. These
+  flows are exercised by the Rust smoke tests in `smoke/aura-devnet/`.
+</Callout>
+
+Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+// `treasury` is the treasury PDA; `guardrails` is its confidential-guardrails PDA.
+```
+
+## init_confidential_guardrails
+
+Creates the encrypted guardrails account for an epoch (positional `epoch_id`).
+Accounts: `owner` (s, w), `treasury`, `guardrails` (w), the three limit
+ciphertexts, `system_program`.
+
+```rust
+let sig = client.init_confidential_guardrails(
+    &owner,
+    accounts::InitConfidentialGuardrails {
+        owner: owner.pubkey(),
+        treasury,
+        guardrails,
+        daily_limit_ciphertext,
+        per_tx_limit_ciphertext,
+        spent_today_ciphertext,
+        system_program: solana_sdk::system_program::ID,
+    },
+    1, // epoch_id
+    now,
+)?;
+```
+
+## configure_confidential_guardrails
+
+Sets the encrypted daily/per-tx limits. The send-helper takes the three
+ciphertext pubkeys positionally. Accounts: `owner` (s), `treasury` (w), the
+ciphertexts (w).
+
+```rust
+let sig = client.configure_confidential_guardrails(
+    &owner,
+    treasury,
+    daily_limit_ciphertext,
+    per_tx_limit_ciphertext,
+    spent_today_ciphertext,
+    now,
+)?;
+```
+
+## update_confidential_guardrails
+
+Updates limit ciphertexts. `ManageConfidentialGuardrails` carries the full set
+of **optional** limit/spend ciphertexts — set only the ones you're changing and
+`None` for the rest. Accounts: `owner` (s, w), `treasury` (w), `guardrails` (w).
+
+```rust
+let sig = client.update_confidential_guardrails(
+    &owner,
+    accounts::ManageConfidentialGuardrails {
+        owner: owner.pubkey(),
+        treasury,
+        guardrails,
+        daily_limit_ciphertext: Some(daily_limit_ciphertext),
+        per_tx_limit_ciphertext: None,
+        velocity_limit_ciphertext: None,
+        hourly_limit_ciphertext: None,
+        weekly_limit_ciphertext: None,
+        spent_today_ciphertext: None,
+        weekly_spent_ciphertext: None,
+        hourly_spent_ciphertext: None,
+        velocity_window_ciphertext: None,
+    },
+    now,
+)?;
+```
+
+## rotate_confidential_guardrails
+
+Rotates to a new encryption epoch (positional `new_epoch_id`; same optional
+ciphertext set as `update`). Accounts: `owner` (s, w), `treasury` (w),
+`guardrails` (w).
+
+```rust
+let sig = client.rotate_confidential_guardrails(&owner, manage_accounts, 2 /* new_epoch_id */, now)?;
+```
+
+## reset_confidential_counters
+
+Resets the encrypted spend counters (same optional ciphertext set). Accounts:
+`owner` (s, w), `treasury` (w), `guardrails` (w).
+
+```rust
+let sig = client.reset_confidential_counters(&owner, manage_accounts, now)?;
+```
+
+## disable_confidential_guardrails
+
+Disables confidential guardrails while keeping the account. No Encrypt CPI.
+Accounts: `owner` (s, w), `treasury` (w), `guardrails` (w).
+
+```rust
+let sig = client.disable_confidential_guardrails(
+    &owner,
+    accounts::DisableConfidentialGuardrails { owner: owner.pubkey(), treasury, guardrails },
+    now,
+)?;
+```
+
+## close_confidential_guardrails
+
+Closes the guardrails account and reclaims rent. No arguments, no Encrypt CPI.
+Accounts: `owner` (s, w), `treasury`, `guardrails` (w).
+
+```rust
+let sig = client.close_confidential_guardrails(
+    &owner,
+    accounts::CloseConfidentialGuardrails { owner: owner.pubkey(), treasury, guardrails },
+)?;
+```
+
+## propose_confidential_transaction
+
+Proposes a spend evaluated against encrypted limits via the Encrypt CPI,
+producing an encrypted policy-output ciphertext. `extra_signers` carries any
+additional ciphertext-account signers. Accounts: `ai_authority` (s), `treasury`
+(w), the limit/amount/output ciphertexts, the Encrypt CPI accounts, and optional
+sidecars.
+
+```rust
+let sig = client.propose_confidential_transaction(
+    &ai,
+    accounts::ProposeConfidentialTransaction {
+        ai_authority: ai.pubkey(),
+        treasury,
+        daily_limit_ciphertext,
+        per_tx_limit_ciphertext,
+        spent_today_ciphertext,
+        amount_ciphertext,
+        policy_output_ciphertext,
+        encrypt_program,
+        config,
+        deposit,
+        caller_program,
+        cpi_authority,
+        network_encryption_key,
+        event_authority,
+        external_liveness: None,
+        weekly_limit_ciphertext: None,
+        weekly_spent_ciphertext: None,
+        confidential_guardrails: None,
+        system_program: solana_sdk::system_program::ID,
+    },
+    ProposeConfidentialTransactionArgs {
+        amount_usd: 100,
+        target_chain: 2,
+        tx_type: 0,
+        protocol_id: None,
+        current_timestamp: now,
+        expected_output_usd: None,
+        actual_output_usd: None,
+        quote_age_secs: None,
+        counterparty_risk_score: None,
+        recipient_or_contract: "0x000000000000000000000000000000000000dead".to_string(),
+    },
+    &[], // extra ciphertext signers
+)?;
+```
+
+## request_policy_decryption
+
+Requests decryption of an encrypted policy result (positional `now` +
+`current_epoch_id`; `extra_signers` for the request account). Accounts:
+`operator` (s), `treasury` (w), `request_account` (w), `ciphertext`, the Encrypt
+CPI accounts, `confidential_guardrails?`, `system_program`.
+
+```rust
+let sig = client.request_policy_decryption(
+    &operator,
+    accounts::RequestPolicyDecryption {
+        operator: operator.pubkey(),
+        treasury,
+        request_account,
+        ciphertext,
+        encrypt_program,
+        config,
+        deposit,
+        caller_program,
+        cpi_authority,
+        network_encryption_key,
+        event_authority,
+        confidential_guardrails: None,
+        system_program: solana_sdk::system_program::ID,
+    },
+    now,
+    1, // current_epoch_id
+    &[&request_account_keypair],
+)?;
+```
+
+## confirm_policy_decryption
+
+Confirms a completed decryption once the network returns the plaintext
+(positional args; the send-helper passes `confidential_guardrails: None`).
+Accounts: `operator` (s), `treasury` (w), `request_account`.
+
+```rust
+let sig = client.confirm_policy_decryption(
+    &operator,
+    treasury,
+    request_account,
+    now,
+    1, // current_epoch_id
+)?;
+```

@@ -19,8 +19,9 @@ Complete, runnable Rust examples using `aura-sdk`.
 # Cargo.toml
 [dependencies]
 aura-sdk = { git = "https://github.com/exyreams/aura", branch = "main" }
-solana-sdk = "2.1"
-solana-client = "2.1"
+solana-sdk = "=3.0.0"
+solana-client = "=3.1.12"
+solana-commitment-config = "=3.1.1"
 anyhow = "1"
 chrono = "0.4"
 ```
@@ -158,6 +159,8 @@ use aura_sdk::types::ConfigureMultisigArgs;
 client.configure_multisig(&owner, treasury, ConfigureMultisigArgs {
     required_signatures: 2,
     guardians: vec![guardian1, guardian2],
+    guardian_weights: vec![1, 1],
+    required_approval_weight: 2,
     timestamp: now,
 })?;
 ```

@@ -1,0 +1,91 @@
+---
+title: Address Lists
+description: Recipient and contract allow/deny lists.
+icon: ListChecks
+---
+
+The address-lists domain manages per-treasury allow/deny lists evaluated during
+`propose_transaction`. Builders live under `instructions::address_lists::*`.
+Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+// `address_list` is the treasury's address-list PDA.
+```
+
+## init_address_list
+
+Creates an address list. `mode`: `0` = allow, `1` = deny; `chain` is the Ika
+chain code (positional). Accounts: `owner` (s, w), `treasury`, `address_list`
+(w), `system_program`.
+
+```rust
+let sig = client.init_address_list(
+    &owner,
+    accounts::InitAddressList { owner: owner.pubkey(), treasury, address_list, system_program: sys },
+    0, // mode (allow)
+    2, // chain (Ethereum)
+    now,
+)?;
+```
+
+## manage_address_list
+
+Replaces the list's addresses (positional args). Accounts: `operator` (s),
+`treasury`, `operator_role?`, `address_list` (w) via `ManageAddressList`.
+
+```rust
+let sig = client.manage_address_list(
+    &operator,
+    accounts::ManageAddressList { operator: operator.pubkey(), treasury, operator_role: None, address_list },
+    0, // mode
+    2, // chain
+    vec!["0x000000000000000000000000000000000000dead".to_string()],
+    now,
+)?;
+```
+
+## update_address_list_entry
+
+Adds (`add: true`) or removes (`add: false`) a single address. Accounts:
+`operator` (s), `treasury`, `operator_role?`, `address_list` (w).
+
+```rust
+let sig = client.update_address_list_entry(
+    &operator,
+    accounts::ManageAddressList { operator: operator.pubkey(), treasury, operator_role: None, address_list },
+    "0x000000000000000000000000000000000000beef".to_string(),
+    true, // add
+    now,
+)?;
+```
+
+## clear_address_list
+
+Removes all addresses. Accounts: `operator` (s), `treasury`, `operator_role?`,
+`address_list` (w).
+
+```rust
+let sig = client.clear_address_list(
+    &operator,
+    accounts::ManageAddressList { operator: operator.pubkey(), treasury, operator_role: None, address_list },
+    now,
+)?;
+```
+
+## close_address_list
+
+Closes the list account and reclaims rent. Accounts: `owner` (s, w), `treasury`,
+`address_list` (w). No arguments.
+
+```rust
+let sig = client.close_address_list(
+    &owner,
+    accounts::CloseAddressList { owner: owner.pubkey(), treasury, address_list },
+)?;
+```

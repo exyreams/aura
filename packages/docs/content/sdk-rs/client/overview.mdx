@@ -232,6 +232,46 @@ let instruction = client.cancel_pending_instruction(owner.pubkey(), treasury, no
 let signature = client.send_with_default_payer(vec![instruction], &[])?;
 ```
 
+### execute
+
+The type-safe, uniform path for the **entire 161-instruction surface**: pair any
+standalone builder from [`aura_sdk::instructions`](/sdk-rs/instructions) with
+`execute`. It rewrites the instruction to the client's configured program ID,
+then signs and sends.
+
+```rust
+fn execute(
+    &self,
+    payer: &Keypair,
+    instruction: Instruction,
+    extra_signers: &[&Keypair],
+) -> Result<Signature, SdkError>
+```
+
+**Example:**
+
+```rust
+use aura_sdk::instructions::policy;
+
+let ix = policy::discard_canary(accounts);
+client.execute(&owner, ix, &[])?;
+```
+
+### execute_many
+
+Submit several builder-produced instructions atomically in one transaction,
+rewriting each to the configured program ID. `execute_with_default_payer` is the
+same but signs with the configured default payer.
+
+```rust
+fn execute_many(
+    &self,
+    payer: &Keypair,
+    instructions: Vec<Instruction>,
+    extra_signers: &[&Keypair],
+) -> Result<Signature, SdkError>
+```
+
 ## Error Handling
 
 All methods return `Result<T, SdkError>`. Handle errors appropriately:

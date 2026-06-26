@@ -1,0 +1,160 @@
+---
+title: Budget & Exposure
+description: Budget envelopes, exposure groups, approval ladders, and liveness guardrails.
+icon: WalletCards
+---
+
+The budget domain manages spending envelopes, cross-treasury exposure groups,
+approval ladders, and liveness guardrails. Builders live under
+`instructions::budget::*`. Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+```
+
+## configure_budget_envelope
+
+Creates a budget envelope. `scope_kind`: 0 chain, 1 category, 2 protocol —
+populate the matching `Option` field. Accounts: `owner` (s, w), `treasury` (w),
+`budget_envelope` (w), `system_program`.
+
+```rust
+let sig = client.configure_budget_envelope(
+    &owner,
+    accounts::ConfigureBudgetEnvelope { owner: owner.pubkey(), treasury, budget_envelope, system_program: sys },
+    ConfigureBudgetEnvelopeArgs {
+        envelope_id: 1,
+        scope_kind: 0,
+        chain: Some(2),
+        tx_type: None,
+        protocol_id: None,
+        daily_limit_usd: 5_000,
+        weekly_limit_usd: 20_000, // 0 disables the weekly cap
+        now,
+    },
+)?;
+```
+
+## remove_budget_envelope
+
+Removes a budget envelope (positional args). Accounts: `owner` (s, w),
+`treasury` (w), `budget_envelope` (w).
+
+```rust
+let sig = client.remove_budget_envelope(
+    &owner,
+    accounts::RemoveBudgetEnvelope { owner: owner.pubkey(), treasury, budget_envelope },
+    1, // envelope_id
+    now,
+)?;
+```
+
+## configure_approval_ladder
+
+Configures tiered approval thresholds (guardian / multisig / timelock / deny).
+Accounts: `owner` (s), `treasury` (w).
+
+```rust
+let sig = client.configure_approval_ladder(
+    &owner,
+    accounts::ConfigureApprovalLadder { owner: owner.pubkey(), treasury },
+    ConfigureApprovalLadderArgs {
+        guardian_above_usd: 10_000,
+        multisig_above_usd: 50_000,
+        timelock_above_usd: 100_000,
+        deny_above_usd: 500_000,
+        risk_guardian_bps: 5_000,
+        risk_multisig_bps: 7_000,
+        risk_timelock_bps: 9_000,
+        timelock_secs: 3_600,
+        now,
+    },
+)?;
+```
+
+## configure_liveness_guardrails
+
+Configures freshness requirements for Encrypt/dWallet/oracle inputs. Accounts:
+`owner` (s), `treasury` (w).
+
+```rust
+let sig = client.configure_liveness_guardrails(
+    &owner,
+    accounts::ConfigureLivenessGuardrails { owner: owner.pubkey(), treasury },
+    ConfigureLivenessGuardrailsArgs {
+        require_encrypt_freshness: true,
+        require_dwallet_freshness: true,
+        require_balance_oracle_freshness: false,
+        require_compliance_oracle_freshness: false,
+        max_staleness_secs: 300,
+        now,
+    },
+)?;
+```
+
+## init_exposure_group
+
+Creates a shared exposure group keyed by a 16-byte group id. Accounts:
+`authority` (s, w), `exposure_group` (w), `system_program`.
+
+```rust
+let sig = client.init_exposure_group(
+    &authority,
+    accounts::InitExposureGroup { authority: authority.pubkey(), exposure_group, system_program: sys },
+    InitExposureGroupArgs { group_id: [1u8; 16], daily_limit_usd: 100_000, now_day: now },
+)?;
+```
+
+## join_exposure_group
+
+Joins a treasury to a group. Accounts: `authority` (s), `exposure_group` (w),
+`treasury`. No arguments.
+
+```rust
+let sig = client.join_exposure_group(
+    &authority,
+    accounts::JoinExposureGroup { authority: authority.pubkey(), exposure_group, treasury },
+)?;
+```
+
+## leave_exposure_group
+
+Removes a treasury from a group. Accounts: `authority` (s), `exposure_group`
+(w), `treasury` via `ManageExposureGroup`. No arguments.
+
+```rust
+let sig = client.leave_exposure_group(
+    &authority,
+    accounts::ManageExposureGroup { authority: authority.pubkey(), exposure_group, treasury },
+)?;
+```
+
+## update_exposure_group
+
+Updates the group's daily limit (`Option<u64>`). Accounts: `authority` (s),
+`exposure_group` (w), `treasury` via `ManageExposureGroup`.
+
+```rust
+let sig = client.update_exposure_group(
+    &authority,
+    accounts::ManageExposureGroup { authority: authority.pubkey(), exposure_group, treasury },
+    Some(150_000), // daily_limit_usd
+)?;
+```
+
+## close_exposure_group
+
+Closes an empty group. Accounts: `authority` (s, w), `exposure_group` (w). No
+arguments.
+
+```rust
+let sig = client.close_exposure_group(
+    &authority,
+    accounts::CloseExposureGroup { authority: authority.pubkey(), exposure_group },
+)?;
+```

@@ -1,0 +1,99 @@
+---
+title: Swarm Pools
+description: Shared agent-pool initialization and membership.
+icon: Users
+---
+
+The swarm domain manages shared spending pools across a group of agents.
+Builders live under `instructions::swarm::*` (`configure_swarm` under
+`instructions::treasury`). The pool PDA is keyed by `sha256(swarm_id)`. Examples
+assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+let swarm_id = "trading-swarm-1".to_string();
+```
+
+## init_swarm_pool
+
+Creates a shared swarm pool. Accounts: `creator` (s, w), `swarm_pool` (w),
+`system_program`.
+
+```rust
+let sig = client.init_swarm_pool(
+    &creator,
+    accounts::InitSwarmPool { creator: creator.pubkey(), swarm_pool, system_program: sys },
+    InitSwarmPoolArgs { swarm_id: swarm_id.clone(), shared_pool_limit_usd: 50_000, timestamp: now },
+)?;
+```
+
+## configure_swarm
+
+Attaches swarm config (members + shared limit) to a treasury. Accounts: `owner`
+(s), `treasury` (w).
+
+```rust
+let sig = client.configure_swarm(&owner, treasury, ConfigureSwarmArgs {
+    swarm_id: swarm_id.clone(),
+    member_agents: vec!["agent-prod-1".to_string(), "agent-prod-2".to_string()],
+    shared_pool_limit_usd: 50_000,
+    timestamp: now,
+})?;
+```
+
+## join_swarm
+
+Joins a treasury to a pool. Accounts: `owner` (s), `treasury` (w), `swarm_pool`
+(w).
+
+```rust
+let sig = client.join_swarm(
+    &owner,
+    accounts::JoinSwarm { owner: owner.pubkey(), treasury, swarm_pool },
+    now,
+)?;
+```
+
+## leave_swarm
+
+Removes a treasury from a pool. Accounts: `owner` (s), `treasury` (w),
+`swarm_pool` (w) via `ManageSwarm`.
+
+```rust
+let sig = client.leave_swarm(
+    &owner,
+    accounts::ManageSwarm { owner: owner.pubkey(), treasury, swarm_pool },
+    now,
+)?;
+```
+
+## update_swarm
+
+Updates the shared pool limit (positional `shared_pool_limit_usd`). Accounts:
+`owner` (s), `treasury` (w), `swarm_pool` (w).
+
+```rust
+let sig = client.update_swarm(
+    &owner,
+    accounts::ManageSwarm { owner: owner.pubkey(), treasury, swarm_pool },
+    75_000, // shared_pool_limit_usd
+    now,
+)?;
+```
+
+## close_swarm_pool
+
+Closes an empty pool and reclaims rent. Accounts: `creator` (s, w), `swarm_pool`
+(w). No arguments.
+
+```rust
+let sig = client.close_swarm_pool(
+    &creator,
+    accounts::CloseSwarmPool { creator: creator.pubkey(), swarm_pool },
+)?;
+```

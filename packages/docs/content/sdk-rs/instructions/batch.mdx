@@ -1,0 +1,71 @@
+---
+title: Batch
+description: Batch policy simulation and proposal records.
+icon: Layers
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The batch domain proposes multiple transactions as a single record. Builders
+live under `instructions::batch::*`. The batch PDA is keyed by `(treasury,
+batch_id)`. Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let sys = solana_sdk::system_program::ID;
+```
+
+## propose_batch
+
+Proposes a public batch of transactions. Accounts: `payer` (s, w), `treasury`,
+`batch` (w), `system_program`.
+
+```rust
+let sig = client.propose_batch(
+    &payer,
+    accounts::ProposeBatch { payer: payer.pubkey(), treasury, batch, system_program: sys },
+    ProposeBatchArgs {
+        batch_id: 1,
+        now,
+        items: vec![], // Vec<BatchProposalItemArgs>
+    },
+)?;
+```
+
+## propose_confidential_batch
+
+Proposes a batch evaluated against FHE ciphertexts. Accounts: `payer` (s, w),
+`treasury`, `batch` (w), the amount/limit/violation vector ciphertexts, the
+Encrypt CPI accounts, and `system_program`.
+
+```rust
+let sig = client.propose_confidential_batch(
+    &payer,
+    accounts::ProposeConfidentialBatch {
+        payer: payer.pubkey(),
+        treasury,
+        batch,
+        amount_vector_ciphertext,
+        per_item_limit_vector_ciphertext,
+        item_violation_vector_ciphertext,
+        encrypt_program,
+        config,
+        deposit,
+        caller_program,
+        cpi_authority,
+        network_encryption_key,
+        event_authority,
+        system_program: sys,
+    },
+    ProposeConfidentialBatchArgs { batch_id: 1, now, item_count: 2 },
+)?;
+```
+
+<Callout type="warn" title="Confidential batches require the Ika Encrypt network">
+  `propose_confidential_batch` takes the Encrypt CPI accounts and vector
+  ciphertexts — see the [Confidential](/sdk-rs/instructions/confidential) domain.
+</Callout>

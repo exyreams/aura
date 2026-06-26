@@ -12,8 +12,9 @@ import { Callout } from 'fumadocs-ui/components/callout';
 </Callout>
 
 `aura-sdk` is the native Rust client for the AURA program. It provides typed
-instruction builders, PDA helpers, account fetching, domain model conversion,
-and client-side validation — without any TypeScript or Node.js dependency.
+builders for the **full 161-instruction surface**, PDA helpers, account fetching,
+domain-model conversion, typed [program error codes](/sdk-rs/client/errors), and
+client-side validation — without any TypeScript or Node.js dependency.
 
 ## Use Cases
 
@@ -27,8 +28,9 @@ and client-side validation — without any TypeScript or Node.js dependency.
 ```toml
 [dependencies]
 aura-sdk = { git = "https://github.com/exyreams/aura", branch = "main" }
-solana-sdk = "2.1"
-solana-client = "2.1"
+solana-sdk = "=3.0.0"
+solana-client = "=3.1.12"
+solana-commitment-config = "=3.1.1"
 ```
 
 ## Quick Start
@@ -37,7 +39,7 @@ solana-client = "2.1"
 use aura_sdk::{
     AuraClient,
     AURA_DEVNET_PROGRAM_ID,
-    types::{CreateTreasuryArgs, PolicyConfigRecord, ProtocolFeesRecord},
+    types::{CreateTreasuryArgs, PolicyConfig, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord},
 };
 use solana_commitment_config::CommitmentConfig;
 use solana_sdk::signature::{Keypair, Signer};
@@ -54,8 +56,8 @@ let args = CreateTreasuryArgs {
     ai_authority: owner.pubkey(),
     created_at: 0,
     pending_transaction_ttl_secs: 900,
-    policy_config: PolicyConfigRecord::default(),
-    protocol_fees: ProtocolFeesRecord::default(),
+    policy_config: PolicyConfigRecord::from_domain(&PolicyConfig::default()),
+    protocol_fees: ProtocolFeesRecord::from_domain(&ProtocolFees::default()),
 };
 
 let (treasury, signature) = client.create_treasury(&owner, args)?;
@@ -67,6 +69,8 @@ println!("Signature: {signature}");
 
 <Cards>
   <Card title="AuraClient" description="Create clients, fetch accounts, and send transactions." href="/sdk-rs/client/overview" />
-  <Card title="Program API" description="Rust builders for all AURA instructions." href="/sdk-rs/instructions" />
+  <Card title="Program API" description="Rust builders for all 161 AURA instructions." href="/sdk-rs/instructions" />
+  <Card title="Errors" description="Typed program error codes and parsing helpers." href="/sdk-rs/client/errors" />
   <Card title="Examples" description="End-to-end Rust usage patterns." href="/sdk-rs/examples" />
 </Cards>
+

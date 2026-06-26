@@ -1,0 +1,287 @@
+---
+title: dWallet
+description: dWallet state, balances, oracle feeds, and spend reservations.
+icon: Wallet
+---
+
+The dWallet domain manages AURA's per-chain dWallet runtime state. Builders live
+under `instructions::dwallet::*` (chain profiles under
+`instructions::chain_profiles`). Most instructions operate on the per-chain
+state PDA via the `DwalletControl { owner, treasury, dwallet_state }` account
+struct. Examples assume:
+
+```rust
+use aura_sdk::{anchor_accounts as accounts, types::*, AuraClient};
+use solana_sdk::signature::{Keypair, Signer};
+
+let client = AuraClient::devnet();
+let now = chrono::Utc::now().timestamp();
+let chain = 2; // Ethereum
+// `dwallet_state` is the per-chain runtime PDA.
+let dw = || accounts::DwalletControl { owner: owner.pubkey(), treasury, dwallet_state };
+```
+
+## register_dwallet
+
+Registers a dWallet reference on a treasury (metadata only). Accounts: `owner`
+(s), `treasury` (w).
+
+```rust
+let sig = client.register_dwallet(&owner, treasury, RegisterDwalletArgs {
+    chain,
+    dwallet_id: "dwallet-eth-1".to_string(),
+    address: "0x000000000000000000000000000000000000dead".to_string(),
+    balance_usd: 5_000,
+    dwallet_account: None,         // set for live Ika signing
+    authorized_user_pubkey: None,
+    message_metadata_digest: None,
+    public_key_hex: None,
+    timestamp: now,
+})?;
+```
+
+## init_dwallet_state
+
+Creates the per-chain runtime state PDA (positional `chain`). Accounts: `owner`
+(s, w), `treasury`, `dwallet_state` (w), `system_program`.
+
+```rust
+let sig = client.init_dwallet_state(
+    &owner,
+    accounts::InitDwalletState {
+        owner: owner.pubkey(),
+        treasury,
+        dwallet_state,
+        system_program: solana_sdk::system_program::ID,
+    },
+    chain,
+    now,
+)?;
+```
+
+## set_dwallet_status
+
+Sets the status code (e.g. active/frozen). Accounts: `owner` (s), `treasury`
+(w), `dwallet_state` (w).
+
+```rust
+let sig = client.set_dwallet_status(&owner, dw(), chain, 1 /* status_code */, now)?;
+```
+
+## set_dwallet_limits
+
+Sets per-chain daily/per-tx limits (both `Option<u64>`). Accounts: `owner` (s),
+`treasury` (w), `dwallet_state` (w).
+
+```rust
+let sig = client.set_dwallet_limits(&owner, dw(), chain, Some(2_000), Some(500), now)?;
+```
+
+## set_dwallet_label
+
+Sets a human label (`Option<String>`). Accounts: `owner` (s), `treasury` (w),
+`dwallet_state` (w).
+
+```rust
+let sig = client.set_dwallet_label(&owner, dw(), chain, Some("treasury-eth".to_string()), now)?;
+```
+
+## set_default_chain
+
+Sets the treasury's default chain (`Option<u8>`). Accounts: `owner` (s),
+`treasury` (w) via `SetDefaultChain`.
+
+```rust
+let sig = client.set_default_chain(
+    &owner,
+    accounts::SetDefaultChain { owner: owner.pubkey(), treasury },
+    Some(chain),
+    now,
+)?;
+```
+
+## remove_dwallet
+
+Removes a dWallet and closes its state. Accounts: `owner` (s, w), `treasury`
+(w), `dwallet_state` (w) via `RemoveDwallet`.
+
+```rust
+let sig = client.remove_dwallet(
+    &owner,
+    accounts::RemoveDwallet { owner: owner.pubkey(), treasury, dwallet_state },
+    chain,
+    now,
+)?;
+```
+
+## rotate_dwallet_authority
+
+Rotates the dWallet's authority and CPI authority seed. Accounts: `owner` (s),
+`treasury` (w), `dwallet_state` (w).
+
+```rust
+let sig = client.rotate_dwallet_authority(
+    &owner,
+    dw(),
+    chain,
+    next_authority.pubkey(),
+    "rotated".to_string(), // new_cpi_authority_seed
+    now,
+)?;
+```
+
+## record_deposit
+
+Records an asset deposit. Accounts: `owner` (s), `treasury` (w), `dwallet_state`
+(w).
+
+```rust
+let sig = client.record_deposit(
+    &owner,
+    dw(),
+    chain,
+    "USDC".to_string(), // asset_id
+    "USDC".to_string(), // symbol
+    6,                  // decimals
+    1_000_000u128,      // native_amount
+    1,                  // usd_value
+    now,
+)?;
+```
+
+## refresh_asset_balance
+
+Refreshes a tracked asset balance, optionally with a price feed. Accounts:
+`owner` (s), `treasury` (w), `dwallet_state` (w).
+
+```rust
+let sig = client.refresh_asset_balance(
+    &owner,
+    dw(),
+    chain,
+    "USDC".to_string(),
+    "USDC".to_string(),
+    6,
+    1_000_000u128,
+    1,
+    None, // feed
+    now,
+)?;
+```
+
+## refresh_verified_asset_balance
+
+Refreshes a balance verified against a price feed. Accounts: `authority` (s),
+`treasury` (w), `dwallet_state` (w), `price_feed`.
+
+```rust
+let sig = client.refresh_verified_asset_balance(
+    &authority,
+    accounts::RefreshVerifiedAssetBalance {
+        authority: authority.pubkey(),
+        treasury,
+        dwallet_state,
+        price_feed,
+    },
+    RefreshVerifiedAssetBalanceArgs {
+        chain,
+        asset_id: "USDC".to_string(),
+        symbol: "USDC".to_string(),
+        decimals: 6,
+        native_amount: 1_000_000u128,
+        provider: 0,
+        program_id: None,
+        max_staleness_secs: 300,
+        max_confidence_bps: 100,
+        expo_expected: None,
+        now,
+    },
+)?;
+```
+
+## refresh_dwallet_balance
+
+Refreshes from a balance oracle (keeper-callable; no owner signer — pass any fee
+payer). Accounts: `treasury` (w), `balance_oracle`.
+
+```rust
+let sig = client.refresh_dwallet_balance(
+    &payer,
+    accounts::RefreshDwalletBalance { treasury, balance_oracle },
+    chain, // chain_code
+    now,
+)?;
+```
+
+## reconcile_dwallet_balance
+
+Reconciles recorded vs actual balance. Accounts: `owner` (s), `treasury` (w),
+`dwallet_state` (w).
+
+```rust
+let sig = client.reconcile_dwallet_balance(&owner, dw(), chain, now)?;
+```
+
+## set_asset_feed
+
+Sets an asset's price feed (`Option<Pubkey>`). Accounts: `owner` (s), `treasury`
+(w), `dwallet_state` (w).
+
+```rust
+let sig = client.set_asset_feed(&owner, dw(), chain, "USDC".to_string(), None, now)?;
+```
+
+## set_asset_oracle_feed
+
+Configures an oracle feed for an asset. Accounts: `owner` (s), `treasury` (w),
+`dwallet_state` (w).
+
+```rust
+let sig = client.set_asset_oracle_feed(&owner, dw(), chain, SetAssetOracleFeedArgs {
+    asset_id: "USDC".to_string(),
+    provider: 0,
+    feed: None,
+    program_id: None,
+    max_staleness_secs: 300,
+    max_confidence_bps: 100,
+    expo_expected: None,
+    now,
+})?;
+```
+
+## reserve_dwallet_spend
+
+Reserves spend headroom (signed by the dWallet `authority`). Accounts:
+`authority` (s), `treasury` (w), `dwallet_state` (w) via `DwalletSpend`.
+
+```rust
+let spend = || accounts::DwalletSpend { authority: ai.pubkey(), treasury, dwallet_state };
+
+let sig = client.reserve_dwallet_spend(&ai, spend(), chain, 100 /* amount_usd */, now)?;
+```
+
+## settle_dwallet_spend
+
+Settles a reserved spend with the realized asset amount. Accounts: `authority`
+(s), `treasury` (w), `dwallet_state` (w).
+
+```rust
+let sig = client.settle_dwallet_spend(
+    &ai,
+    spend(),
+    chain,
+    100,                  // amount_usd
+    "USDC".to_string(),   // asset_id
+    100_000_000u128,      // native_amount
+    now,
+)?;
+```
+
+## release_dwallet_spend
+
+Releases an unused reservation. Accounts: `authority` (s), `treasury` (w),
+`dwallet_state` (w).
+
+```rust
+let sig = client.release_dwallet_spend(&ai, spend(), chain, 100 /* amount_usd */, now)?;
+```
