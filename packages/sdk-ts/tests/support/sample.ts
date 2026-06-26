@@ -207,3 +207,81 @@ export function buildCreateTreasuryArgs(
     protocolFees,
   };
 }
+
+// ---------------------------------------------------------------------------
+// "Rich" sample generation.
+//
+// `sampleType` produces the cheapest valid value for a type: options are null,
+// vecs are empty, numbers are zero. That never exercises Borsh's Some(...) /
+// non-empty-vec / non-zero branches. The rich variants below fill those in so
+// encoding tests cover the paths real callers hit. A depth guard prevents
+// runaway recursion on self-referential types (e.g. nested conditions).
+// ---------------------------------------------------------------------------
+
+const RICH_MAX_DEPTH = 4;
+
+/** Like {@link sampleType} but fills options with `Some`, vecs with one element,
+ * and uses non-zero scalars — bounded by a recursion depth guard. */
+export function richType(type: IdlTypeNode, depth = 0): unknown {
+  if (typeof type === "string") {
+    if (type === "bool") return true;
+    if (type === "string") return "x";
+    if (type === "pubkey" || type === "publicKey") return PublicKey.unique();
+    if (type === "bytes") return Buffer.from([1]);
+    if (BIG_INT_TYPES.has(type)) return new BN(1);
+    if (SMALL_INT_TYPES.has(type)) return 1;
+    return 0;
+  }
+  if ("option" in type || "coption" in type) {
+    if (depth >= RICH_MAX_DEPTH) return null;
+    const inner = "option" in type ? type.option : type.coption;
+    return richType(inner, depth + 1);
+  }
+  if ("vec" in type) {
+    if (depth >= RICH_MAX_DEPTH) return [];
+    return [richType(type.vec, depth + 1)];
+  }
+  if ("array" in type) {
+    const [inner, len] = type.array;
+    const count = typeof len === "number" ? len : 0;
+    return Array.from({ length: count }, () => richType(inner, depth + 1));
+  }
+  if ("defined" in type) return richDefined(definedName(type), depth);
+  return null;
+}
+
+/** Like {@link sampleDefined} but uses {@link richType} for struct fields. */
+export function richDefined(name: string, depth = 0): unknown {
+  const def = typeDefs.get(name);
+  if (!def) return null;
+  if (def.type.kind === "struct") {
+    if (depth >= RICH_MAX_DEPTH) {
+      // Fall back to the cheap shape to terminate recursion.
+      return sampleDefined(name);
+    }
+    const value: Record<string, unknown> = {};
+    for (const field of def.type.fields ?? []) {
+      value[camel(field.name)] = richType(field.type, depth + 1);
+    }
+    return value;
+  }
+  if (def.type.kind === "enum") {
+    const first = def.type.variants[0];
+    return first ? { [camel(first.name)]: {} } : {};
+  }
+  return richType(def.type.alias, depth);
+}
+
+/** Rich counterpart to {@link sampleArgs}. */
+export function richArgs(instructionName: string): unknown {
+  const ix = idlInstructions.get(instructionName);
+  if (!ix || ix.args.length === 0) return undefined;
+  if (ix.args.length === 1 && ix.args[0].name === "args") {
+    return richType(ix.args[0].type);
+  }
+  const value: Record<string, unknown> = {};
+  for (const arg of ix.args) {
+    value[camel(arg.name)] = richType(arg.type);
+  }
+  return value;
+}
