@@ -11,7 +11,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EventDiscriminator } from "../../../src/events/discriminators.js";
-import { matchesEventDiscriminator, parseAuraEvents } from "../../../src/events/parse.js";
+import {
+  matchesEventDiscriminator,
+  parseAuraEvents,
+} from "../../../src/events/parse.js";
 import { offlineClient } from "../../support/offline.js";
 
 describe("matchesEventDiscriminator", () => {
@@ -35,7 +38,10 @@ describe("matchesEventDiscriminator", () => {
   });
 
   it("false when the data is shorter than the discriminator", () => {
-    assert.equal(matchesEventDiscriminator(Buffer.from([1, 2, 3]), disc), false);
+    assert.equal(
+      matchesEventDiscriminator(Buffer.from([1, 2, 3]), disc),
+      false,
+    );
     assert.equal(matchesEventDiscriminator(Buffer.alloc(0), disc), false);
   });
 });

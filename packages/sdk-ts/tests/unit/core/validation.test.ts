@@ -59,7 +59,9 @@ describe("validateAgentId", () => {
 
   it("counts UTF-8 bytes, not characters (multi-byte emoji)", () => {
     // "😀" is 4 UTF-8 bytes; 16 of them = 64 bytes = exactly the limit.
-    assert.doesNotThrow(() => validateAgentId("😀".repeat(MAX_AGENT_ID_LEN / 4)));
+    assert.doesNotThrow(() =>
+      validateAgentId("😀".repeat(MAX_AGENT_ID_LEN / 4)),
+    );
     // 17 emoji = 68 bytes > 64 → must throw even though it's only 17 chars.
     assert.throws(
       () => validateAgentId("😀".repeat(MAX_AGENT_ID_LEN / 4 + 1)),
@@ -71,7 +73,9 @@ describe("validateAgentId", () => {
 describe("validateDwalletId", () => {
   it("accepts a normal id and the exact limit", () => {
     assert.doesNotThrow(() => validateDwalletId("dwallet-eth-1"));
-    assert.doesNotThrow(() => validateDwalletId(asciiOfBytes(MAX_DWALLET_ID_LEN)));
+    assert.doesNotThrow(() =>
+      validateDwalletId(asciiOfBytes(MAX_DWALLET_ID_LEN)),
+    );
   });
 
   it("throws on empty and over-limit", () => {
@@ -152,7 +156,10 @@ describe("validateGuardians", () => {
   });
 
   it("throws one past MAX_GUARDIANS", () => {
-    assert.throws(() => validateGuardians(keys(MAX_GUARDIANS + 1)), /exceeds maximum/);
+    assert.throws(
+      () => validateGuardians(keys(MAX_GUARDIANS + 1)),
+      /exceeds maximum/,
+    );
   });
 });
 
@@ -189,7 +196,10 @@ describe("validateSwarmMembers", () => {
     assert.throws(
       () =>
         validateSwarmMembers(
-          Array.from({ length: MAX_SWARM_MEMBERS + 1 }, (_v, i) => `agent-${i}`),
+          Array.from(
+            { length: MAX_SWARM_MEMBERS + 1 },
+            (_v, i) => `agent-${i}`,
+          ),
         ),
       /exceeds maximum/,
     );
@@ -203,7 +213,8 @@ describe("validateSwarmMembers", () => {
 
   it("throws when a single member id exceeds MAX_SWARM_MEMBER_LEN", () => {
     assert.throws(
-      () => validateSwarmMembers(["ok", asciiOfBytes(MAX_SWARM_MEMBER_LEN + 1)]),
+      () =>
+        validateSwarmMembers(["ok", asciiOfBytes(MAX_SWARM_MEMBER_LEN + 1)]),
       /exceeds maximum length/,
     );
   });

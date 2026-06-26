@@ -21,7 +21,11 @@ import { AURA_INSTRUCTION_DEFINITIONS } from "../../../src/generated/instruction
 import { AURA_IDL } from "../../../src/index.js";
 import { bytesEqual, toHex } from "../../support/discriminator.js";
 import { offlineClient } from "../../support/offline.js";
-import { resolveBuilder, sampleAccounts, sampleArgs } from "../../support/sample.js";
+import {
+  resolveBuilder,
+  sampleAccounts,
+  sampleArgs,
+} from "../../support/sample.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Anchor's coder takes the runtime IDL object.
 const coder = new BorshInstructionCoder(AURA_IDL as any);
@@ -40,7 +44,10 @@ describe("instruction argument encoding round-trips", () => {
 
       const data = Buffer.from(ix.data);
       const decoded = coder.decode(data);
-      assert.ok(decoded, `${def.name}: BorshInstructionCoder.decode returned null`);
+      assert.ok(
+        decoded,
+        `${def.name}: BorshInstructionCoder.decode returned null`,
+      );
 
       // Anchor's BorshInstructionCoder decodes to the snake_case IDL name.
       assert.equal(
@@ -78,9 +85,18 @@ describe("encoding edge cases", () => {
     assert.ok(builder);
 
     const args = sampleArgs(def.name);
-    const a = await builder(client, { accounts: sampleAccounts(def.accounts), args });
-    const b = await builder(client, { accounts: sampleAccounts(def.accounts), args });
+    const a = await builder(client, {
+      accounts: sampleAccounts(def.accounts),
+      args,
+    });
+    const b = await builder(client, {
+      accounts: sampleAccounts(def.accounts),
+      args,
+    });
     // Different account keys, identical args → identical instruction data.
-    assert.ok(bytesEqual(a.data, b.data), "arg payload should not depend on account keys");
+    assert.ok(
+      bytesEqual(a.data, b.data),
+      "arg payload should not depend on account keys",
+    );
   });
 });

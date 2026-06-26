@@ -102,7 +102,10 @@ describe("isAuraError", () => {
 
   it("true only for the matching code when a code is given", () => {
     assert.equal(isAuraError({ code: 6021 }, AuraErrorCode.InvalidChain), true);
-    assert.equal(isAuraError({ code: 6021 }, AuraErrorCode.ExecutionPaused), false);
+    assert.equal(
+      isAuraError({ code: 6021 }, AuraErrorCode.ExecutionPaused),
+      false,
+    );
   });
 
   it("false for non-AURA errors", () => {

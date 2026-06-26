@@ -58,9 +58,9 @@ export interface IdlError {
 export interface IdlTypeDef {
   name: string;
   type:
-  | { kind: "struct"; fields?: IdlField[] }
-  | { kind: "enum"; variants: { name: string }[] }
-  | { kind: "type"; alias: IdlTypeNode };
+    | { kind: "struct"; fields?: IdlField[] }
+    | { kind: "enum"; variants: { name: string }[] }
+    | { kind: "type"; alias: IdlTypeNode };
 }
 
 interface LooseIdl {

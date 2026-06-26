@@ -46,7 +46,8 @@ describe("event discriminators", () => {
   for (const event of idlEvents) {
     const key = camelKey(event.name);
     it(`${event.name}: SDK == IDL == sha256("event:${event.name}")`, () => {
-      const sdkBytes = EventDiscriminator[key as keyof typeof EventDiscriminator];
+      const sdkBytes =
+        EventDiscriminator[key as keyof typeof EventDiscriminator];
       assert.ok(sdkBytes, `no SDK discriminator for ${key}`);
       assert.equal(sdkBytes.length, 8, `${key}: length`);
 

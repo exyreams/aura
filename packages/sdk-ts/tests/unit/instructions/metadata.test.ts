@@ -70,8 +70,14 @@ describe("required / optional partition", () => {
         def.name,
       );
       // Required must all be non-optional; optional must all be optional.
-      assert.ok(required.every((a) => !a.optional), `${def.name}: required`);
-      assert.ok(optional.every((a) => a.optional), `${def.name}: optional`);
+      assert.ok(
+        required.every((a) => !a.optional),
+        `${def.name}: required`,
+      );
+      assert.ok(
+        optional.every((a) => a.optional),
+        `${def.name}: optional`,
+      );
     }
   });
 

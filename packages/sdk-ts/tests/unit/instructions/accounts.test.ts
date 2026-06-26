@@ -20,7 +20,11 @@ import { AURA_INSTRUCTION_DEFINITIONS } from "../../../src/generated/instruction
 import { getInstructionDomain } from "../../../src/index.js";
 import { findInstruction } from "../../support/idl.js";
 import { offlineClient } from "../../support/offline.js";
-import { resolveBuilder, sampleAccounts, sampleArgs } from "../../support/sample.js";
+import {
+  resolveBuilder,
+  sampleAccounts,
+  sampleArgs,
+} from "../../support/sample.js";
 
 describe("generated account lists mirror the IDL", () => {
   for (const def of AURA_INSTRUCTION_DEFINITIONS) {
@@ -78,7 +82,11 @@ describe("built instructions reproduce the IDL account metas", () => {
 
       def.accounts.forEach((acc, i) => {
         const key = ix.keys[i];
-        assert.equal(key.isSigner, acc.signer, `${def.name}.${acc.name}: isSigner`);
+        assert.equal(
+          key.isSigner,
+          acc.signer,
+          `${def.name}.${acc.name}: isSigner`,
+        );
         assert.equal(
           key.isWritable,
           acc.writable,
@@ -88,7 +96,8 @@ describe("built instructions reproduce the IDL account metas", () => {
         // Anchor fills fixed-address and resolvable-PDA accounts itself, so the
         // caller-supplied key only round-trips for plain accounts.
         const idlAcc = idlIx.accounts[i];
-        const isResolved = idlAcc.address !== undefined || idlAcc.pda !== undefined;
+        const isResolved =
+          idlAcc.address !== undefined || idlAcc.pda !== undefined;
         if (!isResolved) {
           assert.ok(
             key.pubkey.equals(accounts[acc.propertyName]),

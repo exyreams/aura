@@ -27,7 +27,11 @@ interface SendCall {
   options: { preflightCommitment?: string } | undefined;
 }
 
-function fakeConnection(): { connection: Connection; sends: SendCall[]; blockhashCalls: number } {
+function fakeConnection(): {
+  connection: Connection;
+  sends: SendCall[];
+  blockhashCalls: number;
+} {
   const sends: SendCall[] = [];
   let blockhashCalls = 0;
   const connection = {

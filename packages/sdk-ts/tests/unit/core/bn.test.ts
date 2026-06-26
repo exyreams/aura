@@ -64,7 +64,10 @@ describe("toBN — number", () => {
   });
 
   it("converts Number.MAX_SAFE_INTEGER (the largest accepted number)", () => {
-    assert.equal(toBN(Number.MAX_SAFE_INTEGER).toString(10), "9007199254740991");
+    assert.equal(
+      toBN(Number.MAX_SAFE_INTEGER).toString(10),
+      "9007199254740991",
+    );
   });
 
   it("converts a negative safe integer", () => {
@@ -94,7 +97,10 @@ describe("toBN — string", () => {
   });
 
   it("parses a value larger than Number can hold", () => {
-    assert.equal(toBN("18446744073709551615").toString(10), "18446744073709551615");
+    assert.equal(
+      toBN("18446744073709551615").toString(10),
+      "18446744073709551615",
+    );
   });
 
   it("parses zero", () => {
