@@ -23,3 +23,8 @@ solana-client = "=3.1.12"
 solana-commitment-config = "=3.1.1"
 solana-sdk = "=3.0.0"
 thiserror = "2.0.18"
+
+[dev-dependencies]
+sha2 = "0.10"
+solana-sdk = "=3.0.0"
+solana-commitment-config = "=3.1.1"

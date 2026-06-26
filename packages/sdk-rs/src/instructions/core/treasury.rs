@@ -45,3 +45,46 @@ pub fn configure_swarm(
         data: aura_core::instruction::ConfigureSwarm { args }.data(),
     }
 }
+
+/// Builds `update_treasury_metadata`.
+pub fn update_treasury_metadata(
+    accounts: accounts::OwnerTreasury,
+    args: aura_core::UpdateTreasuryMetadataArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::UpdateTreasuryMetadata { args }.data(),
+    }
+}
+
+/// Builds `set_recipient_limit`.
+pub fn set_recipient_limit(
+    accounts: accounts::OwnerTreasury,
+    args: aura_core::SetRecipientLimitArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::SetRecipientLimit { args }.data(),
+    }
+}
+
+/// Builds `remove_recipient_limit`.
+pub fn remove_recipient_limit(
+    accounts: accounts::OwnerTreasury,
+    chain: u8,
+    address: String,
+    now: i64,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::RemoveRecipientLimit {
+            chain,
+            address,
+            now,
+        }
+        .data(),
+    }
+}

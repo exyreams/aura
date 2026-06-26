@@ -45,3 +45,52 @@ pub fn approve_pending_execution(
         data: aura_core::instruction::ApprovePendingExecution { args }.data(),
     }
 }
+
+/// Builds `confirm_settlement`.
+pub fn confirm_settlement(
+    accounts: accounts::ConfirmSettlement,
+    args: aura_core::ConfirmSettlementArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ConfirmSettlement { args }.data(),
+    }
+}
+
+/// Builds `mark_settlement_broadcast`.
+pub fn mark_settlement_broadcast(
+    accounts: accounts::MarkSettlementBroadcast,
+    args: aura_core::MarkSettlementBroadcastArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::MarkSettlementBroadcast { args }.data(),
+    }
+}
+
+/// Builds `resubmit_proposal`.
+pub fn resubmit_proposal(
+    accounts: accounts::ResubmitProposal,
+    args: aura_core::ResubmitProposalArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::ResubmitProposal { args }.data(),
+    }
+}
+
+/// Builds `abandon_proposal`.
+pub fn abandon_proposal(
+    accounts: accounts::AbandonProposal,
+    proposal_id: u64,
+    now: i64,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::AbandonProposal { proposal_id, now }.data(),
+    }
+}

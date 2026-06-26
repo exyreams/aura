@@ -60,3 +60,46 @@ pub fn configure_liveness_guardrails(
         data: aura_core::instruction::ConfigureLivenessGuardrails { args }.data(),
     }
 }
+
+/// Builds `remove_budget_envelope`.
+pub fn remove_budget_envelope(
+    accounts: accounts::RemoveBudgetEnvelope,
+    envelope_id: u64,
+    now: i64,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::RemoveBudgetEnvelope { envelope_id, now }.data(),
+    }
+}
+
+/// Builds `leave_exposure_group`.
+pub fn leave_exposure_group(accounts: accounts::ManageExposureGroup) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::LeaveExposureGroup {}.data(),
+    }
+}
+
+/// Builds `update_exposure_group`.
+pub fn update_exposure_group(
+    accounts: accounts::ManageExposureGroup,
+    daily_limit_usd: Option<u64>,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::UpdateExposureGroup { daily_limit_usd }.data(),
+    }
+}
+
+/// Builds `close_exposure_group`.
+pub fn close_exposure_group(accounts: accounts::CloseExposureGroup) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::CloseExposureGroup {}.data(),
+    }
+}

@@ -129,26 +129,51 @@ let signature = client.send_with_default_payer(vec![instruction], &[])?;
 
 ## Instructions
 
-Every instruction has two forms:
+Every instruction is exposed three ways:
 
-- `*_instruction(...)` — returns a `solana_sdk::instruction::Instruction` for composing into your own transaction
-- the method without the suffix — builds, signs, and sends in one call
+- **Standalone builder** — `aura_sdk::instructions::<domain>::<name>(accounts, args)`
+  returns a `solana_sdk::instruction::Instruction` you can compose freely.
+- **Client builder** — `client.<name>_instruction(...)` wraps the standalone
+  builder and rewrites it to the client's configured program ID.
+- **Client send-helper** — `client.<name>(...)` builds, validates the expected
+  signer, signs, and submits in one call.
 
-The low-level instruction builders are also organized by protocol domain under
-`aura_sdk::instructions`:
+Builders are grouped into category modules that mirror the client layout, with
+each domain also re-exported at the top level:
 
 ```rust,no_run
-use aura_sdk::instructions::{address_lists, governance, lifecycle, policy};
+use aura_sdk::instructions::{governance, policy};        // flat re-exports
+use aura_sdk::instructions::core::treasury;              // or category path
 
-let ix = governance::propose_ai_rotation(accounts, new_ai_authority, now);
+let ix    = governance::propose_ai_rotation(accounts, new_ai_authority, now);
 let check = policy::check_policy_cpi(check_accounts, check_args);
 ```
 
-The SDK now covers the full 69-instruction `aura-core` surface: treasury
-lifecycle, confidential execution, dWallet execution, policy controls, budget
-controls, governance timelocks, AI and guardian rotation, session keys,
-migration, health scores, snapshots, activity logs, swarm pools, fee vaults,
-address lists, policy history, policy CPI checks, and dWallet balance refreshes.
+For any instruction, you can also pair a standalone builder with the generic,
+type-safe [`AuraClient::execute`] (single instruction) or `execute_many`
+(atomic multi-instruction transaction):
+
+```rust,no_run
+let ix = aura_sdk::instructions::policy::discard_canary(accounts);
+client.execute(&owner, ix, &[])?;
+```
+
+The SDK covers the full 161-instruction `aura-core` surface across these
+categories:
+
+| Module | Domains |
+| --- | --- |
+| `core` | treasury, agent identity & capabilities, trust envelopes, recovery / break-glass, analytics |
+| `flows` | public/confidential proposals, batches, conditional txs, scheduled intents, execution & settlement |
+| `wallets` | dWallet controls / balances / transfers, chain profiles |
+| `admin` | governance timelocks, AI & guardian rotation, session keys, operator roles, lifecycle |
+| `controls` | policy controls (presets, templates, canaries, rollback, receipts, attestations, CPI), budget envelopes, operational surface, address lists, swarm |
+| `economics` | fee vaults & schedules, billing templates & org profiles, protocol config |
+
+> Full coverage is pinned by two compile-time tests:
+> `every_program_instruction_has_a_reachable_builder` (builder surface) and
+> `every_program_instruction_has_a_client_send_helper` (client surface). Either
+> fails to compile if the SDK drifts from the program.
 
 ### Treasury lifecycle
 
@@ -424,6 +449,54 @@ match client.get_treasury(&treasury_pda) {
     }
     Err(SdkError::Rpc(e)) => println!("RPC error: {e}"),
     Err(e) => println!("error: {e}"),
+}
+```
+
+### Program error codes
+
+The full `aura-core` `#[error_code]` surface (140 variants, codes `6000+`) is
+exposed through the `program_errors` module. Codes are derived from the live
+`AuraCoreError` enum, so the table can never drift from the deployed program.
+
+```rust,no_run
+use aura_sdk::{program_error_by_code, AuraCoreError, AURA_PROGRAM_ERRORS};
+
+// Look a code up.
+let info = program_error_by_code(6001).unwrap();
+assert_eq!(info.name, "UnauthorizedOwner");
+assert_eq!(info.code, AuraCoreError::UnauthorizedOwner as u32 + 6000);
+
+// Iterate every defined error.
+for error in AURA_PROGRAM_ERRORS {
+    println!("{} = {}: {}", error.code, error.name, error.message);
+}
+```
+
+When a transaction fails, resolve the underlying program error from any
+`SdkError` (parses both Solana's `custom program error: 0x…` and Anchor's
+`Error Number: …` forms):
+
+```rust,no_run
+use aura_sdk::is_program_error;
+
+match client.propose_transaction(&ai_authority, treasury, args) {
+    Ok(sig) => println!("submitted: {sig}"),
+    Err(error) => {
+        if let Some(program_error) = error.program_error() {
+            println!(
+                "program rejected: {} ({}) — {}",
+                program_error.name, program_error.code, program_error.message
+            );
+        } else {
+            println!("client/RPC error: {error}");
+        }
+    }
+}
+
+// Or test for a specific code.
+let denied = client.propose_transaction(&ai_authority, treasury, args2);
+if let Err(error) = denied {
+    assert!(is_program_error(&error, AuraCoreError::ExecutionPaused as u32 + 6000));
 }
 ```
 

@@ -2,7 +2,7 @@
 members = [
     "programs/aura-core",
     "programs/aura-policy",
-    # "packages/sdk-rs",  # deferred: SDK rework pending until all program features land; re-enable then
+    "packages/sdk-rs",
 ]
 resolver = "2"
 

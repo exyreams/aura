@@ -119,3 +119,12 @@ pub fn close_activity_log(accounts: accounts::CloseActivityLog) -> Instruction {
         data: aura_core::instruction::CloseActivityLog {}.data(),
     }
 }
+
+/// Builds `close_external_liveness`.
+pub fn close_external_liveness(accounts: accounts::CloseExternalLiveness) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::CloseExternalLiveness {}.data(),
+    }
+}

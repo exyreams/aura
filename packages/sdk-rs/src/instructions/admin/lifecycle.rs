@@ -88,3 +88,27 @@ pub fn trigger_dead_mans_switch(
         data: aura_core::instruction::TriggerDeadMansSwitch { now }.data(),
     }
 }
+
+/// Builds `update_session_key`.
+pub fn update_session_key(
+    accounts: accounts::UpdateSessionKey,
+    args: aura_core::UpdateSessionKeyArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::UpdateSessionKey { args }.data(),
+    }
+}
+
+/// Builds `update_operator_role`.
+pub fn update_operator_role(
+    accounts: accounts::UpdateOperatorRole,
+    args: aura_core::UpdateOperatorRoleArgs,
+) -> Instruction {
+    Instruction {
+        program_id: aura_core::ID,
+        accounts: accounts.to_account_metas(None),
+        data: aura_core::instruction::UpdateOperatorRole { args }.data(),
+    }
+}

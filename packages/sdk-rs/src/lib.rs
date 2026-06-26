@@ -50,12 +50,20 @@ pub mod constants;
 pub mod errors;
 pub mod instructions;
 pub mod pda;
+pub mod program_errors;
 pub mod types;
 pub mod utils;
+
+#[cfg(test)]
+mod encoding_tests;
 
 pub use aura_core::{accounts as anchor_accounts, instruction as anchor_instruction};
 pub use client::AuraClient;
 pub use errors::SdkError;
+pub use program_errors::{
+    parse_program_error, program_error_by_code, program_error_by_name, AuraCoreError,
+    AuraProgramError, AURA_ERROR_CODE_OFFSET, AURA_PROGRAM_ERRORS,
+};
 pub use types::*;
 
 use solana_sdk::pubkey;
