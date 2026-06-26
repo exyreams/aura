@@ -243,7 +243,8 @@ pub fn propose_confidential_batch(
     batch.confidential_result_ready = false;
     batch.confidential_item_count = args.item_count;
     batch.amount_vector_ciphertext = Some(ctx.accounts.amount_vector_ciphertext.key());
-    batch.per_item_limit_vector_ciphertext = Some(ctx.accounts.per_item_limit_vector_ciphertext.key());
+    batch.per_item_limit_vector_ciphertext =
+        Some(ctx.accounts.per_item_limit_vector_ciphertext.key());
     batch.item_violation_vector_ciphertext =
         Some(ctx.accounts.item_violation_vector_ciphertext.key());
 
@@ -263,8 +264,12 @@ pub fn propose_confidential_batch(
     aura_policy::execute_confidential_batch_item_limit_vector_graph(
         &encrypt_ctx,
         ctx.accounts.amount_vector_ciphertext.to_account_info(),
-        ctx.accounts.per_item_limit_vector_ciphertext.to_account_info(),
-        ctx.accounts.item_violation_vector_ciphertext.to_account_info(),
+        ctx.accounts
+            .per_item_limit_vector_ciphertext
+            .to_account_info(),
+        ctx.accounts
+            .item_violation_vector_ciphertext
+            .to_account_info(),
     )?;
 
     Ok(())
@@ -281,7 +286,11 @@ fn validate_ready_u64_vector_ciphertext(
     );
     let data = account.try_borrow_data()?;
     let parsed = parse_ciphertext_account(&data).map_err(crate::map_treasury_error)?;
-    validate_encrypt_u64_vector_ciphertext(&parsed, active_lanes).map_err(crate::map_treasury_error)?;
-    require!(parsed.status == 1, crate::AuraCoreError::PolicyOutputNotReady);
+    validate_encrypt_u64_vector_ciphertext(&parsed, active_lanes)
+        .map_err(crate::map_treasury_error)?;
+    require!(
+        parsed.status == 1,
+        crate::AuraCoreError::PolicyOutputNotReady
+    );
     Ok(())
 }
