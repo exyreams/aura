@@ -31,9 +31,11 @@ before(async () => {
     args: createTreasuryArgs(owner, agentId),
   });
   treasury = pda;
-  await sendAndConfirm([
-    await instructions.treasury.createTreasury(client, input),
-  ]);
+  await sendAndConfirm(
+    [await instructions.treasury.createTreasury(client, input)],
+    [],
+    "createTreasury",
+  );
 });
 
 test("configureSwarm stores the swarm config on-chain", { skip }, async () => {
@@ -42,7 +44,7 @@ test("configureSwarm stores the swarm config on-chain", { skip }, async () => {
     accounts: { owner, treasury },
     args: configureSwarmArgs(swarmId, [agentId, `${agentId}-peer`]),
   });
-  await sendAndConfirm([ix]);
+  await sendAndConfirm([ix], [], "configureSwarm");
 
   const account = await accounts.fetchTreasuryAccount(client, treasury);
   assert.ok(account.swarm, "swarm should be set");

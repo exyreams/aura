@@ -31,9 +31,11 @@ before(async () => {
     args: createTreasuryArgs(owner, agentId),
   });
   treasury = pda;
-  await sendAndConfirm([
-    await instructions.treasury.createTreasury(client, input),
-  ]);
+  await sendAndConfirm(
+    [await instructions.treasury.createTreasury(client, input)],
+    [],
+    "createTreasury",
+  );
 });
 
 test("configureMultisig registers guardians on-chain", { skip }, async () => {
@@ -45,7 +47,7 @@ test("configureMultisig registers guardians on-chain", { skip }, async () => {
     accounts: { owner, treasury },
     args: configureMultisigArgs(guardians),
   });
-  await sendAndConfirm([ix]);
+  await sendAndConfirm([ix], [], "configureMultisig");
 
   const account = await accounts.fetchTreasuryAccount(client, treasury);
   assert.ok(account.multisig, "multisig should be set");

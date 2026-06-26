@@ -76,6 +76,58 @@ export function getPayer(): Keypair {
 let cachedConnection: Connection | null = null;
 let cachedClient: AuraClient | null = null;
 
+const ANSI_DIM = "\x1b[2m";
+const ANSI_RESET = "\x1b[0m";
+
+/**
+ * Pretty-prints a confirmed transaction as a labeled, dimmed block nested under
+ * the running test: the full signature plus a clickable devnet explorer link,
+ * followed by a blank line so successive transactions stay readable. When a
+ * `label` is given (the operation that produced the tx), it is shown alongside
+ * the signature.
+ */
+export function logTransaction(signature: string, label?: string): void {
+  const url = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+  const heading = label ? `tx signature (${label}): ` : "tx signature: ";
+  const body = `    ↳ ${heading}${signature}\n      explorer:     ${url}\n`;
+  console.log(process.stdout.isTTY ? `${ANSI_DIM}${body}${ANSI_RESET}` : body);
+}
+
+const MAX_ATTEMPTS = 4;
+
+/** Transient network/RPC failures worth retrying (vs. real program errors). */
+const TRANSIENT_PATTERN =
+  /fetch failed|ETIMEDOUT|ENETUNREACH|ECONNRESET|ECONNREFUSED|EAI_AGAIN|Connect Timeout|UND_ERR_CONNECT_TIMEOUT|socket hang up|node is behind|429|Too Many Requests|Service Unavailable|Gateway/i;
+
+function isTransient(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return TRANSIENT_PATTERN.test(message);
+}
+
+/**
+ * Retries an async RPC call on transient network/RPC failures with exponential
+ * backoff. Resubmitting an identical signed transaction is safe: it carries the
+ * same signature, so the cluster de-duplicates it.
+ */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_ATTEMPTS && isTransient(error)) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1_000 * 2 ** (attempt - 1)),
+        );
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 export function connection(): Connection {
   cachedConnection ??= new Connection(RPC_URL, "confirmed");
   return cachedConnection;
@@ -109,17 +161,59 @@ export function createTreasuryArgs(
 }
 
 /**
+ * Confirms a signature by polling `getSignatureStatuses` over HTTP until it
+ * reaches the `confirmed` commitment or its blockhash expires.
+ *
+ * This deliberately avoids web3.js's WebSocket-based `confirmTransaction`: the
+ * subscription leaves background activity (its unsubscribe round-trip) that can
+ * reject *after* a test ends and surface as an unhandled rejection on a flaky
+ * RPC. Polling keeps the harness fully WebSocket-free and awaited.
+ */
+async function pollConfirmation(
+  conn: Connection,
+  signature: string,
+  lastValidBlockHeight: number,
+): Promise<void> {
+  for (;;) {
+    const { value } = await withRetry(() =>
+      conn.getSignatureStatuses([signature]),
+    );
+    const status = value[0];
+    if (status?.err) {
+      throw new Error(
+        `transaction ${signature} failed: ${JSON.stringify(status.err)}`,
+      );
+    }
+    if (
+      status?.confirmationStatus === "confirmed" ||
+      status?.confirmationStatus === "finalized"
+    ) {
+      return;
+    }
+    const blockHeight = await withRetry(() => conn.getBlockHeight("confirmed"));
+    if (blockHeight > lastValidBlockHeight) {
+      throw new Error(
+        `transaction ${signature} expired (block height ${blockHeight} > ${lastValidBlockHeight})`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+}
+
+/**
  * Builds, signs, sends, and confirms a transaction against the configured
  * blockhash so callers can assert on-chain state immediately afterwards.
  */
 export async function sendAndConfirm(
   instructions: TransactionInstruction[],
   extraSigners: Keypair[] = [],
+  label?: string,
 ): Promise<string> {
   const payer = getPayer();
   const conn = connection();
-  const { blockhash, lastValidBlockHeight } =
-    await conn.getLatestBlockhash("confirmed");
+  const { blockhash, lastValidBlockHeight } = await withRetry(() =>
+    conn.getLatestBlockhash("confirmed"),
+  );
 
   const tx = new Transaction();
   tx.recentBlockhash = blockhash;
@@ -130,14 +224,14 @@ export async function sendAndConfirm(
   );
   tx.sign(payer, ...extraSigners);
 
-  const signature = await conn.sendRawTransaction(tx.serialize(), {
-    skipPreflight: false,
-    preflightCommitment: "confirmed",
-  });
-  await conn.confirmTransaction(
-    { signature, blockhash, lastValidBlockHeight },
-    "confirmed",
+  const signature = await withRetry(() =>
+    conn.sendRawTransaction(tx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: "confirmed",
+    }),
   );
+  await pollConfirmation(conn, signature, lastValidBlockHeight);
+  logTransaction(signature, label);
   return signature;
 }
 

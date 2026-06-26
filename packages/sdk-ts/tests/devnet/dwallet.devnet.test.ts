@@ -31,9 +31,11 @@ before(async () => {
     args: createTreasuryArgs(owner, agentId),
   });
   treasury = pda;
-  await sendAndConfirm([
-    await instructions.treasury.createTreasury(client, input),
-  ]);
+  await sendAndConfirm(
+    [await instructions.treasury.createTreasury(client, input)],
+    [],
+    "createTreasury",
+  );
 });
 
 test("registerDwallet stores a dWallet reference on-chain", {
@@ -44,7 +46,7 @@ test("registerDwallet stores a dWallet reference on-chain", {
     accounts: { owner, treasury },
     args: registerDwalletArgs(dwalletId),
   });
-  await sendAndConfirm([ix]);
+  await sendAndConfirm([ix], [], "registerDwallet");
 
   const account = await accounts.fetchTreasuryAccount(client, treasury);
   assert.ok(account.dwallets.length > 0, "dwallets should be non-empty");

@@ -49,9 +49,11 @@ before(async () => {
     args: createTreasuryArgs(owner, agentId),
   });
   treasury = pda;
-  await sendAndConfirm([
-    await instructions.treasury.createTreasury(client, input),
-  ]);
+  await sendAndConfirm(
+    [await instructions.treasury.createTreasury(client, input)],
+    [],
+    "createTreasury",
+  );
 });
 
 test("createTreasury lands and is owned by the program", { skip }, async () => {
@@ -82,7 +84,7 @@ test("transitionAgentState activates the treasury", { skip }, async () => {
     accounts: { owner, treasury },
     args: { targetState: 1, now: nowBN() },
   });
-  await sendAndConfirm([ix]);
+  await sendAndConfirm([ix], [], "transitionAgentState");
   const account = await accounts.fetchTreasuryAccount(client, treasury);
   assert.equal(account.agentState, 1);
 });
@@ -100,7 +102,7 @@ test("initTreasuryAnalytics creates the analytics sidecar", {
     },
     args: { now: nowBN() },
   });
-  await sendAndConfirm([ix]);
+  await sendAndConfirm([ix], [], "initTreasuryAnalytics");
   assert.ok(await accounts.fetchTreasuryAnalyticsAccount(client, analytics));
 });
 
