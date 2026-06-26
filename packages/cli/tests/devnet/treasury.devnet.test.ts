@@ -11,6 +11,7 @@ import {
   assertFunded,
   DEVNET_AVAILABLE,
   getPayer,
+  nowSeconds,
   runJson,
   uniqueAgentId,
 } from "../support/devnet.js";
@@ -42,6 +43,21 @@ before(async () => {
   ]).json;
   treasuryPda = created.treasury;
   createSignature = created.signature;
+
+  // A freshly created treasury is execution-gated until it is transitioned to
+  // the active state; activate it so the propose/pause lifecycle tests run
+  // against a live treasury (mirrors the sdk-ts execution suite).
+  runJson<{ signature: string }>([
+    "ix",
+    "send",
+    "transition_agent_state",
+    "--account",
+    "owner=$wallet",
+    "--account",
+    `treasury=${treasuryPda}`,
+    "--args",
+    JSON.stringify({ target_state: 1, now: nowSeconds() }),
+  ]);
 });
 
 test("treasury create lands on devnet", { skip }, () => {

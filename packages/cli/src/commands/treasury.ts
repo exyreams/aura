@@ -234,14 +234,51 @@ export function registerTreasuryCommands(program: Command): void {
         });
       }
 
-      const owned = await ctx.client.program.account.treasuryAccount.all([
+      // Resilient listing: an `.all()` decode is atomic and throws if any single
+      // owned account has an incompatible (legacy) layout. Fetch the candidates
+      // by discriminator + owner in one call and decode each independently, so a
+      // stale account from an older program revision is skipped rather than
+      // failing the whole command.
+      const discriminator =
+        ctx.client.program.coder.accounts.memcmp("treasuryAccount");
+      const candidates = await ctx.client.connection.getProgramAccounts(
+        ctx.client.program.programId,
         {
-          memcmp: {
-            offset: TREASURY_OWNER_OFFSET,
-            bytes: ctx.wallet.publicKey.toBase58(),
-          },
+          filters: [
+            {
+              memcmp: {
+                offset: discriminator.offset ?? 0,
+                bytes: discriminator.bytes as string,
+              },
+            },
+            {
+              memcmp: {
+                offset: TREASURY_OWNER_OFFSET,
+                bytes: ctx.wallet.publicKey.toBase58(),
+              },
+            },
+          ],
         },
-      ]);
+      );
+
+      const owned: { publicKey: PublicKey; account: TreasuryAccountRecord }[] =
+        [];
+      let skipped = 0;
+      for (const { pubkey, account } of candidates) {
+        try {
+          owned.push({
+            publicKey: pubkey,
+            account:
+              ctx.client.program.coder.accounts.decode<TreasuryAccountRecord>(
+                "treasuryAccount",
+                account.data,
+              ),
+          });
+        } catch {
+          // Incompatible legacy layout from an older program revision; skip it.
+          skipped += 1;
+        }
+      }
 
       if (ctx.output.json) {
         emitJson(
@@ -255,6 +292,12 @@ export function registerTreasuryCommands(program: Command): void {
       }
 
       printBanner(ctx.output, "Treasuries", `${owned.length} owned`);
+      if (skipped > 0) {
+        printInfo(
+          ctx.output,
+          `Skipped ${skipped} account(s) that could not be decoded (legacy layout).`,
+        );
+      }
       const table = createTable(["Agent ID", "PDA", "Status", "Total Tx"]);
       for (const entry of owned) {
         table.push([
