@@ -26,6 +26,7 @@ import {
   type ConfigureSwarmArgs,
   type CreateTreasuryArgs,
   DEVNET_RPC_URL,
+  deriveDwalletStateAddress,
   instructions,
   type ProposeTransactionArgs,
   type RegisterDwalletArgs,
@@ -35,6 +36,7 @@ import {
   Connection,
   Keypair,
   type PublicKey,
+  SystemProgram,
   Transaction,
   type TransactionInstruction,
 } from "@solana/web3.js";
@@ -294,10 +296,11 @@ export function proposeTransactionArgs(
 /** A dWallet reference (no live Ika signing). */
 export function registerDwalletArgs(
   dwalletId: string,
+  chain = 2,
   now: BN = nowBN(),
 ): RegisterDwalletArgs {
   const args = sampleDefined("RegisterDwalletArgs") as RegisterDwalletArgs;
-  args.chain = 2; // Ethereum
+  args.chain = chain;
   args.dwalletId = dwalletId;
   args.address = EVM_DEAD;
   args.balanceUsd = new BN(5_000);
@@ -428,4 +431,91 @@ export function proposeAccounts(
     policyCanary: null,
     ...overrides,
   };
+}
+
+/** A registered + initialized dWallet and the runtime PDA that drives it. */
+export interface ProvisionedDwallet {
+  chain: number;
+  dwalletId: string;
+  dwalletState: PublicKey;
+}
+
+/**
+ * Registers a dWallet on the treasury and initializes its runtime
+ * `DWalletAccount` PDA (status Active, no limits). Optionally records an initial
+ * deposit so the dWallet has a spendable balance. Returns the chain code, the
+ * dWallet id, and the runtime PDA.
+ *
+ * Order matters on-chain: `register_dwallet` populates the treasury map,
+ * `init_dwallet_state` creates the per-chain runtime account, and
+ * `record_deposit` credits an asset row.
+ */
+export async function provisionDwallet(
+  t: ProvisionedTreasury,
+  options?: {
+    chain?: number;
+    dwalletId?: string;
+    deposit?: {
+      assetId: string;
+      symbol: string;
+      decimals: number;
+      nativeAmount: bigint | number;
+      usdValue: number;
+    };
+  },
+): Promise<ProvisionedDwallet> {
+  const client = devnetClient();
+  const chain = options?.chain ?? 2;
+  const dwalletId = options?.dwalletId ?? `${t.agentId}-dw-${chain}`;
+  const [dwalletState] = deriveDwalletStateAddress(t.treasury, chain);
+
+  await sendAndConfirm(
+    [
+      await instructions.dwallet.registerDwallet(client, {
+        accounts: { owner: t.owner, treasury: t.treasury },
+        args: registerDwalletArgs(dwalletId, chain),
+      }),
+    ],
+    [],
+    "registerDwallet",
+  );
+  await sendAndConfirm(
+    [
+      await instructions.dwallet.initDwalletState(client, {
+        accounts: {
+          owner: t.owner,
+          treasury: t.treasury,
+          dwalletState,
+          systemProgram: SystemProgram.programId,
+        },
+        args: { chain, now: nowBN() },
+      }),
+    ],
+    [],
+    "initDwalletState",
+  );
+
+  if (options?.deposit) {
+    const d = options.deposit;
+    await sendAndConfirm(
+      [
+        await instructions.dwallet.recordDeposit(client, {
+          accounts: { owner: t.owner, treasury: t.treasury, dwalletState },
+          args: {
+            chain,
+            assetId: d.assetId,
+            symbol: d.symbol,
+            decimals: d.decimals,
+            nativeAmount: new BN(d.nativeAmount.toString()),
+            usdValue: new BN(d.usdValue),
+            now: nowBN(),
+          },
+        }),
+      ],
+      [],
+      "recordDeposit",
+    );
+  }
+
+  return { chain, dwalletId, dwalletState };
 }

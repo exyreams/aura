@@ -1,7 +1,7 @@
 {
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!**/*.json"]
+    "includes": ["**", "!node_modules", "!support/ika/vendor", "!**/*.json"]
   },
   "formatter": {
     "enabled": true,
