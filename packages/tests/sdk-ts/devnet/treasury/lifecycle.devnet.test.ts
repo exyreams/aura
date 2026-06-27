@@ -7,18 +7,18 @@
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
 import {
-  Keypair,
-  LAMPORTS_PER_SOL,
-  type PublicKey,
-  SystemProgram,
-} from "@solana/web3.js";
-import {
   AURA_PROGRAM_ID,
   accounts,
   deriveTreasuryAddress,
   deriveTreasuryAnalyticsAddress,
   instructions,
-} from "../../src/index.js";
+} from "@aura-protocol/sdk-ts";
+import {
+  Keypair,
+  LAMPORTS_PER_SOL,
+  type PublicKey,
+  SystemProgram,
+} from "@solana/web3.js";
 import {
   createTreasuryArgs,
   DEVNET_AVAILABLE,
@@ -27,7 +27,7 @@ import {
   nowBN,
   sendAndConfirm,
   uniqueAgentId,
-} from "../support/devnet.js";
+} from "../../support/devnet.js";
 
 const skip = DEVNET_AVAILABLE ? false : "no devnet payer keypair";
 const client = devnetClient();

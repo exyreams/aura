@@ -1,0 +1,28 @@
+{
+  "name": "@aura-protocol/sdk-ts-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Live devnet integration tests for @aura-protocol/sdk-ts, exercising the published package surface against the deployed program.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "pretest:devnet": "tsc -p ../../sdk-ts/tsconfig.json",
+    "test:devnet": "tsx --test --test-concurrency=1 \"devnet/**/*.devnet.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write"
+  },
+  "devDependencies": {
+    "@aura-protocol/sdk-ts": "file:../../sdk-ts",
+    "@biomejs/biome": "2.5.1",
+    "@solana/web3.js": "1.98.4",
+    "@types/bn.js": "5.2.0",
+    "@types/node": "26.0.0",
+    "bn.js": "5.2.3",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
+  }
+}

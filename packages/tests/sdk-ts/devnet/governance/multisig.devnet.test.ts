@@ -4,8 +4,8 @@
 
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
+import { accounts, instructions } from "@aura-protocol/sdk-ts";
 import { Keypair, type PublicKey } from "@solana/web3.js";
-import { accounts, instructions } from "../../src/index.js";
 import {
   configureMultisigArgs,
   createTreasuryArgs,
@@ -14,7 +14,7 @@ import {
   getPayer,
   sendAndConfirm,
   uniqueAgentId,
-} from "../support/devnet.js";
+} from "../../support/devnet.js";
 
 const skip = DEVNET_AVAILABLE ? false : "no devnet payer keypair";
 const client = devnetClient();

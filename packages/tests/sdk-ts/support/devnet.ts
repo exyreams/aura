@@ -1,14 +1,17 @@
 /**
  * Devnet integration test harness.
  *
- * These helpers submit real transactions to Solana devnet. They are guarded by
- * {@link DEVNET_AVAILABLE}: when no funded payer keypair is found, the devnet
- * suites skip instead of failing so the offline unit suite stays runnable.
+ * These helpers submit real transactions to Solana devnet through the
+ * *published* `@aura-protocol/sdk-ts` surface (not its internal source), so the
+ * suite doubles as a dogfooding check of the package's exports. They are
+ * guarded by {@link DEVNET_AVAILABLE}: when no funded payer keypair is found
+ * the suites skip instead of failing.
  *
  * Prerequisites:
  *   1. A funded devnet keypair at ~/.config/solana/id.json
  *      (or set PAYER_KEYPAIR / AURA_WALLET_PATH).
- *   2. Optionally set AURA_DEVNET_RPC_URL or SOLANA_RPC_URL.
+ *   2. Optionally set AURA_DEVNET_RPC_URL or SOLANA_RPC_URL (a full RPC URL),
+ *      or HELIUS_API_KEY to use Helius. Falls back to the public devnet RPC.
  *
  * Run: `npm run test:devnet`
  */
@@ -16,6 +19,17 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import {
+  AuraClient,
+  accounts,
+  type ConfigureMultisigArgs,
+  type ConfigureSwarmArgs,
+  type CreateTreasuryArgs,
+  DEVNET_RPC_URL,
+  instructions,
+  type ProposeTransactionArgs,
+  type RegisterDwalletArgs,
+} from "@aura-protocol/sdk-ts";
 import {
   ComputeBudgetProgram,
   Connection,
@@ -25,21 +39,29 @@ import {
   type TransactionInstruction,
 } from "@solana/web3.js";
 import BN from "bn.js";
-import {
-  AuraClient,
-  type ConfigureMultisigArgs,
-  type ConfigureSwarmArgs,
-  type CreateTreasuryArgs,
-  DEVNET_RPC_URL,
-  type ProposeTransactionArgs,
-  type RegisterDwalletArgs,
-} from "../../src/index.js";
-import { buildCreateTreasuryArgs, sampleDefined } from "./sample.js";
+import { buildCreateTreasuryArgs, sampleDefined } from "./fixtures.js";
 
-export const RPC_URL =
-  process.env.AURA_DEVNET_RPC_URL ??
-  process.env.SOLANA_RPC_URL ??
-  DEVNET_RPC_URL;
+/**
+ * Resolves the devnet RPC endpoint without baking any secret into source.
+ * Priority:
+ *   1. AURA_DEVNET_RPC_URL / SOLANA_RPC_URL — a full RPC URL (any provider).
+ *   2. HELIUS_API_KEY — builds the Helius devnet URL from the key in the env.
+ *   3. the SDK's public devnet default (rate-limited, fine for light runs).
+ */
+function resolveRpcUrl(): string {
+  const explicit =
+    process.env.AURA_DEVNET_RPC_URL ?? process.env.SOLANA_RPC_URL;
+  if (explicit) return explicit;
+
+  const heliusKey = process.env.HELIUS_API_KEY;
+  if (heliusKey) {
+    return `https://devnet.helius-rpc.com/?api-key=${heliusKey}`;
+  }
+
+  return DEVNET_RPC_URL;
+}
+
+export const RPC_URL = resolveRpcUrl();
 
 function payerPath(): string {
   return (
@@ -80,16 +102,36 @@ const ANSI_DIM = "\x1b[2m";
 const ANSI_RESET = "\x1b[0m";
 
 /**
- * Pretty-prints a confirmed transaction as a labeled, dimmed block nested under
- * the running test: the full signature plus a clickable devnet explorer link,
- * followed by a blank line so successive transactions stay readable. When a
- * `label` is given (the operation that produced the tx), it is shown alongside
- * the signature.
+ * Prints a confirmed transaction as an indented tree nested under the running
+ * test: the step name, then its details (full signature, full explorer link,
+ * and any extra key/value pairs) on connected child lines. TTY output is dimmed;
+ * CI output is plain. A trailing blank line keeps successive transactions
+ * readable.
+ *
+ * Transactions emitted from a suite's `before()` setup (createTreasury,
+ * transitionAgentState, ...) print above the first test's result line — that is
+ * expected: node:test runs hooks before any test and interleaves their stdout.
  */
-export function logTransaction(signature: string, label?: string): void {
+export function logTransaction(
+  label: string,
+  signature: string,
+  extra?: Record<string, string>,
+): void {
   const url = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
-  const heading = label ? `tx signature (${label}): ` : "tx signature: ";
-  const body = `    ↳ ${heading}${signature}\n      explorer:     ${url}\n`;
+  const entries: [string, string][] = [
+    ["sig:", signature],
+    ["url:", url],
+    ...Object.entries(extra ?? {}),
+  ];
+  // `branchIndent` controls the left padding of every branch line; bump it to
+  // shift the whole tree right. `connector` is just the glyph.
+  const branchIndent = "      ";
+  const lines = [`  ↳ ${label}`];
+  entries.forEach(([key, value], index) => {
+    const connector = index === entries.length - 1 ? "└─" : "├─";
+    lines.push(`${branchIndent}${connector} ${key.padEnd(3)} ${value}`);
+  });
+  const body = `${lines.join("\n")}\n`;
   console.log(process.stdout.isTTY ? `${ANSI_DIM}${body}${ANSI_RESET}` : body);
 }
 
@@ -205,9 +247,9 @@ async function pollConfirmation(
  * blockhash so callers can assert on-chain state immediately afterwards.
  */
 export async function sendAndConfirm(
-  instructions: TransactionInstruction[],
+  ixs: TransactionInstruction[],
   extraSigners: Keypair[] = [],
-  label?: string,
+  label = "transaction",
 ): Promise<string> {
   const payer = getPayer();
   const conn = connection();
@@ -218,10 +260,7 @@ export async function sendAndConfirm(
   const tx = new Transaction();
   tx.recentBlockhash = blockhash;
   tx.feePayer = payer.publicKey;
-  tx.add(
-    ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }),
-    ...instructions,
-  );
+  tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }), ...ixs);
   tx.sign(payer, ...extraSigners);
 
   const signature = await withRetry(() =>
@@ -231,7 +270,7 @@ export async function sendAndConfirm(
     }),
   );
   await pollConfirmation(conn, signature, lastValidBlockHeight);
-  logTransaction(signature, label);
+  logTransaction(label, signature);
   return signature;
 }
 
@@ -291,5 +330,102 @@ export function configureSwarmArgs(
     memberAgents,
     sharedPoolLimitUsd: new BN(50_000),
     timestamp: now,
+  };
+}
+
+/** A provisioned treasury and the identifiers needed to drive it. */
+export interface ProvisionedTreasury {
+  owner: PublicKey;
+  treasury: PublicKey;
+  agentId: string;
+}
+
+/**
+ * Creates a fresh treasury on devnet (owner = payer, aiAuthority = payer), and
+ * optionally transitions it to the Active state so it can accept proposals.
+ * Each call uses a unique agent id, so suites never collide on re-runs.
+ *
+ * `mutateArgs` lets a caller tweak the policy config (e.g. tighten a limit)
+ * before creation, which is what the policy-enforcement suites use.
+ */
+export async function provisionTreasury(options?: {
+  activate?: boolean;
+  prefix?: string;
+  mutateArgs?: (args: CreateTreasuryArgs) => void;
+}): Promise<ProvisionedTreasury> {
+  const client = devnetClient();
+  const owner = getPayer().publicKey;
+  const agentId = uniqueAgentId(options?.prefix ?? "prov");
+  const args = createTreasuryArgs(owner, agentId);
+  options?.mutateArgs?.(args);
+
+  const { treasury, input } = accounts.createTreasuryInput({ owner, args });
+  await sendAndConfirm(
+    [await instructions.treasury.createTreasury(client, input)],
+    [],
+    "createTreasury",
+  );
+
+  if (options?.activate) {
+    await sendAndConfirm(
+      [
+        await instructions.lifecycle.transitionAgentState(client, {
+          accounts: { owner, treasury },
+          args: { targetState: 1, now: nowBN() },
+        }),
+      ],
+      [],
+      "transitionAgentState",
+    );
+  }
+
+  return { owner, treasury, agentId };
+}
+
+/**
+ * Asserts that sending `ixs` fails on-chain (preflight or execution). Returns
+ * the thrown error so callers can inspect the program error code.
+ */
+export async function expectSendToFail(
+  ixs: TransactionInstruction[],
+  label?: string,
+): Promise<unknown> {
+  try {
+    await sendAndConfirm(ixs, [], label ?? "expected-failure");
+  } catch (error) {
+    return error;
+  }
+  throw new Error(
+    `expected the transaction${label ? ` (${label})` : ""} to fail, but it succeeded`,
+  );
+}
+
+/**
+ * The full account set `propose_transaction` consults. All optional sidecars
+ * default to `null`; pass `overrides` to wire a specific one (e.g. an
+ * `addressList` PDA when testing allow/deny enforcement).
+ */
+type ProposeAccountsInput =
+  instructions.execution.ProposeTransactionInput["accounts"];
+
+export function proposeAccounts(
+  treasury: PublicKey,
+  overrides: Partial<ProposeAccountsInput> = {},
+): ProposeAccountsInput {
+  return {
+    aiAuthority: getPayer().publicKey,
+    treasury,
+    sessionKeyAccount: null,
+    swarmPool: null,
+    addressList: null,
+    complianceOracle: null,
+    parentTreasury: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    dwalletState: null,
+    chainProfile: null,
+    trustIdentity: null,
+    policyCanary: null,
+    ...overrides,
   };
 }
