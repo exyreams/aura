@@ -80,7 +80,7 @@ Each chain needs its own `DwalletRecord` before proposals can be approved for th
 ```typescript
 await aura.dwallet.register({
   treasury,
-  chain: 2, // 0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism
+  chain: 1, // 0=Bitcoin 1=Ethereum 2=Solana 3=Polygon 4=Arbitrum 5=Optimism
   dwalletId: "dwallet-abc123", // from Ika dWallet provisioning
   address: "0xYourEthAddress", // native address on the target chain
   balanceUsd: 5_000, // USD cents — balance hint
@@ -97,7 +97,7 @@ await aura.dwallet.register({
 const signature = await aura.treasury.propose({
   treasury,
   amountUsd: 250, // USD cents = $2.50
-  chain: 2, // Ethereum
+  chain: 1, // Ethereum
   recipient: "0xRecipientAddress",
   txType: 0, // 0=Transfer 1=DeFiSwap 2=LendingDeposit 3=NFTPurchase 4=ContractInteraction
 
@@ -119,6 +119,11 @@ The proposal goes through `evaluate_transaction` in `aura-policy`:
 6. Velocity limit check
 
 If all pass, a `PendingTransaction` account is created on-chain.
+
+For chain-bound proposals where Ika must sign exact native bytes (Solana SPL
+transfer, EVM transaction, etc.), `proposeTransaction` also accepts
+`nativeMessageHash` and chain-specific replay fields. See
+[dWallet Execution](/sdk-ts/execution/dwallet-execution) for the full flow.
 
 </Step>
 

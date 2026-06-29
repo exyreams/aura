@@ -35,7 +35,7 @@ Treasuries register secondary agents via `register_agent`, specifying:
 await aura.trust.registerAgent({
   treasury,
   agentAuthority: agentPubkey,
-  allowedChains: [0, 2, 3], // Solana, Ethereum, Polygon
+  allowedChains: [1, 2, 3], // Ethereum, Solana, Polygon
   allowedTxTypes: [0, 1], // Transfer, DeFiSwap
   dailyCapUsd: 5000, // Optional per-agent cap (in addition to treasury cap)
   label: "trading-agent-alpha",
@@ -56,7 +56,7 @@ await aura.trust.setAgentCapability({
   treasury,
   agentAuthority,
   manifest: {
-    chains: [2], // Ethereum only
+    chains: [1], // Ethereum only
     txTypes: [1], // DeFiSwap only
     maxAmountUsd: 1000, // Per-tx cap
     protocols: [0, 1], // Specific protocol whitelist
@@ -180,4 +180,3 @@ console.log("Decay rate:", trustAccount.decayRateBps); // bps per day
 - `set_agent_capability` — Update capability manifest
 - `set_agent_tripwires` — Tune behavior monitoring weights
 - `nominate_successor_owner` / `accept_ownership_handover` / `migrate_ownership` — Ownership transfer
-

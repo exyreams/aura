@@ -2,6 +2,7 @@
 title: dWallet Execution
 description: How AURA uses Ika dWallet records to co-sign transactions across 6 chains without exposing a private key.
 icon: Wallet
+status: new
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
@@ -16,9 +17,9 @@ Chain IDs are `u8` values used in `ProposeTransactionArgs.target_chain` and `Reg
 
 | ID | Chain | Notes |
 |---|---|---|
-| 0 | Solana | Native; no bridge |
-| 1 | Bitcoin | `bitcoin_manual_review_threshold_usd` applies |
-| 2 | Ethereum | EVM-compatible |
+| 0 | Bitcoin | `bitcoin_manual_review_threshold_usd` applies |
+| 1 | Ethereum | EVM-compatible |
+| 2 | Solana | Native; no bridge |
 | 3 | Polygon | EVM-compatible |
 | 4 | Arbitrum | EVM-compatible |
 | 5 | Optimism | EVM-compatible |
@@ -33,7 +34,7 @@ Before any proposal can be approved for a chain, a `DwalletRecord` must be regis
 // Register an Ethereum dWallet (owner signs)
 await aura.dwallet.register({
   treasury,
-  chain: 2,                          // Ethereum
+  chain: 1,                          // Ethereum
   dwalletId: "dwallet-abc123",       // from Ika dWallet provisioning
   address: "0xYourEthAddress",
   balanceUsd: 5_000,                 // USD cents — balance hint
@@ -65,6 +66,32 @@ and `confirm_settlement` is the point where wallet reservations, scheduled inten
 are finally applied. Failed or reorged broadcasts can be `resubmit_proposal` with fresh replay fields or
 `abandon_proposal` to release the reservation.
 
+## Chain Binding and `native_message_hash`
+
+Chain-bound proposals require `native_message_hash` in `ProposeTransactionArgs`.
+This is the 32-byte Keccak-256 digest of the **exact bytes Ika will sign** — not
+a digest of the AURA audit string.
+
+```
+native_message_hash = keccak256(exact bytes passed to Ika requestSign)
+```
+
+For Solana, this is `keccak256(compiled_transaction_message_bytes)`. For EVM and
+Bitcoin, it is the digest of the native transaction/sighash payload the caller
+constructed. When `native_message_hash` is absent (legacy proposals), the
+program falls back to `keccak256(canonical_audit_message_string)`.
+
+The canonical chain message string also includes a `bind_native_message=<hex>`
+segment when the field is set, making the binding auditable on-chain.
+
+Chain-bound proposal validation requires `native_message_hash` to be present.
+Solana proposals additionally require `solana_recent_blockhash`. The separate
+`solana_message_hash` field is a Solana-specific trace/audit field and is not
+required for validation.
+
+For the TypeScript SDK helpers that drive the full approval and broadcast flow,
+see the [dWallet Execution](/sdk-ts/execution/dwallet-execution) guide.
+
 ## `execute_pending` Accounts
 
 | Account | Seed / Source | Purpose |
@@ -79,6 +106,21 @@ are finally applied. Failed or reorged broadcasts can be `resubmit_proposal` wit
 | `dwallet_coordinator` | dWallet coordinator account | Network coordinator |
 | `external_liveness` | `["external_liveness", treasury]` | Optional freshness check |
 | `system_program` | `11111111111111111111111111111111` | Account creation |
+
+## MessageApproval digest selection
+
+`build_message_approval_request` uses `native_message_hash` from the proposal
+binding when present and falls back to `keccak256(audit_message_string)` for
+legacy unbound proposals:
+
+| Proposal type | Digest used for `approve_message` |
+|---|---|
+| Legacy (no binding) | `keccak256(canonical_audit_string)` |
+| Chain-bound | `native_message_hash` from `ChainExecutionBinding` |
+
+This means the `MessageApproval` PDA address changes depending on which digest
+path is taken — the PDA is derived from whichever digest was passed to
+`approve_message`.
 
 ## MessageApproval PDA Derivation
 

@@ -14,7 +14,7 @@ import { SystemProgram } from "@solana/web3.js";
 import { instructions, pda } from "@aura-protocol/sdk-ts";
 
 const now = () => new BN(Math.floor(Date.now() / 1000));
-const chain = 2; // Ethereum
+const chain = 1; // Ethereum
 const [dwalletState] = pda.deriveDwalletStateAddress(treasury, chain);
 const dwAccounts = { owner: owner.publicKey, treasury, dwalletState };
 ```

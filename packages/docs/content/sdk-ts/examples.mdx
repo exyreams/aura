@@ -105,6 +105,25 @@ const proposeIx = await instructions.execution.proposeTransaction(client, {
     counterpartyRiskScore: null,
     recipientOrContract: "0x000000000000000000000000000000000000dead",
     sanctionsProof: [],
+    // Chain-binding fields — null for legacy proposals.
+    // For chain-bound proposals supply nativeMessageHash + replay fields.
+    // See the dWallet Execution guide for the full flow.
+    assetId: null,
+    nativeAmount: null,
+    decimals: null,
+    gasNativeAmount: null,
+    gasAssetId: null,
+    nativeMessageHash: null,
+    calldataHash: null,
+    utxoSetHash: null,
+    sighashType: null,
+    evmChainId: null,
+    replayNonce: null,
+    gasLimit: null,
+    maxFeeNative: null,
+    solanaRecentBlockhash: null,
+    solanaMessageHash: null,
+    confirmationsRequired: null,
   },
 });
 await sendAndConfirm([proposeIx]);
@@ -381,7 +400,8 @@ for (const domain of AURA_FEATURE_DOMAINS) {
 ```
 
 <Callout type="info">
-  For the Ika-dependent flows (`executePending`, `finalizeExecution`,
-  confidential proposals, dWallet break-glass), see the Rust smoke binaries in
-  `smoke/aura-devnet/`, which exercise the full CPI paths against live devnet.
+  For the full Ika-dependent signing flow (`runAuraApproval`, `sendSolanaTransfer`,
+  `signEvmPayload`), see the [dWallet Execution](/sdk-ts/execution/dwallet-execution)
+  guide and the devnet test at
+  `packages/tests/sdk-ts/devnet/dwallet/transfer.devnet.test.ts`.
 </Callout>

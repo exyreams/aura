@@ -149,7 +149,7 @@ Sets a per-recipient daily/per-tx cap. Accounts: `owner` (s), `treasury` (w).
 await instructions.treasury.sendSetRecipientLimit(client, owner, {
   accounts: { owner: owner.publicKey, treasury },
   args: {
-    chain: 2, // Ethereum
+    chain: 1, // Ethereum
     address: "0x000000000000000000000000000000000000dead",
     dailyLimitUsd: new BN(2_000),
     perTxLimitUsd: new BN(500),

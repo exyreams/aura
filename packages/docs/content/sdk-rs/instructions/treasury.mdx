@@ -116,7 +116,7 @@ let sig = client.set_recipient_limit(
     &owner,
     accounts::OwnerTreasury { owner: owner.pubkey(), treasury },
     SetRecipientLimitArgs {
-        chain: 2, // Ethereum
+        chain: 1, // Ethereum
         address: "0x000000000000000000000000000000000000dead".to_string(),
         daily_limit_usd: 2_000,
         per_tx_limit_usd: Some(500),

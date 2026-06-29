@@ -24,7 +24,7 @@ await aura.scheduled.createIntent({
   totalBudgetUsd: 10_000, // max $100 total across all runs
   maxExecutions: 30, // stop after 30 runs
   payload: {
-    chain: 2, // Ethereum
+    chain: 1, // Ethereum
     recipient: "0xVaultAddress",
     txType: 0, // Transfer
     amountUsd: 450, // $4.50 per run
@@ -83,7 +83,7 @@ Park a proposal behind runtime conditions instead of executing immediately:
 await aura.scheduled.proposeConditional({
   treasury,
   proposal: {
-    chain: 2,
+    chain: 1,
     recipient: "0xTargetAddress",
     amountUsd: 2000,
     txType: 1, // DeFiSwap
@@ -192,4 +192,3 @@ Both `execute_scheduled_intent` and `try_trigger` are permissionless — anyone 
 - `propose_conditional_transaction` — Create conditional proposal
 - `try_trigger` — Attempt to trigger conditional
 - `close_conditional_proposal` — Clean up conditional proposal
-

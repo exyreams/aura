@@ -16,7 +16,7 @@ use solana_sdk::signature::{Keypair, Signer};
 
 let client = AuraClient::devnet();
 let now = chrono::Utc::now().timestamp();
-let chain = 2; // Ethereum
+let chain = 1; // Ethereum
 // `dwallet_state` is the per-chain runtime PDA.
 let dw = || accounts::DwalletControl { owner: owner.pubkey(), treasury, dwallet_state };
 ```

@@ -29,7 +29,7 @@ let sig = client.init_address_list(
     &owner,
     accounts::InitAddressList { owner: owner.pubkey(), treasury, address_list, system_program: sys },
     0, // mode (allow)
-    2, // chain (Ethereum)
+    1, // chain (Ethereum)
     now,
 )?;
 ```

@@ -14,6 +14,8 @@
     "client/errors",
     "client/validation",
     "client/metadata",
+    "---Execution---",
+    "execution/dwallet-execution",
     "---Instructions---",
     "instructions/index",
     "instructions/treasury",

@@ -1,0 +1,363 @@
+---
+title: dWallet Execution
+description: High-level helpers for the Ika dWallet signing lifecycle — approval, Solana transfer, and EVM/Bitcoin payload signing.
+icon: Zap
+status: new
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warn" title="Pre-alpha — devnet only">
+  These helpers target Solana devnet and the Ika pre-alpha gRPC endpoints.
+  The signing lifecycle, account layouts, and SDK APIs may change before stable
+  release.
+</Callout>
+
+`dwallet-execution` is a high-level module exported from `@aura-protocol/sdk-ts`
+that drives the full Ika dWallet signing pipeline from an already-proposed AURA
+transaction through to target-chain broadcast and settlement.
+
+```typescript
+import {
+  runAuraApproval,
+  sendSolanaTransfer,
+  signEvmPayload,
+  signBitcoinPayload,
+  signNativePayload,        // base function; signEvmPayload / signBitcoinPayload are aliases
+  buildChainMessage,
+  nativeSigningMessageDigest,
+  solanaCompiledMessageDigest,
+  waitMessageApprovalCreated,
+  waitMessageApprovalSigned,
+} from "@aura-protocol/sdk-ts";
+```
+
+## The signing lifecycle
+
+<Mermaid chart="sequenceDiagram;participant Caller as Caller;participant Core as aura-core;participant Ika as Ika dWallet;participant Chain as Target Chain;Caller->>Core: propose_transaction(nativeMessageHash);Core-->>Caller: PendingTransaction approved;Note over Caller,Ika: runAuraApproval();Caller->>Core: execute_pending → approve_message CPI;Core->>Ika: approve_message(nativeMessageHash);Ika-->>Caller: MessageApproval PDA created;Caller->>Ika: requestPresign + requestSign(signingMessage);Ika-->>Caller: raw dWallet signature;Caller->>Core: finalize_execution → status Signed;Note over Caller,Chain: phase 2;Caller->>Chain: sendSolanaTransfer / signEvmPayload;Caller->>Core: markSettlementBroadcast + confirmSettlement" />
+
+For EVM and Bitcoin, phase 2 is `signEvmPayload` / `signBitcoinPayload`, which
+return the raw signature for the caller to assemble and broadcast with
+chain-specific libraries.
+
+## Chain binding and `nativeMessageHash`
+
+For chain-bound proposals, `propose_transaction` must include `nativeMessageHash`
+in `ProposeTransactionArgs`. This is the 32-byte Keccak-256 digest of the exact
+bytes Ika will sign:
+
+```typescript
+import { nativeSigningMessageDigest, solanaCompiledMessageDigest } from "@aura-protocol/sdk-ts";
+
+// Solana: digest of the compiled transaction message bytes
+const compiledMessage = transaction.compileMessage().serialize();
+const solanaMessageHash = solanaCompiledMessageDigest(compiledMessage);
+
+// EVM / Bitcoin: digest of whatever raw payload Ika will sign
+const nativeMessageHash = nativeSigningMessageDigest(rawPayloadBytes);
+```
+
+Pass the result as `nativeMessageHash` in the proposal args (as a `number[]`):
+
+```typescript
+await instructions.execution.proposeTransaction(client, {
+  accounts: { ... },
+  args: {
+    amountUsd: new BN(100),
+    targetChain: 2,           // Solana
+    txType: 0,
+    recipientOrContract: destinationOwner.toBase58(),
+    currentTimestamp: now(),
+    // asset fields
+    assetId: "USDC",
+    nativeAmount: new BN(amountRaw.toString()),
+    decimals: 6,
+    // chain binding
+    nativeMessageHash: Array.from(solanaMessageHash),   // required for bound proposals
+    solanaRecentBlockhash: Array.from(blockhashBytes),  // Solana-specific
+    solanaMessageHash: Array.from(solanaMessageHash),   // Solana-specific trace field
+    confirmationsRequired: 1,
+    // optional fields
+    gasNativeAmount: null,
+    gasAssetId: null,
+    calldataHash: null,
+    utxoSetHash: null,
+    sighashType: null,
+    evmChainId: null,
+    replayNonce: null,
+    gasLimit: null,
+    maxFeeNative: null,
+    protocolId: null,
+    expectedOutputUsd: null,
+    actualOutputUsd: null,
+    quoteAgeSecs: null,
+    counterpartyRiskScore: null,
+    sanctionsProof: [],
+    sessionKeyAccount: null,
+    swarmPool: null,
+    addressList: null,
+    complianceOracle: null,
+    parentTreasury: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    dwalletState,
+    chainProfile: null,
+    trustIdentity: null,
+    policyCanary: null,
+  },
+});
+```
+
+## `runAuraApproval`
+
+Drives phase 1: `execute_pending` → `requestPresign` → `requestSign` →
+`waitMessageApprovalSigned` → `finalize_execution`.
+
+```typescript
+import { runAuraApproval } from "@aura-protocol/sdk-ts";
+
+const result = await runAuraApproval({
+  connection,
+  program,             // Anchor Program<AuraCore> — see AuraCoreProgram below
+  ika,                 // IkaDWalletClientLike — from your gRPC client
+  dkgAttestation,      // from IkaDWalletClient.requestDKG()
+  sessionIdentifier,   // from IkaDWalletClient.requestDKG()
+  operator: payer,     // { publicKey, secretKey }
+  treasuryOwner: payer.publicKey,
+  agentId,
+  dwalletRecord: {
+    address: dwalletSolanaKey.toBase58(),    // Ed25519 pubkey as Solana address
+    publicKeyHex: "...",                     // raw 32-byte key as hex
+    dwalletId: dwalletPda.toBase58(),        // on-chain dWallet PDA (bs58)
+    authorizedUserPubkey: payer.publicKey,
+    messageMetadataDigest: null,
+    curve: 2,                                // 2 = Ed25519
+    signatureScheme: 5,                      // 5 = EdDSA SHA-512
+  },
+  pending: pendingRecord,     // from treasury.pendingQueue[0]
+  signingMessage: compiledMessage,  // exact bytes Ika signs (required for bound proposals)
+  dwalletState,               // optional per-chain runtime PDA
+});
+
+// result.signature   — raw dWallet Ed25519 signature (64 bytes)
+// result.approvalProof — execute_pending tx signature bytes (used in phase 2)
+// result.chainMessage  — canonical audit string
+// result.messageApprovalPda — MessageApproval PDA address
+```
+
+### `AuraCoreProgram` interface
+
+`runAuraApproval` accepts a structurally-typed `program` parameter so there is
+no hard dependency on the gitignored generated IDL types:
+
+```typescript
+import type { AuraCoreProgram } from "@aura-protocol/sdk-ts";
+
+// Any Anchor Program<AuraCore> instance satisfies this interface:
+const program: AuraCoreProgram = new Program(AURA_IDL as Idl, provider);
+```
+
+### `PendingExecutionBindingRecord` shape
+
+The binding fields on the fetched pending record mirror `ChainExecutionBinding`
+from the program. `nativeMessageHash` is `number[] | null` when fetched via
+Anchor:
+
+```typescript
+export interface PendingExecutionBindingRecord {
+  evmChainId?: IntegerLike | null;
+  replayNonce?: IntegerLike | null;
+  gasLimit?: IntegerLike | null;
+  maxFeeNative?: IntegerLike | null;
+  nativeMessageHash?: number[] | null;  // 32-byte digest; required for chain-bound proposals
+  calldataHash?: number[] | null;
+  utxoSetHash?: number[] | null;
+  sighashType?: number | null;
+  solanaRecentBlockhash?: number[] | null;
+  solanaMessageHash?: number[] | null;  // Solana-specific trace field
+  confirmationsRequired?: number | null;
+}
+```
+
+`solanaMessageHash` and `nativeMessageHash` contain the same value for Solana
+proposals (both are `keccak256(compiledMessage)`). `solanaMessageHash` is a
+Solana-specific trace/audit field; `nativeMessageHash` is the authoritative
+digest that determines the `MessageApproval` PDA address and what Ika signs.
+
+### `PendingProposalRecord` shape
+
+The `pending` param mirrors the on-chain `PendingTransaction`. Fetch it from the
+treasury and cast (or pass directly if using `any`-typed Anchor fetch):
+
+```typescript
+const treasury = await program.account.treasuryAccount.fetch(treasuryPda);
+const pending = treasury.pendingQueue[0];
+// pending.transfer.executionBinding.nativeMessageHash — number[] | null
+```
+
+## `sendSolanaTransfer`
+
+Phase 2 for Solana proposals. Validates the transaction binding before broadcast.
+
+```typescript
+import { sendSolanaTransfer } from "@aura-protocol/sdk-ts";
+
+const transferSig = await sendSolanaTransfer({
+  connection,
+  dwalletSolanaKey,          // PublicKey — must be fee payer on the transaction
+  transaction,               // prebuilt Transaction (same one you compiled earlier)
+  signature: result.signature,
+  lastValidBlockHeight: latest.lastValidBlockHeight,
+  expectedSolanaRecentBlockhash: solanaRecentBlockhashBytes,  // raw 32 bytes
+  expectedSolanaMessageHash: solanaMessageHash,               // raw 32 bytes
+});
+```
+
+`sendSolanaTransfer` enforces these checks before broadcast and throws if any fail:
+
+| Check | What it verifies |
+|---|---|
+| fee payer | `transaction.feePayer === dwalletSolanaKey` |
+| blockhash | decoded blockhash matches `expectedSolanaRecentBlockhash` |
+| message digest | `keccak256(compiledMessage) === expectedSolanaMessageHash` |
+| signature | Ed25519 signature verifies locally before sending |
+
+## `signEvmPayload` / `signBitcoinPayload`
+
+Phase 2 for EVM and Bitcoin proposals. Returns the raw dWallet signature over
+the exact native bytes. The caller is responsible for assembling and broadcasting
+the final transaction with chain-specific tooling.
+
+```typescript
+import { signEvmPayload } from "@aura-protocol/sdk-ts";
+
+const { signature } = await signEvmPayload({
+  ika,
+  dkgAttestation,
+  sessionIdentifier,
+  senderPubkey: operator.publicKey.toBytes(),
+  approvalProof: result.approvalProof,
+  signingMessage: evmRlpPayload,              // exact bytes passed to Ika
+  expectedNativeMessageHash: nativeHash,      // from the pending binding
+});
+
+// Use `signature` with ethers.js / viem to assemble the raw EVM transaction.
+```
+
+`signBitcoinPayload` is an alias for `signEvmPayload` — the interface is
+identical; only the `signingMessage` contents differ (sighash vs RLP payload).
+
+## `buildChainMessage`
+
+Builds the canonical AURA audit string. Must produce the same output as
+`build_chain_message()` in `programs/aura-core/src/execution/message.rs`.
+Useful for off-chain audit verification and testing.
+
+```typescript
+import { buildChainMessage } from "@aura-protocol/sdk-ts";
+
+const msg = buildChainMessage({
+  proposalId: 1n,
+  proposalDigest: "abc123",
+  policyOutputDigest: "def456",
+  chain: "solana",
+  txType: "transfer",
+  dwalletAddress: dwalletSolanaKey.toBase58(),
+  recipient: destinationOwner.toBase58(),
+  amountUsd: 100n,
+  // optional asset payload
+  assetId: "USDC",
+  nativeAmount: 1_000_000n,
+  decimals: 6,
+  // optional chain binding
+  nativeMessageHash: Buffer.from(solanaMessageHash).toString("hex"),
+  solanaRecentBlockhash: Buffer.from(blockhashBytes).toString("hex"),
+  solanaMessageHash: Buffer.from(solanaMessageHash).toString("hex"),
+  confirmationsRequired: 1,
+});
+```
+
+## Poll helpers
+
+```typescript
+import { waitMessageApprovalCreated, waitMessageApprovalSigned } from "@aura-protocol/sdk-ts";
+
+// Polls until the MessageApproval PDA exists on-chain (byte[0] === 14).
+await waitMessageApprovalCreated(connection, messageApprovalPda);
+
+// Polls until the dWallet network has signed (byte[172] === 1).
+await waitMessageApprovalSigned(connection, messageApprovalPda);
+```
+
+Both accept an optional `timeoutMs` (default: 120s for created, 180s for signed).
+
+## End-to-end: Solana SOL transfer
+
+```typescript
+import {
+  runAuraApproval,
+  sendSolanaTransfer,
+  nativeSigningMessageDigest,
+} from "@aura-protocol/sdk-ts";
+import {
+  SystemProgram,
+  Transaction,
+  ComputeBudgetProgram,
+} from "@solana/web3.js";
+
+// 1. Build the transfer transaction BEFORE proposing
+const latest = await connection.getLatestBlockhash("confirmed");
+const tx = new Transaction();
+tx.recentBlockhash = latest.blockhash;
+tx.feePayer = dwalletSolanaKey;
+tx.add(
+  SystemProgram.transfer({
+    fromPubkey: dwalletSolanaKey,
+    toPubkey: destination,
+    lamports: 5_000,
+  }),
+);
+
+const compiledMessage = tx.compileMessage().serialize();
+const solanaMessageHash = nativeSigningMessageDigest(compiledMessage);
+const blockhashBytes = new Uint8Array(bs58.decode(latest.blockhash));
+
+// 2. Propose with chain binding
+await instructions.execution.proposeTransaction(client, {
+  accounts: { aiAuthority: payer.publicKey, treasury, dwalletState, ... },
+  args: {
+    targetChain: 2,
+    amountUsd: new BN(1),
+    nativeMessageHash: Array.from(solanaMessageHash),
+    solanaRecentBlockhash: Array.from(blockhashBytes),
+    solanaMessageHash: Array.from(solanaMessageHash),
+    confirmationsRequired: 1,
+    ...
+  },
+});
+
+// 3. Phase 1 — approve + sign
+const result = await runAuraApproval({
+  connection, program, ika, dkgAttestation, sessionIdentifier,
+  operator: payer, treasuryOwner: payer.publicKey, agentId,
+  dwalletRecord, pending: treasury.pendingQueue[0],
+  signingMessage: compiledMessage, dwalletState,
+});
+
+// 4. Phase 2 — broadcast
+const transferSig = await sendSolanaTransfer({
+  connection, dwalletSolanaKey, transaction: tx,
+  signature: result.signature,
+  lastValidBlockHeight: latest.lastValidBlockHeight,
+  expectedSolanaRecentBlockhash: blockhashBytes,
+  expectedSolanaMessageHash: solanaMessageHash,
+});
+
+// 5. Settle on AURA
+const targetTxHash = Array.from(nativeSigningMessageDigest(bs58.decode(transferSig)));
+await instructions.execution.markSettlementBroadcast(client, { ... args: { proposalId, targetTxHash, now: now() } });
+await instructions.execution.confirmSettlement(client, { ... args: { proposalId, targetTxHash, confirmationsObserved: 1, reorged: false, now: now() } });
+```
+
+For a complete runnable example see
+`packages/tests/sdk-ts/devnet/dwallet/transfer.devnet.test.ts`.

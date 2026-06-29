@@ -102,12 +102,18 @@ if let Some(pending) = &data.pending {
 
 ## Propose a Public Transaction
 
+`ProposeTransactionArgs` accepts optional chain-native binding fields for
+chain-bound proposals. For the ergonomic public flow, all binding fields are
+`None`. For chain-bound flows where Ika must sign exact native bytes, supply
+`native_message_hash` and the chain-specific replay fields — see the
+[dWallet Execution](/overview/dwallet-execution) guide.
+
 ```rust
 use aura_sdk::types::ProposeTransactionArgs;
 
 client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
     amount_usd: 250,
-    target_chain: 2,       // Ethereum
+    target_chain: 1,       // Ethereum
     tx_type: 0,            // Transfer
     protocol_id: None,
     current_timestamp: now,
@@ -117,6 +123,23 @@ client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
     counterparty_risk_score: Some(15),
     recipient_or_contract: "0xdeadbeef...".to_string(),
     sanctions_proof: vec![],
+    // Optional chain-native asset / binding fields (all None for legacy proposals)
+    asset_id: None,
+    native_amount: None,
+    decimals: None,
+    gas_native_amount: None,
+    gas_asset_id: None,
+    evm_chain_id: None,
+    replay_nonce: None,
+    gas_limit: None,
+    max_fee_native: None,
+    native_message_hash: None, // Required for chain-bound proposals
+    calldata_hash: None,
+    utxo_set_hash: None,
+    sighash_type: None,
+    solana_recent_blockhash: None,
+    solana_message_hash: None,
+    confirmations_required: None,
 })?;
 ```
 
@@ -137,7 +160,7 @@ client.pause_execution(&owner, treasury, false, now)?;  // resume
 use aura_sdk::types::RegisterDwalletArgs;
 
 client.register_dwallet(&owner, treasury, RegisterDwalletArgs {
-    chain: 2,                              // Ethereum
+    chain: 1,                              // Ethereum
     dwallet_id: "dwallet-abc123".to_string(),
     address: "0xdeadbeef...".to_string(),
     balance_usd: 5_000,
