@@ -6,12 +6,9 @@
  * address is stable across runs (cached to a gitignored file), so tokens sent
  * to it show up on re-run.
  *
- * NOTE: spending out of the dWallet (an Ika-signed transfer) is intentionally
- * not covered here. The Ika network only signs a message that has an on-chain
- * MessageApproval, and that approval can only be created by the owning program
- * (AURA), which today approves a proposal *attestation* digest — not a real
- * chain transaction. Real transfers therefore require an aura-core change
- * (approving the real transaction message); tracked separately.
+ * NOTE: this file only covers provisioning and balance visibility. The full
+ * outbound path, including exact native message approval, Ika signing,
+ * broadcast, and settlement, lives in transfer.devnet.test.ts.
  *
  * Skips when no devnet payer keypair is available. Fails loudly (not skips) if
  * the Ika endpoint is unreachable, so regressions in the gRPC path surface.
@@ -68,4 +65,15 @@ test("reads all token balances at the dWallet address", { skip }, async () => {
     assert.equal(typeof tok.amount, "string");
     assert.equal(typeof tok.decimals, "number");
   }
+});
+
+test("reuses the cached dWallet session on a second lookup", {
+  skip,
+}, async () => {
+  const cached = await getOrCreateDwallet(getPayer());
+  assert.equal(cached.address.toBase58(), dwallet.address.toBase58());
+  assert.deepEqual(
+    Array.from(cached.sessionIdentifier),
+    Array.from(dwallet.sessionIdentifier),
+  );
 });

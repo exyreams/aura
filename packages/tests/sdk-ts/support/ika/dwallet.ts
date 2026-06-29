@@ -30,6 +30,10 @@ function storePath(): string {
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const unhex = (s: string) => new Uint8Array(Buffer.from(s, "hex"));
 
+function isAllZero(bytes: Uint8Array): boolean {
+  return bytes.every((b) => b === 0);
+}
+
 /** A reusable dWallet: its Solana address plus the material needed to sign. */
 export interface Dwallet {
   address: PublicKey;
@@ -52,6 +56,7 @@ function load(): Dwallet | null {
   const path = storePath();
   if (!existsSync(path)) return null;
   const s = JSON.parse(readFileSync(path, "utf8")) as StoredDwallet;
+  if (isAllZero(unhex(s.sessionIdentifier))) return null;
   return {
     address: new PublicKey(s.address),
     publicKey: unhex(s.publicKey),

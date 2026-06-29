@@ -20,6 +20,32 @@ bun run test:devnet  # builds the SDK (pretest) then runs the suite
 This package uses **bun** as its package manager (`bun.lock`). Lint/format are
 via **biome** (`bun run lint`, `bun run format`).
 
+## Testing guide
+
+Run these from `packages/tests/sdk-ts`.
+
+```bash
+bunx biome check --write
+bun run typecheck -- --pretty false
+bun run test:devnet
+```
+
+For the dWallet live flows, run the focused suites directly:
+
+```bash
+bun run devnet:wallet-control
+bun run devnet:transfer
+bun run devnet:usdc-transfer
+bun run devnet:dwallet
+```
+
+Useful env overrides:
+- `PAYER_KEYPAIR` or `AURA_WALLET_PATH` for the devnet payer.
+- `AURA_DEVNET_RPC_URL` or `SOLANA_RPC_URL` for the cluster RPC.
+- `AURA_IKA_DWALLET_FILE` to point at a fresh cached dWallet session.
+- `AURA_TEST_USDC_MINT`, `AURA_TEST_USDC_DESTINATION`, and
+  `AURA_TEST_USDC_AMOUNT` for the live USDC transfer test.
+
 Requirements:
 - A funded devnet keypair at `~/.config/solana/id.json` (override with
   `PAYER_KEYPAIR` / `AURA_WALLET_PATH`). When absent, every suite **skips**.
@@ -73,4 +99,3 @@ confidential/          scalar + vector guardrails, propose-confidential, decrypt
   co-sign). Add `@ika.xyz/pre-alpha-solana-client` and
   `@encrypt.xyz/pre-alpha-solana-client` as devDependencies and port the flow
   from `packages/cli/src/lib/{ika,protocol}.ts` into `support/ika/`.
-

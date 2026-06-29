@@ -9,6 +9,7 @@
  * installed @ika.xyz package by `sync.mjs`, gitignored).
  */
 
+import { randomBytes } from "node:crypto";
 import * as grpc from "@grpc/grpc-js";
 import { ed25519 } from "@noble/curves/ed25519";
 import { defineBcsTypes } from "./vendor/bcs-types.js";
@@ -111,8 +112,9 @@ export function createIkaClient(
 
   return {
     async requestDKG(senderPubkey) {
+      const sessionPreimage = randomBytes(32);
       const data = SignedRequestData.serialize({
-        session_identifier_preimage: Array.from(new Uint8Array(32)),
+        session_identifier_preimage: Array.from(sessionPreimage),
         epoch: 1n,
         chain_id: { Solana: true },
         intended_chain_sender: Array.from(senderPubkey),

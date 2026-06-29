@@ -276,6 +276,7 @@ export async function sendAndConfirm(
   return signature;
 }
 
+const CHAIN_ETHEREUM = 1;
 const EVM_DEAD = "0x000000000000000000000000000000000000dead";
 
 /** A public, low-value transaction proposal for the given chain. */
@@ -286,7 +287,7 @@ export function proposeTransactionArgs(
     "ProposeTransactionArgs",
   ) as ProposeTransactionArgs;
   args.amountUsd = new BN(100);
-  args.targetChain = 2; // Ethereum
+  args.targetChain = CHAIN_ETHEREUM; // Ethereum
   args.txType = 0;
   args.currentTimestamp = now;
   args.recipientOrContract = EVM_DEAD;
@@ -296,7 +297,7 @@ export function proposeTransactionArgs(
 /** A dWallet reference (no live Ika signing). */
 export function registerDwalletArgs(
   dwalletId: string,
-  chain = 2,
+  chain = CHAIN_ETHEREUM,
   now: BN = nowBN(),
 ): RegisterDwalletArgs {
   const args = sampleDefined("RegisterDwalletArgs") as RegisterDwalletArgs;
