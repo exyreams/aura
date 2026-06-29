@@ -440,6 +440,7 @@ fn run_chain_binding_and_abandon(
                     replay_nonce: Some(42),
                     gas_limit: Some(21_000),
                     max_fee_native: Some(50_000_000_000u128),
+                    native_message_hash: Some([0x11; 32]),
                     calldata_hash: None,
                     utxo_set_hash: None,
                     sighash_type: None,

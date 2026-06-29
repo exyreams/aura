@@ -462,7 +462,7 @@ dependencies = [
  "encrypt-anchor",
  "encrypt-solana-dsl",
  "encrypt-solana-types",
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3)",
  "hex",
  "sha2",
  "sha3",
@@ -482,7 +482,7 @@ dependencies = [
  "dirs-next",
  "encrypt-compute",
  "encrypt-grpc",
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha)",
  "hex",
  "ika-dwallet-types",
  "ika-grpc",
@@ -499,7 +499,7 @@ version = "0.0.1"
 dependencies = [
  "encrypt-solana-dsl",
  "encrypt-solana-types",
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3)",
  "sha2",
 ]
 
@@ -1353,11 +1353,11 @@ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 [[package]]
 name = "encrypt-anchor"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
  "anchor-lang",
  "encrypt-solana-types",
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3)",
 ]
 
 [[package]]
@@ -1365,23 +1365,23 @@ name = "encrypt-compute"
 version = "0.1.0"
 source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
 dependencies = [
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha)",
  "sha3",
 ]
 
 [[package]]
 name = "encrypt-dsl"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
  "encrypt-dsl-macros",
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3)",
 ]
 
 [[package]]
 name = "encrypt-dsl-compile"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1391,7 +1391,7 @@ dependencies = [
 [[package]]
 name = "encrypt-dsl-macros"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
  "encrypt-dsl-compile",
  "syn 2.0.117",
@@ -1412,18 +1412,18 @@ dependencies = [
 [[package]]
 name = "encrypt-solana-dsl"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
  "encrypt-dsl",
  "encrypt-solana-dsl-macros",
  "encrypt-solana-types",
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3)",
 ]
 
 [[package]]
 name = "encrypt-solana-dsl-macros"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
  "encrypt-dsl-compile",
  "proc-macro2",
@@ -1434,9 +1434,18 @@ dependencies = [
 [[package]]
 name = "encrypt-solana-types"
 version = "0.1.0"
-source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha#f779af5b2ffb33ad3902dc69cbbe6922bdc8b479"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
 dependencies = [
- "encrypt-types",
+ "encrypt-types 0.1.0 (git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3)",
+]
+
+[[package]]
+name = "encrypt-types"
+version = "0.1.0"
+source = "git+https://github.com/dwallet-labs/encrypt-pre-alpha?rev=7ac351b559a8e09c76665335fa24fa973675efb3#7ac351b559a8e09c76665335fa24fa973675efb3"
+dependencies = [
+ "bcs 0.1.6",
+ "serde",
 ]
 
 [[package]]

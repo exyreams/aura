@@ -363,7 +363,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("  ok weighted multisig stored (required_weight=4, treasurer weight=3)");
 
-    // [7] agent capabilities: manifest + loosen timelock + tripwires  
+    // [7] agent capabilities: manifest + loosen timelock + tripwires
 
     println!("\n[capabilities] set_agent_capability (tighten) on registered agent");
     let sig = send_tx(

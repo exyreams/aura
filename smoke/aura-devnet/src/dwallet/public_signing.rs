@@ -165,6 +165,7 @@ pub async fn run() -> anyhow::Result<()> {
                     replay_nonce: None,
                     gas_limit: None,
                     max_fee_native: None,
+                    native_message_hash: None,
                     calldata_hash: None,
                     utxo_set_hash: None,
                     sighash_type: None,

@@ -96,6 +96,7 @@ fn proposal_args(now: i64, amount_usd: u64, recipient: &str) -> ProposeTransacti
         replay_nonce: None,
         gas_limit: None,
         max_fee_native: None,
+        native_message_hash: None,
         calldata_hash: None,
         utxo_set_hash: None,
         sighash_type: None,
