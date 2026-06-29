@@ -5,6 +5,7 @@
 // Uses @grpc/grpc-js for native gRPC transport.
 
 import * as grpc from "@grpc/grpc-js";
+import { randomBytes } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519";
 import { defineBcsTypes } from "./bcs-types.js";
 import { DWalletServiceClient } from "./generated/grpc/ika_dwallet.js";
@@ -34,7 +35,7 @@ export interface DKGResult {
 	/** 32-byte session identifier from the DKG attestation V1 payload.
 	 *  Must be used as `session_identifier_preimage` for presign and sign. */
 	sessionIdentifier: Uint8Array;
-	/** Full DKG attestation — must be passed as `dwallet_attestation` in Sign. */
+	/** Full DKG attestation; must be passed as `dwallet_attestation` in Sign. */
 	dkgAttestation: DKGAttestation;
 }
 
@@ -133,8 +134,9 @@ export function createIkaClient(
 
 	return {
 		async requestDKG(senderPubkey) {
+			const sessionPreimage = randomBytes(32);
 			const data = SignedRequestData.serialize({
-				session_identifier_preimage: Array.from(new Uint8Array(32)),
+				session_identifier_preimage: Array.from(sessionPreimage),
 				epoch: 1n,
 				chain_id: { Solana: true },
 				intended_chain_sender: Array.from(senderPubkey),
