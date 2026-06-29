@@ -41,6 +41,13 @@ pub struct ChainExecutionBinding {
     pub replay_nonce: Option<u64>,
     pub gas_limit: Option<u64>,
     pub max_fee_native: Option<u128>,
+    /// Digest of the exact byte payload that Ika must approve for signing.
+    ///
+    /// For Solana this is `keccak256(compiled_transaction_message)`. For EVM
+    /// and Bitcoin this is the Ika MessageApproval digest of the exact bytes
+    /// passed to `requestSign`, after the caller has constructed the native
+    /// transaction/sighash payload.
+    pub native_message_hash: Option<[u8; 32]>,
     pub calldata_hash: Option<[u8; 32]>,
     pub utxo_set_hash: Option<[u8; 32]>,
     pub sighash_type: Option<u32>,
@@ -55,6 +62,7 @@ impl ChainExecutionBinding {
             && self.replay_nonce.is_none()
             && self.gas_limit.is_none()
             && self.max_fee_native.is_none()
+            && self.native_message_hash.is_none()
             && self.calldata_hash.is_none()
             && self.utxo_set_hash.is_none()
             && self.sighash_type.is_none()

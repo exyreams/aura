@@ -63,6 +63,8 @@ pub struct ProposeTransactionArgs {
     pub replay_nonce: Option<u64>,
     pub gas_limit: Option<u64>,
     pub max_fee_native: Option<u128>,
+    /// Digest of the exact bytes Ika must approve/sign for the native chain.
+    pub native_message_hash: Option<[u8; 32]>,
     pub calldata_hash: Option<[u8; 32]>,
     pub utxo_set_hash: Option<[u8; 32]>,
     pub sighash_type: Option<u32>,
@@ -84,6 +86,7 @@ impl ProposeTransactionArgs {
                 replay_nonce: self.replay_nonce,
                 gas_limit: self.gas_limit,
                 max_fee_native: self.max_fee_native,
+                native_message_hash: self.native_message_hash,
                 calldata_hash: self.calldata_hash,
                 utxo_set_hash: self.utxo_set_hash,
                 sighash_type: self.sighash_type,

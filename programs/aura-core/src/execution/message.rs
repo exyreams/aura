@@ -159,6 +159,10 @@ fn write_chain_execution_binding<W: Write>(
     if let Some(value) = binding.max_fee_native {
         write_hex_bytes(writer, &value.to_le_bytes())?;
     }
+    writer.write_str(":bind_native_message=")?;
+    if let Some(value) = binding.native_message_hash {
+        write_hex_bytes(writer, &value)?;
+    }
     writer.write_str(":bind_calldata=")?;
     if let Some(value) = binding.calldata_hash {
         write_hex_bytes(writer, &value)?;

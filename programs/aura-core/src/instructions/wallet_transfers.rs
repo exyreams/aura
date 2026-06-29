@@ -108,6 +108,10 @@ pub(crate) fn validate_chain_execution_binding_with_profile(
     {
         return err!(AuraCoreError::ChainReplayFieldsMissing);
     }
+    require!(
+        binding.native_message_hash.is_some(),
+        AuraCoreError::ChainReplayFieldsMissing
+    );
 
     let profile = ChainProfileView::for_chain(chain, profile)?;
     match profile.replay_scheme {
@@ -128,7 +132,7 @@ pub(crate) fn validate_chain_execution_binding_with_profile(
         }
         REPLAY_SCHEME_SOLANA => {
             require!(
-                binding.solana_recent_blockhash.is_some() && binding.solana_message_hash.is_some(),
+                binding.solana_recent_blockhash.is_some(),
                 AuraCoreError::ChainReplayFieldsMissing
             );
         }
@@ -794,6 +798,7 @@ mod tests {
                 replay_nonce: Some(3),
                 gas_limit: Some(21_000),
                 max_fee_native: Some(1_000_000),
+                native_message_hash: Some([0x11; 32]),
                 confirmations_required: Some(12),
                 ..Default::default()
             },

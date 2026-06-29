@@ -101,9 +101,14 @@ pub enum MessageApprovalStatus {
 pub struct MessageApprovalRequest {
     /// The coordinator PDA required by the dWallet approve-message instruction.
     pub coordinator_account: Pubkey,
-    /// Human-readable chain message string (used for digest derivation and audit).
+    /// Human-readable canonical chain message string used for audit/receipts.
     pub message: String,
-    /// Keccak-256 digest of `message`, passed as instruction data.
+    /// Digest passed to Ika `approve_message`.
+    ///
+    /// Legacy proposals use `keccak256(message.as_bytes())`. Solana-bound
+    /// proposals use the pre-bound digest of the compiled Solana transaction
+    /// message bytes so the later Ika `requestSign(message_bytes, proof)` call
+    /// signs the exact bytes Solana validators verify.
     pub message_digest: [u8; 32],
     /// Hex-encoded form of `message_digest`, stored in `PendingSignatureRequest`.
     pub message_digest_hex: String,
@@ -152,9 +157,9 @@ pub struct OnchainMessageApproval {
 
 /// Derives all fields needed to call `approve_message` on the dWallet program.
 ///
-/// Builds the chain message from `pending` and `dwallet`, computes its
-/// Keccak-256 digest, resolves the metadata digest, and derives the canonical
-/// `MessageApproval` PDA.
+/// Builds the canonical audit message from `pending` and `dwallet`, resolves
+/// the exact signing digest for the target chain, resolves the metadata digest,
+/// and derives the canonical `MessageApproval` PDA.
 ///
 /// Returns a `MessageApprovalRequest` ready to be passed to
 /// `approve_message_via_cpi` and stored as a `PendingSignatureRequest`.
@@ -164,7 +169,7 @@ pub fn build_message_approval_request(
     dwallet_program_id: &Pubkey,
 ) -> TreasuryResult<MessageApprovalRequest> {
     let message = build_chain_message(pending, dwallet);
-    let message_digest = keccak_message_digest(&message);
+    let message_digest = approval_message_digest(pending, &message);
     let message_digest_hex = hex::encode(message_digest);
     let message_metadata_digest_hex = dwallet
         .message_metadata_digest
@@ -196,6 +201,14 @@ pub fn build_message_approval_request(
         message_approval_account,
         message_approval_bump,
     })
+}
+
+fn approval_message_digest(pending: &PendingTransaction, audit_message: &str) -> [u8; 32] {
+    pending
+        .transfer
+        .execution_binding
+        .native_message_hash
+        .unwrap_or_else(|| keccak_message_digest(audit_message))
 }
 
 /// Submits an `approve_message` CPI to the dWallet program.
@@ -832,6 +845,119 @@ mod tests {
     }
 
     #[test]
+    fn legacy_request_uses_keccak_of_audit_message() {
+        let pending = sample_pending();
+        let dwallet_program = Pubkey::new_unique();
+        let dwallet = DWalletReference {
+            dwallet_id: "dw-legacy".to_string(),
+            chain: aura_policy::Chain::Ethereum,
+            address: "0xdwallet".to_string(),
+            balance_usd: 1,
+            balance_updated_at: 0,
+            balance_oracle: None,
+            authority: "authority".to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            dwallet_account: Some(Pubkey::new_unique().to_string()),
+            authorized_user_pubkey: Some(Pubkey::new_unique().to_string()),
+            message_metadata_digest: None,
+            public_key_hex: Some(hex::encode([0x44u8; 32])),
+            curve: crate::state::DWalletCurve::Secp256k1,
+            signature_scheme: SignatureScheme::EcdsaKeccak256,
+        };
+
+        let built = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+            .expect("legacy request should build");
+
+        assert_eq!(built.message, build_chain_message(&pending, &dwallet));
+        assert_eq!(built.message_digest, keccak_message_digest(&built.message));
+        assert_eq!(
+            built.message_digest_hex,
+            hex::encode(keccak_message_digest(&built.message))
+        );
+    }
+
+    #[test]
+    fn solana_bound_request_uses_native_message_digest() {
+        let mut pending = sample_pending();
+        pending.target_chain = aura_policy::Chain::Solana;
+        pending.transfer.execution_binding = crate::state::ChainExecutionBinding {
+            solana_recent_blockhash: Some([0x22; 32]),
+            native_message_hash: Some([0x33; 32]),
+            solana_message_hash: Some([0x33; 32]),
+            confirmations_required: Some(1),
+            ..Default::default()
+        };
+        let dwallet_program = Pubkey::new_unique();
+        let dwallet = DWalletReference {
+            dwallet_id: "dw-sol".to_string(),
+            chain: aura_policy::Chain::Solana,
+            address: Pubkey::new_unique().to_string(),
+            balance_usd: 1,
+            balance_updated_at: 0,
+            balance_oracle: None,
+            authority: "authority".to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            dwallet_account: Some(Pubkey::new_unique().to_string()),
+            authorized_user_pubkey: Some(Pubkey::new_unique().to_string()),
+            message_metadata_digest: None,
+            public_key_hex: Some(hex::encode([0x44u8; 32])),
+            curve: crate::state::DWalletCurve::Ed25519,
+            signature_scheme: SignatureScheme::EddsaSha512,
+        };
+
+        let built = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+            .expect("solana-bound request should build");
+
+        assert_eq!(built.message, build_chain_message(&pending, &dwallet));
+        assert_eq!(built.message_digest, [0x33; 32]);
+        assert_eq!(built.message_digest_hex, hex::encode([0x33; 32]));
+        assert_ne!(built.message_digest, keccak_message_digest(&built.message));
+    }
+
+    #[test]
+    fn solana_bound_message_hash_changes_approval_pda() {
+        let mut pending = sample_pending();
+        pending.target_chain = aura_policy::Chain::Solana;
+        pending.transfer.execution_binding = crate::state::ChainExecutionBinding {
+            solana_recent_blockhash: Some([0x22; 32]),
+            native_message_hash: Some([0x33; 32]),
+            solana_message_hash: Some([0x33; 32]),
+            confirmations_required: Some(1),
+            ..Default::default()
+        };
+        let dwallet_program = Pubkey::new_unique();
+        let dwallet = DWalletReference {
+            dwallet_id: "dw-sol".to_string(),
+            chain: aura_policy::Chain::Solana,
+            address: Pubkey::new_unique().to_string(),
+            balance_usd: 1,
+            balance_updated_at: 0,
+            balance_oracle: None,
+            authority: "authority".to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            dwallet_account: Some(Pubkey::new_unique().to_string()),
+            authorized_user_pubkey: Some(Pubkey::new_unique().to_string()),
+            message_metadata_digest: None,
+            public_key_hex: Some(hex::encode([0x44u8; 32])),
+            curve: crate::state::DWalletCurve::Ed25519,
+            signature_scheme: SignatureScheme::EddsaSha512,
+        };
+
+        let first = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+            .expect("first solana-bound request should build");
+        pending.transfer.execution_binding.native_message_hash = Some([0x34; 32]);
+        pending.transfer.execution_binding.solana_message_hash = Some([0x34; 32]);
+        let second = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+            .expect("second solana-bound request should build");
+
+        assert_ne!(first.message_digest, second.message_digest);
+        assert_ne!(
+            first.message_approval_account,
+            second.message_approval_account
+        );
+    }
+
+    #[test]
     fn asset_aware_transfer_changes_signed_message() {
         let mut pending = sample_pending();
         let dwallet = DWalletReference {
@@ -897,6 +1023,7 @@ mod tests {
             replay_nonce: Some(7),
             gas_limit: Some(21_000),
             max_fee_native: Some(2_000_000_000),
+            native_message_hash: Some([0xCD; 32]),
             calldata_hash: Some([0xAB; 32]),
             confirmations_required: Some(12),
             ..Default::default()
@@ -906,10 +1033,51 @@ mod tests {
         assert_ne!(legacy_message, bound_message);
         assert!(bound_message.contains("bind_evm_chain_id="));
         assert!(bound_message.contains("bind_nonce="));
+        assert!(bound_message.contains("bind_native_message="));
         assert_ne!(
             keccak_message_digest(&legacy_message),
             keccak_message_digest(&bound_message)
         );
+    }
+
+    #[test]
+    fn evm_bound_request_uses_native_message_digest() {
+        let mut pending = sample_pending();
+        pending.target_chain = aura_policy::Chain::Ethereum;
+        pending.transfer.execution_binding = crate::state::ChainExecutionBinding {
+            evm_chain_id: Some(1),
+            replay_nonce: Some(7),
+            gas_limit: Some(21_000),
+            max_fee_native: Some(2_000_000_000),
+            native_message_hash: Some([0xA5; 32]),
+            calldata_hash: Some([0xAB; 32]),
+            confirmations_required: Some(12),
+            ..Default::default()
+        };
+        let dwallet_program = Pubkey::new_unique();
+        let dwallet = DWalletReference {
+            dwallet_id: "dw-evm".to_string(),
+            chain: aura_policy::Chain::Ethereum,
+            address: "0xdwallet".to_string(),
+            balance_usd: 1,
+            balance_updated_at: 0,
+            balance_oracle: None,
+            authority: "authority".to_string(),
+            cpi_authority_seed: "__ika_cpi_authority".to_string(),
+            dwallet_account: Some(Pubkey::new_unique().to_string()),
+            authorized_user_pubkey: Some(Pubkey::new_unique().to_string()),
+            message_metadata_digest: None,
+            public_key_hex: Some(hex::encode([0x44u8; 32])),
+            curve: crate::state::DWalletCurve::Secp256k1,
+            signature_scheme: SignatureScheme::EcdsaKeccak256,
+        };
+
+        let built = build_message_approval_request(&pending, &dwallet, &dwallet_program)
+            .expect("evm-bound request should build");
+
+        assert_eq!(built.message, build_chain_message(&pending, &dwallet));
+        assert_eq!(built.message_digest, [0xA5; 32]);
+        assert_ne!(built.message_digest, keccak_message_digest(&built.message));
     }
 
     #[test]
