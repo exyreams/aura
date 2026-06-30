@@ -76,7 +76,9 @@ test("ai rotation cancel without pending state is an idempotent no-op", {
   assert.equal(account.pendingAiRotation, null);
 });
 
-test("config change executes exactly at executable_after", { skip }, async () => {
+test("config change executes exactly at executable_after", {
+  skip,
+}, async () => {
   const t = await provisionTreasury({ prefix: "gov-bound-cfg" });
   const changeId = new BN(Date.now());
   const newPolicy = createTreasuryArgs(t.owner, t.agentId).policyConfig;

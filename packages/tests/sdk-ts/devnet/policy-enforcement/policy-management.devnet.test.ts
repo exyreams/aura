@@ -15,7 +15,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { before, test } from "node:test";
-import { BorshCoder } from "@coral-xyz/anchor";
 import {
   AURA_IDL,
   accounts,
@@ -24,6 +23,7 @@ import {
   derivePolicySimulationAddress,
   instructions,
 } from "@aura-protocol/sdk-ts";
+import { BorshCoder } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import {
@@ -54,7 +54,11 @@ function snakeKey(key: string): string {
 
 function toRustRecordKeys(value: unknown): unknown {
   if (value === null || typeof value !== "object") return value;
-  if (BN.isBN(value) || value instanceof PublicKey || value instanceof Uint8Array) {
+  if (
+    BN.isBN(value) ||
+    value instanceof PublicKey ||
+    value instanceof Uint8Array
+  ) {
     return value;
   }
   if (Array.isArray(value)) return value.map(toRustRecordKeys);

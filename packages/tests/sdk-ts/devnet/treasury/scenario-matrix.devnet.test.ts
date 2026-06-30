@@ -35,7 +35,9 @@ before(async () => {
   t = await provisionTreasury({ prefix: "tre-matrix" });
 });
 
-test("owner-only admin instructions reject a wrong signer", { skip }, async () => {
+test("owner-only admin instructions reject a wrong signer", {
+  skip,
+}, async () => {
   const stranger = Keypair.generate();
 
   const updateIx = await instructions.treasury.updateTreasuryMetadata(client, {
@@ -48,11 +50,9 @@ test("owner-only admin instructions reject a wrong signer", { skip }, async () =
       now: nowBN(),
     },
   });
-  await expectSendToFail(
-    [updateIx],
-    "updateTreasuryMetadata unauthorized",
-    [stranger],
-  );
+  await expectSendToFail([updateIx], "updateTreasuryMetadata unauthorized", [
+    stranger,
+  ]);
 
   const pauseIx = await instructions.execution.pauseExecution(client, {
     accounts: { owner: stranger.publicKey, treasury: t.treasury },
@@ -67,11 +67,9 @@ test("owner-only admin instructions reject a wrong signer", { skip }, async () =
       args: { targetState: 1, now: nowBN() },
     },
   );
-  await expectSendToFail(
-    [transitionIx],
-    "transitionAgentState unauthorized",
-    [stranger],
-  );
+  await expectSendToFail([transitionIx], "transitionAgentState unauthorized", [
+    stranger,
+  ]);
 });
 
 test("treasury metadata null fields are no-ops", { skip }, async () => {

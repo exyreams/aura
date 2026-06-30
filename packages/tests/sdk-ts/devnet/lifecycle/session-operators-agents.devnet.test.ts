@@ -85,7 +85,10 @@ test("session key: issue, update, revoke (+ update-after-revoke reject), close",
     [],
     "issueSessionKey",
   );
-  let session = await accounts.fetchSessionKeyAccount(client, sessionKeyAccount);
+  let session = await accounts.fetchSessionKeyAccount(
+    client,
+    sessionKeyAccount,
+  );
   assert.equal(session.revoked, false);
   assert.equal(session.issuedBy.toBase58(), t.owner.toBase58());
   assert.equal(session.sessionSpentTodayUsd.toString(), "0");
@@ -115,7 +118,11 @@ test("session key: issue, update, revoke (+ update-after-revoke reject), close",
     "updateSessionKey",
   );
   session = await accounts.fetchSessionKeyAccount(client, sessionKeyAccount);
-  assert.notEqual(session.expiresAt.toString(), expiryBefore, "expiry extended");
+  assert.notEqual(
+    session.expiresAt.toString(),
+    expiryBefore,
+    "expiry extended",
+  );
   assert.equal(session.maxAmountUsdPerTx?.toString(), "250");
   assert.equal(session.maxDailySpendUsd?.toString(), "1000");
   assert.deepEqual([...session.allowedChains], [2]);
@@ -281,14 +288,17 @@ test("operator role: grant (+ past-expiry reject), update, revoke", {
   role = await accounts.fetchOperatorRoleAccount(client, operatorRole);
   assert.equal(role.revoked, true);
 
-  const updateRevoked = await instructions.lifecycle.updateOperatorRole(client, {
-    accounts: { owner: t.owner, treasury: t.treasury, operatorRole },
-    args: {
-      permissionMask: new BN(0b1),
-      expiresAt: now.add(new BN(259_200)),
-      now,
+  const updateRevoked = await instructions.lifecycle.updateOperatorRole(
+    client,
+    {
+      accounts: { owner: t.owner, treasury: t.treasury, operatorRole },
+      args: {
+        permissionMask: new BN(0b1),
+        expiresAt: now.add(new BN(259_200)),
+        now,
+      },
     },
-  });
+  );
   await expectSendToFail([updateRevoked], "update revoked operator role");
 });
 
@@ -495,7 +505,11 @@ test("agent registry: register, capability, arm-loosen, revoke (+ reject paths)"
   const ownerRevokedAgent = ti.agents.find(
     (a) => a.key.toBase58() === ownerRevokedKey.toBase58(),
   );
-  assert.equal(ownerRevokedAgent?.enabled, false, "owner revoke disables agent");
+  assert.equal(
+    ownerRevokedAgent?.enabled,
+    false,
+    "owner revoke disables agent",
+  );
 
   // revoking an unknown key reverts
   const revokeUnknown = await instructions.lifecycle.revokeAgent(client, {
@@ -537,7 +551,9 @@ test("set_agent_tripwires validates weights", { skip }, async () => {
   await expectSendToFail([bad], "zero tripwire weight");
 });
 
-test("nominate_successor_owner records a pending handover", { skip }, async () => {
+test("nominate_successor_owner records a pending handover", {
+  skip,
+}, async () => {
   const successor = Keypair.generate().publicKey;
   await sendAndConfirm(
     [
@@ -554,10 +570,7 @@ test("nominate_successor_owner records a pending handover", { skip }, async () =
     ti.pendingOwnershipHandover?.successorOwner.toBase58(),
     successor.toBase58(),
   );
-  assert.ok(
-    ti.pendingOwnershipHandover !== null,
-    "pending handover recorded",
-  );
+  assert.ok(ti.pendingOwnershipHandover !== null, "pending handover recorded");
 });
 
 test("migrate_treasury keeps the schema at the current version", {
@@ -580,7 +593,9 @@ test("migrate_treasury keeps the schema at the current version", {
   assert.equal(account.schemaVersion, 5);
 });
 
-test("trigger_dead_mans_switch reverts when unconfigured", { skip }, async () => {
+test("trigger_dead_mans_switch reverts when unconfigured", {
+  skip,
+}, async () => {
   // No instruction configures the dead-man's switch, so the domain call always
   // returns NoPendingTransaction.
   const ix = await instructions.lifecycle.triggerDeadMansSwitch(client, {

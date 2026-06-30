@@ -157,8 +157,14 @@ test("policy template: create, update, apply, close", { skip }, async () => {
     beforeParameterized.currentPolicyVersion + 1,
     "parameterized apply bumps the policy version",
   );
-  assert.equal(afterParameterized.policyConfig.dailyLimitUsd.toString(), "42000");
-  assert.equal(afterParameterized.policyConfig.perTxLimitUsd.toString(), "4200");
+  assert.equal(
+    afterParameterized.policyConfig.dailyLimitUsd.toString(),
+    "42000",
+  );
+  assert.equal(
+    afterParameterized.policyConfig.perTxLimitUsd.toString(),
+    "4200",
+  );
   template = await accounts.fetchPolicyTemplate(client, policyTemplate);
   assert.equal(
     template.appliedCount.toString(),
@@ -217,7 +223,10 @@ test("policy history: init, record a snapshot, close", { skip }, async () => {
   const snapshot = history.snapshots.at(-1);
   assert.ok(snapshot, "snapshot entry should be available");
 
-  const beforeRollback = await accounts.fetchTreasuryAccount(client, t.treasury);
+  const beforeRollback = await accounts.fetchTreasuryAccount(
+    client,
+    t.treasury,
+  );
   await sendAndConfirm(
     [
       await instructions.policy.rollbackPolicy(client, {

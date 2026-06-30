@@ -143,7 +143,10 @@ test("session keys enforce owner/AI authority matrix", { skip }, async () => {
     [aiAuthority],
     "issueSessionKey(ai)",
   );
-  let session = await accounts.fetchSessionKeyAccount(client, sessionKeyAccount);
+  let session = await accounts.fetchSessionKeyAccount(
+    client,
+    sessionKeyAccount,
+  );
   assert.equal(session.issuedBy.toBase58(), aiAuthority.publicKey.toBase58());
   assert.equal(session.revoked, false);
 
@@ -242,11 +245,9 @@ test("session keys enforce owner/AI authority matrix", { skip }, async () => {
       },
     },
   );
-  await expectSendToFail(
-    [unauthorizedClose],
-    "closeSessionKey unauthorized",
-    [stranger],
-  );
+  await expectSendToFail([unauthorizedClose], "closeSessionKey unauthorized", [
+    stranger,
+  ]);
 
   await sendAndConfirm(
     [
@@ -465,7 +466,9 @@ test("capability windows and loosen reset are enforced", { skip }, async () => {
   );
 });
 
-test("operator role update rejects exact-expiry boundary", { skip }, async () => {
+test("operator role update rejects exact-expiry boundary", {
+  skip,
+}, async () => {
   const t = await provisionTreasury({ prefix: "life-op-boundary" });
   const operator = Keypair.generate().publicKey;
   const [operatorRole] = deriveOperatorRoleAddress(t.treasury, operator);

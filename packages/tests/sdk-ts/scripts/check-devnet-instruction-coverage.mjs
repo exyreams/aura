@@ -5,18 +5,24 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-const generatedPath = path.resolve(dirname, "../../../sdk-ts/src/generated/instructions.generated.ts");
+const generatedPath = path.resolve(
+  dirname,
+  "../../../sdk-ts/src/generated/instructions.generated.ts",
+);
 const devnetDir = path.resolve(dirname, "../devnet");
 
 function readInstructionDefinitions() {
   const source = readFileSync(generatedPath, "utf8");
   const startMarker = "export const AURA_INSTRUCTION_DEFINITIONS = ";
-  const endMarker = "] as const satisfies readonly AuraInstructionDefinition[];";
+  const endMarker =
+    "] as const satisfies readonly AuraInstructionDefinition[];";
   const start = source.indexOf(startMarker);
   const end = source.indexOf(endMarker, start);
 
   if (start === -1 || end === -1) {
-    throw new Error(`Unable to locate AURA_INSTRUCTION_DEFINITIONS in ${generatedPath}`);
+    throw new Error(
+      `Unable to locate AURA_INSTRUCTION_DEFINITIONS in ${generatedPath}`,
+    );
   }
 
   const literal = source.slice(start + startMarker.length, end + 1);
@@ -46,10 +52,14 @@ const devnetSource = listTypeScriptFiles(devnetDir)
 
 const covered = definitions.filter((definition) => {
   const methodPattern = escapeRegExp(definition.methodName);
-  return new RegExp(`\\binstructions\\.[a-zA-Z0-9_]+\\.${methodPattern}\\b`).test(devnetSource);
+  return new RegExp(
+    `\\binstructions\\.[a-zA-Z0-9_]+\\.${methodPattern}\\b`,
+  ).test(devnetSource);
 });
 
-const missing = definitions.filter((definition) => !covered.includes(definition));
+const missing = definitions.filter(
+  (definition) => !covered.includes(definition),
+);
 
 console.log(
   JSON.stringify(

@@ -34,9 +34,9 @@ import {
   DEVNET_AVAILABLE,
   devnetClient,
   nowBN,
+  type ProvisionedTreasury,
   proposeAccounts,
   proposeTransactionArgs,
-  type ProvisionedTreasury,
   provisionTreasury,
   sendAndConfirm,
 } from "../../support/devnet.js";
@@ -209,7 +209,10 @@ test("external liveness: configure, init, refresh, disable gates, close", {
     "configureLivenessGuardrails(enable)",
   );
   let treasury = await accounts.fetchTreasuryAccount(client, t.treasury);
-  assert.equal(treasury.policyConfig.livenessConfig.requireEncryptFreshness, true);
+  assert.equal(
+    treasury.policyConfig.livenessConfig.requireEncryptFreshness,
+    true,
+  );
 
   await sendAndConfirm(
     [
@@ -242,7 +245,7 @@ test("external liveness: configure, init, refresh, disable gates, close", {
     [],
     "refreshExternalLiveness",
   );
-  let live = await accounts.fetchExternalLivenessAccount(client, liveness);
+  const live = await accounts.fetchExternalLivenessAccount(client, liveness);
   assert.equal(live.encryptLastVerifiedAt.toString(), refreshedAt.toString());
   assert.equal(live.updatedBy.toBase58(), t.owner.toBase58());
 
@@ -288,7 +291,11 @@ test("scoped pause: add and remove a chain pause", { skip }, async () => {
   await sendAndConfirm(
     [
       await instructions.operational.setScopedPause(client, {
-        accounts: { operator: t.owner, treasury: t.treasury, operatorRole: null },
+        accounts: {
+          operator: t.owner,
+          treasury: t.treasury,
+          operatorRole: null,
+        },
         args: {
           scopeKind: 1,
           chain: CHAIN_ETHEREUM,
@@ -310,7 +317,11 @@ test("scoped pause: add and remove a chain pause", { skip }, async () => {
   await sendAndConfirm(
     [
       await instructions.operational.setScopedPause(client, {
-        accounts: { operator: t.owner, treasury: t.treasury, operatorRole: null },
+        accounts: {
+          operator: t.owner,
+          treasury: t.treasury,
+          operatorRole: null,
+        },
         args: {
           scopeKind: 1,
           chain: CHAIN_ETHEREUM,
@@ -422,11 +433,16 @@ test("policy cpi check writes a result account", { skip }, async () => {
   assert.equal(check.approved, true);
 });
 
-test("write_policy_receipt snapshots the live pending proposal", { skip }, async () => {
-  let treasury = await accounts.fetchTreasuryAccount(client, t.treasury);
+test("write_policy_receipt snapshots the live pending proposal", {
+  skip,
+}, async () => {
+  const treasury = await accounts.fetchTreasuryAccount(client, t.treasury);
   const proposalId = treasury.pendingQueue.at(-1)?.proposalId;
   assert.ok(proposalId, "approval-ladder test leaves a pending proposal");
-  const [receipt] = derivePolicyReceiptAddress(t.treasury, proposalId.toString());
+  const [receipt] = derivePolicyReceiptAddress(
+    t.treasury,
+    proposalId.toString(),
+  );
 
   await sendAndConfirm(
     [
@@ -444,7 +460,10 @@ test("write_policy_receipt snapshots the live pending proposal", { skip }, async
     [],
     "writePolicyReceipt",
   );
-  const policyReceipt = await accounts.fetchPolicyReceiptAccount(client, receipt);
+  const policyReceipt = await accounts.fetchPolicyReceiptAccount(
+    client,
+    receipt,
+  );
   assert.equal(policyReceipt.proposalId.toString(), proposalId.toString());
   assert.equal(policyReceipt.policyAttested, false);
 });

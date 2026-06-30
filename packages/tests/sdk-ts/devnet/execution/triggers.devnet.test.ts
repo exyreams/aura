@@ -240,7 +240,10 @@ test("settlement/execution SDK builders reject without a pending proposal", {
       now,
     },
   });
-  await expectSendToFail([markIx], "markSettlementBroadcast no pending proposal");
+  await expectSendToFail(
+    [markIx],
+    "markSettlementBroadcast no pending proposal",
+  );
 
   const confirmIx = await instructions.execution.confirmSettlement(client, {
     accounts: {

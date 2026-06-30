@@ -13,9 +13,8 @@
 import { test } from "node:test";
 import {
   AURA_PROGRAM_ID,
-  DWALLET_DEVNET_PROGRAM_ID,
-  ENCRYPT_DEVNET_PROGRAM_ID,
   accounts,
+  DWALLET_DEVNET_PROGRAM_ID,
   deriveBatchProposalAddress,
   deriveConfidentialGuardrailsAddress,
   deriveDwalletCpiAuthorityAddress,
@@ -24,18 +23,19 @@ import {
   derivePolicyCanaryAddress,
   derivePolicyHistoryAddress,
   deriveTrustIdentityAddress,
+  ENCRYPT_DEVNET_PROGRAM_ID,
   instructions,
 } from "@aura-protocol/sdk-ts";
 import { Keypair, SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import {
-  DEVNET_AVAILABLE,
   createTreasuryArgs,
+  DEVNET_AVAILABLE,
   devnetClient,
   expectSendToFail,
   nowBN,
-  proposeTransactionArgs,
   type ProvisionedTreasury,
+  proposeTransactionArgs,
   provisionTreasury,
   sendAndConfirm,
 } from "../../support/devnet.js";
@@ -412,7 +412,9 @@ test("dWallet authority transfer builders reach the CPI boundary", {
   );
 });
 
-test("promote_canary rejects until the sample floor is met", { skip }, async () => {
+test("promote_canary rejects until the sample floor is met", {
+  skip,
+}, async () => {
   const t = await provisionTreasury({
     prefix: "canary-promote",
     activate: true,

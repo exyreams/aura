@@ -120,7 +120,10 @@ test("protocol config update/commit when payer controls it, otherwise auth rejec
     [],
     "updateProtocolConfig",
   );
-  let updated = await accounts.fetchProtocolConfigAccount(client, protocolConfig);
+  let updated = await accounts.fetchProtocolConfigAccount(
+    client,
+    protocolConfig,
+  );
   assert.ok(updated.pending, "protocol config update should be staged");
 
   await sendAndConfirm(
