@@ -393,9 +393,10 @@ export async function provisionTreasury(options?: {
 export async function expectSendToFail(
   ixs: TransactionInstruction[],
   label?: string,
+  extraSigners: Keypair[] = [],
 ): Promise<unknown> {
   try {
-    await sendAndConfirm(ixs, [], label ?? "expected-failure");
+    await sendAndConfirm(ixs, extraSigners, label ?? "expected-failure");
   } catch (error) {
     return error;
   }

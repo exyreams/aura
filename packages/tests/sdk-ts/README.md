@@ -60,7 +60,9 @@ bun run devnet:fees-schedule
 bun run devnet:fees-vault
 bun run devnet:governance-controls
 bun run devnet:governance-multisig
+bun run devnet:governance-timelock-boundaries
 bun run devnet:lifecycle-protocol-config
+bun run devnet:lifecycle-scenario-matrix
 bun run devnet:lifecycle-session-operators-agents
 bun run devnet:operational-sidecars-and-policy
 bun run devnet:policy-address-lists
@@ -70,6 +72,7 @@ bun run devnet:policy-templates
 bun run devnet:swarm-pool-lifecycle
 bun run devnet:swarm-pools
 bun run devnet:treasury-admin
+bun run devnet:treasury-scenario-matrix
 bun run devnet:treasury-lifecycle
 ```
 
