@@ -14,7 +14,8 @@ network-bound counterpart.
 
 ```bash
 bun install          # first time, from this directory
-bun run test:devnet  # builds the SDK (pretest) then runs the suite
+bun run test:devnet:coverage
+bun run devnet:treasury-admin
 ```
 
 This package uses **bun** as its package manager (`bun.lock`). Lint/format are
@@ -27,16 +28,49 @@ Run these from `packages/tests/sdk-ts`.
 ```bash
 bunx biome check --write
 bun run typecheck -- --pretty false
-bun run test:devnet
+bun run test:devnet:coverage
 ```
 
-For the dWallet live flows, run the focused suites directly:
+`bun run test:devnet:coverage` is a no-RPC coverage map. It fails if any
+generated SDK instruction method is not referenced by `devnet/**/*.ts`.
+
+Run focused live-devnet files one at a time to avoid public RPC rate limits.
+`bun run test:devnet` still exists for rare exhaustive sweeps, but it runs every
+devnet file serially and is not the recommended day-to-day command.
+
+Focused live-devnet commands:
 
 ```bash
+bun run devnet:budget-envelopes-and-groups
+bun run devnet:chain-profiles
+bun run devnet:confidential-external-cpi-boundaries
+bun run devnet:dwallet-balances
+bun run devnet:dwallet-lifecycle
+bun run devnet:dwallet-oracle-feeds
+bun run devnet:dwallet-registration
+bun run devnet:dwallet-spend
 bun run devnet:wallet-control
 bun run devnet:transfer
 bun run devnet:usdc-transfer
-bun run devnet:dwallet
+bun run devnet:execution-proposals
+bun run devnet:execution-scheduled-intents
+bun run devnet:execution-triggers
+bun run devnet:fees-billing
+bun run devnet:fees-schedule
+bun run devnet:fees-vault
+bun run devnet:governance-controls
+bun run devnet:governance-multisig
+bun run devnet:lifecycle-protocol-config
+bun run devnet:lifecycle-session-operators-agents
+bun run devnet:operational-sidecars-and-policy
+bun run devnet:policy-address-lists
+bun run devnet:policy-limits
+bun run devnet:policy-management
+bun run devnet:policy-templates
+bun run devnet:swarm-pool-lifecycle
+bun run devnet:swarm-pools
+bun run devnet:treasury-admin
+bun run devnet:treasury-lifecycle
 ```
 
 Useful env overrides:
@@ -99,3 +133,8 @@ confidential/          scalar + vector guardrails, propose-confidential, decrypt
   co-sign). Add `@ika.xyz/pre-alpha-solana-client` and
   `@encrypt.xyz/pre-alpha-solana-client` as devDependencies and port the flow
   from `packages/cli/src/lib/{ika,protocol}.ts` into `support/ika/`.
+- **Instruction coverage is SDK-surface coverage.** The coverage script checks
+  that all generated SDK instruction builders are exercised from devnet tests.
+  Some dWallet/Encrypt-bound instructions are covered through real devnet
+  expected-failure paths at the external-account/CPI boundary; full happy paths
+  still require live dWallet and Encrypt fixtures.

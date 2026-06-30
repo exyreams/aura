@@ -384,7 +384,7 @@ test("deriveOperatorRoleAddress matches [seed, treasury, operator]", () => {
   );
 });
 
-test("derivePolicyAttestationAddress matches [seed, treasury, attester, u64Le(version)]", () => {
+test("derivePolicyAttestationAddress matches [seed, treasury, attester, u32Le(version)]", () => {
   const treasury = Keypair.generate().publicKey;
   const attester = Keypair.generate().publicKey;
   assert.equal(
@@ -394,7 +394,7 @@ test("derivePolicyAttestationAddress matches [seed, treasury, attester, u64Le(ve
         POLICY_ATTESTATION_SEED,
         treasury.toBuffer(),
         attester.toBuffer(),
-        u64Le(9),
+        u32Le(9),
       ],
       PROGRAM,
     ).toBase58(),
