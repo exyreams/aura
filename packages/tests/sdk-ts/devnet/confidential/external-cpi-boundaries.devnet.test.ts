@@ -44,8 +44,6 @@ const skip = DEVNET_AVAILABLE ? false : "no devnet payer keypair";
 const client = devnetClient();
 
 const CHAIN_ETHEREUM = 1;
-const TX_TYPE_TRANSFER = 0;
-const EVM_DEAD = "0x000000000000000000000000000000000000dead";
 
 function externalKeys() {
   return {
