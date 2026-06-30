@@ -251,7 +251,7 @@ export function deriveExternalLivenessAddress(
 export function derivePolicyAttestationAddress(
   treasury: PublicKey,
   attester: PublicKey,
-  policyVersion: bigint | number | string,
+  policyVersion: number,
   programId: PublicKey = AURA_PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
@@ -259,7 +259,7 @@ export function derivePolicyAttestationAddress(
       POLICY_ATTESTATION_SEED,
       treasury.toBuffer(),
       attester.toBuffer(),
-      u64Le(policyVersion, "policyVersion"),
+      u32Le(policyVersion, "policyVersion"),
     ],
     programId,
   );
