@@ -53,6 +53,7 @@ bun run devnet:wallet-control
 bun run devnet:transfer
 bun run devnet:usdc-transfer
 bun run devnet:execution-proposals
+bun run devnet:execution-scenario-matrix
 bun run devnet:execution-scheduled-intents
 bun run devnet:execution-triggers
 bun run devnet:fees-billing

@@ -25,6 +25,7 @@
     "devnet:transfer": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/dwallet/transfer.devnet.test.ts",
     "devnet:usdc-transfer": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/dwallet/usdc-transfer.devnet.test.ts",
     "devnet:execution-proposals": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/execution/proposals.devnet.test.ts",
+    "devnet:execution-scenario-matrix": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/execution/scenario-matrix.devnet.test.ts",
     "devnet:execution-scheduled-intents": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/execution/scheduled-intents.devnet.test.ts",
     "devnet:execution-triggers": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/execution/triggers.devnet.test.ts",
     "devnet:fees-billing": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/fees/billing.devnet.test.ts",
