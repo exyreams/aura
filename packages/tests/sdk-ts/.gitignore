@@ -1,4 +1,5 @@
 node_modules
 support/ika/vendor
 support/ika/.dwallet.json
+.live-scenarios/
 *.log

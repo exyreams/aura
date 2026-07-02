@@ -38,6 +38,25 @@ Run focused live-devnet files one at a time to avoid public RPC rate limits.
 `bun run test:devnet` still exists for rare exhaustive sweeps, but it runs every
 devnet file serially and is not the recommended day-to-day command.
 
+Live scenario suites are separate from `devnet/` and must be explicitly opted
+in. They move real devnet test tokens through wallet, policy, and dWallet flows:
+
+```bash
+bun run live-scenarios:discover
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:direct-transfer
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:fund-dwallet
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:policy-transfer
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:policy-violations
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:circuit-breakers
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:payroll
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:agent-swap
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:velocity
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:session-keys
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:operator-roles
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:agent-capability
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:address-lists
+```
+
 Focused live-devnet commands:
 
 ```bash
@@ -106,6 +125,7 @@ support/
   devnet.ts            harness: RPC, signing, polling confirmation, provisioning
   ika/                 Encrypt + dWallet gRPC wrappers + flow (Ika-gated suites)
 
+live-scenarios/        opt-in token-moving scenario tests; never run by test:devnet
 treasury/              create, config-update, metadata, analytics, close
 lifecycle/             agent-state, roles, sessions, chain-profile, ownership
 execution/             propose, cancel/abandon/resubmit, approve, execute-pending,

@@ -16,7 +16,7 @@
  * Run: `npm run test:devnet`
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
@@ -42,6 +42,23 @@ import {
 } from "@solana/web3.js";
 import BN from "bn.js";
 import { buildCreateTreasuryArgs, sampleDefined } from "./fixtures.js";
+
+function loadLocalEnv(): void {
+  const envPath = new URL("../.env.local", import.meta.url);
+  if (!existsSync(envPath)) return;
+
+  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = rawValue
+      .replace(/^(['"])(.*)\1$/, "$2")
+      .replace(/\\n/g, "\n");
+  }
+}
+
+loadLocalEnv();
 
 /**
  * Resolves the devnet RPC endpoint without baking any secret into source.

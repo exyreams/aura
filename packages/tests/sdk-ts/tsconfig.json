@@ -18,6 +18,7 @@
   "include": [
     "support/**/*.ts",
     "devnet/**/*.ts",
+    "live-scenarios/**/*.ts",
     "unit/**/*.ts"
   ]
 }
