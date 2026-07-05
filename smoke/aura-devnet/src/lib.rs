@@ -860,6 +860,22 @@ pub fn execute_denied(
 
 // Finalize via live dWallet
 
+#[derive(Clone, Debug, Default)]
+pub struct FinalizeSidecars {
+    pub swarm_pool: Option<Pubkey>,
+    pub budget_envelope: Option<Pubkey>,
+    pub exposure_group: Option<Pubkey>,
+    pub external_liveness: Option<Pubkey>,
+    pub dwallet_state: Option<Pubkey>,
+    pub scheduled_intent: Option<Pubkey>,
+    pub fee_vault: Option<Pubkey>,
+    pub fee_schedule: Option<Pubkey>,
+    pub protocol_config: Option<Pubkey>,
+    pub analytics: Option<Pubkey>,
+    pub activity_log: Option<Pubkey>,
+    pub signing_message: Option<Vec<u8>>,
+}
+
 /// Drive the `execute_pending` → presign → sign → `finalize_execution`
 /// pipeline for an **approved** proposal.
 ///
@@ -882,6 +898,34 @@ pub async fn finalize_via_dwallet(
     analytics: Option<Pubkey>,
     activity_log: Option<Pubkey>,
 ) -> anyhow::Result<()> {
+    finalize_via_dwallet_with_sidecars(
+        rpc,
+        payer,
+        dwallet_client,
+        treasury,
+        dwallet_program,
+        live,
+        now,
+        FinalizeSidecars {
+            analytics,
+            activity_log,
+            ..FinalizeSidecars::default()
+        },
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn finalize_via_dwallet_with_sidecars(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    dwallet_client: &mut DWalletServiceClient<tonic::transport::Channel>,
+    treasury: Pubkey,
+    dwallet_program: &Pubkey,
+    live: &LiveDWallet,
+    now: i64,
+    sidecars: FinalizeSidecars,
+) -> anyhow::Result<()> {
     let domain = fetch_treasury_domain(rpc, &treasury)?;
     let pending = domain
         .pending
@@ -900,6 +944,10 @@ pub async fn finalize_via_dwallet(
 
     let approval_req = build_message_approval_request(&pending, &dwallet_ref, dwallet_program)
         .context("build_message_approval_request failed")?;
+    let signing_message = sidecars
+        .signing_message
+        .clone()
+        .unwrap_or_else(|| approval_req.message.as_bytes().to_vec());
 
     let (cpi_authority, _) = Pubkey::find_program_address(&[DWALLET_CPI_AUTHORITY_SEED], &ID);
 
@@ -973,7 +1021,7 @@ pub async fn finalize_via_dwallet(
             chain_id: ChainId::Solana,
             intended_chain_sender: payer.pubkey().to_bytes().to_vec(),
             request: IkaDWalletRequest::Sign {
-                message: approval_req.message.as_bytes().to_vec(),
+                message: signing_message,
                 message_metadata: vec![],
                 presign_session_identifier: presign_data.presign_session_identifier,
                 message_centralized_signature: vec![0u8; 64],
@@ -1011,21 +1059,21 @@ pub async fn finalize_via_dwallet(
         operator: payer.pubkey(),
         treasury,
         message_approval: approval_req.message_approval_account,
-        swarm_pool: None,
-        budget_envelope: None,
-        exposure_group: None,
-        external_liveness: None,
-        dwallet_state: None,
-        scheduled_intent: None,
-        fee_vault: None,
-        fee_schedule: None,
-        protocol_config: None,
+        swarm_pool: sidecars.swarm_pool,
+        budget_envelope: sidecars.budget_envelope,
+        exposure_group: sidecars.exposure_group,
+        external_liveness: sidecars.external_liveness,
+        dwallet_state: sidecars.dwallet_state,
+        scheduled_intent: sidecars.scheduled_intent,
+        fee_vault: sidecars.fee_vault,
+        fee_schedule: sidecars.fee_schedule,
+        protocol_config: sidecars.protocol_config,
     }
     .to_account_metas(None);
-    if let Some(analytics) = analytics {
+    if let Some(analytics) = sidecars.analytics {
         finalize_accounts.push(AccountMeta::new(analytics, false));
     }
-    if let Some(activity_log) = activity_log {
+    if let Some(activity_log) = sidecars.activity_log {
         finalize_accounts.push(AccountMeta::new(activity_log, false));
     }
 
@@ -1042,17 +1090,25 @@ pub async fn finalize_via_dwallet(
     .context("finalize_execution failed")?;
 
     let finalized = fetch_treasury_domain(rpc, &treasury)?;
-    ensure!(
-        finalized.pending.is_none(),
-        "pending not cleared after finalize"
-    );
-    ensure!(
-        finalized.total_transactions >= 1,
-        "total_transactions not incremented"
-    );
-    println!(
-        "  ✓ finalized — total_transactions={}",
-        finalized.total_transactions
-    );
+    if let Some(pending) = finalized.pending.as_ref() {
+        ensure!(
+            pending.transfer.has_chain_binding(),
+            "only chain-bound proposals may remain pending after finalize"
+        );
+        ensure!(
+            matches!(pending.status, aura_core::ProposalStatus::Signed),
+            "chain-bound proposal should be Signed after finalize"
+        );
+        println!("  ✓ finalized chain-bound proposal — status=Signed");
+    } else {
+        ensure!(
+            finalized.total_transactions >= 1,
+            "total_transactions not incremented"
+        );
+        println!(
+            "  ✓ finalized — total_transactions={}",
+            finalized.total_transactions
+        );
+    }
     Ok(())
 }

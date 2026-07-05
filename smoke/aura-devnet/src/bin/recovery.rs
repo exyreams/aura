@@ -9,18 +9,19 @@
 //!      active shutdown (`RecoveryDestinationImmutable`).
 //!   5. `break_glass_recover` — creates a pending proposal forced to the registered
 //!      address, bypassing AI authority and spend limits.
-//!
-//! Not tested here (require Ika dWallet CPI + live program accounts):
-//!   `break_glass_transfer_authority` — covered by unit tests in recovery.rs.
+//!   6. `break_glass_transfer_authority` — transfers a fresh live dWallet away
+//!      from Aura CPI authority after shutdown activation.
 
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
 use aura_core::{
     accounts, constants::RECOVERY_ACTIVATION_SECS, instruction, BreakGlassRecoverArgs,
-    RegisterRecoveryDestinationArgs, TreasuryAccount, ID,
+    BreakGlassTransferAuthorityArgs, RegisterRecoveryDestinationArgs, TreasuryAccount,
+    DWALLET_CPI_AUTHORITY_SEED, ID,
 };
 use aura_devnet::{
-    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer, now_unix,
-    pda, send_tx,
+    activate_treasury, connect_dwallet_client, create_treasury_ix, devnet_rpc,
+    fetch_treasury_domain, load_payer, now_unix, pda, provision_dwallet, send_tx,
+    transfer_dwallet_authority,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -134,7 +135,8 @@ fn emergency_shutdown(
     Ok(())
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
@@ -273,9 +275,47 @@ fn main() -> anyhow::Result<()> {
         pending.proposal_id, pending.recipient_or_contract
     );
 
+    // [6] break_glass_transfer_authority
+
+    println!("\n[6] break_glass_transfer_authority — live dWallet CPI transfer");
+    let treasury2 = create_active_treasury(&rpc, &payer, "rec-transfer", seed + 100)?;
+    let shutdown2_now = seed + 110;
+    emergency_shutdown(&rpc, &payer, treasury2, shutdown2_now)?;
+
+    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
+    let mut dwallet_client = connect_dwallet_client().await?;
+    let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
+    transfer_dwallet_authority(&rpc, &payer, &dwallet_program, &live.dwallet_pda)?;
+
+    let new_authority = Keypair::new().pubkey();
+    let (cpi_authority, _) = pda(&[DWALLET_CPI_AUTHORITY_SEED], &ID);
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::BreakGlassTransferAuthority {
+                owner,
+                treasury: treasury2,
+                dwallet: live.dwallet_pda,
+                caller_program: ID,
+                cpi_authority,
+                dwallet_program,
+            }
+            .to_account_metas(None),
+            instruction::BreakGlassTransferAuthority {
+                args: BreakGlassTransferAuthorityArgs {
+                    chain: ETH,
+                    new_authority,
+                    now: shutdown2_now.saturating_add(RECOVERY_ACTIVATION_SECS) + 1,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    println!("  ok live dWallet authority transferred to {new_authority}");
+
     println!("\ncustody recovery smoke checks passed on devnet.");
-    println!(
-        "Note: break_glass_transfer_authority requires a live dWallet CPI; covered by unit tests."
-    );
     Ok(())
 }

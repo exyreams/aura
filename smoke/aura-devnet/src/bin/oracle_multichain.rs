@@ -10,21 +10,23 @@
 //! (evm_chain_id, nonce, gas) exercises the replay-protection digest path and the
 //! recipient-address validator.  `abandon_proposal` cancels a chain-bound pending proposal.
 //!
-//! Not smoke-tested here (require Ika dWallet `finalize_execution` to reach Signed status):
-//!   mark_settlement_broadcast, confirm_settlement, resubmit_proposal.
-//! Those paths are covered by unit tests in `instructions/confirm_settlement.rs`.
+//! Settlement coverage: a Solana chain-bound proposal is signed by the live
+//! dWallet, marked broadcast, resubmitted with a new native payload digest,
+//! signed again, and confirmed settled.
 
 use anchor_lang::prelude::system_instruction;
 use anchor_lang::system_program::ID as SYSTEM_PROGRAM_ID;
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
 use aura_core::{
     accounts, constants::CHAIN_PROFILE_SEED, instruction, ChainProfileAccount, ChainProfileArgs,
-    DWalletAccount, ProposeTransactionArgs, RefreshVerifiedAssetBalanceArgs, RegisterDwalletArgs,
+    ConfirmSettlementArgs, DWalletAccount, MarkSettlementBroadcastArgs, ProposeTransactionArgs,
+    RefreshVerifiedAssetBalanceArgs, RegisterDwalletArgs, ResubmitProposalArgs,
     SetAssetOracleFeedArgs, ID,
 };
 use aura_devnet::{
-    activate_treasury, create_treasury_ix, devnet_rpc, fetch_treasury_domain, load_payer, now_unix,
-    pda, send_tx,
+    activate_treasury, connect_dwallet_client, create_treasury_ix, devnet_rpc,
+    fetch_treasury_domain, finalize_via_dwallet_with_sidecars, load_payer, now_unix, pda,
+    provision_dwallet, register_dwallet_ix, send_tx, transfer_dwallet_authority, FinalizeSidecars,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -34,6 +36,7 @@ use solana_sdk::{
 };
 
 const ETH: u8 = 1;
+const SOLANA: u8 = 2;
 const TRANSFER: u8 = 0;
 const CUSTOM_CHAIN: u8 = 100;
 
@@ -295,35 +298,41 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
     let chain_profile = pda(&[CHAIN_PROFILE_SEED, &[CUSTOM_CHAIN]], &ID).0;
 
     // register_chain_profile — custom EVM-like chain (code 100, chain_id 9999).
-    send_tx(
-        rpc,
-        payer,
-        vec![ix(
-            accounts::RegisterChainProfile {
-                authority: payer.pubkey(),
-                chain_profile,
-                system_program: SYSTEM_PROGRAM_ID,
-            }
-            .to_account_metas(None),
-            instruction::RegisterChainProfile {
-                args: ChainProfileArgs {
-                    chain_code: CUSTOM_CHAIN,
-                    enabled: true,
-                    address_format: 0,   // EVM hex
-                    replay_scheme: 0,    // EVM nonce/chain_id
-                    finality_model: 0,   // probabilistic
-                    curve: 0,            // Secp256k1
-                    signature_scheme: 0, // ECDSA
-                    native_gas_asset: "eth".to_string(),
-                    evm_chain_id: Some(9999),
-                    confirmations_required: 12,
-                    now: seed,
-                },
-            }
-            .data(),
-        )],
-        &[],
-    )?;
+    let registered_fresh = if rpc.get_account(&chain_profile).is_err() {
+        send_tx(
+            rpc,
+            payer,
+            vec![ix(
+                accounts::RegisterChainProfile {
+                    authority: payer.pubkey(),
+                    chain_profile,
+                    system_program: SYSTEM_PROGRAM_ID,
+                }
+                .to_account_metas(None),
+                instruction::RegisterChainProfile {
+                    args: ChainProfileArgs {
+                        chain_code: CUSTOM_CHAIN,
+                        enabled: true,
+                        address_format: 0,   // EVM hex
+                        replay_scheme: 0,    // EVM nonce/chain_id
+                        finality_model: 0,   // probabilistic
+                        curve: 0,            // Secp256k1
+                        signature_scheme: 0, // ECDSA
+                        native_gas_asset: "eth".to_string(),
+                        evm_chain_id: Some(9999),
+                        confirmations_required: 12,
+                        now: seed,
+                    },
+                }
+                .data(),
+            )],
+            &[],
+        )?;
+        true
+    } else {
+        println!("  chain profile already exists; reusing {chain_profile}");
+        false
+    };
     let profile: ChainProfileAccount = fetch_account(rpc, &chain_profile)?;
     anyhow::ensure!(
         profile.chain_code == CUSTOM_CHAIN && profile.enabled,
@@ -333,10 +342,12 @@ fn run_chain_profiles(rpc: &RpcClient, payer: &Keypair, seed: i64) -> anyhow::Re
         profile.evm_chain_id == Some(9999),
         "evm_chain_id mismatch on registered profile"
     );
-    anyhow::ensure!(
-        profile.confirmations_required == 12,
-        "confirmations_required mismatch on registered profile"
-    );
+    if registered_fresh {
+        anyhow::ensure!(
+            profile.confirmations_required == 12,
+            "confirmations_required mismatch on registered profile"
+        );
+    }
     println!(
         "  ok register_chain_profile (code={CUSTOM_CHAIN}, evm_chain_id=9999, confirmations=12)"
     );
@@ -507,7 +518,265 @@ fn run_chain_binding_and_abandon(
     Ok(())
 }
 
-fn main() -> anyhow::Result<()> {
+async fn run_settlement_lifecycle(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    seed: i64,
+) -> anyhow::Result<()> {
+    println!("\n[settlement] chain-bound Solana signing + mark/resubmit/confirm");
+    let owner = payer.pubkey();
+    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
+    let mut dwallet_client = connect_dwallet_client().await?;
+    let live = provision_dwallet(rpc, payer, &mut dwallet_client, &dwallet_program).await?;
+    transfer_dwallet_authority(rpc, payer, &dwallet_program, &live.dwallet_pda)?;
+
+    let treasury = create_active_treasury(rpc, payer, "om-settle", seed + 700)?;
+    send_tx(
+        rpc,
+        payer,
+        vec![register_dwallet_ix(payer, treasury, &live, seed + 701)],
+        &[],
+    )?;
+
+    let first_payload = format!("om-settlement-first-{seed}");
+    let first_hash = aura_core::keccak_message_digest(&first_payload);
+    let first_blockhash = [0x71; 32];
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::ProposeTransaction {
+                ai_authority: owner,
+                treasury,
+                session_key_account: None,
+                swarm_pool: None,
+                address_list: None,
+                compliance_oracle: None,
+                parent_treasury: None,
+                budget_envelope: None,
+                exposure_group: None,
+                dwallet_state: None,
+                chain_profile: None,
+                trust_identity: None,
+                policy_canary: None,
+            }
+            .to_account_metas(None),
+            instruction::ProposeTransaction {
+                args: ProposeTransactionArgs {
+                    amount_usd: 100,
+                    target_chain: SOLANA,
+                    tx_type: TRANSFER,
+                    protocol_id: None,
+                    current_timestamp: seed + 702,
+                    expected_output_usd: Some(100),
+                    actual_output_usd: Some(100),
+                    quote_age_secs: Some(30),
+                    counterparty_risk_score: Some(10),
+                    recipient_or_contract: owner.to_string(),
+                    sanctions_proof: Vec::new(),
+                    asset_id: None,
+                    native_amount: None,
+                    decimals: None,
+                    gas_native_amount: None,
+                    gas_asset_id: None,
+                    evm_chain_id: None,
+                    replay_nonce: None,
+                    gas_limit: None,
+                    max_fee_native: None,
+                    native_message_hash: Some(first_hash),
+                    calldata_hash: None,
+                    utxo_set_hash: None,
+                    sighash_type: None,
+                    solana_recent_blockhash: Some(first_blockhash),
+                    solana_message_hash: Some(first_hash),
+                    confirmations_required: Some(2),
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    let pending = fetch_treasury_domain(rpc, &treasury)?
+        .pending
+        .ok_or_else(|| anyhow::anyhow!("no pending proposal after settlement propose"))?;
+    anyhow::ensure!(pending.decision.approved, "settlement proposal denied");
+    let proposal_id = pending.proposal_id;
+
+    finalize_via_dwallet_with_sidecars(
+        rpc,
+        payer,
+        &mut dwallet_client,
+        treasury,
+        &dwallet_program,
+        &live,
+        seed + 703,
+        FinalizeSidecars {
+            signing_message: Some(first_payload.into_bytes()),
+            ..FinalizeSidecars::default()
+        },
+    )
+    .await?;
+    let pending = fetch_treasury_domain(rpc, &treasury)?
+        .pending
+        .ok_or_else(|| anyhow::anyhow!("signed proposal missing after finalize"))?;
+    anyhow::ensure!(
+        matches!(pending.status, aura_core::ProposalStatus::Signed),
+        "proposal should be Signed after finalize"
+    );
+
+    let first_tx_hash = [0x91; 32];
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::MarkSettlementBroadcast {
+                operator: owner,
+                treasury,
+            }
+            .to_account_metas(None),
+            instruction::MarkSettlementBroadcast {
+                args: MarkSettlementBroadcastArgs {
+                    proposal_id,
+                    target_tx_hash: first_tx_hash,
+                    now: seed + 704,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    let pending = fetch_treasury_domain(rpc, &treasury)?
+        .pending
+        .ok_or_else(|| anyhow::anyhow!("broadcast proposal missing"))?;
+    anyhow::ensure!(
+        matches!(pending.status, aura_core::ProposalStatus::Broadcast),
+        "proposal should be Broadcast after mark_settlement_broadcast"
+    );
+
+    let second_payload = format!("om-settlement-resubmit-{seed}");
+    let second_hash = aura_core::keccak_message_digest(&second_payload);
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::ResubmitProposal {
+                operator: owner,
+                treasury,
+                chain_profile: None,
+            }
+            .to_account_metas(None),
+            instruction::ResubmitProposal {
+                args: ResubmitProposalArgs {
+                    proposal_id,
+                    evm_chain_id: None,
+                    replay_nonce: None,
+                    gas_limit: None,
+                    max_fee_native: None,
+                    native_message_hash: Some(second_hash),
+                    calldata_hash: None,
+                    utxo_set_hash: None,
+                    sighash_type: None,
+                    solana_recent_blockhash: Some([0x72; 32]),
+                    solana_message_hash: Some(second_hash),
+                    confirmations_required: Some(1),
+                    now: seed + 705,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    let pending = fetch_treasury_domain(rpc, &treasury)?
+        .pending
+        .ok_or_else(|| anyhow::anyhow!("resubmitted proposal missing"))?;
+    anyhow::ensure!(
+        matches!(pending.status, aura_core::ProposalStatus::Proposed),
+        "proposal should return to Proposed after resubmit"
+    );
+    anyhow::ensure!(
+        pending.execution_attempts == 1,
+        "resubmit should increment execution attempts"
+    );
+
+    finalize_via_dwallet_with_sidecars(
+        rpc,
+        payer,
+        &mut dwallet_client,
+        treasury,
+        &dwallet_program,
+        &live,
+        seed + 706,
+        FinalizeSidecars {
+            signing_message: Some(second_payload.into_bytes()),
+            ..FinalizeSidecars::default()
+        },
+    )
+    .await?;
+    let final_tx_hash = [0x92; 32];
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::MarkSettlementBroadcast {
+                operator: owner,
+                treasury,
+            }
+            .to_account_metas(None),
+            instruction::MarkSettlementBroadcast {
+                args: MarkSettlementBroadcastArgs {
+                    proposal_id,
+                    target_tx_hash: final_tx_hash,
+                    now: seed + 707,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::ConfirmSettlement {
+                operator: owner,
+                treasury,
+                swarm_pool: None,
+                budget_envelope: None,
+                exposure_group: None,
+                dwallet_state: None,
+                scheduled_intent: None,
+            }
+            .to_account_metas(None),
+            instruction::ConfirmSettlement {
+                args: ConfirmSettlementArgs {
+                    proposal_id,
+                    target_tx_hash: final_tx_hash,
+                    confirmations_observed: 1,
+                    reorged: false,
+                    now: seed + 708,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    let settled = fetch_treasury_domain(rpc, &treasury)?;
+    anyhow::ensure!(
+        settled.pending.is_none(),
+        "pending proposal not cleared after confirm_settlement"
+    );
+    anyhow::ensure!(
+        settled.total_transactions >= 1,
+        "confirm_settlement did not record transaction"
+    );
+    println!(
+        "  ok signed, broadcast, resubmitted, signed again, and settled proposal {proposal_id}"
+    );
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
@@ -518,6 +787,7 @@ fn main() -> anyhow::Result<()> {
     run_oracle_integration(&rpc, &payer, seed)?;
     run_chain_profiles(&rpc, &payer, seed)?;
     run_chain_binding_and_abandon(&rpc, &payer, seed)?;
+    run_settlement_lifecycle(&rpc, &payer, seed).await?;
 
     println!("\noracle + multichain smoke checks passed on devnet.");
     Ok(())

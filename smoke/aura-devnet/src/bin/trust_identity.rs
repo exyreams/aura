@@ -11,12 +11,12 @@
 //!   4. `register_agent` — stores a scoped secondary agent on the PDA.
 //!   5. `revoke_agent` — disables the agent; PDA confirms it.
 //!   6. `nominate_successor_owner` — records a timelocked handover on the PDA.
-//!
-//! Not smoke-tested (require Ika dWallet CPI):
-//!   `execute_ownership_handover`, `emergency_revoke_agent` — unit tests only.
+//!   7. `execute_ownership_handover` — transfers a fresh live dWallet via CPI.
+//!   8. `emergency_revoke_agent` — guardian signer disables a registered agent.
 
 use anchor_lang::{
-    system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData, ToAccountMetas,
+    prelude::system_instruction, system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize,
+    InstructionData, ToAccountMetas,
 };
 use aura_core::{
     accounts,
@@ -24,12 +24,13 @@ use aura_core::{
         AGENT_CAPABILITY_LOOSEN_TIMELOCK_SECS, OWNERSHIP_HANDOVER_TIMELOCK_SECS,
         TRUST_IDENTITY_SEED,
     },
-    instruction, ConfigureMultisigArgs, ConfigureTrustPolicyArgs, NominateSuccessorArgs,
-    RegisterAgentArgs, SetAgentCapabilityArgs, SetAgentTripwiresArgs, TreasuryAccount,
-    TrustIdentityAccount, ID,
+    instruction, ConfigureMultisigArgs, ConfigureTrustPolicyArgs, ExecuteHandoverArgs,
+    NominateSuccessorArgs, RegisterAgentArgs, SetAgentCapabilityArgs, SetAgentTripwiresArgs,
+    TreasuryAccount, TrustIdentityAccount, DWALLET_CPI_AUTHORITY_SEED, ID,
 };
 use aura_devnet::{
-    activate_treasury, create_treasury_ix, devnet_rpc, load_payer, now_unix, pda, send_tx,
+    activate_treasury, connect_dwallet_client, create_treasury_ix, devnet_rpc, load_payer,
+    now_unix, pda, provision_dwallet, send_tx, transfer_dwallet_authority,
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -123,7 +124,8 @@ fn fetch_treasury(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TreasuryAcco
     Ok(TreasuryAccount::try_deserialize(&mut info.data.as_slice())?)
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
@@ -323,17 +325,58 @@ fn main() -> anyhow::Result<()> {
         successor, OWNERSHIP_HANDOVER_TIMELOCK_SECS
     );
 
-    // [6] multi-party authorization: weighted multisig storage
+    // [6] execute_ownership_handover transfers a fresh dWallet via CPI
+
+    println!("\n[ownership handover] execute_ownership_handover via live dWallet CPI");
+    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
+    let mut dwallet_client = connect_dwallet_client().await?;
+    let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
+    transfer_dwallet_authority(&rpc, &payer, &dwallet_program, &live.dwallet_pda)?;
+    let (cpi_authority, _) = pda(&[DWALLET_CPI_AUTHORITY_SEED], &ID);
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::ExecuteOwnershipHandover {
+                caller: owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+                dwallet: live.dwallet_pda,
+                caller_program: ID,
+                cpi_authority,
+                dwallet_program,
+            }
+            .to_account_metas(None),
+            instruction::ExecuteOwnershipHandover {
+                args: ExecuteHandoverArgs {
+                    chain: 2,
+                    finalize: false,
+                    now: seed + 104 + OWNERSHIP_HANDOVER_TIMELOCK_SECS,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    println!("  ok live dWallet ownership handed over with finalize=false");
+
+    // [7] multi-party authorization: weighted multisig storage
 
     println!("\n[multiparty] configure_multisig with weighted guardians");
-    let g1 = Keypair::new().pubkey();
+    let guardian = Keypair::new();
+    let g1 = guardian.pubkey();
     let g2 = Keypair::new().pubkey();
     let g3 = Keypair::new().pubkey();
     let sig = send_tx(
         &rpc,
         &payer,
         vec![ix(
-            accounts::ConfigureMultisig { owner, treasury }.to_account_metas(None),
+            accounts::ConfigureMultisig {
+                owner,
+                treasury: treasury2,
+            }
+            .to_account_metas(None),
             instruction::ConfigureMultisig {
                 args: ConfigureMultisigArgs {
                     required_signatures: 2,
@@ -348,7 +391,7 @@ fn main() -> anyhow::Result<()> {
         &[],
     )?;
     println!("  tx: {sig}");
-    let acct = fetch_treasury(&rpc, &treasury)?;
+    let acct = fetch_treasury(&rpc, &treasury2)?;
     let ms = acct
         .multisig
         .as_ref()
@@ -363,7 +406,77 @@ fn main() -> anyhow::Result<()> {
     );
     println!("  ok weighted multisig stored (required_weight=4, treasurer weight=3)");
 
-    // [7] agent capabilities: manifest + loosen timelock + tripwires
+    // [8] emergency_revoke_agent through the guardian authorization path
+
+    println!("\n[agent identity] emergency_revoke_agent by guardian");
+    let emergency_agent = Keypair::new().pubkey();
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::AgentManage {
+                owner,
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
+            instruction::RegisterAgent {
+                args: RegisterAgentArgs {
+                    key: emergency_agent,
+                    label: "breakglass-agent".to_string(),
+                    allowed_chains: vec![2u8],
+                    allowed_tx_types: vec![0u8],
+                    daily_limit_usd: Some(1_000),
+                    now: seed + 106,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  register tx: {sig}");
+    send_tx(
+        &rpc,
+        &payer,
+        vec![system_instruction::transfer(
+            &owner,
+            &guardian.pubkey(),
+            1_000_000,
+        )],
+        &[],
+    )?;
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::EmergencyRevokeAgent {
+                caller: guardian.pubkey(),
+                treasury: treasury2,
+                trust_identity: trust_identity2,
+            }
+            .to_account_metas(None),
+            instruction::EmergencyRevokeAgent {
+                key: emergency_agent,
+                now: seed + 107,
+            }
+            .data(),
+        )],
+        &[&guardian],
+    )?;
+    println!("  emergency revoke tx: {sig}");
+    let ti = fetch_trust_identity(&rpc, &trust_identity2)?;
+    let agent = ti
+        .agents
+        .iter()
+        .find(|a| a.key == emergency_agent)
+        .ok_or_else(|| anyhow::anyhow!("emergency agent not found"))?;
+    anyhow::ensure!(
+        !agent.enabled,
+        "guardian emergency revoke should disable the agent"
+    );
+    println!("  ok guardian signer disabled agent via emergency_revoke_agent");
+
+    // [9] agent capabilities: manifest + loosen timelock + tripwires
 
     println!("\n[capabilities] set_agent_capability (tighten) on registered agent");
     let sig = send_tx(
@@ -473,6 +586,5 @@ fn main() -> anyhow::Result<()> {
     println!("  ok tripwire weights stored (policy_denial=15)");
 
     println!("\ntrust envelope + agent identity + multiparty + capabilities smoke checks passed on devnet.");
-    println!("Note: execute_ownership_handover and the full M-of-N approve→execute flow need a live dWallet CPI; covered by unit tests.");
     Ok(())
 }

@@ -6,13 +6,11 @@
 //!      when it does not loosen) and append a new forward version.
 //!   3. `rollback_policy` to an unknown version — must fail.
 //!   4. `start_canary` + `promote_canary` — stage a candidate and promote it
-//!      into the enforced policy; the canary account is closed on promotion.
+//!      into the enforced policy after one shadow-evaluation sample; the canary
+//!      account is closed on promotion.
 //!   5. `start_canary` + `discard_canary` — drop a candidate without promoting.
 //!   6. `init_protocol_config` (idempotent across runs) + `update_protocol_config`
 //!      — stage an economic change; committing before the timelock must fail.
-//!
-//! Not smoke-tested (needs a live dWallet CPI signer): the shadow-evaluation
-//! divergence tally on the propose path — covered by unit tests.
 
 use anchor_lang::{
     system_program::ID as SYSTEM_PROGRAM_ID, AccountDeserialize, InstructionData, ToAccountMetas,
@@ -24,7 +22,7 @@ use aura_core::{
         PROTOCOL_CONFIG_UPDATE_TIMELOCK_SECS,
     },
     instruction, PolicyCanaryAccount, PolicyConfigRecord, PolicyHistoryAccount,
-    ProtocolConfigAccount, ProtocolConfigArgs, TreasuryAccount, ID,
+    ProposeTransactionArgs, ProtocolConfigAccount, ProtocolConfigArgs, TreasuryAccount, ID,
 };
 use aura_devnet::{
     activate_treasury, create_treasury_ix, devnet_rpc, load_payer, now_unix, pda, send_tx,
@@ -222,7 +220,7 @@ fn main() -> anyhow::Result<()> {
             .to_account_metas(None),
             instruction::StartCanary {
                 candidate: strict_record,
-                sample_cap: 0,
+                sample_cap: 1,
                 now: seed + 102,
             }
             .data(),
@@ -243,6 +241,90 @@ fn main() -> anyhow::Result<()> {
         &rpc,
         &payer,
         vec![ix(
+            accounts::ProposeTransaction {
+                ai_authority: owner,
+                treasury: treasury2,
+                session_key_account: None,
+                swarm_pool: None,
+                address_list: None,
+                compliance_oracle: None,
+                parent_treasury: None,
+                budget_envelope: None,
+                exposure_group: None,
+                dwallet_state: None,
+                chain_profile: None,
+                trust_identity: None,
+                policy_canary: Some(policy_canary),
+            }
+            .to_account_metas(None),
+            instruction::ProposeTransaction {
+                args: ProposeTransactionArgs {
+                    amount_usd: 250,
+                    target_chain: 2,
+                    tx_type: 0,
+                    protocol_id: None,
+                    current_timestamp: seed + 103,
+                    expected_output_usd: Some(250),
+                    actual_output_usd: Some(250),
+                    quote_age_secs: Some(30),
+                    counterparty_risk_score: Some(10),
+                    recipient_or_contract: owner.to_string(),
+                    sanctions_proof: Vec::new(),
+                    asset_id: None,
+                    native_amount: None,
+                    decimals: None,
+                    gas_native_amount: None,
+                    gas_asset_id: None,
+                    evm_chain_id: None,
+                    replay_nonce: None,
+                    gas_limit: None,
+                    max_fee_native: None,
+                    native_message_hash: None,
+                    calldata_hash: None,
+                    utxo_set_hash: None,
+                    sighash_type: None,
+                    solana_recent_blockhash: None,
+                    solana_message_hash: None,
+                    confirmations_required: None,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  shadow sample propose tx: {sig}");
+    let canary_info = rpc.get_account(&policy_canary)?;
+    let canary = PolicyCanaryAccount::try_deserialize(&mut canary_info.data.as_slice())?;
+    anyhow::ensure!(canary.samples == 1, "canary sample was not recorded");
+    anyhow::ensure!(
+        canary.candidate_would_deny == 1,
+        "strict candidate should have denied the sample"
+    );
+    anyhow::ensure!(
+        canary.agreements == 0 && canary.per_rule_divergence_bitmap != 0,
+        "shadow evaluation should record a divergence"
+    );
+    println!("  ok shadow sample recorded candidate denial + divergence");
+
+    send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::CancelPending {
+                owner,
+                treasury: treasury2,
+                dwallet_state: None,
+            }
+            .to_account_metas(None),
+            instruction::CancelPending { now: seed + 104 }.data(),
+        )],
+        &[],
+    )?;
+
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
             accounts::PromoteCanary {
                 owner,
                 treasury: treasury2,
@@ -250,7 +332,7 @@ fn main() -> anyhow::Result<()> {
                 policy_canary,
             }
             .to_account_metas(None),
-            instruction::PromoteCanary { now: seed + 103 }.data(),
+            instruction::PromoteCanary { now: seed + 105 }.data(),
         )],
         &[],
     )?;
