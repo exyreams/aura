@@ -60,6 +60,7 @@ AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:budget-exposure
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:approval-receipts
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:scheduled-intents
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:conditional-triggers
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:guardian-quorum
 ```
 
 Focused live-devnet commands:
