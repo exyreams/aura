@@ -55,6 +55,11 @@ AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:session-keys
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:operator-roles
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:agent-capability
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:address-lists
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:guardian-governance
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:budget-exposure
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:approval-receipts
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:scheduled-intents
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:conditional-triggers
 ```
 
 Focused live-devnet commands:
