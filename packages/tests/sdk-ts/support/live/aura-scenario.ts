@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   AURA_IDL,
+  type AuraApprovalResult,
   type AuraCore,
   type AuraCoreProgram,
   DWALLET_DEVNET_PROGRAM_ID,
@@ -230,6 +231,22 @@ export interface LiveDwalletTransferResult {
   afterDestination: TokenBalanceSnapshot;
   amountRaw: bigint;
   amountUsd: BN;
+}
+
+export interface LiveFinalizeSidecarAccounts {
+  swarmPool?: PublicKey | null;
+  budgetEnvelope?: PublicKey | null;
+  exposureGroup?: PublicKey | null;
+  externalLiveness?: PublicKey | null;
+  scheduledIntent?: PublicKey | null;
+  feeVault?: PublicKey | null;
+  feeSchedule?: PublicKey | null;
+  protocolConfig?: PublicKey | null;
+}
+
+export interface LivePolicyApprovalResult {
+  approval: AuraApprovalResult;
+  pending: PendingProposalRecord;
 }
 
 interface PendingRecord {
@@ -708,6 +725,105 @@ export async function assertProposalSendFails(params: {
     scenario.beforeDestination.amount,
     `${label} must not move recipient funds`,
   );
+}
+
+export async function executeApprovedLivePolicyProposal(params: {
+  scenario: LiveAuraScenario;
+  args: ProposeTransactionArgs;
+  label: string;
+  finalizeAccounts?: LiveFinalizeSidecarAccounts;
+}): Promise<LivePolicyApprovalResult> {
+  const { scenario, args, label } = params;
+  const payer = getPayer();
+  const conn = connection();
+  const { program, asset, agentId, treasury, dwalletPda, dwalletSolanaKey } =
+    scenario;
+
+  assert.equal(args.assetId, null, `${label} must be policy-only`);
+  assert.equal(
+    args.nativeMessageHash,
+    null,
+    `${label} must not be chain-bound`,
+  );
+  await tryTransferDwalletOwnership(dwalletPda, program.programId);
+
+  await sendLiveIxs(
+    [
+      await program.methods
+        .proposeTransaction(args)
+        .accountsPartial({
+          aiAuthority: payer.publicKey,
+          treasury,
+          dwalletState: null,
+          ...PROPOSE_ACCOUNTS,
+        })
+        .instruction(),
+    ],
+    `proposeTransaction(${label})`,
+  );
+
+  const treasuryData = await program.account.treasuryAccount.fetch(treasury);
+  const pendingRecord = treasuryData.pendingQueue[0];
+  assert.ok(pendingRecord, `${label} pending proposal should exist`);
+  assert.equal(pendingRecord.decision.approved, true, `${label} must approve`);
+  const pending = pendingForApproval(pendingRecord);
+
+  const dwallet = await getOrCreateDwallet(payer);
+  const ika = createIkaClient(undefined, payer.secretKey);
+  try {
+    const approval = await runAuraApproval({
+      connection: conn,
+      program: approvalProgram(program),
+      ika,
+      dkgAttestation: dwallet.dkgAttestation,
+      sessionIdentifier: dwallet.sessionIdentifier,
+      operator: payer,
+      treasuryOwner: payer.publicKey,
+      agentId,
+      dwalletRecord: {
+        address: dwalletSolanaKey.toBase58(),
+        publicKeyHex: Buffer.from(dwallet.publicKey).toString("hex"),
+        dwalletId: dwalletPda.toBase58(),
+        authorizedUserPubkey: payer.publicKey,
+        messageMetadataDigest: null,
+        curve: CURVE_ED25519,
+        signatureScheme: SCHEME_EDDSA_SHA512,
+      },
+      pending,
+      dwalletState: null,
+      finalizeAccounts: params.finalizeAccounts,
+    });
+
+    const afterTreasury = await program.account.treasuryAccount.fetch(treasury);
+    assert.equal(
+      afterTreasury.pendingQueue.length,
+      0,
+      `${label} must clear the pending queue`,
+    );
+
+    const sourceAfter = await readTokenBalance(
+      scenario.sourceAta,
+      asset.tokenProgramId,
+    );
+    const destinationAfter = await readTokenBalance(
+      scenario.destinationAta,
+      asset.tokenProgramId,
+    );
+    assert.equal(
+      sourceAfter.amount,
+      scenario.beforeSource.amount,
+      `${label} must not move source funds`,
+    );
+    assert.equal(
+      destinationAfter.amount,
+      scenario.beforeDestination.amount,
+      `${label} must not move recipient funds`,
+    );
+
+    return { approval, pending };
+  } finally {
+    ika.close();
+  }
 }
 
 export async function executeApprovedLiveDwalletTransfer(

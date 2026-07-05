@@ -538,6 +538,17 @@ export interface RunAuraApprovalParams {
   signingMessage?: Uint8Array;
   /** Optional AURA runtime DWalletAccount PDA for reservation/expiry paths. */
   dwalletState?: PublicKey | null;
+  /** Optional sidecars passed to finalize_execution. Defaults preserve legacy nulls. */
+  finalizeAccounts?: {
+    swarmPool?: PublicKey | null;
+    budgetEnvelope?: PublicKey | null;
+    exposureGroup?: PublicKey | null;
+    externalLiveness?: PublicKey | null;
+    scheduledIntent?: PublicKey | null;
+    feeVault?: PublicKey | null;
+    feeSchedule?: PublicKey | null;
+    protocolConfig?: PublicKey | null;
+  };
   dwalletProgramId?: PublicKey;
 }
 
@@ -697,6 +708,18 @@ export async function runAuraApproval(
   // queued as Signed until target-chain settlement is confirmed.
   const { blockhash: bh2, lastValidBlockHeight: lvbh2 } =
     await connection.getLatestBlockhash("confirmed");
+  const finalizeAccounts = {
+    swarmPool: null,
+    budgetEnvelope: null,
+    exposureGroup: null,
+    externalLiveness: null,
+    dwalletState: params.dwalletState ?? null,
+    scheduledIntent: null,
+    feeVault: null,
+    feeSchedule: null,
+    protocolConfig: null,
+    ...params.finalizeAccounts,
+  };
   const finalizeTx = new Transaction();
   finalizeTx.recentBlockhash = bh2;
   finalizeTx.feePayer = operator.publicKey;
@@ -709,15 +732,7 @@ export async function runAuraApproval(
         operator: operator.publicKey,
         treasury,
         messageApproval: messageApprovalPda,
-        swarmPool: null,
-        budgetEnvelope: null,
-        exposureGroup: null,
-        externalLiveness: null,
-        dwalletState: params.dwalletState ?? null,
-        scheduledIntent: null,
-        feeVault: null,
-        feeSchedule: null,
-        protocolConfig: null,
+        ...finalizeAccounts,
       })
       .instruction(),
   );

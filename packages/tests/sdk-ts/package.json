@@ -31,6 +31,8 @@
     "live-scenarios:scheduled-intents": "bun run pretest:devnet && tsx --test --test-concurrency=1 live-scenarios/16-scheduled-intents.live.test.ts",
     "live-scenarios:conditional-triggers": "bun run pretest:devnet && tsx --test --test-concurrency=1 live-scenarios/17-conditional-triggers.live.test.ts",
     "live-scenarios:guardian-quorum": "bun run pretest:devnet && tsx --test --test-concurrency=1 live-scenarios/18-guardian-quorum.live.test.ts",
+    "live-scenarios:swarm-shared-pool": "bun run pretest:devnet && tsx --test --test-concurrency=1 live-scenarios/19-swarm-shared-pool.live.test.ts",
+    "live-scenarios:fee-vault-accrual": "bun run pretest:devnet && tsx --test --test-concurrency=1 live-scenarios/20-fee-vault-accrual.live.test.ts",
     "live-scenarios:usdc-policy-transfer": "bun run live-scenarios:policy-transfer",
     "devnet:budget-envelopes-and-groups": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/budget/envelopes-and-groups.devnet.test.ts",
     "devnet:chain-profiles": "bun run pretest:devnet && tsx --test --test-concurrency=1 devnet/chain-profiles/profiles.devnet.test.ts",

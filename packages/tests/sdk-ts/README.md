@@ -61,6 +61,8 @@ AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:approval-receipts
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:scheduled-intents
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:conditional-triggers
 AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:guardian-quorum
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:swarm-shared-pool
+AURA_LIVE_SCENARIOS_TEST=1 bun run live-scenarios:fee-vault-accrual
 ```
 
 Focused live-devnet commands:
