@@ -1,10 +1,10 @@
 # AURA Web
 
-Next.js dashboard for the AURA stack.
+Next.js dashboard for AURA's treasury control plane.
 
 ## Purpose
 
-This package is the browser-facing operator UI. It handles:
+This package is the browser-facing operator UI for agent treasuries. It handles:
 
 - wallet connection
 - treasury discovery and detail pages

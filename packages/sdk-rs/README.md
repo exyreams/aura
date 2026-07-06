@@ -5,9 +5,13 @@
 **Docs:** https://docs-auraprotocol.vercel.app/docs/sdk-rs
 
 > [!WARNING]
-> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
+> AURA is under active development. Program instructions, account layouts,
+> policy semantics, SDK APIs, and deployment behavior may still change. Do not
+> use it to custody production funds until a stable release and audit are
+> published.
 
-Rust SDK for the AURA autonomous treasury program on Solana.
+Rust SDK for AURA, the Solana-native execution-control layer for agentic
+finance.
 
 Wraps the deployed `aura-core` instruction and account types with a typed
 client, automatic PDA derivation, and account deserialization — built directly

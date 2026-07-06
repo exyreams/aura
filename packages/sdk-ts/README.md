@@ -2,7 +2,8 @@
 
 # @aura-protocol/sdk-ts
 
-TypeScript SDK for the AURA autonomous treasury program on Solana.
+TypeScript SDK for AURA, the Solana-native execution-control layer for
+agentic finance.
 
 The SDK is generated from the current Anchor IDL and organized as a production-shaped protocol SDK:
 
@@ -13,7 +14,9 @@ The SDK is generated from the current Anchor IDL and organized as a production-s
 - generated error and event utilities
 - runtime instruction metadata for required/optional accounts
 
-> Program status: AURA currently targets devnet/pre-audit deployments. The SDK is typed and complete for the current IDL, but do not use devnet examples to secure production funds before a stable audited release.
+> Program status: AURA currently targets devnet/pre-audit deployments. The SDK
+> is typed and complete for the current IDL, but do not use devnet examples to
+> custody production funds before a stable audited release.
 
 ## Install
 
@@ -118,28 +121,38 @@ Current generated surface:
 - 140 program errors
 - 4 events
 
-`npm test` verifies that every IDL instruction has a reachable domain builder.
+The SDK test workspace verifies that every IDL instruction has a reachable
+domain builder and devnet reference.
 
 ## Build & Test
 
 ```bash
 npm run build      # tsc -> dist/
-npm run typecheck  # type-check src + tests (incl. devnet) without emitting
-npm test           # tsx --test, offline unit suite (tests/unit)
-npm run test:devnet # integration suite (tests/devnet); skips without a payer
+npm run typecheck  # type-check src + generated surfaces without emitting
 npm run lint       # biome check (lint + format + import order)
 npm run format     # biome format --write
 ```
 
-Tests are organized under `tests/`:
+The SDK package is kept focused on generated source, type-checking, and
+publishing. Tests live in `packages/tests/sdk-ts`:
 
-- `tests/unit/` — offline, deterministic. Builds and verifies every IDL
+- `unit/` — offline, deterministic. Builds and verifies every IDL
   instruction through its generated builder, plus PDAs, account fetchers,
   errors, events, validation, constants, and the program-surface catalog.
-- `tests/devnet/` — real devnet integration per domain. Skips automatically
-  unless a funded payer keypair is found (see `tests/support/devnet.ts`).
-- `tests/support/` — shared helpers (offline client, IDL-driven sample
-  argument generator, devnet harness).
+- `devnet/` — real devnet integration per domain. Skips automatically unless a
+  funded payer keypair is found.
+- `live-scenarios/` — opt-in, token-moving devnet scenarios that exercise real
+  wallet, policy, and dWallet flows.
+- `support/` — shared helpers for offline clients, IDL-driven fixtures, devnet
+  harnesses, Ika clients, and live-token discovery.
+
+From `packages/tests/sdk-ts`:
+
+```bash
+bun run test
+bun run typecheck -- --pretty false
+bun run test:devnet:coverage
+```
 
 ## IDL & Codegen
 

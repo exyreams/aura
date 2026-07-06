@@ -1,6 +1,7 @@
 # AURA Documentation
 
-Production documentation for AURA packages, built with Next.js and Fumadocs.
+Documentation site for AURA's agent treasury control plane, built with Next.js
+and Fumadocs.
 
 **Live:** https://docs-auraprotocol.vercel.app
 
@@ -9,6 +10,7 @@ The docs cover:
 - TypeScript SDK (`@aura-protocol/sdk-ts`)
 - Rust SDK (`aura-sdk`)
 - CLI (`@aura-protocol/cli`)
+- agent treasury and policy-control flows
 - confidential scalar and vector FHE flows
 - dWallet execution and finalization
 - generic program-instruction builders

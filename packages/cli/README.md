@@ -5,9 +5,12 @@
 **Docs:** https://docs-auraprotocol.vercel.app/docs/cli
 
 > [!WARNING]
-> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
+> AURA is under active development. Program instructions, account layouts,
+> policy semantics, SDK APIs, and deployment behavior may still change. Do not
+> use it to custody production funds until a stable release and audit are
+> published.
 
-Terminal interface for the AURA autonomous treasury program on Solana.
+Terminal interface for AURA's Solana-native treasury control plane.
 
 Built on top of `@aura-protocol/sdk-ts` with full integration of the Ika Encrypt and dWallet
 gRPC networks — the CLI drives the complete confidential proposal lifecycle end-to-end,
@@ -346,7 +349,7 @@ aura execution finalize --agent-id my-agent
 
 ## Safety and security
 
-Every command that sends a transaction runs through one pipeline with guard rails:
+Every command that sends a transaction runs through one pipeline with guardrails:
 
 - **Preview** — before anything is sent, the CLI prints exactly what will be
   signed: network, program, fee payer, and each instruction's account/signer counts.

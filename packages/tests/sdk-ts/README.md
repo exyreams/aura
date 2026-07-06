@@ -6,9 +6,9 @@ so the suite exercises the **published package surface** (its `exports` map and
 built `dist/`) rather than internal source — catching packaging and export
 regressions the in-package unit suite can't see.
 
-The fast, offline unit suite (1400+ tests) stays in `packages/sdk-ts/tests/unit`
-and imports local source for instant iteration. This package is the slow,
-network-bound counterpart.
+The fast, offline unit suite (`unit/`) imports local SDK source for instant
+iteration. The `devnet/` and `live-scenarios/` suites are the slower,
+network-bound counterparts that exercise the packaged SDK surface.
 
 ## Running
 

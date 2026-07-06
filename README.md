@@ -2,86 +2,215 @@
 
 # AURA — Autonomous Universal Resource Agent
 
-**Encrypted guardrails for autonomous AI agent treasuries on Solana.**
+**Execution-control layer for agentic finance.**
+
+AURA is a Solana-native treasury control plane for autonomous agents. It lets an
+AI agent propose actions, checks those actions against programmable policy,
+escalates or blocks risky behavior, and executes approved actions through
+dWallets without giving the agent raw private-key control.
+
+In simpler terms: **AURA turns an AI agent from a bot with a wallet key into an
+operator inside a governed treasury system.**
 
 **Dashboard:** https://auraa-protocol.vercel.app  
 **Docs:** https://docs-auraprotocol.vercel.app  
 **Program (devnet):** `auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce`
 
 > [!WARNING]
-> AURA is under active development. Program instructions, account layouts, policy semantics, SDK APIs, and deployment behavior may still change. Do not use this code to secure production funds until a stable release and audit are published.
+> AURA is under active development. Program instructions, account layouts,
+> policy semantics, SDK APIs, and deployment behavior may still change. Do not
+> use it to custody production funds until a stable release and audit are
+> published.
 
 ---
 
-## What it does
+## What AURA Is
 
-AURA lets AI agents manage real crypto treasuries without exposing spending strategy on-chain and without trusting a centralized approval server.
+AURA is not a standalone guardrail contract or a wallet wrapper. It is an
+operating layer around autonomous capital movement:
 
-- **Confidential guardrails** — daily limits, per-transaction limits, and running spend counters are stored as FHE ciphertexts. Policy evaluation runs directly over the encrypted values via the Ika Encrypt network, producing only an encrypted violation code that is then decrypted.
-- **dWallet-backed execution** — approved proposals are co-signed through Ika dWallet records, enabling multi-chain execution (Ethereum, Bitcoin, Solana, Polygon, Arbitrum, Optimism) without handing the agent a raw private key.
-- **Policy engine** — `aura-policy` evaluates public rules locally (time windows, velocity, slippage, allowlists, exposure groups, approval ladders, scoped pauses, reputation scaling, swarm shared pools) and defers encrypted spend checks to Encrypt for confidential proposals.
-- **Governance and safety** — emergency multisig, guardian overrides, AI authority rotation, session keys, dangerous-config timelocks, scoped pauses, invariant reports, and audit/activity logs.
-- **Operational surface** — health scoring, snapshots, external liveness records, policy receipts/history/attestations, and agent swarms with shared spending pools.
-
----
-
-## Why FHE?
-
-Fully Homomorphic Encryption lets you compute over data without decrypting it. AURA uses this to evaluate questions like _"is this $400 transfer within the agent's daily limit?"_ without ever revealing what the daily limit is.
-
-The Ika Encrypt network maintains the FHE keys. When the agent proposes a transaction, a compiled FHE circuit runs on-chain over ciphertexts — the daily limit, the per-transaction limit, and the running spent-today counter — and outputs an encrypted violation code. The network decrypts only that result (0 = approved, 1 = per-tx limit hit, 2 = daily limit hit). The actual limit values are never exposed.
-
-This means a competing agent scanning the chain learns nothing useful, a compromised validator cannot extract your strategy, and the agent itself cannot circumvent the limits because the evaluation is cryptographically enforced.
-
----
-
-## The Problem
-
-AI agents can already reason about trades, treasury movement, and operational tasks — but most wallet systems still treat them like ordinary hot-wallet users. That creates a set of hard problems that get worse as agents become more capable:
-
-| Problem                             | Why it matters                                                                                                                                                                                                                                       |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Direct key access**               | A prompt injection, model bug, or compromised runtime can drain the treasury in a single transaction. The agent and the attacker are indistinguishable once the key is exposed.                                                                      |
-| **Public spending policy**          | On-chain limits are readable by anyone. Competitors, MEV searchers, and attackers can inspect your caps, infer strategy, time their moves around known thresholds, and route around controls entirely.                                               |
-| **Centralized approval middleware** | Routing every agent action through an off-chain approval server reintroduces a single point of failure, kills true autonomy, and shifts trust to whoever operates the server.                                                                        |
-| **No programmable policy**          | Most treasury setups offer binary access — the agent can either sign or it can't. There is no native way to express per-chain limits, time windows, velocity caps, counterparty risk, or escalation ladders without building custom off-chain logic. |
-| **Multi-chain key sprawl**          | Supporting Ethereum, Bitcoin, Solana, and other chains typically means managing separate keys per chain, multiplying the attack surface and operational complexity.                                                                                  |
-| **No audit trail**                  | When an autonomous agent acts, there is often no cryptographically verifiable record of what policy was active, what was checked, and why a transaction was approved or denied.                                                                      |
-| **Guardrail reconfiguration risk**  | Changing spending limits or policy parameters on a live treasury is a high-risk operation with no native timelock or guardian review — a single compromised admin can silently raise limits.                                                         |
-
----
-
-## Architecture
-
+```text
+agent intent
+  -> policy decision
+  -> optional approval / guardian escalation
+  -> dWallet approval
+  -> signed execution
+  -> settlement / accounting / audit trail
 ```
+
+The core object is an **agent treasury**: a Solana account system that stores
+policy, dWallet registrations, AI/operator permissions, pending proposals,
+governance controls, recovery paths, receipts, logs, and risk state.
+
+Agents can propose actions, but AURA decides whether those actions are allowed
+before a signature is produced.
+
+---
+
+## Why It Exists
+
+Autonomous agents can already reason about trading, payments, payroll, treasury
+management, and operations. The weak point is execution.
+
+Most systems still force a bad tradeoff: give the agent direct key access, or
+put a centralized approval server in the middle. AURA is designed for the space
+between those extremes.
+
+| Problem | What breaks without AURA |
+| --- | --- |
+| **Direct key access** | A prompt injection, model bug, or compromised runtime can drain funds because the agent and attacker are indistinguishable once the key is exposed. |
+| **Public spending policy** | On-chain caps reveal strategy. Competitors, searchers, and attackers can inspect limits, infer behavior, and route around known thresholds. |
+| **Centralized approval middleware** | Autonomy depends on trusted off-chain services, creating a single point of failure and an opaque enforcement layer. |
+| **No programmable policy** | Most wallets offer binary access. They cannot natively express per-chain limits, time windows, velocity caps, counterparty risk, or escalation ladders. |
+| **No approval escalation path** | Risky actions either pass or fail. There is no built-in path for guardian review, multisig override, timelock, or policy receipt capture. |
+| **Operator and session sprawl** | Short-lived operators, service keys, and agent roles become hard to scope, revoke, or audit across a live treasury. |
+| **Multi-chain key sprawl** | Supporting Ethereum, Bitcoin, Solana, and other chains usually means managing separate hot keys and operational policies per chain. |
+| **Settlement ambiguity** | After a cross-chain or chain-bound signature is produced, most systems lose track of broadcast, resubmission, confirmation, and accounting state. |
+| **No audit trail** | There is often no cryptographically verifiable record of what policy was active, what was checked, and why an action was approved or denied. |
+| **Weak recovery controls** | If an AI authority, operator, or owner path is compromised, recovery is usually ad hoc instead of encoded as emergency revoke, handover, or break-glass flow. |
+| **Guardrail reconfiguration risk** | A compromised admin can silently raise limits or loosen policy unless sensitive changes are timelocked, staged, or guardian-vetoed. |
+| **Multi-agent coordination risk** | Agent swarms and shared budgets can overspend or duplicate exposure unless shared pools, budget envelopes, and exposure groups are tracked together. |
+
+AURA takes a different path: keep the signing authority behind dWallets, keep
+the treasury policy on-chain, and make every agent action pass through an
+auditable policy state machine before execution.
+
+---
+
+## Core Capabilities
+
+### Agent Treasury Control
+
+AURA treasuries track the authority model for an autonomous operation:
+
+- owner and AI authority
+- dWallet registrations per chain
+- pending proposal queue
+- session keys and operator roles
+- guardians and multisig overrides
+- paused, decommissioning, recovery, and migration states
+
+The treasury is a controlled execution environment, not a bare wallet.
+
+### Programmable Policy Before Signature
+
+Agent actions are proposals. Policy can approve, deny, queue, require approval,
+or route to sidecar controls before a dWallet signature is requested.
+
+Current policy surface includes:
+
+- per-transaction, daily, hourly, velocity, and recipient limits
+- time windows and active schedule constraints
+- recipient, asset, protocol, and instruction allowlists
+- budget envelopes and exposure groups
+- approval ladders and policy receipts
+- scoped pauses and circuit breakers
+- scheduled intents and conditional triggers
+- external liveness checks
+- swarm shared-pool limits
+- canary policy versions and policy history
+
+### Confidential Guardrails
+
+AURA can evaluate sensitive limits through Ika Encrypt/FHE flows so the treasury
+does not need to publish every risk parameter on-chain.
+
+Public rules handle visible constraints. Confidential rules can keep spend caps
+and counters encrypted while revealing only the decision result needed to move
+the proposal forward.
+
+### dWallet-Backed Execution
+
+Approved proposals execute through Ika dWallets. The agent does not hold the raw
+signing key.
+
+This gives AURA a path to multi-chain execution while keeping the policy and
+governance layer anchored on Solana.
+
+### Governance, Recovery, and Operations
+
+AURA includes the controls needed to run agent treasuries over time:
+
+- emergency revoke and guardian paths
+- ownership handover and break-glass recovery
+- sensitive-configuration timelocks
+- activity logs, health scores, analytics, and snapshots
+- policy attestations, receipts, simulations, and invariant reports
+- protocol fees, fee schedules, and fee vault accounting
+
+---
+
+## How The Pieces Fit
+
+```text
 programs/
-  ├─ aura-core/      # Anchor program — treasury state machine, CPIs, instruction handlers
-  └─ aura-policy/    # Pure Rust policy engine — rules, FHE graphs, types (no Anchor dep)
+  aura-core/       Anchor program: treasury state machine, policy gates, CPIs
+  aura-policy/     Pure Rust policy engine shared by on-chain and off-chain code
+
 packages/
-  ├─ backend/        # Node HTTP service — confidential bridge, agent runtime, SIWS auth  →  [README](packages/backend/README.md)
-  ├─ sdk-rs/         # Rust SDK — account decoding, PDAs, instruction builders, sync RPC client  →  [README](packages/sdk-rs/README.md)
-  ├─ sdk-ts/         # TypeScript SDK — @aura-protocol/sdk-ts  →  [README](packages/sdk-ts/README.md)
-  ├─ cli/            # Terminal CLI — @aura-protocol/cli  →  [README](packages/cli/README.md)
-  ├─ web/            # Next.js dashboard — App Router, Tailwind v4, wallet adapters
-  └─ docs/           # Next.js + Fumadocs documentation site
-smoke/               # Live devnet smoke binaries (dwallet, confidential, policy)
+  sdk-ts/          TypeScript SDK and dWallet execution helpers
+  sdk-rs/          Rust SDK for account decoding, PDAs, and RPC clients
+  cli/             Terminal interface for treasury operations
+  backend/         HTTP service for agent/runtime integration
+  web/             Next.js dashboard
+  docs/            Documentation site
+
+packages/tests/
+  sdk-ts/          SDK unit, devnet, and opt-in live-scenario tests
+
+smoke/
+  aura-devnet/     Rust live-devnet smoke binaries for Ika/dWallet/program flows
 ```
 
-`aura-policy` has no Anchor dependency — it is consumed both by `aura-core` on-chain and by off-chain tooling for simulation and preview. SDKs wrap the deployed program IDL rather than redefining instructions by hand.
+`aura-policy` has no Anchor dependency. It is designed to be reused by the
+program, SDKs, simulations, and off-chain previews without duplicating policy
+logic.
 
 ---
 
-## Documentation
+## Proposal Lifecycle
 
-Full reference documentation lives at **https://docs-auraprotocol.vercel.app** and covers:
+### Public Policy Flow
 
-- [Overview & Architecture](https://docs-auraprotocol.vercel.app/docs/overview/architecture)
-- [Confidential Guardrails](https://docs-auraprotocol.vercel.app/docs/overview/confidential-guardrails)
-- [dWallet Execution](https://docs-auraprotocol.vercel.app/docs/overview/dwallet-execution)
-- [Policy Engine](https://docs-auraprotocol.vercel.app/docs/overview/policy-engine)
-- [TypeScript SDK](https://docs-auraprotocol.vercel.app/docs/sdk-ts)
-- [Rust SDK](https://docs-auraprotocol.vercel.app/docs/sdk-rs)
-- [CLI Reference](https://docs-auraprotocol.vercel.app/docs/cli)
+```text
+propose_transaction
+  -> policy engine evaluates public rules
+  -> decision is recorded on the treasury
+  -> execute_pending requests dWallet approval
+  -> finalize_execution verifies the signature and advances state
+```
+
+### Confidential Policy Flow
+
+```text
+propose_confidential_transaction
+  -> public pre-checks run first
+  -> encrypted guardrail graph is submitted through Encrypt CPI
+  -> policy result is decrypted
+  -> decision is confirmed on-chain
+  -> approved proposals continue into dWallet execution
+```
+
+### Chain-Bound Settlement Flow
+
+Some proposals produce a dWallet signature for another execution domain. AURA can
+hold those proposals in a signed state, then mark broadcast, resubmit, or confirm
+settlement once the target-chain lifecycle is known.
+
+---
+
+## Repository Status
+
+This repo is currently a devnet-oriented protocol workspace:
+
+- Anchor program deployed on Solana devnet
+- TypeScript SDK with generated instruction/account helpers
+- Rust SDK and Rust smoke clients
+- Ika Encrypt and Ika dWallet integrations
+- opt-in live scenarios that can move devnet test tokens
+
+The codebase is intentionally broad because AURA is an operating surface for
+autonomous treasuries, not a single guardrail primitive.
 
 ---
 
@@ -89,25 +218,19 @@ Full reference documentation lives at **https://docs-auraprotocol.vercel.app** a
 
 ### Prerequisites
 
-- Rust + Cargo (`rustup`)
-- Anchor CLI `1.0.0` and Solana CLI `3.1.13`
-- Node `>=20` (backend, SDK) / `>=22` (CLI)
+- Rust + Cargo
+- Anchor CLI `1.0.0`
+- Solana CLI `3.1.13`
+- Node `>=20` for SDK/backend/docs/web
+- Node `>=22` for the CLI package
+- Bun for the SDK test workspace
 - A funded devnet wallet at `~/.config/solana/id.json`
 
 ### Programs
 
 ```bash
-# Build and test the on-chain programs
 anchor build
 cargo test --workspace
-```
-
-### Backend
-
-```bash
-cd packages/backend
-npm install
-npm run dev          # tsx watch — auto-syncs gRPC vendor on start
 ```
 
 ### TypeScript SDK
@@ -116,7 +239,33 @@ npm run dev          # tsx watch — auto-syncs gRPC vendor on start
 cd packages/sdk-ts
 npm install
 npm run build
-npm test             # 120 unit tests, no network required
+```
+
+### SDK Test Workspace
+
+```bash
+cd packages/tests/sdk-ts
+bun install
+bun run test
+bun run test:devnet:coverage
+```
+
+Devnet and live-scenario tests are intentionally focused per file/script to
+avoid public RPC rate limits. Live scenarios are opt-in and should be run only
+when you intend to spend devnet test funds:
+
+```bash
+export AURA_LIVE_SCENARIOS_TEST=1
+bun run live-scenarios:discover
+bun run live-scenarios:policy-transfer
+```
+
+### Backend
+
+```bash
+cd packages/backend
+npm install
+npm run dev
 ```
 
 ### CLI
@@ -125,11 +274,9 @@ npm test             # 120 unit tests, no network required
 cd packages/cli
 npm install
 npm run build
-npm link             # makes `aura` available globally
+npm link
 
 aura config init
-aura treasury create --agent-id my-agent --daily-limit 10000 --per-tx-limit 1000
-aura dashboard --agent-id my-agent
 ```
 
 ### Web
@@ -137,7 +284,7 @@ aura dashboard --agent-id my-agent
 ```bash
 cd packages/web
 npm install
-npm run dev          # http://localhost:3000
+npm run dev
 ```
 
 ### Docs
@@ -145,65 +292,52 @@ npm run dev          # http://localhost:3000
 ```bash
 cd packages/docs
 npm install
-npm run dev          # http://localhost:3001
+npm run dev
 ```
 
 ---
 
-## Proposal Lifecycle
+## Live Devnet Smoke Tests
 
-### Public mode
+The Rust smoke workspace drives real devnet transactions against the deployed
+AURA program and the Ika devnet services.
 
-```
-propose_transaction
-  → policy engine runs synchronously
-  → decision recorded on-chain
-  → execute_pending  (approve_message CPI → dWallet)
-  → finalize_execution  (verify signature → advance state)
-```
-
-### Confidential scalar mode
-
-```
-propose_confidential_transaction
-  → public pre-check (time window, slippage, velocity, …)
-  → FHE graph submitted to Encrypt via CPI
-  → request_policy_decryption  (Encrypt network decrypts violation code)
-  → confirm_policy_decryption  (verify result, apply decision)
-  → execute_pending → finalize_execution
-```
-
-### Confidential vector mode
-
-Same as scalar, but the guardrail ciphertext is a single `EUint64Vector`. After each approved transaction the output ciphertext is promoted to become the new guardrail vector, rotating the encrypted state forward automatically.
-
----
-
-## Smoke Tests (Live Devnet)
-
-The `smoke/aura-devnet/` directory contains three live devnet binaries. They require a funded devnet wallet and network access to the Ika gRPC endpoints.
+Use a private RPC endpoint when possible:
 
 ```bash
-# Optional: set a custom RPC to avoid rate limits
 export AURA_DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
-
 cd smoke/aura-devnet
+```
 
-# dWallet integration — create_treasury → register_dwallet → propose → execute → finalize
+Focused binaries:
+
+```bash
 cargo run --bin dwallet
-
-# Confidential FHE flow — configure_guardrails → propose → request_decryption → confirm
 cargo run --bin confidential
-
-# Policy matrix — 12 live scenarios across limits, lifecycle, governance, swarms, and reputation
+cargo run --bin confidential_lifecycle
+cargo run --bin confidential_batch
 cargo run --bin policy
+cargo run --bin admin
+cargo run --bin wallet
+cargo run --bin hardening
+cargo run --bin oracle_multichain
+cargo run --bin recovery
+cargo run --bin trust_identity
+cargo run --bin versioning_monetization
+cargo run --bin monetization
+```
+
+For a compile-only gate:
+
+```bash
+cargo check --bins
 ```
 
 ---
 
 ## Deployed Programs
 
-```
+```text
 aura-core (devnet)
   Program ID:  auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
   IDL:         Eior2CvitsWmDH9vJ6VPCxTW169UaM2sw9dupCLNdoQT
@@ -221,16 +355,16 @@ Ika dWallet (pre-alpha devnet)
 
 ## Toolchain
 
-| Tool                 | Version              |
-| -------------------- | -------------------- |
-| Anchor               | `1.0.0`              |
-| Solana CLI           | `3.1.13`             |
-| Rust edition         | `2021`, resolver `2` |
-| TypeScript           | `6.0.3`              |
-| Node (backend / SDK) | `>=20`               |
-| Node (CLI)           | `>=22`               |
+| Tool         | Version                                         |
+| ------------ | ----------------------------------------------- |
+| Anchor       | `1.0.0`                                         |
+| Solana CLI   | `3.1.13`                                        |
+| Rust edition | `2021`, resolver `2`                            |
+| TypeScript   | `6.0.3`                                         |
+| Node         | `>=20` for SDK/backend/docs/web, `>=22` for CLI |
 
-All Rust crates enforce `#![forbid(unsafe_code)]`. Release builds use `overflow-checks = true`.
+All Rust crates enforce `#![forbid(unsafe_code)]`. Release builds use
+`overflow-checks = true`.
 
 ---
 
