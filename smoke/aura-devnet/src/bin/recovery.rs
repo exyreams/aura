@@ -135,18 +135,17 @@ fn emergency_shutdown(
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+const ETH: u8 = 1;
+const RECOVERY_ADDR: &str = "0xCO1D000000000000000000000000000000000001";
+const REDIRECT_ADDR: &str = "0xEEEE000000000000000000000000000000000002";
+
+pub fn run_core() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
     let seed = now_unix();
     println!("Payer:   {owner}");
     println!("Program: {ID}");
-
-    const ETH: u8 = 1;
-    const RECOVERY_ADDR: &str = "0xCO1D000000000000000000000000000000000001";
-    const REDIRECT_ADDR: &str = "0xEEEE000000000000000000000000000000000002";
 
     // [1] register_recovery_destination
 
@@ -275,7 +274,17 @@ async fn main() -> anyhow::Result<()> {
         pending.proposal_id, pending.recipient_or_contract
     );
 
-    // [6] break_glass_transfer_authority
+    println!("\ncustody recovery core smoke checks passed on devnet.");
+    Ok(())
+}
+
+pub async fn run_breakglass_authority() -> anyhow::Result<()> {
+    let payer = load_payer()?;
+    let owner = payer.pubkey();
+    let rpc = devnet_rpc();
+    let seed = now_unix();
+    println!("Payer:   {owner}");
+    println!("Program: {ID}");
 
     println!("\n[6] break_glass_transfer_authority — live dWallet CPI transfer");
     let treasury2 = create_active_treasury(&rpc, &payer, "rec-transfer", seed + 100)?;
@@ -316,6 +325,18 @@ async fn main() -> anyhow::Result<()> {
     println!("  tx: {sig}");
     println!("  ok live dWallet authority transferred to {new_authority}");
 
+    println!("\nbreak-glass dWallet authority smoke checks passed on devnet.");
+    Ok(())
+}
+
+pub async fn run_all() -> anyhow::Result<()> {
+    run_core()?;
+    run_breakglass_authority().await?;
     println!("\ncustody recovery smoke checks passed on devnet.");
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    run_all().await
 }

@@ -142,8 +142,206 @@ fn fetch_treasury(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TreasuryAcco
     Ok(TreasuryAccount::try_deserialize(&mut info.data.as_slice())?)
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn run_fee_accrual_flow(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    owner: Pubkey,
+    seed: i64,
+) -> anyhow::Result<()> {
+    println!("\n[live accrual] finalize_execution accrues scheduled fees");
+    let mut dwallet_client = connect_dwallet_client().await?;
+    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
+    let live = provision_dwallet(rpc, payer, &mut dwallet_client, &dwallet_program).await?;
+    transfer_dwallet_authority(rpc, payer, &dwallet_program, &live.dwallet_pda)?;
+
+    let accrual_treasury = create_active_treasury(rpc, payer, "mon-accrue", seed + 20)?;
+    send_tx(
+        rpc,
+        payer,
+        vec![register_dwallet_ix(
+            payer,
+            accrual_treasury,
+            &live,
+            seed + 21,
+        )],
+        &[],
+    )?;
+
+    let accrual_schedule = pda(&[FEE_SCHEDULE_SEED, accrual_treasury.as_ref()], &ID).0;
+    let accrual_vault = pda(&[FEE_VAULT_SEED, accrual_treasury.as_ref()], &ID).0;
+    let amount_usd = 100u64;
+    let prepaid_amount = 10_000u64;
+    send_tx(
+        rpc,
+        payer,
+        vec![
+            ix(
+                accounts::InitFeeVault {
+                    owner,
+                    treasury: accrual_treasury,
+                    fee_vault: accrual_vault,
+                    system_program: SYSTEM_PROGRAM_ID,
+                }
+                .to_account_metas(None),
+                instruction::InitFeeVault {
+                    protocol_fee_recipient: owner,
+                    now: seed + 22,
+                }
+                .data(),
+            ),
+            ix(
+                accounts::InitFeeSchedule {
+                    owner,
+                    treasury: accrual_treasury,
+                    fee_schedule: accrual_schedule,
+                    protocol_config: None,
+                    system_program: SYSTEM_PROGRAM_ID,
+                }
+                .to_account_metas(None),
+                instruction::InitFeeSchedule {
+                    schedule: base_schedule(10_000),
+                    now: seed + 22,
+                }
+                .data(),
+            ),
+        ],
+        &[],
+    )?;
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::ManageFeeVault {
+                owner,
+                treasury: accrual_treasury,
+                fee_vault: accrual_vault,
+                system_program: SYSTEM_PROGRAM_ID,
+            }
+            .to_account_metas(None),
+            instruction::DepositFees {
+                amount: prepaid_amount,
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::ProposeTransaction {
+                ai_authority: owner,
+                treasury: accrual_treasury,
+                session_key_account: None,
+                swarm_pool: None,
+                address_list: None,
+                compliance_oracle: None,
+                parent_treasury: None,
+                budget_envelope: None,
+                exposure_group: None,
+                dwallet_state: None,
+                chain_profile: None,
+                trust_identity: None,
+                policy_canary: None,
+            }
+            .to_account_metas(None),
+            instruction::ProposeTransaction {
+                args: ProposeTransactionArgs {
+                    amount_usd,
+                    target_chain: 2,
+                    tx_type: 0,
+                    protocol_id: None,
+                    current_timestamp: seed + 23,
+                    expected_output_usd: Some(amount_usd),
+                    actual_output_usd: Some(amount_usd),
+                    quote_age_secs: Some(30),
+                    counterparty_risk_score: Some(10),
+                    recipient_or_contract: owner.to_string(),
+                    sanctions_proof: Vec::new(),
+                    asset_id: None,
+                    native_amount: None,
+                    decimals: None,
+                    gas_native_amount: None,
+                    gas_asset_id: None,
+                    evm_chain_id: None,
+                    replay_nonce: None,
+                    gas_limit: None,
+                    max_fee_native: None,
+                    native_message_hash: None,
+                    calldata_hash: None,
+                    utxo_set_hash: None,
+                    sighash_type: None,
+                    solana_recent_blockhash: None,
+                    solana_message_hash: None,
+                    confirmations_required: None,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    anyhow::ensure!(
+        fetch_treasury(rpc, &accrual_treasury)?
+            .pending_queue
+            .first()
+            .map(|pending| pending.decision.approved)
+            .unwrap_or(false),
+        "fee-accrual proposal was not approved"
+    );
+
+    finalize_via_dwallet_with_sidecars(
+        rpc,
+        payer,
+        &mut dwallet_client,
+        accrual_treasury,
+        &dwallet_program,
+        &live,
+        seed + 24,
+        FinalizeSidecars {
+            fee_vault: Some(accrual_vault),
+            fee_schedule: Some(accrual_schedule),
+            ..FinalizeSidecars::default()
+        },
+    )
+    .await?;
+    let vault = fetch_vault(rpc, &accrual_vault)?;
+    anyhow::ensure!(
+        vault.accumulated_fees_lamports == amount_usd,
+        "expected {amount_usd} accrued fees, got {}",
+        vault.accumulated_fees_lamports
+    );
+    anyhow::ensure!(
+        vault.fee_balance == prepaid_amount - amount_usd,
+        "prepaid balance not debited by accrued fee"
+    );
+    println!("  ok finalize accrued {amount_usd} from prepaid fee balance");
+
+    send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::CollectFees {
+                protocol_authority: owner,
+                fee_vault: accrual_vault,
+                recipient: owner,
+            }
+            .to_account_metas(None),
+            instruction::CollectFees { now: seed + 25 }.data(),
+        )],
+        &[],
+    )?;
+    let vault = fetch_vault(rpc, &accrual_vault)?;
+    anyhow::ensure!(
+        vault.accumulated_fees_lamports == 0,
+        "collect_fees did not clear accrued bucket"
+    );
+    anyhow::ensure!(vault.fee_count == 1, "collect_fees did not increment count");
+    println!("  ok collect_fees swept accrued bucket");
+    Ok(())
+}
+
+async fn run_monetization(include_live_accrual: bool) -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
@@ -445,200 +643,43 @@ async fn main() -> anyhow::Result<()> {
     );
     println!("  ok org profile applied policy + billing in one call");
 
-    // [5] execute-time accrual through a live dWallet finalization
-    println!("\n[live accrual] finalize_execution accrues scheduled fees");
-    let mut dwallet_client = connect_dwallet_client().await?;
-    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
-    let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
-    transfer_dwallet_authority(&rpc, &payer, &dwallet_program, &live.dwallet_pda)?;
+    if include_live_accrual {
+        run_fee_accrual_flow(&rpc, &payer, owner, seed).await?;
+    }
 
-    let accrual_treasury = create_active_treasury(&rpc, &payer, "mon-accrue", seed + 20)?;
-    send_tx(
-        &rpc,
-        &payer,
-        vec![register_dwallet_ix(
-            &payer,
-            accrual_treasury,
-            &live,
-            seed + 21,
-        )],
-        &[],
-    )?;
-
-    let accrual_schedule = pda(&[FEE_SCHEDULE_SEED, accrual_treasury.as_ref()], &ID).0;
-    let accrual_vault = pda(&[FEE_VAULT_SEED, accrual_treasury.as_ref()], &ID).0;
-    let amount_usd = 100u64;
-    let prepaid_amount = 10_000u64;
-    send_tx(
-        &rpc,
-        &payer,
-        vec![
-            ix(
-                accounts::InitFeeVault {
-                    owner,
-                    treasury: accrual_treasury,
-                    fee_vault: accrual_vault,
-                    system_program: SYSTEM_PROGRAM_ID,
-                }
-                .to_account_metas(None),
-                instruction::InitFeeVault {
-                    protocol_fee_recipient: owner,
-                    now: seed + 22,
-                }
-                .data(),
-            ),
-            ix(
-                accounts::InitFeeSchedule {
-                    owner,
-                    treasury: accrual_treasury,
-                    fee_schedule: accrual_schedule,
-                    protocol_config: None,
-                    system_program: SYSTEM_PROGRAM_ID,
-                }
-                .to_account_metas(None),
-                instruction::InitFeeSchedule {
-                    schedule: base_schedule(10_000),
-                    now: seed + 22,
-                }
-                .data(),
-            ),
-        ],
-        &[],
-    )?;
-    send_tx(
-        &rpc,
-        &payer,
-        vec![ix(
-            accounts::ManageFeeVault {
-                owner,
-                treasury: accrual_treasury,
-                fee_vault: accrual_vault,
-                system_program: SYSTEM_PROGRAM_ID,
-            }
-            .to_account_metas(None),
-            instruction::DepositFees {
-                amount: prepaid_amount,
-            }
-            .data(),
-        )],
-        &[],
-    )?;
-
-    send_tx(
-        &rpc,
-        &payer,
-        vec![ix(
-            accounts::ProposeTransaction {
-                ai_authority: owner,
-                treasury: accrual_treasury,
-                session_key_account: None,
-                swarm_pool: None,
-                address_list: None,
-                compliance_oracle: None,
-                parent_treasury: None,
-                budget_envelope: None,
-                exposure_group: None,
-                dwallet_state: None,
-                chain_profile: None,
-                trust_identity: None,
-                policy_canary: None,
-            }
-            .to_account_metas(None),
-            instruction::ProposeTransaction {
-                args: ProposeTransactionArgs {
-                    amount_usd,
-                    target_chain: 2,
-                    tx_type: 0,
-                    protocol_id: None,
-                    current_timestamp: seed + 23,
-                    expected_output_usd: Some(amount_usd),
-                    actual_output_usd: Some(amount_usd),
-                    quote_age_secs: Some(30),
-                    counterparty_risk_score: Some(10),
-                    recipient_or_contract: owner.to_string(),
-                    sanctions_proof: Vec::new(),
-                    asset_id: None,
-                    native_amount: None,
-                    decimals: None,
-                    gas_native_amount: None,
-                    gas_asset_id: None,
-                    evm_chain_id: None,
-                    replay_nonce: None,
-                    gas_limit: None,
-                    max_fee_native: None,
-                    native_message_hash: None,
-                    calldata_hash: None,
-                    utxo_set_hash: None,
-                    sighash_type: None,
-                    solana_recent_blockhash: None,
-                    solana_message_hash: None,
-                    confirmations_required: None,
-                },
-            }
-            .data(),
-        )],
-        &[],
-    )?;
-    anyhow::ensure!(
-        fetch_treasury(&rpc, &accrual_treasury)?
-            .pending_queue
-            .first()
-            .map(|pending| pending.decision.approved)
-            .unwrap_or(false),
-        "fee-accrual proposal was not approved"
-    );
-
-    finalize_via_dwallet_with_sidecars(
-        &rpc,
-        &payer,
-        &mut dwallet_client,
-        accrual_treasury,
-        &dwallet_program,
-        &live,
-        seed + 24,
-        FinalizeSidecars {
-            fee_vault: Some(accrual_vault),
-            fee_schedule: Some(accrual_schedule),
-            ..FinalizeSidecars::default()
-        },
-    )
-    .await?;
-    let vault = fetch_vault(&rpc, &accrual_vault)?;
-    anyhow::ensure!(
-        vault.accumulated_fees_lamports == amount_usd,
-        "expected {amount_usd} accrued fees, got {}",
-        vault.accumulated_fees_lamports
-    );
-    anyhow::ensure!(
-        vault.fee_balance == prepaid_amount - amount_usd,
-        "prepaid balance not debited by accrued fee"
-    );
-    println!("  ok finalize accrued {amount_usd} from prepaid fee balance");
-
-    send_tx(
-        &rpc,
-        &payer,
-        vec![ix(
-            accounts::CollectFees {
-                protocol_authority: owner,
-                fee_vault: accrual_vault,
-                recipient: owner,
-            }
-            .to_account_metas(None),
-            instruction::CollectFees { now: seed + 25 }.data(),
-        )],
-        &[],
-    )?;
-    let vault = fetch_vault(&rpc, &accrual_vault)?;
-    anyhow::ensure!(
-        vault.accumulated_fees_lamports == 0,
-        "collect_fees did not clear accrued bucket"
-    );
-    anyhow::ensure!(vault.fee_count == 1, "collect_fees did not increment count");
-    println!("  ok collect_fees swept accrued bucket");
-
-    println!(
-        "\nfee models + accrual + billing template + org profile smoke checks passed on devnet."
-    );
+    if include_live_accrual {
+        println!(
+            "\nfee models + accrual + billing template + org profile smoke checks passed on devnet."
+        );
+    } else {
+        println!("\nfee models + billing template + org profile smoke checks passed on devnet.");
+    }
     Ok(())
+}
+
+pub async fn run_core() -> anyhow::Result<()> {
+    run_monetization(false).await
+}
+
+pub async fn run_fee_accrual_live() -> anyhow::Result<()> {
+    let payer = load_payer()?;
+    let owner = payer.pubkey();
+    let rpc = devnet_rpc();
+    let seed = now_unix();
+    println!("Payer:   {owner}");
+    println!("Program: {ID}");
+
+    run_fee_accrual_flow(&rpc, &payer, owner, seed).await?;
+
+    println!("\nfee accrual live smoke checks passed on devnet.");
+    Ok(())
+}
+
+pub async fn run_all() -> anyhow::Result<()> {
+    run_monetization(true).await
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    run_all().await
 }

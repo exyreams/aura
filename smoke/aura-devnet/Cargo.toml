@@ -35,12 +35,36 @@ name = "oracle_multichain"
 path = "src/bin/oracle_multichain.rs"
 
 [[bin]]
+name = "oracle_multichain_core"
+path = "src/bin/oracle_multichain_core.rs"
+
+[[bin]]
+name = "settlement_lifecycle"
+path = "src/bin/settlement_lifecycle.rs"
+
+[[bin]]
 name = "recovery"
 path = "src/bin/recovery.rs"
 
 [[bin]]
+name = "recovery_core"
+path = "src/bin/recovery_core.rs"
+
+[[bin]]
+name = "recovery_breakglass_authority"
+path = "src/bin/recovery_breakglass_authority.rs"
+
+[[bin]]
 name = "trust_identity"
 path = "src/bin/trust_identity.rs"
+
+[[bin]]
+name = "trust_identity_core"
+path = "src/bin/trust_identity_core.rs"
+
+[[bin]]
+name = "ownership_handover_live"
+path = "src/bin/ownership_handover_live.rs"
 
 [[bin]]
 name = "versioning_monetization"
@@ -49,6 +73,14 @@ path = "src/bin/versioning_monetization.rs"
 [[bin]]
 name = "monetization"
 path = "src/bin/monetization.rs"
+
+[[bin]]
+name = "monetization_core"
+path = "src/bin/monetization_core.rs"
+
+[[bin]]
+name = "fee_accrual_live"
+path = "src/bin/fee_accrual_live.rs"
 
 [[bin]]
 name = "confidential_lifecycle"

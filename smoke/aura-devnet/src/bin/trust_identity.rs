@@ -124,8 +124,51 @@ fn fetch_treasury(rpc: &RpcClient, addr: &Pubkey) -> anyhow::Result<TreasuryAcco
     Ok(TreasuryAccount::try_deserialize(&mut info.data.as_slice())?)
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn execute_ownership_handover_live(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    owner: Pubkey,
+    treasury: Pubkey,
+    trust_identity: Pubkey,
+    now: i64,
+) -> anyhow::Result<()> {
+    println!("\n[ownership handover] execute_ownership_handover via live dWallet CPI");
+    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
+    let mut dwallet_client = connect_dwallet_client().await?;
+    let live = provision_dwallet(rpc, payer, &mut dwallet_client, &dwallet_program).await?;
+    transfer_dwallet_authority(rpc, payer, &dwallet_program, &live.dwallet_pda)?;
+    let (cpi_authority, _) = pda(&[DWALLET_CPI_AUTHORITY_SEED], &ID);
+    let sig = send_tx(
+        rpc,
+        payer,
+        vec![ix(
+            accounts::ExecuteOwnershipHandover {
+                caller: owner,
+                treasury,
+                trust_identity,
+                dwallet: live.dwallet_pda,
+                caller_program: ID,
+                cpi_authority,
+                dwallet_program,
+            }
+            .to_account_metas(None),
+            instruction::ExecuteOwnershipHandover {
+                args: ExecuteHandoverArgs {
+                    chain: 2,
+                    finalize: false,
+                    now,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  tx: {sig}");
+    println!("  ok live dWallet ownership handed over with finalize=false");
+    Ok(())
+}
+
+async fn run_trust_identity(include_live_handover: bool) -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
@@ -325,41 +368,18 @@ async fn main() -> anyhow::Result<()> {
         successor, OWNERSHIP_HANDOVER_TIMELOCK_SECS
     );
 
-    // [6] execute_ownership_handover transfers a fresh dWallet via CPI
-
-    println!("\n[ownership handover] execute_ownership_handover via live dWallet CPI");
-    let dwallet_program: Pubkey = aura_core::DWALLET_DEVNET_PROGRAM_ID.parse()?;
-    let mut dwallet_client = connect_dwallet_client().await?;
-    let live = provision_dwallet(&rpc, &payer, &mut dwallet_client, &dwallet_program).await?;
-    transfer_dwallet_authority(&rpc, &payer, &dwallet_program, &live.dwallet_pda)?;
-    let (cpi_authority, _) = pda(&[DWALLET_CPI_AUTHORITY_SEED], &ID);
-    let sig = send_tx(
-        &rpc,
-        &payer,
-        vec![ix(
-            accounts::ExecuteOwnershipHandover {
-                caller: owner,
-                treasury: treasury2,
-                trust_identity: trust_identity2,
-                dwallet: live.dwallet_pda,
-                caller_program: ID,
-                cpi_authority,
-                dwallet_program,
-            }
-            .to_account_metas(None),
-            instruction::ExecuteOwnershipHandover {
-                args: ExecuteHandoverArgs {
-                    chain: 2,
-                    finalize: false,
-                    now: seed + 104 + OWNERSHIP_HANDOVER_TIMELOCK_SECS,
-                },
-            }
-            .data(),
-        )],
-        &[],
-    )?;
-    println!("  tx: {sig}");
-    println!("  ok live dWallet ownership handed over with finalize=false");
+    // [6] execute_ownership_handover transfers a fresh dWallet via CPI.
+    if include_live_handover {
+        execute_ownership_handover_live(
+            &rpc,
+            &payer,
+            owner,
+            treasury2,
+            trust_identity2,
+            seed + 104 + OWNERSHIP_HANDOVER_TIMELOCK_SECS,
+        )
+        .await?;
+    }
 
     // [7] multi-party authorization: weighted multisig storage
 
@@ -587,4 +607,64 @@ async fn main() -> anyhow::Result<()> {
 
     println!("\ntrust envelope + agent identity + multiparty + capabilities smoke checks passed on devnet.");
     Ok(())
+}
+
+pub async fn run_core() -> anyhow::Result<()> {
+    run_trust_identity(false).await
+}
+
+pub async fn run_ownership_handover_live() -> anyhow::Result<()> {
+    let payer = load_payer()?;
+    let owner = payer.pubkey();
+    let rpc = devnet_rpc();
+    let seed = now_unix();
+    println!("Payer:   {owner}");
+    println!("Program: {ID}");
+
+    let treasury = create_active_treasury(&rpc, &payer, "ti-handover", seed)?;
+    let trust_identity = init_trust_identity(&rpc, &payer, treasury, seed + 1)?;
+    let successor = Keypair::new().pubkey();
+    let sig = send_tx(
+        &rpc,
+        &payer,
+        vec![ix(
+            accounts::OwnershipHandover {
+                caller: owner,
+                treasury,
+                trust_identity,
+            }
+            .to_account_metas(None),
+            instruction::NominateSuccessorOwner {
+                args: NominateSuccessorArgs {
+                    new_owner: successor,
+                    now: seed + 2,
+                },
+            }
+            .data(),
+        )],
+        &[],
+    )?;
+    println!("  nominate_successor_owner tx: {sig}");
+
+    execute_ownership_handover_live(
+        &rpc,
+        &payer,
+        owner,
+        treasury,
+        trust_identity,
+        seed + 2 + OWNERSHIP_HANDOVER_TIMELOCK_SECS,
+    )
+    .await?;
+
+    println!("\nownership handover live smoke checks passed on devnet.");
+    Ok(())
+}
+
+pub async fn run_all() -> anyhow::Result<()> {
+    run_trust_identity(true).await
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    run_all().await
 }

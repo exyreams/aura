@@ -775,8 +775,37 @@ async fn run_settlement_lifecycle(
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+pub fn run_core() -> anyhow::Result<()> {
+    let payer = load_payer()?;
+    let owner = payer.pubkey();
+    let rpc = devnet_rpc();
+    let seed = now_unix();
+    println!("Payer:   {owner}");
+    println!("Program: {ID}");
+
+    run_oracle_integration(&rpc, &payer, seed)?;
+    run_chain_profiles(&rpc, &payer, seed)?;
+    run_chain_binding_and_abandon(&rpc, &payer, seed)?;
+
+    println!("\noracle + multichain core smoke checks passed on devnet.");
+    Ok(())
+}
+
+pub async fn run_settlement_live() -> anyhow::Result<()> {
+    let payer = load_payer()?;
+    let owner = payer.pubkey();
+    let rpc = devnet_rpc();
+    let seed = now_unix();
+    println!("Payer:   {owner}");
+    println!("Program: {ID}");
+
+    run_settlement_lifecycle(&rpc, &payer, seed).await?;
+
+    println!("\nsettlement lifecycle smoke checks passed on devnet.");
+    Ok(())
+}
+
+pub async fn run_all() -> anyhow::Result<()> {
     let payer = load_payer()?;
     let owner = payer.pubkey();
     let rpc = devnet_rpc();
@@ -791,4 +820,9 @@ async fn main() -> anyhow::Result<()> {
 
     println!("\noracle + multichain smoke checks passed on devnet.");
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    run_all().await
 }
