@@ -90,6 +90,54 @@ path = "src/bin/confidential_lifecycle.rs"
 name = "confidential_batch"
 path = "src/bin/confidential_batch.rs"
 
+[[bin]]
+name = "address_list_enforcement"
+path = "src/bin/address_list_enforcement.rs"
+
+[[bin]]
+name = "session_key_quota"
+path = "src/bin/session_key_quota.rs"
+
+[[bin]]
+name = "operator_role_scoped_pause"
+path = "src/bin/operator_role_scoped_pause.rs"
+
+[[bin]]
+name = "approval_ladder_receipts"
+path = "src/bin/approval_ladder_receipts.rs"
+
+[[bin]]
+name = "budget_exposure_enforcement"
+path = "src/bin/budget_exposure_enforcement.rs"
+
+[[bin]]
+name = "health_snapshot_liveness"
+path = "src/bin/health_snapshot_liveness.rs"
+
+[[bin]]
+name = "governance_timelocks"
+path = "src/bin/governance_timelocks.rs"
+
+[[bin]]
+name = "chain_profile_negative"
+path = "src/bin/chain_profile_negative.rs"
+
+[[bin]]
+name = "dwallet_negative_controls"
+path = "src/bin/dwallet_negative_controls.rs"
+
+[[bin]]
+name = "policy_templates_lifecycle"
+path = "src/bin/policy_templates_lifecycle.rs"
+
+[[bin]]
+name = "public_batch"
+path = "src/bin/public_batch.rs"
+
+[[bin]]
+name = "protocol_config_commit"
+path = "src/bin/protocol_config_commit.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"
