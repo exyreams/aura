@@ -383,7 +383,7 @@ import { parseAuraEvents } from "@aura-protocol/sdk-ts";
 const sig = await sendAndConfirm([proposeIx]);
 const tx = await connection.getTransaction(sig, { maxSupportedTransactionVersion: 0 });
 const events = parseAuraEvents(client, tx?.meta?.logMessages ?? []);
-for (const event of events) console.log(event.name, event.data);
+for (const event of events) console.log(event);
 ```
 
 ## Discover the surface at runtime

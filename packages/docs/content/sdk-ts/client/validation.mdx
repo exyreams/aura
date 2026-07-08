@@ -41,7 +41,7 @@ validateAgentId("agent-prod-1");          // non-empty, <= 64 bytes
 validateDwalletId("dwallet-eth-1");        // non-empty, <= 64 bytes
 validateAddress("0xabc...");               // non-empty, <= 128 bytes
 validateSwarmId("trading-swarm-1");        // non-empty, <= 64 bytes
-validateAmountUsd(new BN(1_000));          // > 0 (accepts number | bigint | BN)
+validateAmountUsd(1_000n);                 // > 0 (accepts number | bigint)
 validateMultisigThreshold(2, 3);           // 0 < threshold <= guardianCount
 validateGuardians([g1, g2]);               // PublicKey[] — non-empty, <= 10
 validateSwarmMembers(["agent-a", "agent-b"]); // string[] — <= 16, each <= 64 bytes

@@ -16,12 +16,12 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 `@aura-protocol/sdk-ts` is the canonical TypeScript interface for AURA. It is
 generated from the on-chain `aura-core` Anchor IDL and is fully typed: every
-instruction, account, error, event, and PDA is derived from the program, so the
-SDK and the program can never drift.
+instruction, account, error, event, and PDA in the checked-in SDK surface is
+derived from the current program IDL.
 
 ## What it exposes
 
-- **`AuraClient`** — a thin RPC + Anchor wrapper (decode, derive, send).
+- **`AuraClient`** — a thin RPC + Anchor wrapper (program access, decode, send).
 - **`instructions.<domain>.<name>`** — typed builders for all **161**
   instructions, grouped into **13 domains**.
 - **`accounts.fetch*`** — typed fetchers for all **32** account types.
@@ -43,8 +43,9 @@ SDK and the program can never drift.
 npm install @aura-protocol/sdk-ts @solana/web3.js bn.js
 ```
 
-The package ships ESM with full `.d.ts` types and `@noble/hashes` as its only
-runtime dependency beyond Anchor.
+The package ships ESM with full `.d.ts` types. Runtime dependencies include
+Anchor, `@noble/hashes`, and `bs58`; `@solana/web3.js` and `bn.js` are peer
+dependencies.
 
 ## The core pattern
 

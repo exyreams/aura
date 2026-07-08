@@ -79,7 +79,19 @@ Seeds: `[<seed>, treasury, pubkey]`.
 | `deriveSessionKeyAddress(treasury, sessionKey)` | session key pubkey |
 | `deriveOperatorRoleAddress(treasury, operator)` | operator pubkey |
 | `derivePolicyCheckAddress(treasury, caller)` | caller pubkey |
-| `derivePolicyAttestationAddress(treasury, attester, policyVersion)` | attester + `u64` version |
+| `derivePolicyAttestationAddress(treasury, attester, policyVersion)` | attester + `u32` version |
+
+## Authority-scoped exposure groups
+
+Exposure groups are keyed by the authority and a fixed 16-byte group id. They
+are not derived from a treasury PDA.
+
+```typescript
+deriveExposureGroupAddress(authority: PublicKey, groupId: Uint8Array, programId?)
+```
+
+Seeds: `["exposure_group", authority, groupId]`. The SDK throws if `groupId`
+is not exactly 16 bytes.
 
 ## Owner-scoped templates
 

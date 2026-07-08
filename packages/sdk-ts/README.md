@@ -9,7 +9,7 @@ The SDK is generated from the current Anchor IDL and organized as a production-s
 
 - small `AuraClient` for RPC, Anchor program access, decoding, and transaction sending
 - domain instruction modules under `instructions.<domain>`
-- typed account fetchers under `accounts.<domain>`
+- typed account fetchers under the flat `accounts.fetch*` namespace
 - PDA derivation helpers
 - generated error and event utilities
 - runtime instruction metadata for required/optional accounts

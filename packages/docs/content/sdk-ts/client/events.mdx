@@ -19,7 +19,7 @@ and exposes their 8-byte discriminators for low-level matching.
 ## parseAuraEvents
 
 Decodes all AURA events from a list of program logs (e.g. from
-`getTransaction(...).meta.logMessages`).
+`getTransaction(...).meta.logMessages`) and returns the typed event payloads.
 
 ```typescript
 import { parseAuraEvents } from "@aura-protocol/sdk-ts";
@@ -30,7 +30,7 @@ const tx = await client.connection.getTransaction(signature, {
 const events = parseAuraEvents(client, tx?.meta?.logMessages ?? []);
 
 for (const event of events) {
-  console.log(event.name, event.data);
+  console.log(event);
 }
 ```
 

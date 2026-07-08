@@ -11,11 +11,12 @@ evaluates policy over the encrypted values through the Ika **Encrypt** network.
 Access it via `instructions.confidential.*`.
 
 <Callout type="warn" title="Requires the Ika Encrypt network">
-  Every instruction here except `disable`/`close` takes ciphertext accounts and
-  the Encrypt CPI accounts. Derive the AURA-side authority with
+  `proposeConfidentialTransaction` and `requestPolicyDecryption` take the
+  Encrypt CPI account bundle. Derive the AURA-side authority with
   `deriveEncryptCpiAuthorityAddress()` and the event authority with
-  `deriveEncryptEventAuthorityAddress(encryptProgramId)`. These flows are
-  covered by the Rust smoke tests in `smoke/aura-devnet/`.
+  `deriveEncryptEventAuthorityAddress(encryptProgramId)`. Init, configure,
+  update, rotate, reset, disable, and close operate on AURA/ciphertext accounts
+  without that full CPI bundle.
 </Callout>
 
 Examples assume:

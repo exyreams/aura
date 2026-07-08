@@ -92,7 +92,7 @@ Configures split recipients and the low-balance mode. Accounts: `owner` (s, w),
 ```typescript
 await instructions.fees.sendSetFeeSplits(client, owner, {
   accounts: { owner: owner.publicKey, treasury, feeVault, systemProgram: SystemProgram.programId },
-  args: { splits: [], low_balance_mode: 0 }, // FeeSplitRecord[]
+  args: { splits: [], lowBalanceMode: 0 }, // FeeSplitRecord[]
 });
 ```
 
