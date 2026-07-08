@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "recovery.rs"]
+#[path = "../../live/full/recovery.rs"]
 mod recovery;
 
 fn main() -> anyhow::Result<()> {

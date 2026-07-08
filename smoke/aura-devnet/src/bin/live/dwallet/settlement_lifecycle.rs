@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "oracle_multichain.rs"]
+#[path = "../full/oracle_multichain.rs"]
 mod oracle_multichain;
 
 #[tokio::main]

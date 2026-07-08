@@ -1,8 +1,8 @@
 #[allow(dead_code)]
-#[path = "monetization.rs"]
+#[path = "../full/monetization.rs"]
 mod monetization;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    monetization::run_core().await
+    monetization::run_fee_accrual_live().await
 }

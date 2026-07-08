@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "recovery.rs"]
+#[path = "../full/recovery.rs"]
 mod recovery;
 
 #[tokio::main]

@@ -8,171 +8,171 @@ license = "MIT"
 
 [[bin]]
 name = "dwallet"
-path = "src/bin/dwallet.rs"
+path = "src/bin/live/dwallet/dwallet.rs"
 
 [[bin]]
 name = "confidential"
-path = "src/bin/confidential.rs"
+path = "src/bin/live/confidential/confidential.rs"
 
 [[bin]]
 name = "policy"
-path = "src/bin/policy.rs"
+path = "src/bin/live/confidential/policy.rs"
 
 [[bin]]
 name = "admin"
-path = "src/bin/admin.rs"
+path = "src/bin/devnet/treasury/admin.rs"
 
 [[bin]]
 name = "wallet"
-path = "src/bin/wallet.rs"
+path = "src/bin/devnet/dwallet/wallet.rs"
 
 [[bin]]
 name = "hardening"
-path = "src/bin/hardening.rs"
+path = "src/bin/devnet/execution/hardening.rs"
 
 [[bin]]
 name = "oracle_multichain"
-path = "src/bin/oracle_multichain.rs"
+path = "src/bin/live/full/oracle_multichain.rs"
 
 [[bin]]
 name = "oracle_multichain_core"
-path = "src/bin/oracle_multichain_core.rs"
+path = "src/bin/devnet/chain_profiles/oracle_multichain_core.rs"
 
 [[bin]]
 name = "settlement_lifecycle"
-path = "src/bin/settlement_lifecycle.rs"
+path = "src/bin/live/dwallet/settlement_lifecycle.rs"
 
 [[bin]]
 name = "recovery"
-path = "src/bin/recovery.rs"
+path = "src/bin/live/full/recovery.rs"
 
 [[bin]]
 name = "recovery_core"
-path = "src/bin/recovery_core.rs"
+path = "src/bin/devnet/recovery/recovery_core.rs"
 
 [[bin]]
 name = "recovery_breakglass_authority"
-path = "src/bin/recovery_breakglass_authority.rs"
+path = "src/bin/live/dwallet/recovery_breakglass_authority.rs"
 
 [[bin]]
 name = "trust_identity"
-path = "src/bin/trust_identity.rs"
+path = "src/bin/live/full/trust_identity.rs"
 
 [[bin]]
 name = "trust_identity_core"
-path = "src/bin/trust_identity_core.rs"
+path = "src/bin/devnet/governance/trust_identity_core.rs"
 
 [[bin]]
 name = "ownership_handover_live"
-path = "src/bin/ownership_handover_live.rs"
+path = "src/bin/live/dwallet/ownership_handover_live.rs"
 
 [[bin]]
 name = "versioning_monetization"
-path = "src/bin/versioning_monetization.rs"
+path = "src/bin/devnet/governance/versioning_monetization.rs"
 
 [[bin]]
 name = "monetization"
-path = "src/bin/monetization.rs"
+path = "src/bin/live/full/monetization.rs"
 
 [[bin]]
 name = "monetization_core"
-path = "src/bin/monetization_core.rs"
+path = "src/bin/devnet/fees/monetization_core.rs"
 
 [[bin]]
 name = "fee_accrual_live"
-path = "src/bin/fee_accrual_live.rs"
+path = "src/bin/live/fees/fee_accrual_live.rs"
 
 [[bin]]
 name = "confidential_lifecycle"
-path = "src/bin/confidential_lifecycle.rs"
+path = "src/bin/devnet/confidential/confidential_lifecycle.rs"
 
 [[bin]]
 name = "confidential_batch"
-path = "src/bin/confidential_batch.rs"
+path = "src/bin/devnet/confidential/confidential_batch.rs"
 
 [[bin]]
 name = "address_list_enforcement"
-path = "src/bin/address_list_enforcement.rs"
+path = "src/bin/devnet/policy/address_list_enforcement.rs"
 
 [[bin]]
 name = "session_key_quota"
-path = "src/bin/session_key_quota.rs"
+path = "src/bin/devnet/execution/session_key_quota.rs"
 
 [[bin]]
 name = "operator_role_scoped_pause"
-path = "src/bin/operator_role_scoped_pause.rs"
+path = "src/bin/devnet/policy/operator_role_scoped_pause.rs"
 
 [[bin]]
 name = "approval_ladder_receipts"
-path = "src/bin/approval_ladder_receipts.rs"
+path = "src/bin/devnet/execution/approval_ladder_receipts.rs"
 
 [[bin]]
 name = "budget_exposure_enforcement"
-path = "src/bin/budget_exposure_enforcement.rs"
+path = "src/bin/devnet/policy/budget_exposure_enforcement.rs"
 
 [[bin]]
 name = "health_snapshot_liveness"
-path = "src/bin/health_snapshot_liveness.rs"
+path = "src/bin/devnet/execution/health_snapshot_liveness.rs"
 
 [[bin]]
 name = "governance_timelocks"
-path = "src/bin/governance_timelocks.rs"
+path = "src/bin/devnet/governance/governance_timelocks.rs"
 
 [[bin]]
 name = "chain_profile_negative"
-path = "src/bin/chain_profile_negative.rs"
+path = "src/bin/devnet/chain_profiles/chain_profile_negative.rs"
 
 [[bin]]
 name = "dwallet_negative_controls"
-path = "src/bin/dwallet_negative_controls.rs"
+path = "src/bin/devnet/dwallet/dwallet_negative_controls.rs"
 
 [[bin]]
 name = "policy_templates_lifecycle"
-path = "src/bin/policy_templates_lifecycle.rs"
+path = "src/bin/devnet/policy/policy_templates_lifecycle.rs"
 
 [[bin]]
 name = "public_batch"
-path = "src/bin/public_batch.rs"
+path = "src/bin/devnet/execution/public_batch.rs"
 
 [[bin]]
 name = "protocol_config_commit"
-path = "src/bin/protocol_config_commit.rs"
+path = "src/bin/devnet/governance/protocol_config_commit.rs"
 
 [[bin]]
 name = "live_wallet_discovery"
-path = "src/bin/live_wallet_discovery.rs"
+path = "src/bin/live/token/live_wallet_discovery.rs"
 
 [[bin]]
 name = "live_direct_transfer"
-path = "src/bin/live_direct_transfer.rs"
+path = "src/bin/live/token/live_direct_transfer.rs"
 
 [[bin]]
 name = "live_dwallet_funding"
-path = "src/bin/live_dwallet_funding.rs"
+path = "src/bin/live/token/live_dwallet_funding.rs"
 
 [[bin]]
 name = "live_policy_transfer"
-path = "src/bin/live_policy_transfer.rs"
+path = "src/bin/live/token/live_policy_transfer.rs"
 
 [[bin]]
 name = "live_payroll"
-path = "src/bin/live_payroll.rs"
+path = "src/bin/live/token/live_payroll.rs"
 
 [[bin]]
 name = "live_agent_swap"
-path = "src/bin/live_agent_swap.rs"
+path = "src/bin/live/token/live_agent_swap.rs"
 
 [[bin]]
 name = "live_velocity_after_settlement"
-path = "src/bin/live_velocity_after_settlement.rs"
+path = "src/bin/live/token/live_velocity_after_settlement.rs"
 
 [[bin]]
 name = "live_scheduled_transfer"
-path = "src/bin/live_scheduled_transfer.rs"
+path = "src/bin/live/token/live_scheduled_transfer.rs"
 
 [[bin]]
 name = "live_conditional_transfer"
-path = "src/bin/live_conditional_transfer.rs"
+path = "src/bin/live/token/live_conditional_transfer.rs"
 
 [dependencies]
 anyhow = "1"
