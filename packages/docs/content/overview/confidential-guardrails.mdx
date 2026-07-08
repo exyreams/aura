@@ -12,7 +12,7 @@ A naive treasury stores `daily_limit_usd = 10_000` in a public Solana account. A
 
 ## What Gets Encrypted
 
-Three scalar `EUint64` ciphertext accounts are attached to a treasury via `configure_confidential_guardrails`:
+The core confidential path attaches three scalar `EUint64` ciphertext accounts to a treasury via `configure_confidential_guardrails`:
 
 | Ciphertext account | What it holds |
 |---|---|
@@ -22,9 +22,11 @@ Three scalar `EUint64` ciphertext accounts are attached to a treasury via `confi
 
 These are Solana accounts owned by the Ika Encrypt program. Their addresses are stored in the `TreasuryAccount` and passed as accounts to every confidential instruction.
 
+The newer `ConfidentialGuardrailsAccount` sidecar adds an epoch marker, an enabled flag, and optional expanded ciphertext pointers. Current proposal execution uses that sidecar for the extended weekly-limit path when both `weekly_limit_ciphertext` and `weekly_spent_ciphertext` are supplied.
+
 ## Instruction Flow
 
-<Mermaid chart="sequenceDiagram;participant Owner;participant Core as aura-core;participant Encrypt as Ika Encrypt;Owner->>Core: configure_confidential_guardrails(daily_limit_ct, per_tx_limit_ct, spent_today_ct);Core->>Core: store ciphertext addresses in TreasuryAccount;Note over Core,Encrypt: On each confidential proposal...;Agent->>Core: propose_confidential_transaction(amount_ct, policy_output_ct, ...);Core->>Core: evaluate_public_precheck() — non-FHE rules;Core->>Encrypt: CPI — evaluate(daily_limit_ct, per_tx_limit_ct, spent_today_ct, amount_ct);Encrypt-->>Core: policy_output_ct (encrypted ViolationCode);Core->>Core: store policy_output_ct in PendingTransaction;Note over Core,Encrypt: Async — Ika network processes decryption...;Operator->>Core: request_policy_decryption(request_account, policy_output_ct);Core->>Encrypt: CPI — request_decryption(policy_output_ct);Operator->>Core: confirm_policy_decryption(request_account);Core->>Core: read decrypted ViolationCode (u8);Note over Core: 0 = approved, non-zero = ViolationCode variant" />
+<Mermaid chart="sequenceDiagram;participant Owner;participant Core as aura-core;participant Encrypt as Ika Encrypt;Owner->>Core: configure_confidential_guardrails(daily_limit_ct, per_tx_limit_ct, spent_today_ct);Owner->>Core: optional init/update_confidential_guardrails(sidecar epoch + weekly pointers);Core->>Core: store core pointers on TreasuryAccount and optional sidecar;Note over Core,Encrypt: On each confidential proposal...;Agent->>Core: propose_confidential_transaction(amount_ct, policy_output_ct, optional weekly_cts);Core->>Core: evaluate_public_precheck() — public subset;Core->>Encrypt: CPI — scalar graph, or extended weekly graph when sidecar accounts are present;Encrypt-->>Core: policy_output_ct (encrypted ViolationCode + update lanes);Core->>Core: store policy_output_ct in PendingTransaction;Note over Core,Encrypt: Async — Ika network processes decryption...;Operator->>Core: request_policy_decryption(request_account, policy_output_ct, optional epoch);Core->>Encrypt: CPI — request_decryption(policy_output_ct);Operator->>Core: confirm_policy_decryption(request_account, optional epoch);Core->>Core: read decrypted ViolationCode (u8);Note over Core: 0 = approved, non-zero = ViolationCode variant" />
 
 ## CPI Accounts for `propose_confidential_transaction`
 
@@ -37,6 +39,9 @@ The instruction requires these accounts beyond the standard treasury/AI authorit
 | `spent_today_ciphertext` | stored in TreasuryAccount | Encrypted running counter |
 | `amount_ciphertext` | freshly created | Encrypted proposal amount |
 | `policy_output_ciphertext` | freshly created | Output — encrypted verdict |
+| `weekly_limit_ciphertext` | optional sidecar pointer | Extended graph weekly limit |
+| `weekly_spent_ciphertext` | optional sidecar pointer | Extended graph weekly counter |
+| `confidential_guardrails` | `["confidential_guardrails", treasury]` | Optional sidecar required for extended weekly path |
 | `encrypt_program` | `4ebfzWdKnrnGseuQpezXdG8yCdHqwQ1SSBHD3bWArND8` | Ika Encrypt program |
 | `config` | Encrypt program global config | Encrypt network config |
 | `deposit` | payer-funded | Pays for FHE compute |
@@ -48,7 +53,7 @@ The instruction requires these accounts beyond the standard treasury/AI authorit
 
 ## What the FHE Circuit Does
 
-The Ika Encrypt network evaluates a circuit over the four ciphertexts:
+The default Ika Encrypt graph evaluates a circuit over the four core ciphertexts:
 
 ```
 verdict = if (amount > per_tx_limit) → PerTransactionLimit
@@ -56,7 +61,16 @@ verdict = if (amount > per_tx_limit) → PerTransactionLimit
           else → None (approved)
 ```
 
-The output is an encrypted `u8` — the `ViolationCode`. Only this small integer is decrypted on-chain. The limit values and running counter remain encrypted throughout.
+When the weekly ciphertext accounts and sidecar are supplied, `aura-core` submits the extended graph:
+
+```
+verdict = if (amount > per_tx_limit) → PerTransactionLimit
+          else if (spent_today + amount > daily_limit) → DailyLimit
+          else if (weekly_spent + amount > weekly_limit) → WeeklyLimit
+          else → None (approved)
+```
+
+The output carries an encrypted violation code and update lanes for the encrypted counters. Only the small violation code and validated counter update are consumed on-chain; the limit values remain encrypted.
 
 ## What Stays Private
 
@@ -65,13 +79,14 @@ The output is an encrypted `u8` — the `ViolationCode`. Only this small integer
 | Daily limit value | Private — `EUint64` ciphertext only |
 | Per-tx limit value | Private — `EUint64` ciphertext only |
 | Running spent-today total | Private — `EUint64` ciphertext only |
+| Weekly limit / weekly spent | Private when the extended sidecar path is used |
 | Proposal amount | **Public** — in `PendingTransaction.amount_usd` |
 | Violation code (0 or N) | **Public** — decrypted on-chain |
 | Recipient / chain | **Public** — in `PendingTransaction` |
 
 ## Public Precheck Before FHE
 
-`evaluate_public_precheck` runs before the FHE CPI. It evaluates all rules **except** `per_tx_limit` and `daily_limit` (those are deferred to Encrypt). If any public rule fails, the proposal is rejected immediately — no FHE call is made, saving compute and cost.
+`evaluate_public_precheck` runs before the FHE CPI. Current source evaluates the public subset: scoped pauses, budget envelopes, Bitcoin manual-review threshold, time window, protocol allowlist, slippage, quote freshness, counterparty risk, shared pool, velocity, and approval ladder. It skips direct per-transaction, daily, weekly, monthly, and recipient cap checks; encrypted per-tx/daily checks are always deferred to Encrypt, and the weekly check is included only in the extended sidecar path. If any public rule fails, the proposal is rejected immediately — no FHE call is made, saving compute and cost.
 
 <Mermaid chart="flowchart TD;Proposal[Confidential Proposal] --> Precheck[evaluate_public_precheck];Precheck -->|ViolationCode != None| Reject1[Rejected — no FHE call];Precheck -->|All pass| FHE[CPI → Ika Encrypt];FHE -->|encrypted verdict stored| Pending[PendingTransaction — awaiting decryption];Pending --> Decrypt[request_policy_decryption + confirm_policy_decryption];Decrypt -->|ViolationCode = 0| Execute[execute_pending → dWallet co-sign];Decrypt -->|ViolationCode != 0| Reject2[Rejected]" />
 
@@ -93,35 +108,48 @@ The output is an encrypted `u8` — the `ViolationCode`. Only this small integer
 ## SDK Usage
 
 ```typescript
-import { AuraClient } from "@aura-protocol/sdk-ts";
+import { instructions } from "@aura-protocol/sdk-ts";
 
 // Configure confidential guardrails (owner signs)
-await client.configureConfidentialGuardrails(owner, {
-  owner: owner.publicKey,
-  treasury,
-  dailyLimitCiphertext,    // PublicKey of EUint64 ciphertext account
-  perTxLimitCiphertext,
-  spentTodayCiphertext,
+await instructions.confidential.sendConfigureConfidentialGuardrails(client, owner, {
+  accounts: {
+    owner: owner.publicKey,
+    treasury,
+    dailyLimitCiphertext,
+    perTxLimitCiphertext,
+    spentTodayCiphertext,
+  },
+  args: { now },
 });
 
 // Propose a confidential transaction (AI authority signs)
-await client.proposeConfidentialTransaction(aiAuthority, {
-  aiAuthority: aiAuthority.publicKey,
-  treasury,
-  dailyLimitCiphertext,
-  perTxLimitCiphertext,
-  spentTodayCiphertext,
-  amountCiphertext,        // freshly created
-  policyOutputCiphertext,  // freshly created — will hold verdict
-  encryptProgram: ENCRYPT_DEVNET_PROGRAM_ID,
-  config: encryptConfig,
-  deposit: depositAccount,
-  callerProgram: AURA_PROGRAM_ID,
-  cpiAuthority: deriveEncryptCpiAuthorityAddress()[0],
-  networkEncryptionKey,
-  eventAuthority: deriveEncryptEventAuthorityAddress(ENCRYPT_DEVNET_PROGRAM_ID)[0],
-  systemProgram: SystemProgram.programId,
-}, args);
+await instructions.confidential.sendProposeConfidentialTransaction(
+  client,
+  aiAuthority,
+  {
+    accounts: {
+      aiAuthority: aiAuthority.publicKey,
+      treasury,
+      dailyLimitCiphertext,
+      perTxLimitCiphertext,
+      spentTodayCiphertext,
+      amountCiphertext,
+      policyOutputCiphertext,
+      weeklyLimitCiphertext: null,
+      weeklySpentCiphertext: null,
+      confidentialGuardrails: null,
+      encryptProgram: ENCRYPT_DEVNET_PROGRAM_ID,
+      config: encryptConfig,
+      deposit: depositAccount,
+      callerProgram: AURA_PROGRAM_ID,
+      cpiAuthority: deriveEncryptCpiAuthorityAddress()[0],
+      networkEncryptionKey,
+      eventAuthority: deriveEncryptEventAuthorityAddress(ENCRYPT_DEVNET_PROGRAM_ID)[0],
+      systemProgram: SystemProgram.programId,
+    },
+    args,
+  },
+);
 ```
 
 <Cards>

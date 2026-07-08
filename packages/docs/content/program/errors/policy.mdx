@@ -8,10 +8,10 @@ icon: ScrollText
 
 | Code | Name | Trigger |
 |---|---|---|
-| 6072 | `InvalidTemplateConfig` | Template/preset config fails coherence validation. <New /> |
-| 6073 | `TemplateNotShared` | Applying a non-shared template owned by another. <New /> |
-| 6074 | `UnknownPolicyVersion` | Parameterized override is invalid (e.g. zero scale). <New /> |
-| 6075 | `FailOpenBudgetExceeded` | A softened check exceeded its fail-open budget. <New /> |
+| 6072 | `InvalidTemplateConfig` | Template/preset config fails coherence validation. |
+| 6073 | `TemplateNotShared` | Applying a non-shared template owned by another. |
+| 6074 | `UnknownPolicyVersion` | Rollback target version is absent from the history ring, or the supplied candidate config does not match the recorded snapshot hash. |
+| 6075 | `FailOpenBudgetExceeded` | A softened check exceeded its fail-open budget. |
 | 6047 | `InvalidPolicyPreset` | Policy preset kind is invalid. |
 | 6048 | `PolicyAttestationMismatch` | Attestation hash or version mismatch. |
 | 6027 | `InvalidGuardianConfiguration` | Invalid guardian/multisig config. |
@@ -20,9 +20,9 @@ icon: ScrollText
 
 | Code | Name | Trigger |
 |---|---|---|
-| 6121 | `NoCandidatePolicy` | `promote_canary`/`discard_canary` called with no active candidate. <New /> |
-| 6122 | `CanaryAlreadyActive` | A candidate is already being trialed for this treasury. <New /> |
-| 6123 | `CanarySampleFloorNotMet` | `promote_canary` called before the candidate reached its sample floor. <New /> |
+| 6121 | `NoCandidatePolicy` | `promote_canary`/`discard_canary` called with no active candidate. |
+| 6122 | `CanaryAlreadyActive` | A candidate is already being trialed for this treasury. |
+| 6123 | `CanarySampleFloorNotMet` | `promote_canary` called before the candidate reached its sample floor. |
 
 ## Governance
 
@@ -30,11 +30,11 @@ icon: ScrollText
 |---|---|---|
 | 6020 | `NoActiveOverride` | No pending override/rotation. |
 | 6028 | `TimelockNotElapsed` | Timelock period not yet passed. |
-| 6113 | `DuplicateApprover` | The same approver tried to approve a proposal twice. <New /> |
-| 6114 | `ApprovalThresholdNotMet` | Distinct-guardian approval quorum has not been reached. <New /> |
-| 6116 | `ApprovalWeightInsufficient` | Weighted (summed-weight) approval quorum has not been reached. <New /> |
-| 6104 | `TooManyAgents` | Treasury already has 8 agent authorities. <New /> |
-| 6106 | `AgentAlreadyRegistered` | An agent with this pubkey is already registered. <New /> |
-| 6107 | `AgentNotFound` | No agent with this pubkey found. <New /> |
-| 6119 | `AgentManifestLoosenTimelock` | Manifest loosening attempted before its armed timelock elapsed. <New /> |
-| 6120 | `InvalidAgentTripwires` | Tripwire weights are invalid (every weight must be non-zero). <New /> |
+| 6113 | `DuplicateApprover` | The same approver tried to approve a proposal twice. |
+| 6114 | `ApprovalThresholdNotMet` | Distinct-guardian approval quorum has not been reached. |
+| 6116 | `ApprovalWeightInsufficient` | Weighted (summed-weight) approval quorum has not been reached. |
+| 6104 | `TooManyAgents` | Treasury already has 8 agent authorities. |
+| 6106 | `AgentAlreadyRegistered` | An agent with this pubkey is already registered. |
+| 6107 | `AgentNotFound` | No agent with this pubkey found. |
+| 6119 | `AgentManifestLoosenTimelock` | Manifest loosening attempted before its armed timelock elapsed. |
+| 6120 | `InvalidAgentTripwires` | Tripwire weights are invalid (every weight must be non-zero). |

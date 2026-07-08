@@ -2,7 +2,6 @@
 title: Fees & Economics
 description: Protocol fees, billing templates, and integrator economics for AURA treasuries.
 icon: Receipt
-status: new
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -11,17 +10,17 @@ AURA includes a comprehensive **fee system** that supports protocol-level revenu
 
 ## Fee Model Overview
 
-AURA charges fees on three events:
+AURA's current on-chain fee path accrues execution fees during `finalize_execution` when a `FeeVault` is supplied. Fee schedules also carry creation, subscription, AUM, discount, and integrator fields used by templates and off-chain billing surfaces.
 
-| Event | Fee Type | Default | Configurable |
-|---|---|---|---|
-| **Treasury creation** | One-time | 100 lamports | ✓ (ProtocolConfig) |
-| **Proposal submission** | Per-proposal | 0.001 SOL | ✓ (FeeSchedule) |
-| **Execution finalization** | Per-execution | 0.1% of amount | ✓ (FeeSchedule) |
+| Surface | Stored in | Enforced on-chain |
+|---|---|---|
+| Execution fee | `FeeSchedule` / legacy `ProtocolFees` | `finalize_execution` when `fee_vault` is present |
+| Protocol fee floor and integrator bounds | `ProtocolConfigAccount` | Fee schedule validation and fee computation |
+| Creation fee / subscription / AUM fields | `FeeSchedule` and templates | Stored for billing policy; not charged by `propose_transaction` |
 
 Fees are:
 - Prepaid into a `FeeVault` attached to the treasury
-- Accrued into buckets (protocol, integrator, referral)
+- Accrued into the vault's `accumulated_fees_lamports` bucket during finalization
 - Split according to a `FeeSplit` table on collection
 
 ## Fee Vault
@@ -29,25 +28,24 @@ Fees are:
 Each treasury has an optional `FeeVault` PDA storing:
 
 ```typescript
-await aura.fees.initVault({ treasury });
+import { instructions } from "@aura-protocol/sdk-ts";
 
-await aura.fees.depositFees({
-  treasury,
-  amountLamports: 10_000_000, // 0.01 SOL prepaid
-});
+await instructions.fees.sendInitFeeVault(client, owner, initFeeVaultInput);
+await instructions.fees.sendDepositFees(client, owner, depositFeesInput);
 ```
 
 **Vault state:**
-- `prepaid_balance` — deposited funds available for future fees
-- `accrued_fees` — fees charged but not yet collected
-- `debt` — shortfall if prepaid runs out
+- `fee_balance` — prepaid lamports available for future fees
+- `accumulated_fees_lamports` — accrued fees not yet collected
+- `fee_debt_usd` — shortfall recorded when low-balance mode is `Degrade`
 
 **Low-balance mode:**
-- If `prepaid_balance < threshold`, switch to immediate-collection mode
-- Fees deducted from proposal amount instead of vault
+- `Block` rejects finalization when prepaid balance cannot cover the fee
+- `Degrade` accrues the covered portion and records the shortfall in `fee_debt_usd`
+- `Warn` skips accrual when the vault is short
 
 <Callout title="Fee enforcement">
-Proposals are rejected with `InsufficientFeeBalance` if the vault cannot cover the fee and the treasury has no fallback payment method.
+Finalization is rejected with `InsufficientFeeBalance` when the vault cannot cover the fee and low-balance mode is `Block`.
 </Callout>
 
 ## Fee Schedules
@@ -55,17 +53,7 @@ Proposals are rejected with `InsufficientFeeBalance` if the vault cannot cover t
 A `FeeSchedule` sidecar defines per-treasury fee rates:
 
 ```typescript
-await aura.fees.initSchedule({
-  treasury,
-  schedule: {
-    creationFeeLamports: 100,
-    proposalFeeBps: 10, // 0.1%
-    executionFeeBps: 10, // 0.1%
-    settlementFeeBps: 5, // 0.05%
-    minFeeLamports: 1000, // floor
-    maxFeeLamports: 10_000_000, // cap
-  },
-});
+await instructions.fees.sendInitFeeSchedule(client, owner, initFeeScheduleInput);
 ```
 
 **Validation:**
@@ -74,10 +62,7 @@ await aura.fees.initSchedule({
 
 **Updates:**
 ```typescript
-await aura.fees.updateSchedule({
-  treasury,
-  schedule: { proposalFeeBps: 15 }, // raise to 0.15%
-});
+await instructions.fees.sendUpdateFeeSchedule(client, owner, updateFeeScheduleInput);
 ```
 
 ## Billing Templates
@@ -85,38 +70,24 @@ await aura.fees.updateSchedule({
 Pre-defined fee structures that can be applied to multiple treasuries:
 
 ```typescript
-await aura.fees.createBillingTemplate({
-  authority: ownerPubkey,
-  template: {
-    name: "premium-tier",
-    schedule: { /* FeeSchedule */ },
-    metadata: "High-volume treasuries with priority support",
-    version: 1,
-  },
-});
-
-// Apply to treasury
-await aura.fees.applyBillingTemplate({
-  treasury,
-  templateAddress,
-});
+await instructions.fees.sendCreateBillingTemplate(client, owner, createTemplateInput);
+await instructions.fees.sendApplyBillingTemplate(client, owner, applyTemplateInput);
 ```
 
 **Built-in profiles:**
-- `Startup` — low creation fee, 0.1% execution
-- `Growth` — medium creation fee, 0.05% execution
-- `Enterprise` — high creation fee, 0.01% execution
-- `Custom` — operator-defined
+- `Payroll`
+- `TradingDesk`
+- `DaoTreasury`
+- `GrantProgram`
+- `VendorPayments`
+- `ColdStorage`
+- `Specialty`
 
 **Forking:**
 Templates can be forked from built-in profiles and customized:
 
 ```typescript
-await aura.fees.createBillingTemplate({
-  authority: ownerPubkey,
-  forkFrom: "Enterprise", // start from preset
-  overrides: { executionFeeBps: 5 }, // customize
-});
+await instructions.fees.sendCreateBillingTemplate(client, owner, forkTemplateInput);
 ```
 
 ## Fee Splits & Recipients
@@ -124,33 +95,17 @@ await aura.fees.createBillingTemplate({
 Revenue is split across multiple recipients via a `FeeSplit` table:
 
 ```typescript
-await aura.fees.setFeeSplits({
-  treasury,
-  splits: [
-    { recipient: protocolAuthority, bps: 5000 }, // 50%
-    { recipient: integratorPubkey, bps: 3000 }, // 30%
-    { recipient: referralPubkey, bps: 2000 }, // 20%
-  ],
-});
+await instructions.fees.sendSetFeeSplits(client, owner, setFeeSplitsInput);
 ```
 
 **Rules:**
 - `bps` sum must equal 10,000 (100%)
-- Up to 8 recipients
+- Up to 4 recipients
 - Split table applies to all fees accrued after it's set
 
 **Collection:**
 ```typescript
-await aura.fees.collectFees({
-  treasury,
-  // Splits across recipients automatically
-});
-
-// Or drain to single recipient (emergency)
-await aura.fees.collectFees({
-  treasury,
-  drainTo: emergencyRecipient,
-});
+await instructions.fees.sendCollectFees(client, collector, collectFeesInput);
 ```
 
 ## Protocol Configuration
@@ -158,17 +113,11 @@ await aura.fees.collectFees({
 The `ProtocolConfig` singleton governs global fee economics:
 
 ```typescript
-// Initialize once (protocol authority)
-await aura.fees.initProtocolConfig({
-  authority: protocolAuthority,
-  config: {
-    feeFloorBps: 1, // 0.01% minimum
-    creationFeeLamports: 100,
-    integratorMaxBps: 50, // integrators can charge up to 0.5%
-    protocolRecipient: protocolTreasury,
-    settlementAsset: usdcMint,
-  },
-});
+await instructions.lifecycle.sendInitProtocolConfig(
+  client,
+  protocolAuthority,
+  initProtocolConfigInput,
+);
 ```
 
 **Staged updates:**
@@ -176,15 +125,18 @@ All economic changes are timelocked via a two-step process:
 
 ```typescript
 // 1. Stage change (48h timelock)
-await aura.fees.updateProtocolConfig({
-  authority: protocolAuthority,
-  changes: { feeFloorBps: 5 }, // raise to 0.05%
-});
+await instructions.lifecycle.sendUpdateProtocolConfig(
+  client,
+  protocolAuthority,
+  updateProtocolConfigInput,
+);
 
 // 2. Commit after timelock
-await aura.fees.commitProtocolConfig({
-  authority: protocolAuthority,
-});
+await instructions.lifecycle.sendCommitProtocolConfig(
+  client,
+  protocolAuthority,
+  commitProtocolConfigInput,
+);
 ```
 
 <Callout type="warn">
@@ -196,11 +148,7 @@ Protocol config changes affect all treasuries. The timelock gives integrators ti
 Combine policy templates and billing templates into a single "org profile":
 
 ```typescript
-await aura.fees.applyOrgProfile({
-  treasury,
-  policyTemplate: "risk-conservative", // from policy template catalog
-  billingTemplate: "enterprise-tier", // from billing template catalog
-});
+await instructions.fees.sendApplyOrgProfile(client, owner, applyOrgProfileInput);
 ```
 
 Profiles are validated atomically — both templates must be compatible and within protocol bounds.
@@ -210,15 +158,12 @@ Profiles are validated atomically — both templates must be compatible and with
 Treasury owners can withdraw unused prepaid balance:
 
 ```typescript
-await aura.fees.withdrawUnusedFees({
-  treasury,
-  amountLamports: 5_000_000, // withdraw 0.005 SOL
-});
+await instructions.fees.sendWithdrawUnusedFees(client, owner, withdrawInput);
 ```
 
 **Restrictions:**
 - Cannot withdraw accrued fees (only prepaid surplus)
-- Must leave enough to cover upcoming proposals
+- Must preserve rent and any accrued-fee bucket
 
 ## Use Cases
 
@@ -235,7 +180,7 @@ await aura.fees.withdrawUnusedFees({
 **Treasury owners:**
 - Prepay fees to avoid per-proposal friction
 - Switch between billing tiers as usage scales
-- Monitor `accrued_fees` to budget operational costs
+- Monitor `accumulated_fees_lamports` to budget operational costs
 
 **Referral programs:**
 - Add referral address to fee split table
@@ -251,4 +196,3 @@ await aura.fees.withdrawUnusedFees({
 - `apply_billing_template` / `apply_org_profile` — Apply templates
 - `set_fee_splits` / `collect_fees` / `update_fee_recipient` — Revenue collection
 - `init_protocol_config` / `update_protocol_config` / `commit_protocol_config` — Protocol governance
-

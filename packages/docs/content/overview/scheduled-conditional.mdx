@@ -2,76 +2,53 @@
 title: Automation
 description: Recurring intents and trigger-based proposals for autonomous treasury operations.
 icon: Workflow
-status: new
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-AURA supports **time-based recurring transactions** and **condition-based triggers**, allowing AI agents to set up autonomous spending patterns without manual intervention for each execution.
+AURA supports **interval-based recurring transactions** and **condition-based triggers**, allowing AI agents to set up governed spending patterns that keepers can promote into the normal proposal flow.
 
 ## Scheduled Intents
 
 A `ScheduledIntent` represents a recurring transaction pattern with budget controls:
 
 ```typescript
-await aura.scheduled.createIntent({
-  treasury,
-  recurrence: {
-    type: "interval",
-    intervalSecs: 86400, // daily
-  },
-  perRunBudgetUsd: 500, // max $5 per execution
-  totalBudgetUsd: 10_000, // max $100 total across all runs
-  maxExecutions: 30, // stop after 30 runs
-  payload: {
-    chain: 1, // Ethereum
-    recipient: "0xVaultAddress",
-    txType: 0, // Transfer
-    amountUsd: 450, // $4.50 per run
-  },
-  conditions: {
-    minBalanceUsd: 1000, // only run if treasury balance >= $10
-    maxGasPrice: 50_000_000_000, // 50 gwei max
-  },
-});
+import { instructions } from "@aura-protocol/sdk-ts";
+
+await instructions.execution.sendCreateScheduledIntent(
+  client,
+  owner,
+  createScheduledIntentInput,
+);
 ```
 
 **Execution:**
-- Keeper or permissionless caller invokes `execute_scheduled_intent` when the next slot is due
+- A caller invokes `execute_scheduled_intent` when `Clock::unix_timestamp >= next_run_at`; if `keeper` is set, only that key may trigger it
 - Intent checks on-chain clock, conditions, and budgets
 - If satisfied, promotes a pending proposal into the execution queue
 - Policy evaluation runs normally (limits, velocity, etc.)
 
 **Budget tracking:**
-- `spent_so_far` increments with each successful run
-- `executions_count` tracks how many times it ran
-- Intent closes automatically when `maxExecutions` or `totalBudgetUsd` is reached
+- `spent_usd` increments when the promoted proposal settles through the normal finalization path
+- `runs_completed` tracks settled runs
+- `in_flight_proposal_id` and `in_flight_usd` reserve the promoted run until it settles or is cleared
+- `max_runs`, `end_at`, and `total_budget_usd` stop future execution; the account is closed explicitly with `close_scheduled_intent`
 
 <Callout title="In-flight protection">
 While a promoted run is pending, the intent cannot be executed again. Use `clear_scheduled_intent_in_flight` to recover from abandoned proposals.
 </Callout>
 
-## Recurrence Patterns
+## Recurrence
 
-| Type | Description | Example |
-|---|---|---|
-| **Interval** | Fixed seconds between runs | Every 24 hours |
-| **Cron-like** | Specific times/days | Every Monday at 9 AM UTC |
-| **Slot-based** | Every N Solana slots | Every 432,000 slots (~2 days) |
+Scheduled intents use a fixed `interval_secs` cadence with `start_at`, optional `end_at`, optional `max_runs`, `catch_up`, and `skip_on_deny` controls.
 
 ```typescript
-// Cron-style: every Monday at 09:00 UTC
-recurrence: {
-  type: "cron",
-  dayOfWeek: 1, // 0=Sunday, 1=Monday
-  hourUtc: 9,
-  minuteUtc: 0,
-}
-
-// Slot-based: every 100k slots
-recurrence: {
-  type: "slot",
-  slotInterval: 100_000,
+args: {
+  intervalSecs: 86_400, // daily cadence
+  startAt,
+  endAt: null,
+  maxRuns: 30,
+  catchUp: false,
 }
 ```
 
@@ -80,31 +57,20 @@ recurrence: {
 Park a proposal behind runtime conditions instead of executing immediately:
 
 ```typescript
-await aura.scheduled.proposeConditional({
-  treasury,
-  proposal: {
-    chain: 1,
-    recipient: "0xTargetAddress",
-    amountUsd: 2000,
-    txType: 1, // DeFiSwap
-  },
-  conditions: {
-    priceAbove: { asset: "ETH", priceUsd: 3000 }, // wait for ETH > $3000
-    timeWindow: { startUnix: 1700000000, endUnix: 1700086400 }, // within 24h window
-    minBalance: 5000, // treasury balance >= $50
-    oracleFlag: { feedAddress: "...", mustBe: true }, // custom oracle condition
-  },
-});
+await instructions.execution.sendProposeConditionalTransaction(
+  client,
+  aiAuthority,
+  proposeConditionalInput,
+);
 ```
 
 **Trigger mechanism:**
 - Conditional proposal stored in `ConditionalProposal` PDA
-- Keeper/permissionless caller invokes `try_trigger` periodically
+- Any caller invokes `try_trigger` periodically
 - On-chain conditions evaluated:
-  - Price feeds checked via Pyth/Switchboard oracle
+  - Price feeds checked through verified Pyth/Switchboard descriptors or the raw legacy path
   - Time windows checked against `Clock` sysvar
-  - Balance checked against treasury aggregate
-  - Oracle flags checked via CPI to external program
+  - Balance and oracle-flag conditions evaluated from the condition context
 - If all conditions satisfied, proposal promoted into pending queue
 
 **Lifecycle:**
@@ -123,30 +89,25 @@ stateDiagram-v2
 ```
 
 <Callout type="info">
-Conditional proposals are policy-checked **twice**: once when created (soft check) and again when triggered (hard enforcement).
+If conditions are already satisfied at creation, the proposal is promoted immediately and the normal policy engine runs once. Otherwise it is parked, and policy runs when `try_trigger` later promotes it.
 </Callout>
 
 ## Managing Intents
 
 **Pause/Resume:**
 ```typescript
-await aura.scheduled.pauseIntent({ treasury, intentId });
-await aura.scheduled.resumeIntent({ treasury, intentId });
+await instructions.execution.sendPauseScheduledIntent(client, owner, pauseInput);
+await instructions.execution.sendResumeScheduledIntent(client, owner, resumeInput);
 ```
 
 **Update budget or conditions:**
 ```typescript
-await aura.scheduled.updateIntent({
-  treasury,
-  intentId,
-  perRunBudgetUsd: 600, // raise per-run cap
-  conditions: { minBalanceUsd: 2000 }, // tighter balance requirement
-});
+await instructions.execution.sendUpdateScheduledIntent(client, owner, updateInput);
 ```
 
 **Close intent:**
 ```typescript
-await aura.scheduled.closeIntent({ treasury, intentId });
+await instructions.execution.sendCloseScheduledIntent(client, owner, closeInput);
 ```
 
 Closing is refused if an in-flight promoted run is still pending.
@@ -162,7 +123,7 @@ Closing is refused if an in-flight promoted run is still pending.
 **Conditional proposals:**
 - Buy-the-dip orders (trigger when price drops)
 - Take-profit exits (trigger when price rises)
-- Time-window arbitrage (execute only during low-gas periods)
+- Time-windowed actions (execute only during configured windows)
 - Oracle-gated compliance actions
 
 **Combined:**
@@ -174,11 +135,11 @@ Closing is refused if an in-flight promoted run is still pending.
 Scheduled and conditional execution requires off-chain keepers to call `execute_scheduled_intent` and `try_trigger`. AURA treasuries can:
 
 1. Run their own keeper infrastructure
-2. Use permissionless keeper networks (Clockwork, Jito, etc.)
+2. Use external keeper networks
 3. Delegate to protocol-operated keepers
 
 <Callout title="Permissionless execution">
-Both `execute_scheduled_intent` and `try_trigger` are permissionless — anyone can call them. Keeper incentives can be funded from the fee vault.
+`try_trigger` is permissionless. `execute_scheduled_intent` is permissionless only when the intent has no `keeper`; otherwise it is restricted to that configured keeper. Keeper incentives can be funded from the fee vault.
 </Callout>
 
 ## Related Instructions

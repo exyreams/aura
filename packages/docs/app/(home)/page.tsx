@@ -23,7 +23,7 @@ const features = [
     ),
     title: "Confidential Guardrails",
     description:
-      "Daily and per-tx limits stored as FHE ciphertexts. Policy evaluation runs over encrypted values — limits never touch plaintext on-chain.",
+      "Encrypted daily and per-transaction spend counters, plus an optional weekly sidecar path, for the confidential branch of an agent treasury.",
     href: "/overview/confidential-guardrails",
   },
   {
@@ -65,7 +65,7 @@ const features = [
     ),
     title: "Policy Engine",
     description:
-      "27 violation codes, 17 evaluation rules, time windows, velocity limits, anomaly detection, approval ladders, and scoped pauses — all in pure Rust.",
+      "27 violation codes, ordered decision traces, time windows, velocity limits, anomaly detection, approval ladders, and scoped pauses.",
     href: "/overview/policy-engine",
   },
   {
@@ -110,7 +110,7 @@ const features = [
     ),
     title: "TypeScript SDK",
     description:
-      "161 typed instruction builders, PDA helpers, event parsing, and the high-level Aura facade with auto timestamps and plain-number inputs.",
+      "161 typed instruction builders, account fetchers, PDA helpers, event parsing, and program-surface metadata.",
     href: "/sdk-ts",
   },
   {
@@ -221,8 +221,9 @@ export default function HomePage() {
             <span className="text-(--text-muted)">.</span>
           </h1>
           <p className="text-base md:text-lg text-(--text-muted) max-w-xl mx-auto leading-[1.7] font-light mb-10">
-            Program instructions, TypeScript SDK, Rust SDK, CLI, confidential
-            guardrails, and dWallet execution — all in one place.
+            Program instructions, account layouts, errors, TypeScript SDK, Rust
+            SDK, CLI, confidential execution, and dWallet settlement — all in
+            one place.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link

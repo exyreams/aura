@@ -1,6 +1,6 @@
 ---
 title: Policy Engine
-description: All 27 ViolationCodes, evaluation order, public precheck vs full evaluation, and PolicyConfig defaults from the actual aura-policy source.
+description: All 27 ViolationCode variants, full evaluation order, public precheck behavior, and PolicyConfig defaults from the actual aura-policy source.
 icon: ScrollText
 ---
 
@@ -13,7 +13,7 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
 | Function | Used by | What it skips |
 |---|---|---|
 | `evaluate_transaction` | Public proposals (`propose_transaction`) | Nothing — runs all rules |
-| `evaluate_public_precheck` | Confidential proposals (before FHE CPI) | `per_tx_limit`, `daily_limit` — deferred to Encrypt |
+| `evaluate_public_precheck` | Confidential proposals (before FHE CPI) | Per-transaction, daily, weekly, monthly, and recipient cap checks |
 | `evaluate_transaction_simple` | Tests and off-chain tooling | Convenience wrapper |
 | `evaluate_batch` | `propose_batch` instruction | Evaluates a slice, threads state forward |
 | `evaluate_policy_without_spend_mutation` | `simulate_policy` instruction | Runs full rules but does not commit state |
@@ -22,11 +22,13 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
 
 Rules short-circuit on the first failure. No subsequent rules are evaluated after a violation.
 
+This is the full `aura-policy` in-crate order. `aura-core` instructions may also apply sidecar checks around it, such as queue capacity, operator/session authority, dWallet reservations, liveness, exposure groups, timelocks, and settlement state.
+
 <Mermaid chart="flowchart TD;Start[Incoming proposal] --> SP[1. scoped_pause];SP -->|fail| V_SP[ExecutionScopePaused];SP -->|pass| BE[2. budget_envelope];BE -->|fail| V_BE[BudgetEnvelopeDailyLimit / WeeklyLimit];BE -->|pass| PTX[3. per_tx_limit];PTX -->|fail| V_PTX[PerTransactionLimit];PTX -->|pass| DL[4. daily_limit];DL -->|fail| V_DL[DailyLimit];DL -->|pass| WL[5. weekly_limit];WL -->|fail| V_WL[WeeklyLimit];WL -->|pass| ML[6. monthly_limit];ML -->|fail| V_ML[MonthlyLimit];ML -->|pass| BTC[7. bitcoin_manual_review];BTC -->|fail| V_BTC[BitcoinManualReview];BTC -->|pass| TW[8. time_window_limit];TW -->|fail| V_TW[TimeWindowLimit];TW -->|pass| PW[9. protocol_whitelist];PW -->|fail| V_PW[ProtocolNotAllowed];PW -->|pass| SL[10. slippage_limit];SL -->|fail| V_SL[SlippageExceeded];SL -->|pass| QF[11. quote_freshness];QF -->|fail| V_QF[QuoteStale];QF -->|pass| CR[12. counterparty_risk];CR -->|fail| V_CR[CounterpartyRisk];CR -->|pass| SPL[13. shared_pool_limit];SPL -->|fail| V_SPL[SharedPoolLimit];SPL -->|pass| RL[14. recipient_limits];RL -->|fail| V_RL[RecipientDailyLimit / PerTransactionLimit];RL -->|pass| VL[15. velocity_limit];VL -->|fail| V_VL[VelocityLimit];VL -->|pass| AD[16. anomaly_detection];AD -->|fail + Deny| V_AD[AnomalyDetected];AD -->|pass| AL[17. approval_ladder];AL -->|fail| V_AL[ApprovalLadderDenied];AL -->|pass| Commit[Approved ✓]" />
 
 ## Public Precheck vs Full Evaluation
 
-For confidential proposals, `evaluate_public_precheck` runs the same rules **except** steps 3 (`per_tx_limit`) and 4 (`daily_limit`). Those are deferred to the FHE circuit. If the precheck passes, a note is added to the trace: `"encrypted per-transaction and daily-limit checks deferred to Encrypt"`.
+For confidential proposals, `evaluate_public_precheck` runs the public subset before the Encrypt CPI. Current source evaluates scoped pauses, budget envelopes, Bitcoin manual-review threshold, time window, protocol allowlist, slippage, quote freshness, counterparty risk, shared pool, velocity, and approval ladder. It skips the direct per-transaction, daily, weekly, monthly, and recipient cap checks. The trace explicitly records `"encrypted per-transaction and daily-limit checks deferred to Encrypt"` before the FHE branch handles the encrypted spend guardrails.
 
 ## All 27 ViolationCodes
 
@@ -159,65 +161,62 @@ AURA now supports reusable policy templates and safe testing of policy changes t
 Pre-defined or custom policy configurations that can be applied to multiple treasuries:
 
 ```typescript
+import { instructions } from "@aura-protocol/sdk-ts";
+
 // Create from scratch or fork a built-in preset
-await aura.policy.createTemplate({
-  authority: ownerPubkey,
-  template: {
-    name: "conservative-defi",
-    config: { /* full PolicyConfig */ },
-    metadata: "Low-risk DeFi strategy with tight limits",
-    version: 1,
-  },
-});
+await instructions.policy.sendCreatePolicyTemplate(
+  client,
+  owner,
+  createTemplateInput,
+);
 
 // Apply to treasury
-await aura.policy.applyTemplate({
-  treasury,
-  templateAddress,
-});
+await instructions.policy.sendApplyPolicyTemplate(client, owner, applyTemplateInput);
 
 // Apply with parameterized scaling
-await aura.policy.applyTemplateParameterized({
-  treasury,
-  templateAddress,
-  scalingBps: 5000, // 50% of template limits
-  limitOverrides: { dailyLimitUsd: 20000 }, // override specific field
-});
+await instructions.policy.sendApplyPolicyTemplateParameterized(
+  client,
+  owner,
+  applyTemplateParameterizedInput,
+);
 ```
 
 **Built-in presets:**
-- `RiskAverse` — Tight limits, narrow time windows, low counterparty risk
-- `Balanced` — Default settings from PolicyConfig
-- `Aggressive` — Wider limits, 24/7 operation, higher risk tolerance
-- `DeFiOptimized` — Protocol-specific tuning for DEX/lending
-- `Payments` — High frequency, low amounts, instant settlement
+- `ConservativeDao`
+- `AiAgentOps`
+- `HighTrustExecutor`
+- `StrictCompliance`
+- `IntegrationTestFastPath`
+- `TradingDesk`
+- `PayrollSweep`
+- `GrantDisbursement`
+- `MevSearcher`
+- `TreasuryColdStorage`
 
 ### Canary Deployments
 
 Test a candidate policy against live proposals without enforcing it:
 
 ```typescript
+import { instructions } from "@aura-protocol/sdk-ts";
+
 // 1. Start canary with candidate policy
-await aura.policy.startCanary({
-  treasury,
-  candidateConfig: { /* proposed PolicyConfig */ },
-  minSampleSize: 100, // must score 100 proposals before promotion
-});
+await instructions.policy.sendStartCanary(client, owner, startCanaryInput);
 
 // 2. Proposals evaluated against both enforced and candidate policies
 // Canary tracks: pass/fail counts, deviation patterns, violation distribution
 
 // 3. Promote if canary performs well
-await aura.policy.promoteCanary({ treasury });
+await instructions.policy.sendPromoteCanary(client, owner, promoteCanaryInput);
 
 // Or discard if results are poor
-await aura.policy.discardCanary({ treasury });
+await instructions.policy.sendDiscardCanary(client, owner, discardCanaryInput);
 ```
 
 **Canary scoring:**
 - Runs in parallel with enforced policy (never blocks proposals)
-- Tracks pass rate, false positive rate, deviation score
-- Requires minimum sample size before promotion
+- Tracks samples, agreements, candidate allow/deny counts, and a per-rule divergence bitmap
+- `sample_cap` bounds the shadow-evaluation cost and must be reached before promotion when non-zero
 - Automatically records as new policy version on promotion
 
 ### Policy Versioning & Rollback
@@ -225,26 +224,25 @@ await aura.policy.discardCanary({ treasury });
 All policy changes create immutable version records:
 
 ```typescript
-// Check version history
-const versions = await aura.policy.getVersionHistory(treasury);
-console.log("Current version:", versions.current);
-console.log("Previous versions:", versions.history);
+import { accounts, instructions } from "@aura-protocol/sdk-ts";
 
-// Rollback to previous version (owner + guardian quorum)
-await aura.policy.rollbackToVersion({
-  treasury,
-  targetVersion: 3, // roll back to version 3
-});
+// Check version history
+const history = await accounts.fetchPolicyHistoryAccount(client, policyHistoryPda);
+console.log("Version count:", history.versionCount);
+console.log("Snapshots:", history.snapshots);
+
+// Roll back by supplying the full candidate config for the target snapshot.
+await instructions.policy.sendRollbackPolicy(client, owner, rollbackPolicyInput);
 ```
 
 **Version lifecycle:**
-- Every `configure_policy`, `apply_policy_template`, or `promote_canary` creates a new version
+- Template applies, canary promotion, explicit snapshots, and rollbacks record policy versions in the history ring
 - Versions are sequentially numbered and immutable
-- Rollback requires owner signature + guardian quorum for safety
-- Version metadata includes timestamp, author, change summary
+- Rollback is owner-gated; loosening rollbacks are staged through the config-change timelock
+- Version metadata includes timestamp, author, and policy hash/provenance
 
 <Cards>
-  <Card title="Confidential Guardrails" description="FHE evaluation for per_tx and daily limits." href="/overview/confidential-guardrails" />
+  <Card title="Confidential Guardrails" description="FHE evaluation for per-tx, daily, and optional weekly limits." href="/overview/confidential-guardrails" />
   <Card title="Architecture" description="How aura-policy is called from aura-core." href="/overview/architecture" />
   <Card title="Quick Start" description="Create a treasury with a full PolicyConfig." href="/overview/quickstart" />
   <Card title="Policy Instructions" description="All policy configuration and template instructions." href="/program/instructions/policy" />

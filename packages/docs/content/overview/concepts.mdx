@@ -10,13 +10,13 @@ The root on-chain account for an AI agent. Derived as a PDA from `["treasury", o
 
 One owner can have multiple treasuries — one per unique `agentId`. Each treasury is independent unless joined to a swarm pool.
 
-<Mermaid chart="graph TD;Treasury[TreasuryAccount] --> PC[PolicyConfig];Treasury --> MC[MultisigConfig];Treasury --> SC[SwarmConfig];Treasury --> PF[ProtocolFees];Treasury --> DW[DwalletRecords];Treasury --> PT[PendingTransaction]" />
+<Mermaid chart="graph TD;Treasury[TreasuryAccount] --> PC[PolicyConfig];Treasury --> MC[MultisigConfig];Treasury --> SC[SwarmConfig];Treasury --> PF[ProtocolFees];Treasury --> DW[DWalletRecord inline entries];Treasury --> DWS[DWalletAccount sidecars];Treasury --> PQ[Pending queue depth 3]" />
 
 ---
 
 ## Proposal
 
-A request by the AI agent to execute a transaction. Submitted via `propose_transaction` (public) or `propose_confidential_transaction` (FHE path). Only one proposal can be pending per treasury at a time — `PendingTransactionExists` (6004) is returned if one already exists.
+A request by the AI agent to execute a transaction. Submitted via `propose_transaction` (public) or `propose_confidential_transaction` (FHE path). A treasury stores a bounded pending queue with `MAX_PENDING_QUEUE_DEPTH = 3`; `PendingTransactionExists` (6004) is returned when that queue is full.
 
 **Proposal lifecycle:**
 
@@ -32,7 +32,7 @@ The complete set of spending rules on a treasury. Two layers:
 
 **Confidential counters** — `daily_limit_usd` and `per_tx_limit_usd` can be stored as `EUint64` FHE ciphertexts via `configure_confidential_guardrails`. When configured, these are evaluated by Ika Encrypt instead of locally.
 
-Changing "dangerous" fields (raising limits, removing guardians) is subject to a timelock enforced by `TimelockNotElapsed` (6027).
+Changing "dangerous" fields (raising limits, removing guardians) is subject to a timelock enforced by `TimelockNotElapsed` (6028).
 
 ---
 
@@ -52,9 +52,9 @@ The limit values are stored as `EUint64` ciphertexts. The FHE circuit compares t
 
 ---
 
-## dWallet Record
+## dWallet State
 
-A `DwalletRecord` account registered against a treasury for a specific chain (0–5). When a proposal is approved, `aura-core` CPIs into the Ika dWallet program (`87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY`) via `execute_pending` to request a co-signature. The agent receives the signed transaction bytes — never the private key.
+The treasury stores an inline `DWalletRecord` for each registered chain. Asset balances, per-wallet limits, status, reservations, labels, and authority rotation state live in the per-chain `DWalletAccount` sidecar at `["dwallet_state", treasury, chain_code]`. When a proposal is approved, `aura-core` CPIs into the Ika dWallet program (`87W54kGYFQ1rgWqMeu4XTPHWXWmXSQCcjm8vCTfiq1oY`) via `execute_pending` to request a co-signature. The agent receives the signed transaction bytes — never the private key.
 
 The `MessageApproval` PDA is derived on the dWallet program using the curve code, public key bytes, signature scheme code, and message digest as seeds.
 
@@ -62,9 +62,9 @@ The `MessageApproval` PDA is derived on the dWallet program using the curve code
 
 ## Operator Role
 
-A delegated permission grant stored in an `OperatorRole` PDA (`["operator_role", treasury, operator]`). Operators can drive the execution lifecycle (`execute_pending`, `finalize_execution`, `request_policy_decryption`, `confirm_policy_decryption`) without being the treasury owner. Roles have a `permissions_bitmap` and an `expires_at` timestamp.
+A delegated maintenance grant stored in an `OperatorRole` PDA (`["operator_role", treasury, operator]`). Roles carry a `permission_mask` and an `expires_at` timestamp. Current operator-gated surfaces include address-list management, scoped pauses, policy simulations, liveness refreshes, snapshots, and health refreshes. Live signing/decryption instructions (`execute_pending`, `finalize_execution`, `request_policy_decryption`, `confirm_policy_decryption`) still require the treasury owner or AI authority.
 
-Errors: `OperatorRoleMissing` (6043), `OperatorRoleExpired` (6044).
+Errors: `OperatorRoleMissing` (6044), `OperatorRoleExpired` (6045).
 
 ---
 
@@ -72,15 +72,15 @@ Errors: `OperatorRoleMissing` (6043), `OperatorRoleExpired` (6044).
 
 A short-lived signing key issued to the AI agent via `issue_session_key`. Stored in a `SessionKeyAccount` PDA. Scoped to a `max_amount_usd`, an `allowed_chains_bitmap`, and an `expires_at` timestamp. Reduces the need for the owner's keypair to be online for every proposal.
 
-Errors: `SessionKeyInactive` (6036), `SessionKeyScopeViolation` (6037).
+Errors: `SessionKeyInactive` (6037), `SessionKeyScopeViolation` (6038).
 
 ---
 
 ## Guardian / Multisig
 
-An emergency override mechanism configured via `configure_multisig`. Stores a list of guardian public keys and a `required_signatures` threshold in `TreasuryAccount.multisig_config`. Guardians can approve proposals that would otherwise be rejected, rotate the AI authority, or initiate a shutdown.
+An emergency authorization mechanism configured via `configure_multisig`. Stores a list of guardian public keys and a `required_signatures` threshold in `TreasuryAccount.multisig_config`. Guardians can satisfy guardian/multisig approval levels on already-approved proposals, veto staged config changes, rotate guardian sets, participate in ownership handover, and support emergency recovery flows. They do not convert a denied policy decision into an executable proposal.
 
-Errors: `UnauthorizedGuardian` (6002), `InvalidGuardianConfiguration` (6026).
+Errors: `UnauthorizedGuardian` (6002), `InvalidGuardianConfiguration` (6027).
 
 ---
 
@@ -116,25 +116,24 @@ A computed `u8` score (0–100) stored in a `HealthScore` PDA. Initialized via `
 
 ## Trust Tier
 
-A reputation score (0–4) stored in `TrustIdentityAccount` that classifies agent behavior:
+A trust classification (0–3) stored in `TrustIdentityAccount` that classifies agent behavior:
 
-- **0 - New**: Initial registration, baseline limits
-- **1 - Trusted**: Normal operation, 1.0× multiplier
-- **2 - Degraded**: Single violation, 0.75× limits
-- **3 - Restricted**: Repeated violations, 0.5× limits + mandatory approval
-- **4 - Lockdown**: Critical violation, all execution halted
+- **0 - Trusted**: Normal operation, 1.0× multiplier
+- **1 - Watch**: Elevated caution, `watch_multiplier_bps` haircut
+- **2 - Restricted**: Heavily restricted, `restricted_multiplier_bps` haircut + forced multisig approval
+- **3 - Lockdown**: Proposal path blocked when the trust account is supplied
 
-Trust tiers automatically adjust based on violation history and can be manually restored by the owner or guardian quorum.
+Secondary-agent capability breaches add to `threat_score`, clean activity decays it, and `restore_trust` lets the owner step the tier down manually.
 
 ---
 
 ## Scheduled Intent
 
-A `ScheduledIntent` PDA that represents a recurring transaction pattern with budget controls. Executes automatically when the next slot is due (via keeper or permissionless caller):
+A `ScheduledIntent` PDA that represents a recurring transaction pattern with budget controls. It becomes executable when `Clock::unix_timestamp >= next_run_at`; `execute_scheduled_intent` is permissionless when no keeper is configured and restricted to `keeper` when one is set.
 
-- **Recurrence**: interval, cron-like, or slot-based
+- **Recurrence**: fixed `interval_secs` cadence with `start_at`, optional `end_at`, optional `max_runs`, `catch_up`, and `skip_on_deny`
 - **Budget**: per-run cap and total lifetime cap
-- **Conditions**: min balance, max gas price, time windows
+- **Conditions**: price-above/below, time-window, balance-above/below, and oracle-flag predicates
 
 Violations: `ScheduledIntentBudgetExceeded`, `ScheduledIntentExpired`.
 
@@ -155,24 +154,23 @@ Avoids occupying the pending slot until conditions are satisfied.
 
 ## Fee Vault
 
-A `FeeVault` PDA storing prepaid fee balance and accrued protocol fees. Fees are charged on:
+A `FeeVault` PDA storing prepaid fee balance and accrued protocol fees. The current on-chain charging path accrues an execution fee during successful `finalize_execution` when a `FeeVault` is supplied. Creation, subscription, and AUM fee fields are stored in fee schedules/templates for billing policy, but proposal submission does not charge the vault.
 
-- Treasury creation (one-time)
-- Proposal submission (per-proposal)
-- Execution finalization (per-execution, bps of amount)
-
-Fees can be split across protocol, integrator, and referral recipients via a `FeeSplit` table.
+Fees can be split across up to 4 protocol, integrator, referral, or guardian recipients via a `FeeSplit` table.
 
 ---
 
 ## Billing Template
 
-A reusable `FeeSchedule` definition that can be applied to multiple treasuries. Built-in profiles:
+A reusable `FeeSchedule` definition that can be applied to multiple treasuries. Built-in profile kinds:
 
-- **Startup**: low creation fee, 0.1% execution
-- **Growth**: medium creation fee, 0.05% execution
-- **Enterprise**: high creation fee, 0.01% execution
-- **Custom**: operator-defined
+- **Payroll**
+- **TradingDesk**
+- **DaoTreasury**
+- **GrantProgram**
+- **VendorPayments**
+- **ColdStorage**
+- **Specialty**
 
 Templates can be forked and parameterized with overrides.
 
@@ -189,7 +187,7 @@ Templates can be forked and parameterized with overrides.
 | Policy simulation | `["policy_simulation", treasury, simulationId_le64]` | Simulation result |
 | Budget envelope | `["budget_envelope", treasury, envelopeId_le64]` | Scoped sub-budget |
 | Exposure group | `["exposure_group", authority, groupId_16bytes]` | Cross-treasury cap |
-| Operator role | `["operator_role", treasury, operator]` | Delegated permissions |
+| Operator role | `["operator_role", treasury, operator]` | Delegated maintenance permissions |
 | External liveness | `["external_liveness", treasury]` | Freshness record |
 | Policy attestation | `["policy_attestation", treasury, attester, policyVersion_le64]` | Signed policy hash |
 | Batch proposal | `["batch_proposal", treasury, batchId_le64]` | Batch result |
@@ -199,6 +197,6 @@ Templates can be forked and parameterized with overrides.
 | Conditional proposal | `["conditional_proposal", treasury, proposalId_le64]` | Trigger-based proposal |
 | Fee vault | `["fee_vault", treasury]` | Prepaid + accrued fees |
 | Fee schedule | `["fee_schedule", treasury]` | Per-treasury rates |
-| Billing template | `["billing_template", authority, templateId]` | Reusable fee config |
+| Billing template | `["billing_template", owner, templateId_le64]` | Reusable fee config |
 
 All derivation helpers are exported from `@aura-protocol/sdk-ts` — use them instead of computing seeds manually.

@@ -1,15 +1,14 @@
 ---
 title: dWallet Execution
-description: How AURA uses Ika dWallet records to co-sign transactions across 6 chains without exposing a private key.
+description: How AURA uses Ika dWallet registrations and runtime sidecars to co-sign transactions across 6 chains without exposing a private key.
 icon: Wallet
-status: new
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 
 ## Why dWallet
 
-Giving an AI agent a raw private key means the key can be extracted from memory, a compromised agent can drain the wallet instantly, and there is no on-chain record of what was authorized. Ika dWallet records solve all three: the agent never sees the key, every co-sign request is gated by the AURA program, and the audit trail lives on Solana.
+Giving an AI agent a raw private key means the key can be extracted from memory, a compromised agent can drain the wallet instantly, and there is no on-chain record of what was authorized. Ika dWallets solve all three: the agent never sees the key, every co-sign request is gated by the AURA program, and the audit trail lives on Solana.
 
 ## Supported Chains
 
@@ -28,16 +27,25 @@ These map to the `Chain` enum in `aura-policy`: `Bitcoin`, `Ethereum`, `Solana`,
 
 ## Registering a dWallet
 
-Before any proposal can be approved for a chain, a `DwalletRecord` must be registered against the treasury. One record per chain.
+Before any proposal can be approved for a chain, the treasury must have an inline `DWalletRecord` registration for that chain. Asset-aware transfers also use the per-chain `DWalletAccount` runtime sidecar for limits, balances, and reservations.
 
 ```typescript
-// Register an Ethereum dWallet (owner signs)
-await aura.dwallet.register({
-  treasury,
-  chain: 1,                          // Ethereum
-  dwalletId: "dwallet-abc123",       // from Ika dWallet provisioning
-  address: "0xYourEthAddress",
-  balanceUsd: 5_000,                 // USD cents — balance hint
+import BN from "bn.js";
+import { instructions } from "@aura-protocol/sdk-ts";
+
+await instructions.dwallet.sendRegisterDwallet(client, owner, {
+  accounts: { owner: owner.publicKey, treasury },
+  args: {
+    chain: 1, // Ethereum
+    dwalletId: "dwallet-abc123", // from Ika dWallet provisioning
+    address: "0xYourEthAddress",
+    balanceUsd: new BN(5_000), // USD cents — balance hint
+    dwalletAccount: null,
+    authorizedUserPubkey: null,
+    messageMetadataDigest: null,
+    publicKeyHex: null,
+    timestamp: new BN(Math.floor(Date.now() / 1000)),
+  },
 });
 ```
 
@@ -149,9 +157,9 @@ Seeds (in order):
 
 ## Bitcoin Manual Review
 
-Bitcoin transactions above `bitcoin_manual_review_threshold_usd` (default: `5_000` USD cents = $50) are blocked by `ViolationCode::BitcoinManualReview` in `evaluate_public_precheck`. A guardian must approve via `approve_pending_execution` before `execute_pending` can proceed.
+Bitcoin transactions above `bitcoin_manual_review_threshold_usd` (default: `5_000` USD cents = $50) are denied by `ViolationCode::BitcoinManualReview` in the policy engine. This is not an approval-ladder requirement: `approve_pending_execution` can satisfy guardian/multisig/timelock levels on approved proposals, but it does not turn a denied `BitcoinManualReview` decision into an executable proposal.
 
-<Mermaid chart="flowchart TD;BTC[Bitcoin Proposal] --> Threshold{amount_usd > bitcoin_manual_review_threshold_usd?};Threshold -->|yes| Block[ViolationCode::BitcoinManualReview];Threshold -->|no| Normal[Normal execution path];Block -->|guardian calls approve_pending_execution| Override[Guardian override — proposal proceeds]" />
+<Mermaid chart="flowchart TD;BTC[Bitcoin Proposal] --> Threshold{amount_usd > bitcoin_manual_review_threshold_usd?};Threshold -->|yes| Deny[Denied: ViolationCode::BitcoinManualReview];Threshold -->|no| Normal[Normal execution path];Normal --> Ladder{approval ladder requires review?};Ladder -->|yes| Approve[guardian/multisig/timelock gate];Ladder -->|no| Execute[execute_pending]" />
 
 ## `finalize_execution` Accounts
 
@@ -190,10 +198,10 @@ settlement or replay policy.
 |---|---|
 | Key never exposed | Agent receives signed bytes, not the private key |
 | Authorization gated | Only `aura-core`'s `cpi_authority` PDA can request co-signs |
-| Per-chain isolation | Each chain has its own `DwalletRecord`; chain-bound proposals also bind native replay fields |
+| Per-chain isolation | Each chain has its own inline `DWalletRecord` and optional `DWalletAccount` sidecar; chain-bound proposals also bind native replay fields |
 | Settlement gate | Chain-bound proposals are not counted as settled until `confirm_settlement` reaches the required confirmations |
 | Failure handling | Reorged or failed broadcasts can be re-signed with fresh replay data or abandoned with reservations released |
-| Audit trail | Every `execute_pending` and `finalize_execution` emits on-chain events |
+| Audit trail | Treasury sync emits audit/proposal events; optional analytics/activity sidecars capture finalization when supplied |
 | Revocable | Owner can deregister a dWallet record at any time |
 | Liveness checks | `LivenessConfig.require_dwallet_freshness` can require a fresh `ExternalLiveness` record |
 

@@ -8,25 +8,25 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## External liveness
 
-| Instruction | Description | |
-|---|---|---|
-| `init_external_liveness` | Create the dependency freshness record. | |
-| `configure_liveness_guardrails` | Set which dependencies must be fresh. | |
-| `refresh_external_liveness` | Refresh a dependency timestamp. | |
-| `close_external_liveness` | Close the record (refused while it is an active hard gate). | <New /> |
+| Instruction | Description |
+|---|---|
+| `init_external_liveness` | Create the dependency freshness record.
+| `configure_liveness_guardrails` | Set which dependencies must be fresh.
+| `refresh_external_liveness` | Refresh a dependency timestamp.
+| `close_external_liveness` | Close the record (refused while it is an active hard gate).
 
 ## Observability & services
 
-| Instruction | Description | |
-|---|---|---|
-| `init_health_score` / `refresh_health_score` / `close_health_score` | Treasury health scoring. | |
-| `take_snapshot` / `close_snapshot` | Periodic treasury snapshots. | |
-| `init_activity_log` / `close_activity_log` | On-chain activity ring buffer (wired into the execution boundary). | |
-| `init_policy_history` / `record_policy_snapshot` / `close_policy_history` | Policy version history. | |
-| `init_treasury_analytics` / `close_treasury_analytics` | Durable audit commitment + analytics aggregates sidecar. | <New /> |
-| `simulate_policy` | Non-mutating policy simulation. | |
-| `write_policy_receipt` · `attest_policy` | Compact policy receipts + attestations. | |
-| `check_invariants` · `check_policy_cpi` | Invariant reports + CPI policy checks. | |
+| Instruction | Description |
+|---|---|
+| `init_health_score` / `refresh_health_score` / `close_health_score` | Treasury health scoring.
+| `take_snapshot` / `close_snapshot` | Periodic treasury snapshots.
+| `init_activity_log` / `close_activity_log` | On-chain activity ring buffer (wired into the execution boundary).
+| `init_policy_history` / `record_policy_snapshot` / `close_policy_history` | Policy version history.
+| `init_treasury_analytics` / `close_treasury_analytics` | Durable audit commitment + analytics aggregates sidecar.
+| `simulate_policy` | Non-mutating policy simulation.
+| `write_policy_receipt` · `attest_policy` | Compact policy receipts + attestations.
+| `check_invariants` · `check_policy_cpi` | Invariant reports + CPI policy checks.
 
 ## Audit commitment & analytics capture
 

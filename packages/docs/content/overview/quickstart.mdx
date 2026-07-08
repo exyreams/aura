@@ -1,6 +1,6 @@
 ---
 title: Quick Start
-description: Create your first AURA treasury and submit a proposal in under 5 minutes using the TypeScript SDK.
+description: Install the TypeScript SDK and build against the current AURA program surface.
 icon: Rocket
 ---
 
@@ -17,7 +17,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 npm install @aura-protocol/sdk-ts @solana/web3.js bn.js
 ```
 
-Current published version: `@aura-protocol/sdk-ts@0.2.13`
+Current package version in this repo: `@aura-protocol/sdk-ts@0.3.1`
 
 </Step>
 
@@ -27,15 +27,15 @@ Current published version: `@aura-protocol/sdk-ts@0.2.13`
 
 ```typescript
 import { Connection, Keypair } from "@solana/web3.js";
-import { Aura, AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
+import { AuraClient, AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
 
-// Load your funded devnet keypair
+// Load your funded devnet keypair.
 const keypair = Keypair.fromSecretKey(/* your secret key bytes */);
 
-const aura = new Aura({
-  rpcUrl: "https://api.devnet.solana.com",
-  keypair,
+const client = new AuraClient({
+  connection: new Connection("https://api.devnet.solana.com", "confirmed"),
   // programId defaults to AURA_PROGRAM_ID = auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
+  programId: AURA_PROGRAM_ID,
 });
 ```
 
@@ -45,28 +45,38 @@ const aura = new Aura({
 
 ## Create a treasury
 
-`Aura.treasury.create` injects timestamps automatically and applies sensible defaults for unspecified limits.
+The SDK is functional: account helpers derive PDAs and shape account maps, while generated instruction helpers build or send transactions. `CreateTreasuryArgs` is a complete IDL type, so its nested `PolicyConfigRecord` and `ProtocolFeesRecord` fields must be supplied.
 
 ```typescript
-const { treasury, signature } = await aura.treasury.create({
-  agentId: "my-agent-1", // unique per owner — used in PDA seed
-  dailyLimitUsd: 10_000, // USD cents = $100/day
-  perTxLimitUsd: 1_000, // USD cents = $10/tx
+import BN from "bn.js";
+import {
+  accounts,
+  instructions,
+  type CreateTreasuryArgs,
+} from "@aura-protocol/sdk-ts";
 
-  // Optional — defaults shown:
-  // daytimeHourlyLimitUsd: dailyLimitUsd / 10   → 1_000
-  // nighttimeHourlyLimitUsd: dailyLimitUsd / 20 → 500
-  // velocityLimitUsd: dailyLimitUsd / 2          → 5_000
-  // allowedProtocolBitmap: 31                    → all 5 protocols
-  // maxSlippageBps: 100                          → 1%
-  // maxQuoteAgeSecs: 300                         → 5 minutes
-  // maxCounterpartyRiskScore: 70                 → 0–100 scale
-  // bitcoinManualReviewThresholdUsd: 5_000       → $50
-  // pendingTransactionTtlSecs: 900               → 15 minutes
+const args: CreateTreasuryArgs = {
+  agentId: "my-agent-1",
+  aiAuthority: keypair.publicKey,
+  createdAt: new BN(Math.floor(Date.now() / 1000)),
+  pendingTransactionTtlSecs: new BN(900),
+  policyConfig, // full PolicyConfigRecord
+  protocolFees, // full ProtocolFeesRecord
+};
+
+const { treasury, input } = accounts.createTreasuryInput({
+  owner: keypair.publicKey,
+  args,
 });
 
+const signature = await instructions.treasury.sendCreateTreasury(
+  client,
+  keypair,
+  input,
+);
+
 console.log("Treasury PDA:", treasury.toBase58());
-// Seeds: ["treasury", keypair.publicKey, "my-agent-1"]
+console.log("Signature:", signature);
 ```
 
 </Step>
@@ -75,55 +85,19 @@ console.log("Treasury PDA:", treasury.toBase58());
 
 ## Register a dWallet
 
-Each chain needs its own `DwalletRecord` before proposals can be approved for that chain.
+Each execution chain needs a registered dWallet before proposals on that chain can move to signing. Use `instructions.dwallet.registerDwallet` or `sendRegisterDwallet`; the dWallet ID and native address come from Ika provisioning.
 
-```typescript
-await aura.dwallet.register({
-  treasury,
-  chain: 1, // 0=Bitcoin 1=Ethereum 2=Solana 3=Polygon 4=Arbitrum 5=Optimism
-  dwalletId: "dwallet-abc123", // from Ika dWallet provisioning
-  address: "0xYourEthAddress", // native address on the target chain
-  balanceUsd: 5_000, // USD cents — balance hint
-});
-```
+Chain codes are `0=Bitcoin`, `1=Ethereum`, `2=Solana`, `3=Polygon`, `4=Arbitrum`, `5=Optimism`.
 
 </Step>
 
 <Step>
 
-## Propose a transaction
+## Propose and execute
 
-```typescript
-const signature = await aura.treasury.propose({
-  treasury,
-  amountUsd: 250, // USD cents = $2.50
-  chain: 1, // Ethereum
-  recipient: "0xRecipientAddress",
-  txType: 0, // 0=Transfer 1=DeFiSwap 2=LendingDeposit 3=NFTPurchase 4=ContractInteraction
+Public proposals are built with `instructions.execution.proposeTransaction`. Confidential proposals use `proposeConfidentialTransaction`, then `requestPolicyDecryption` and `confirmPolicyDecryption` before execution. Approved proposals continue through `executePending` and `finalizeExecution`; chain-bound proposals may also require `markSettlementBroadcast` and `confirmSettlement`.
 
-  // Optional policy telemetry:
-  // counterpartyRiskScore: 15,      // 0–100
-  // quoteAgeSecs: 60,               // seconds since price quote
-  // expectedOutputUsd: 248,         // for slippage check
-  // actualOutputUsd: 247,
-});
-```
-
-The proposal goes through `evaluate_transaction` in `aura-policy`:
-
-1. Scoped pause check
-2. Budget envelope check
-3. Per-tx limit: `250 ≤ 1_000` ✓
-4. Daily limit: `spent_today + 250 ≤ 10_000` ✓
-5. Time window, protocol, slippage, quote freshness, counterparty risk...
-6. Velocity limit check
-
-If all pass, a `PendingTransaction` account is created on-chain.
-
-For chain-bound proposals where Ika must sign exact native bytes (Solana SPL
-transfer, EVM transaction, etc.), `proposeTransaction` also accepts
-`nativeMessageHash` and chain-specific replay fields. See
-[dWallet Execution](/sdk-ts/execution/dwallet-execution) for the full flow.
+For chain-bound proposals where Ika must sign exact native bytes, the proposal can bind `nativeMessageHash` and chain-specific replay fields. See [dWallet Execution](/sdk-ts/execution/dwallet-execution) for the full flow.
 
 </Step>
 
@@ -132,107 +106,82 @@ transfer, EVM transaction, etc.), `proposeTransaction` also accepts
 ## Read treasury state
 
 ```typescript
-const account = await aura.treasury.get(treasury);
+const account = await accounts.fetchTreasuryAccount(client, treasury);
 
 console.log("Agent ID:", account.agentId);
-console.log("Paused:", account.paused);
+console.log("Paused:", account.executionPaused);
 console.log("Total transactions:", account.totalTransactions.toString());
 console.log("Daily limit:", account.policyConfig.dailyLimitUsd.toString());
 ```
 
-Or derive the PDA and fetch by owner + agentId:
+Or derive the PDA and fetch by owner + agent ID:
 
 ```typescript
-const { treasury: pda, account } = await aura.treasury.getForOwner(
-  keypair.publicKey,
-  "my-agent-1",
-);
+const [pda] = accounts.derive(keypair.publicKey, "my-agent-1");
+const account = await accounts.fetchTreasuryAccount(client, pda);
 ```
 
 </Step>
 
 </Steps>
 
-## Using the Low-Level Client
+## Low-Level Surface
 
-For full control — all 67 instructions, manual `BN` values, instruction composition:
+The SDK exposes all **161** program instructions as generated builders grouped by domain:
 
 ```typescript
-import {
-  AuraClient,
-  AURA_PROGRAM_ID,
-  deriveTreasuryAddress,
-} from "@aura-protocol/sdk-ts";
-import { Connection } from "@solana/web3.js";
-import BN from "bn.js";
-
-const client = new AuraClient({
-  connection: new Connection("https://api.devnet.solana.com", "confirmed"),
-  programId: AURA_PROGRAM_ID,
-});
-
-// Derive the treasury PDA manually
-const [treasury] = deriveTreasuryAddress(owner.publicKey, "my-agent-1");
-
-// Build and send an instruction without broadcasting
-const { instruction } = await client.createTreasuryInstruction({
-  owner: owner.publicKey,
-  args: {
-    /* full CreateTreasuryArgs with BN values */
-  },
-});
-
-// Compose with other instructions in one transaction
-await client.sendInstructions(owner, [instruction, otherInstruction]);
+const ix = await instructions.treasury.createTreasury(client, input);
+await client.sendInstructions(keypair, [ix]);
 ```
+
+Every program account has a typed fetcher under `accounts`, every PDA helper is under `pda`, and error/event helpers are exported from the root package.
 
 ## Error Handling
 
-Program errors start at code `6000`. Use `AuraErrorCode` and `isAuraError`:
+Program errors start at code `6000`. Use the SDK error parser to recover the program error name and message from thrown RPC/Anchor errors:
 
 ```typescript
-import { AuraErrorCode, isAuraError } from "@aura-protocol/sdk-ts";
+import { parseAuraError } from "@aura-protocol/sdk-ts";
 
 try {
-  await aura.treasury.propose({ ... });
+  await instructions.execution.sendProposeTransaction(client, keypair, input);
 } catch (err) {
-  if (isAuraError(err, AuraErrorCode.PendingTransactionExists)) {
-    console.log("A proposal is already pending — cancel it first");
-  } else if (isAuraError(err, AuraErrorCode.ExecutionPaused)) {
-    console.log("Treasury is paused");
+  const parsed = parseAuraError(err);
+  if (parsed?.name === "PendingTransactionExists") {
+    console.log("The treasury pending queue is full — clear or settle a proposal first");
   }
 }
 ```
 
 Common errors:
 
-| Code | Name                                  | Meaning                                        |
-| ---- | ------------------------------------- | ---------------------------------------------- |
-| 6004 | `PendingTransactionExists`            | Only one pending proposal allowed at a time    |
-| 6005 | `NoPendingTransaction`                | No proposal to execute or cancel               |
-| 6006 | `DWalletNotConfigured`                | No dWallet registered for the target chain     |
+| Code | Name | Meaning |
+| ---- | ---- | ------- |
+| 6004 | `PendingTransactionExists` | Pending proposal queue is full |
+| 6005 | `NoPendingTransaction` | No proposal to execute or cancel |
+| 6006 | `DWalletNotConfigured` | No dWallet registered for the target chain |
 | 6015 | `ConfidentialGuardrailsNotConfigured` | Confidential path requires ciphertext accounts |
-| 6017 | `ExecutionPaused`                     | Treasury is paused                             |
-| 6018 | `PendingTransactionExpired`           | Proposal TTL elapsed                           |
-| 6027 | `TimelockNotElapsed`                  | Dangerous config change timelock still active  |
+| 6018 | `ExecutionPaused` | Treasury is paused |
+| 6019 | `PendingTransactionExpired` | Proposal TTL elapsed |
+| 6028 | `TimelockNotElapsed` | Dangerous config change timelock still active |
 
 ## What's Next
 
 <Cards>
   <Card
-    title="Confidential Guardrails"
-    description="Add FHE-encrypted spend limits to your treasury."
-    href="/overview/confidential-guardrails"
+    title="TypeScript SDK"
+    description="Current AuraClient, builders, accounts, errors, and examples."
+    href="/sdk-ts"
+  />
+  <Card
+    title="Program Instructions"
+    description="The complete aura-core instruction catalog by domain."
+    href="/program/instructions"
   />
   <Card
     title="Key Concepts"
     description="Treasury, proposal lifecycle, PDA seeds, and more."
     href="/overview/concepts"
-  />
-  <Card
-    title="TypeScript SDK"
-    description="Full AuraClient and Aura API reference."
-    href="/sdk-ts"
   />
   <Card
     title="CLI Tool"

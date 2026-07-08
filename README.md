@@ -26,7 +26,7 @@ operator inside a governed treasury system.**
 
 ## What AURA Is
 
-AURA is not a standalone guardrail contract or a wallet wrapper. It is an
+AURA is not a standalone policy contract or a wallet wrapper. It is an
 operating layer around autonomous capital movement:
 
 ```text
@@ -68,7 +68,7 @@ between those extremes.
 | **Settlement ambiguity** | After a cross-chain or chain-bound signature is produced, most systems lose track of broadcast, resubmission, confirmation, and accounting state. |
 | **No audit trail** | There is often no cryptographically verifiable record of what policy was active, what was checked, and why an action was approved or denied. |
 | **Weak recovery controls** | If an AI authority, operator, or owner path is compromised, recovery is usually ad hoc instead of encoded as emergency revoke, handover, or break-glass flow. |
-| **Guardrail reconfiguration risk** | A compromised admin can silently raise limits or loosen policy unless sensitive changes are timelocked, staged, or guardian-vetoed. |
+| **Policy reconfiguration risk** | A compromised admin can silently raise limits or loosen policy unless sensitive changes are timelocked, staged, or guardian-vetoed. |
 | **Multi-agent coordination risk** | Agent swarms and shared budgets can overspend or duplicate exposure unless shared pools, budget envelopes, and exposure groups are tracked together. |
 
 AURA takes a different path: keep the signing authority behind dWallets, keep
@@ -210,7 +210,7 @@ This repo is currently a devnet-oriented protocol workspace:
 - opt-in live scenarios that can move devnet test tokens
 
 The codebase is intentionally broad because AURA is an operating surface for
-autonomous treasuries, not a single guardrail primitive.
+autonomous treasuries, not a single policy primitive.
 
 ---
 
@@ -309,22 +309,61 @@ export AURA_DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=YOUR_KEY"
 cd smoke/aura-devnet
 ```
 
-Focused binaries:
+Focused binaries are grouped by what they exercise:
 
 ```bash
+# Self-contained devnet/RPC checks
+cargo run --bin admin
+cargo run --bin wallet
+cargo run --bin hardening
+cargo run --bin oracle_multichain_core
+cargo run --bin recovery_core
+cargo run --bin trust_identity_core
+cargo run --bin monetization_core
+cargo run --bin address_list_enforcement
+cargo run --bin session_key_quota
+cargo run --bin operator_role_scoped_pause
+cargo run --bin approval_ladder_receipts
+cargo run --bin budget_exposure_enforcement
+cargo run --bin health_snapshot_liveness
+cargo run --bin governance_timelocks
+cargo run --bin chain_profile_negative
+cargo run --bin dwallet_negative_controls
+cargo run --bin policy_templates_lifecycle
+cargo run --bin public_batch
+cargo run --bin protocol_config_commit
+
+# Live Ika dWallet / Encrypt flows
 cargo run --bin dwallet
 cargo run --bin confidential
 cargo run --bin confidential_lifecycle
 cargo run --bin confidential_batch
 cargo run --bin policy
-cargo run --bin admin
-cargo run --bin wallet
-cargo run --bin hardening
 cargo run --bin oracle_multichain
 cargo run --bin recovery
 cargo run --bin trust_identity
 cargo run --bin versioning_monetization
 cargo run --bin monetization
+cargo run --bin settlement_lifecycle
+cargo run --bin recovery_breakglass_authority
+cargo run --bin ownership_handover_live
+cargo run --bin fee_accrual_live
+```
+
+Live-token smokes are opt-in; transfer/funding/payroll variants use existing
+funded devnet token balances:
+
+```bash
+export AURA_LIVE_TOKEN_SMOKE=1
+cargo run --bin live_wallet_discovery
+cargo run --bin live_direct_transfer
+cargo run --bin live_dwallet_funding
+cargo run --bin live_policy_transfer
+cargo run --bin live_payroll
+cargo run --bin live_agent_swap
+cargo run --bin live_velocity_after_settlement
+cargo run --bin live_scheduled_transfer
+cargo run --bin live_conditional_transfer
 ```
 
 For a compile-only gate:

@@ -50,11 +50,11 @@ sequenceDiagram
 
 ## Confidential (FHE)
 
-| Instruction | Description | |
-|---|---|---|
-| `configure_confidential_guardrails` | Set the encrypted daily/per-tx limit + spent-counter ciphertexts (treasury-embedded). | |
-| `request_policy_decryption` | Request decryption of the encrypted policy output, optionally binding the request to the current confidential guardrail epoch. | |
-| `confirm_policy_decryption` | Verify the decrypted policy output, enforce any bound guardrail epoch, and apply the result (maps `5 → WeeklyLimit`). | <New /> |
+| Instruction | Description |
+|---|---|
+| `configure_confidential_guardrails` | Set the encrypted daily/per-tx limit + spent-counter ciphertexts (treasury-embedded).
+| `request_policy_decryption` | Request decryption of the encrypted policy output, optionally binding the request to the current confidential guardrail epoch.
+| `confirm_policy_decryption` | Verify the decrypted policy output, enforce any bound guardrail epoch, and apply the result (maps `5 → WeeklyLimit`).
 
 `propose_confidential_transaction` runs a scalar FHE graph over the encrypted limits. By default it enforces
 per-tx + daily. When the optional `weekly_limit_ciphertext` + `weekly_spent_ciphertext` accounts and the
@@ -84,11 +84,11 @@ stack-frame headroom. The epoch marker lets a long-lived confidential treasury r
 Encrypt network key rotates instead of silently breaking; the propose/decrypt path rejects a stale epoch
 (`GuardrailEpochMismatch`). Each ciphertext is re-validated as an Encrypt-owned, verified `u64` on write.
 
-| Instruction | Description | |
-|---|---|---|
-| `init_confidential_guardrails` | Create the sidecar with the core ciphertext pointers under an epoch (enabled). | <New /> |
-| `update_confidential_guardrails` | Re-point any subset of ciphertexts (idempotent; absent fields unchanged). | <New /> |
-| `rotate_confidential_guardrails` | Swap ciphertexts to a new Encrypt epoch and stamp the epoch marker (audited). | <New /> |
-| `reset_confidential_counters` | Re-point the encrypted counter ciphertexts to freshly-zeroed ones at a new day/epoch. | <New /> |
-| `disable_confidential_guardrails` | Disable confidential evaluation (fall back to public policy) without teardown. | <New /> |
-| `close_confidential_guardrails` | Close the sidecar and reclaim rent. | <New /> |
+| Instruction | Description |
+|---|---|
+| `init_confidential_guardrails` | Create the sidecar with the core ciphertext pointers under an epoch (enabled).
+| `update_confidential_guardrails` | Re-point any subset of ciphertexts (idempotent; absent fields unchanged).
+| `rotate_confidential_guardrails` | Swap ciphertexts to a new Encrypt epoch and stamp the epoch marker (audited).
+| `reset_confidential_counters` | Re-point the encrypted counter ciphertexts to freshly-zeroed ones at a new day/epoch.
+| `disable_confidential_guardrails` | Disable confidential evaluation (fall back to public policy) without teardown.
+| `close_confidential_guardrails` | Close the sidecar and reclaim rent.

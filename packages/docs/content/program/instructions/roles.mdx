@@ -5,23 +5,26 @@ icon: KeyRound
 ---
 
 Roles and permissions delegate scoped, revocable authority below the owner.
-**Operator roles** grant a permission bitmap (with optional expiry) so a
-delegate can run specific operational instructions; **session keys** issue
+**Operator roles** grant a permission mask (with optional expiry) so a
+delegate can run maintenance instructions such as address-list updates,
+scoped pauses, simulations, liveness refreshes, snapshots, and health
+refreshes. They do not authorize live dWallet signing/decryption, which remains
+owner/AI-authority gated. **Session keys** issue
 short-lived, narrowly-scoped credentials an agent can use without the owner key.
 
 ## Operator roles
 
-| Instruction | Description | |
-|---|---|---|
-| `grant_operator_role` | Grant a scoped operator permission bitmap. | |
-| `revoke_operator_role` | Revoke an operator role. | |
-| `update_operator_role` | Edit an operator's permission mask / expiry in place. | <New /> |
+| Instruction | Description |
+|---|---|
+| `grant_operator_role` | Grant a scoped operator permission mask.
+| `revoke_operator_role` | Revoke an operator role.
+| `update_operator_role` | Edit an operator's permission mask / expiry in place.
 
 ## Session keys
 
-| Instruction | Description | |
-|---|---|---|
-| `issue_session_key` | Issue a scoped, expiring session key. | |
-| `revoke_session_key` | Revoke a session key. | |
-| `close_session_key` | Close the session-key account (reclaim rent). | |
-| `update_session_key` | Extend expiry / re-scope an active session key. | <New /> |
+| Instruction | Description |
+|---|---|
+| `issue_session_key` | Issue a scoped, expiring session key.
+| `revoke_session_key` | Revoke a session key.
+| `close_session_key` | Close the session-key account (reclaim rent).
+| `update_session_key` | Extend expiry / re-scope an active session key.

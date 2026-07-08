@@ -8,24 +8,24 @@ icon: ShieldCheck
 
 | Code | Name | Trigger |
 |---|---|---|
-| 6097 | `TrustLockdownActive` | Treasury is in Lockdown; no proposals may be submitted. <New /> |
-| 6098 | `InvalidTrustPolicy` | Trust policy thresholds are not monotonic or multipliers exceed 1×. <New /> |
-| 6099 | `TrustRestoreUnauthorized` | Caller is not the owner or a registered guardian. <New /> |
+| 6097 | `TrustLockdownActive` | Trust tier is Lockdown; proposal submission is blocked when the trust PDA is supplied. |
+| 6098 | `InvalidTrustPolicy` | Trust policy thresholds are not monotonic or multipliers exceed 1×. |
+| 6099 | `TrustRestoreUnauthorized` | Caller is not the owner or a registered guardian. |
 
 ## Ownership Handover
 
 | Code | Name | Trigger |
 |---|---|---|
-| 6100 | `SuccessorNotNominated` | `execute_ownership_handover` called with no pending nomination. <New /> |
-| 6101 | `OwnershipHandoverTimelockActive` | Handover timelock (48 h) has not elapsed. <New /> |
-| 6105 | `UnauthorizedHandover` | Caller is not authorized to nominate or execute an ownership handover. <New /> |
+| 6100 | `SuccessorNotNominated` | `execute_ownership_handover` called with no pending nomination. |
+| 6101 | `OwnershipHandoverTimelockActive` | Handover timelock (48 h) has not elapsed. |
+| 6105 | `UnauthorizedHandover` | Caller is not authorized to nominate or execute an ownership handover. |
 
 ## Custody Recovery
 
 | Code | Name | Trigger |
 |---|---|---|
-| 6108 | `NoRecoveryDestination` | `break_glass_recover` called but no recovery address registered for the chain. <New /> |
-| 6109 | `RecoveryTimelockActive` | Attempting to change a recovery destination before its lock window expires. <New /> |
-| 6110 | `RecoveryPreconditionNotMet` | Treasury is not in emergency shutdown, or the 1-hour post-shutdown activation window has not elapsed. <New /> |
-| 6111 | `RecoveryDestinationImmutable` | Attempting to change a recovery destination while an emergency shutdown is active. <New /> |
-| 6112 | `UnauthorizedRecovery` | Caller is not authorized to initiate a recovery operation. <New /> |
+| 6108 | `NoRecoveryDestination` | `break_glass_recover` called but no recovery address registered for the chain. |
+| 6109 | `RecoveryTimelockActive` | Attempting to change a recovery destination before its lock window expires. |
+| 6110 | `RecoveryPreconditionNotMet` | Treasury is not in emergency shutdown, or the 1-hour post-shutdown activation window has not elapsed. |
+| 6111 | `RecoveryDestinationImmutable` | Attempting to change a recovery destination while an emergency shutdown is active. |
+| 6112 | `UnauthorizedRecovery` | Caller is not authorized to initiate a recovery operation. |

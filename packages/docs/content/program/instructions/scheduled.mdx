@@ -17,7 +17,7 @@ stateDiagram-v2
     Active --> Due: Clock reaches next_run_at
     Paused --> Active: resume_scheduled_intent
     
-    Due --> CheckConditions: execute_scheduled_intent (keeper)
+    Due --> CheckConditions: execute_scheduled_intent (caller / keeper)
     CheckConditions --> ConditionsUnmet: Conditions fail
     CheckConditions --> PolicyEvaluation: Conditions pass
     
@@ -52,14 +52,14 @@ receives the matching scheduled intent account. Optional **trigger conditions** 
 the same oracle descriptor used by verified balance refresh, so trusted-oracle mode blocks raw spoofable
 feeds there too.
 
-| Instruction | Description | |
-|---|---|---|
-| `create_scheduled_intent` | Create a recurring intent with recurrence, per-run/total budget, and conditions. | <New /> |
-| `update_scheduled_intent` | Edit the recurrence / budget / payload / conditions. | <New /> |
-| `pause_scheduled_intent` / `resume_scheduled_intent` | Toggle execution on/off. | <New /> |
-| `close_scheduled_intent` | Close an intent and reclaim rent, unless a promoted run is still in flight. | <New /> |
-| `clear_scheduled_intent_in_flight` | Owner-gated recovery for an abandoned promoted run after its proposal is no longer pending. | <New /> |
-| `execute_scheduled_intent` | Run a due slot (keeper or permissionless); uses the on-chain clock and promotes an approved run into a pending proposal. | <New /> |
+| Instruction | Description |
+|---|---|
+| `create_scheduled_intent` | Create a recurring intent with recurrence, per-run/total budget, and conditions.
+| `update_scheduled_intent` | Edit the recurrence / budget / payload / conditions.
+| `pause_scheduled_intent` / `resume_scheduled_intent` | Toggle execution on/off.
+| `close_scheduled_intent` | Close an intent and reclaim rent, unless a promoted run is still in flight.
+| `clear_scheduled_intent_in_flight` | Owner-gated recovery for an abandoned promoted run after its proposal is no longer pending.
+| `execute_scheduled_intent` | Run a due slot using the on-chain clock and promote an approved run into a pending proposal. Permissionless when `keeper` is unset; otherwise only the configured keeper may call it.
 
 ## Conditional proposals
 
@@ -68,11 +68,11 @@ request into the normal pending proposal flow and records `Triggered`; it does *
 executed. Signing, finalization, cancellation, and expiry still happen through the ordinary pending
 instructions.
 
-| Instruction | Description | |
-|---|---|---|
-| `propose_conditional_transaction` | Park a proposal behind price, time-window, balance, or oracle-flag conditions. | <New /> |
-| `try_trigger` | Keeper/caller checks conditions and promotes a satisfied proposal into the pending queue. | <New /> |
-| `close_conditional_proposal` | Close the conditional proposal after it is expired, cancelled, or no longer has a promoted pending proposal. | <New /> |
+| Instruction | Description |
+|---|---|
+| `propose_conditional_transaction` | Park a proposal behind price, time-window, balance, or oracle-flag conditions.
+| `try_trigger` | Keeper/caller checks conditions and promotes a satisfied proposal into the pending queue.
+| `close_conditional_proposal` | Close the conditional proposal after it is expired, cancelled, or no longer has a promoted pending proposal.
 
 <Callout title="Policy enforcement">
   Both scheduled and conditional proposals go through the full policy engine when promoted. 

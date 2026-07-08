@@ -12,13 +12,13 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
   networks. Account layouts, instruction discriminators, and the IDL may change. Do not secure real funds.
 </Callout>
 
-**AURA** is two programs working together:
+**AURA** is a deployed Anchor program plus a shared policy crate:
 
 - **`aura-core`** — the deployed Anchor program. It owns the `TreasuryAccount` PDA and the full instruction
   surface: creating and operating agent treasuries, registering dWallets, evaluating policy, requesting FHE
   decryption, requesting dWallet signatures, and finalizing execution.
-- **`aura-policy`** — a pure-Rust policy engine with no Anchor dependency. It is consumed **on-chain** by
-  `aura-core` and **off-chain** by SDKs/tooling for simulation and preview, so the same rules govern both.
+- **`aura-policy`** — a pure-Rust policy engine with no Anchor dependency. It is linked into `aura-core`
+  and reused by tests/tooling for simulation and preview, so the same rules govern both paths.
 
 | | |
 |---|---|
@@ -38,18 +38,19 @@ flowchart TB
   Owner["Owner / guardians"] -->|configure · approve · recover| Core
   subgraph Solana["Solana — control plane"]
     Core["aura-core (Anchor program)"]
-    Policy["aura-policy (rule engine)"]
+    Policy["aura-policy crate (rule engine)"]
     Core --> Policy
   end
-  Core -->|encrypted policy eval| Encrypt["Ika Encrypt — FHE network"]
-  Core -->|MPC co-signing| DWallet["Ika dWallet — 2PC-MPC network"]
+  Core -->|optional encrypted policy eval| Encrypt["Ika Encrypt — FHE network"]
+  Core -->|MPC co-signing after approval| DWallet["Ika dWallet — 2PC-MPC network"]
   DWallet -->|signatures| Chains["Ethereum · Bitcoin · Solana · Polygon · Arbitrum · Optimism"]
 ```
 
 - **Solana is the control plane.** All policy, limits, approvals, and audit live in `aura-core`. It never
   holds external-chain keys.
-- **Confidential guardrails** (daily/per-tx limits + the running spend counter) are stored as FHE ciphertexts
-  and evaluated by the Encrypt network — only a small violation code is decrypted, never the limits.
+- **Confidential guardrails** are the private branch for encrypted spend checks. The core treasury-embedded
+  path covers daily and per-transaction limits; the sidecar-backed extended path can also enforce a weekly
+  limit. The Encrypt network returns only a small violation code, never the private limits.
 - **Execution is MPC-signed.** Approved proposals are co-signed through Ika dWallet records, so the agent is
   never handed a raw private key, and one Solana program can act across six chains.
 
@@ -72,12 +73,13 @@ sequenceDiagram
     E-->>C: encrypted violation code
     C->>E: request_policy_decryption → confirm_policy_decryption
   end
-  C->>D: approve_message (request signature)
-  D-->>C: signature
-  C->>C: finalize_execution (advance state · emit receipt)
+    C->>D: execute_pending → approve_message
+    D-->>C: MessageApproval PDA
+    C->>C: finalize_execution
+    C->>C: mark_broadcast / confirm_settlement when chain-bound
 ```
 
-For public proposals the policy decision is computed locally by `aura-policy`; for confidential proposals the
+For public proposals the policy decision is computed by `aura-core` through the linked `aura-policy` crate; for confidential proposals the
 amount-sensitive checks run under encryption on the Encrypt network. Either way, the dWallet signature is only
 requested **after** policy approves.
 

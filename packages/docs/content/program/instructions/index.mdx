@@ -6,8 +6,9 @@ icon: LayoutList
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Every in-treasury instruction follows the same shape: load the `AgentTreasury` domain from its account,
-mutate it (recording an audit event), then serialize it back and emit events. Standalone PDAs (fee vault,
+Most in-treasury instructions follow the same shape: load the `AgentTreasury` domain from its account,
+mutate it (recording an audit event), then serialize it back and emit events. Live CPI and settlement paths
+sometimes mutate only the hot pending fields to stay within SBF limits. Standalone PDAs (fee vault,
 swarm pool, operator role, …) follow an `init` / edit / `close` pattern.
 
 <Callout title="Gating">
@@ -33,6 +34,4 @@ Browse the complete instruction catalog by domain:
 - **[Fees & Billing](/program/instructions/fees)** — Fee vaults, schedules, billing templates, protocol config
 - **[Observability](/program/instructions/observability)** — Health scoring, snapshots, analytics, audit trails
 
-## Status Indicators
-
-Instructions marked with <span className="text-green-600 dark:text-green-400 font-semibold">New</span> were added in the latest update and may not yet have typed SDK wrappers.
+The TypeScript and Rust SDKs expose builders for the full instruction surface; the SDK pages mirror these domains.

@@ -2,29 +2,27 @@
 title: Trust & Agents
 description: Multi-agent support, trust tiers, reputation scoring, and ownership handover for AURA treasuries.
 icon: BotMessageSquare
-status: new
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-AURA now supports **multi-agent treasuries** with a trust-based reputation system. Instead of a single AI authority, treasuries can register multiple agents with scoped capabilities, monitor their behavior through tripwires, and automatically adjust spending limits based on trust tiers.
+AURA supports **multi-agent treasuries** with a trust envelope. Instead of a single AI authority, treasuries can register secondary agents with scoped capabilities, track capability breaches, and apply trust-tier multipliers to the policy engine.
 
 ## Trust Tiers
 
-The trust system classifies agent behavior into five tiers stored in a `TrustIdentityAccount`:
+The trust system classifies agent behavior into four tiers stored in a `TrustIdentityAccount`:
 
 | Tier | Name | Impact | Path In | Path Out |
 |------|------|--------|---------|----------|
-| 0 | **New** | Limits start at policy baseline | Initial registration | Normal operation → Trusted |
-| 1 | **Trusted** | 1.0× multiplier (baseline) | Good history | Violation → Degraded |
-| 2 | **Degraded** | 0.75× limit multiplier | Single violation | Restore → Trusted, or 2nd violation → Restricted |
-| 3 | **Restricted** | 0.5× multiplier + mandatory approval | Repeated violations | Manual restore or → Lockdown |
-| 4 | **Lockdown** | All execution halted | Critical violation or 3+ flags | `restore_trust` by owner/guardian |
+| 0 | **Trusted** | 1.0× multiplier | Default state | Threat score crosses `watch_threshold` → Watch |
+| 1 | **Watch** | `watch_multiplier_bps` (default 0.5×) | Threat score crosses `watch_threshold` | Decay or `restore_trust` → Trusted |
+| 2 | **Restricted** | `restricted_multiplier_bps` (default 0.1×) + forced multisig approval | Threat score crosses `restricted_threshold` | `restore_trust` → Watch |
+| 3 | **Lockdown** | Proposal path blocked when `TrustIdentityAccount` is supplied | Threat score crosses `lockdown_threshold` | `restore_trust` → Restricted |
 
-Trust degradation is automatic when proposals trigger high-severity violations. Restoration requires explicit owner or guardian quorum action via `restore_trust`.
+The implemented proposal path registers behavior signals when a secondary agent breaches its capability manifest. Clean activity decays `threat_score`; Lockdown does not auto-clear. `restore_trust` is owner-gated in the current accounts and steps the tier down by one.
 
 <Callout title="Trust multipliers">
-Daily and per-tx limits are scaled by the trust tier multiplier. A treasury with `dailyLimitUsd = 10000` at Degraded tier operates at 7500 effective limit.
+Daily limits are scaled by the trust tier multiplier before policy evaluation. A treasury with `dailyLimitUsd = 10000` at the default Watch multiplier operates at 5000 effective daily limit.
 </Callout>
 
 ## Agent Registration
@@ -32,37 +30,26 @@ Daily and per-tx limits are scaled by the trust tier multiplier. A treasury with
 Treasuries register secondary agents via `register_agent`, specifying:
 
 ```typescript
-await aura.trust.registerAgent({
-  treasury,
-  agentAuthority: agentPubkey,
-  allowedChains: [1, 2, 3], // Ethereum, Solana, Polygon
-  allowedTxTypes: [0, 1], // Transfer, DeFiSwap
-  dailyCapUsd: 5000, // Optional per-agent cap (in addition to treasury cap)
-  label: "trading-agent-alpha",
-});
+import { instructions } from "@aura-protocol/sdk-ts";
+
+await instructions.lifecycle.sendRegisterAgent(client, owner, registerAgentInput);
 ```
 
 **Key features:**
-- Agents can only propose on their allowed chains and transaction types
-- Per-agent daily caps stack with treasury limits
-- Agents inherit the treasury's trust tier
+- Agents can be restricted by chain, transaction type, protocol bitmap, active window, and per-transaction cap
+- Recipient and asset allowlists are represented by address-list accounts and enforced on the evaluator path
+- The primary `ai_authority` remains authorized even when secondary agents are registered
 
 ## Capability Manifests
 
 Agent capabilities define fine-grained permissions through a `CapabilityManifest`:
 
 ```typescript
-await aura.trust.setAgentCapability({
-  treasury,
-  agentAuthority,
-  manifest: {
-    chains: [1], // Ethereum only
-    txTypes: [1], // DeFiSwap only
-    maxAmountUsd: 1000, // Per-tx cap
-    protocols: [0, 1], // Specific protocol whitelist
-    requiresApproval: false,
-  },
-});
+await instructions.lifecycle.sendSetAgentCapability(
+  client,
+  owner,
+  setAgentCapabilityInput,
+);
 ```
 
 **Tightening vs. Loosening:**
@@ -75,27 +62,23 @@ Capability changes that expand agent power are timelocked to prevent compromised
 
 ## Tripwires & Behavior Monitoring
 
-Tripwires monitor agent behavior and automatically signal trust degradation when thresholds are crossed:
+Tripwire configuration stores the behavior-signal weights used by the trust engine:
 
 ```typescript
-await aura.trust.setAgentTripwires({
-  treasury,
-  velocityWeight: 30, // 0-100: contribution to trust score
-  slippageWeight: 20,
-  counterpartyWeight: 25,
-  frequencyWeight: 15,
-  protocolWeight: 10,
-});
+await instructions.lifecycle.sendSetAgentTripwires(
+  client,
+  owner,
+  setAgentTripwiresInput,
+);
 ```
 
-**Tripwire signals:**
-- High velocity (approaching daily limits repeatedly)
-- Excessive slippage on swaps
-- High-risk counterparty interactions
-- Unusual transaction frequency patterns
-- Protocol violations or edge-case policy triggers
+**Stored weights:**
+- Policy denial
+- Anomaly
+- Fail-open abuse
+- Approval miss
 
-When the weighted score crosses a threshold, the trust tier automatically degrades.
+Current proposal enforcement increments threat score on secondary-agent capability breaches. The other weights are stored for the trust engine surface and future signal integrations.
 
 ## Ownership Handover
 
@@ -103,54 +86,48 @@ Transfer treasury ownership securely with a timelocked nomination:
 
 ```typescript
 // 1. Nominate successor (48h timelock)
-await aura.trust.nominateSuccessorOwner({
-  treasury,
-  nominatedOwner: newOwnerPubkey,
-});
+await instructions.lifecycle.sendNominateSuccessorOwner(client, owner, nominateInput);
 
-// 2. Accept after timelock elapses
-await aura.trust.acceptOwnershipHandover({
-  treasury,
-  signer: newOwnerKeypair,
-});
-
-// 3. Finalize migration (optional bulk treasury transfer)
-await aura.trust.migrateOwnership({
-  oldOwner: oldOwnerPubkey,
-  newOwner: newOwnerPubkey,
-  finalize: true, // decommissions old treasury
-});
+// 2. Execute after the timelock elapses.
+await instructions.lifecycle.sendExecuteOwnershipHandover(
+  client,
+  owner,
+  handoverInput,
+);
 ```
 
 **Safety:**
 - 48-hour timelock on nomination
-- Guardian quorum can nominate in emergency
-- Bulk migration across multiple agent IDs
+- Owner or any registered guardian can nominate/execute under the current account constraints
+- `execute_ownership_handover` transfers one dWallet at a time; set `finalize = true` on the last call to decommission the old treasury
 
 ## Emergency Agent Revocation
 
 Instantly disable a compromised agent:
 
 ```typescript
-await aura.trust.emergencyRevokeAgent({
-  treasury,
-  agentAuthority,
-});
+await instructions.lifecycle.sendEmergencyRevokeAgent(
+  client,
+  ownerOrGuardian,
+  revokeInput,
+);
 ```
 
-Unlike `revoke_agent` (standard path with timelock), `emergency_revoke_agent` applies immediately and can be called by owner or guardian quorum.
+Unlike `revoke_agent`, `emergency_revoke_agent` applies immediately and can be called by the owner or any registered guardian.
 
 ## Checking Trust State
 
 Read the trust tier and history from the `TrustIdentityAccount`:
 
 ```typescript
-const trustAccount = await aura.trust.getTrustIdentity(treasury);
+import { accounts } from "@aura-protocol/sdk-ts";
 
-console.log("Current tier:", trustAccount.trustTier); // 0-4
-console.log("Violation count:", trustAccount.violationCount);
-console.log("Last violation:", new Date(trustAccount.lastViolationTimestamp * 1000));
-console.log("Decay rate:", trustAccount.decayRateBps); // bps per day
+const trustAccount = await accounts.fetchTrustIdentityAccount(client, trustPda);
+
+console.log("Current tier:", trustAccount.trustTier); // 0-3
+console.log("Threat score:", trustAccount.threatScore);
+console.log("Last clean activity:", trustAccount.lastCleanActivityAt.toString());
+console.log("Tier entered at:", trustAccount.tierEnteredAt.toString());
 ```
 
 ## Use Cases
@@ -167,16 +144,16 @@ console.log("Decay rate:", trustAccount.decayRateBps); // bps per day
 
 **Compromise response:**
 - Emergency revoke suspicious agent
-- Lockdown entire treasury to halt spending
-- Guardian quorum restores trust tier after investigation
+- Move the trust envelope into Lockdown so proposals using the trust PDA are blocked
+- Owner restores the trust tier after investigation
 
 ## Related Instructions
 
 - `init_trust_identity` — Initialize trust tracking
 - `configure_trust_policy` — Set tier thresholds and decay
-- `restore_trust` — Step down trust tier
+- `restore_trust` — Owner-gated tier step-down
 - `register_agent` — Register secondary agent
 - `revoke_agent` / `emergency_revoke_agent` — Disable agent
 - `set_agent_capability` — Update capability manifest
 - `set_agent_tripwires` — Tune behavior monitoring weights
-- `nominate_successor_owner` / `accept_ownership_handover` / `migrate_ownership` — Ownership transfer
+- `nominate_successor_owner` / `execute_ownership_handover` — Ownership transfer
