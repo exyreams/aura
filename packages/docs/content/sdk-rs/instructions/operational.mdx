@@ -27,8 +27,8 @@ let sig = client.set_scoped_pause(
     &operator,
     accounts::SetScopedPause { operator: operator.pubkey(), treasury, operator_role: None },
     SetScopedPauseArgs {
-        scope_kind: 0,
-        chain: Some(2),
+        scope_kind: 1,
+        chain: Some(1),
         tx_type: None,
         recipient: None,
         protocol_id: None,

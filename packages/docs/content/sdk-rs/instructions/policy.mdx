@@ -133,7 +133,7 @@ let sig = client.simulate_policy(
     SimulatePolicyArgs {
         simulation_id: 1,
         amount_usd: 100,
-        target_chain: 2,
+        target_chain: 1,
         tx_type: 0,
         protocol_id: None,
         current_timestamp: now,
@@ -217,7 +217,7 @@ let sig = client.check_policy_cpi(
     },
     CheckPolicyCpiArgs {
         amount_usd: 100,
-        target_chain: 2,
+        target_chain: 1,
         tx_type: 0,
         protocol_id: None,
         current_timestamp: now,

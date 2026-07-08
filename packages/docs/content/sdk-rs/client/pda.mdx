@@ -129,7 +129,7 @@ use aura_sdk::pda::{
     derive_exposure_group_pda,       // [b"exposure_group", authority, group_id_16bytes]
     derive_operator_role_pda,        // [b"operator_role", treasury, operator]
     derive_external_liveness_pda,    // [b"external_liveness", treasury]
-    derive_policy_attestation_pda,   // [b"policy_attestation", treasury, attester, version_le64]
+    derive_policy_attestation_pda,   // [b"policy_attestation", treasury, attester, version_le32]
     derive_batch_proposal_pda,       // [b"batch_proposal", treasury, batch_id_le64]
     derive_invariant_report_pda,     // [b"invariant_report", treasury, report_id_le64]
     derive_message_approval_pda,     // dWallet MessageApproval PDA

@@ -141,7 +141,7 @@ let sig = client.register_recovery_destination(
     &owner,
     accounts::RecoveryConfig { owner: owner.pubkey(), treasury },
     RegisterRecoveryDestinationArgs {
-        chain: 2,
+        chain: 1,
         address: "0x000000000000000000000000000000000000dead".to_string(),
         now,
     },
@@ -157,7 +157,7 @@ Break-glass recovers funds to the registered destination. Accounts: `owner` (s),
 let sig = client.break_glass_recover(
     &owner,
     accounts::BreakGlassRecover { owner: owner.pubkey(), treasury },
-    BreakGlassRecoverArgs { chain: 2, amount_usd: 1_000, now },
+    BreakGlassRecoverArgs { chain: 1, amount_usd: 1_000, now },
 )?;
 ```
 
@@ -178,7 +178,7 @@ let sig = client.break_glass_transfer_authority(
         cpi_authority,
         dwallet_program,
     },
-    BreakGlassTransferAuthorityArgs { chain: 2, new_authority: recovery.pubkey(), now },
+    BreakGlassTransferAuthorityArgs { chain: 1, new_authority: recovery.pubkey(), now },
 )?;
 ```
 

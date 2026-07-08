@@ -134,7 +134,7 @@ Removes a per-recipient limit (positional args). Accounts: `owner` (s),
 let sig = client.remove_recipient_limit(
     &owner,
     accounts::OwnerTreasury { owner: owner.pubkey(), treasury },
-    2, // chain
+    1, // chain (Ethereum)
     "0x000000000000000000000000000000000000dead".to_string(),
     now,
 )?;

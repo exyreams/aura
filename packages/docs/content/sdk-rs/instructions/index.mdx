@@ -14,8 +14,8 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 The Rust SDK covers the full **161**-instruction `aura-core` surface, grouped
 into **13 domains** that mirror the [TypeScript SDK](/sdk-ts/instructions). Full
-coverage is pinned by two compile-time tests, so the SDK can never silently
-drift from the deployed program:
+coverage is pinned by two compile-time tests, so checked-in SDK changes cannot
+silently drift from the checked-in program/IDL surface:
 
 - `every_program_instruction_has_a_reachable_builder` — the standalone builders.
 - `every_program_instruction_has_a_client_send_helper` — the client surface.
@@ -77,7 +77,7 @@ arguments. Account columns use these markers:
 - **(s)** signer · **(w)** writable · **?** optional (`None` when unused)
 
 Send-helpers take the generated Anchor account structs from
-`aura_sdk::anchor_accounts` (re-exported as `aura_core::accounts`) plus a typed
+`aura_sdk::anchor_accounts` (the SDK's re-export of `aura_core::accounts`) plus a typed
 args struct from [`aura_sdk::types`](/sdk-rs/client/types). Where the program
 instruction has an explicit signer account, the send-helper validates the
 provided keypair against it locally before touching RPC.

@@ -20,7 +20,7 @@ let sys = solana_sdk::system_program::ID;
 
 ## init_address_list
 
-Creates an address list. `mode`: `0` = allow, `1` = deny; `chain` is the Ika
+Creates an address list. `mode`: `0` = allow, `1` = deny; `chain` is the AURA
 chain code (positional). Accounts: `owner` (s, w), `treasury`, `address_list`
 (w), `system_program`.
 
@@ -44,7 +44,7 @@ let sig = client.manage_address_list(
     &operator,
     accounts::ManageAddressList { operator: operator.pubkey(), treasury, operator_role: None, address_list },
     0, // mode
-    2, // chain
+    1, // chain (Ethereum)
     vec!["0x000000000000000000000000000000000000dead".to_string()],
     now,
 )?;

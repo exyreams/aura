@@ -13,10 +13,10 @@
 Rust SDK for AURA, the Solana-native execution-control layer for agentic
 finance.
 
-Wraps the deployed `aura-core` instruction and account types with a typed
+Wraps the checked-in `aura-core` instruction and account types with a typed
 client, automatic PDA derivation, and account deserialization — built directly
-from the real Anchor-generated types so it stays in sync with the deployed
-program.
+from the real Anchor-generated types so compile-time checks catch drift from the
+program surface in this workspace.
 
 ---
 
@@ -200,7 +200,7 @@ client.cancel_pending(&owner, treasury, now)?;
 use aura_sdk::types::RegisterDwalletArgs;
 
 client.register_dwallet(&owner, treasury, RegisterDwalletArgs {
-    chain: 2,  // 0=Solana 1=Bitcoin 2=Ethereum 3=Polygon 4=Arbitrum 5=Optimism
+    chain: 1,  // 0=Bitcoin 1=Ethereum 2=Solana 3=Polygon 4=Arbitrum 5=Optimism
     dwallet_id: "dwallet-abc".to_string(),
     address: "0xdeadbeef...".to_string(),
     balance_usd: 5_000,
@@ -220,7 +220,7 @@ use aura_sdk::types::ProposeTransactionArgs;
 // Public (non-encrypted) proposal
 client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
     amount_usd: 250,
-    target_chain: 2,
+    target_chain: 1,
     tx_type: 0,
     protocol_id: None,
     current_timestamp: now,
@@ -234,7 +234,7 @@ client.propose_transaction(&ai_authority, treasury, ProposeTransactionArgs {
     asset_id: None, native_amount: None, decimals: None,
     gas_native_amount: None, gas_asset_id: None,
     evm_chain_id: None, replay_nonce: None, gas_limit: None, max_fee_native: None,
-    calldata_hash: None, utxo_set_hash: None, sighash_type: None,
+    native_message_hash: None, calldata_hash: None, utxo_set_hash: None, sighash_type: None,
     solana_recent_blockhash: None, solana_message_hash: None, confirmations_required: None,
 })?;
 
@@ -468,8 +468,9 @@ match client.get_treasury(&treasury_pda) {
 ### Program error codes
 
 The full `aura-core` `#[error_code]` surface (140 variants, codes `6000+`) is
-exposed through the `program_errors` module. Codes are derived from the live
-`AuraCoreError` enum, so the table can never drift from the deployed program.
+exposed through the `program_errors` module. Codes are derived from the compiled
+`AuraCoreError` enum, so SDK tests catch drift from the checked-in program
+source.
 
 ```rust,no_run
 use aura_sdk::{program_error_by_code, AuraCoreError, AURA_PROGRAM_ERRORS};

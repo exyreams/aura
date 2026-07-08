@@ -61,8 +61,8 @@ from `6000` ([`AURA_ERROR_CODE_OFFSET`]); those are the `custom program error`
 codes a failed transaction returns.
 
 Every variant is mirrored in [`AURA_PROGRAM_ERRORS`] — a `&[AuraProgramError]`
-table whose `code` is derived from the live enum, so it can never drift from the
-deployed program.
+table whose `code` is derived from the compiled `AuraCoreError` enum, so SDK
+tests catch drift from the checked-in program source.
 
 ```rust
 pub struct AuraProgramError {

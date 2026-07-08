@@ -140,7 +140,7 @@ validate_swarm_members(&["agent-1".to_string(), "agent-2".to_string()])?;
 use aura_sdk::{
     AuraClient,
     utils::{validate_agent_id, validate_amount_usd, validate_address},
-    types::{CreateTreasuryArgs, PolicyConfigRecord, ProtocolFeesRecord},
+    types::{CreateTreasuryArgs, PolicyConfig, PolicyConfigRecord, ProtocolFees, ProtocolFeesRecord},
 };
 
 let agent_id = "my-agent";
@@ -157,8 +157,8 @@ let (treasury, sig) = client.create_treasury(&owner, CreateTreasuryArgs {
     ai_authority: owner.pubkey(),
     created_at: chrono::Utc::now().timestamp(),
     pending_transaction_ttl_secs: 900,
-    policy_config: PolicyConfigRecord::default(),
-    protocol_fees: ProtocolFeesRecord::default(),
+    policy_config: PolicyConfigRecord::from_domain(&PolicyConfig::default()),
+    protocol_fees: ProtocolFeesRecord::from_domain(&ProtocolFees::default()),
 })?;
 ```
 
