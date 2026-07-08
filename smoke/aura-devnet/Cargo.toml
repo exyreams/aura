@@ -138,6 +138,42 @@ path = "src/bin/public_batch.rs"
 name = "protocol_config_commit"
 path = "src/bin/protocol_config_commit.rs"
 
+[[bin]]
+name = "live_wallet_discovery"
+path = "src/bin/live_wallet_discovery.rs"
+
+[[bin]]
+name = "live_direct_transfer"
+path = "src/bin/live_direct_transfer.rs"
+
+[[bin]]
+name = "live_dwallet_funding"
+path = "src/bin/live_dwallet_funding.rs"
+
+[[bin]]
+name = "live_policy_transfer"
+path = "src/bin/live_policy_transfer.rs"
+
+[[bin]]
+name = "live_payroll"
+path = "src/bin/live_payroll.rs"
+
+[[bin]]
+name = "live_agent_swap"
+path = "src/bin/live_agent_swap.rs"
+
+[[bin]]
+name = "live_velocity_after_settlement"
+path = "src/bin/live_velocity_after_settlement.rs"
+
+[[bin]]
+name = "live_scheduled_transfer"
+path = "src/bin/live_scheduled_transfer.rs"
+
+[[bin]]
+name = "live_conditional_transfer"
+path = "src/bin/live_conditional_transfer.rs"
+
 [dependencies]
 anyhow = "1"
 anchor-lang = "1.0.0"
@@ -155,7 +191,10 @@ ika-dwallet-types = { git = "https://github.com/dwallet-labs/ika-pre-alpha" }
 ika-grpc = { git = "https://github.com/dwallet-labs/ika-pre-alpha" }
 solana-client = "3.1"
 solana-commitment-config = "3.1"
+solana-keccak-hasher = "3.1"
 solana-sdk = "=3.0.0"
+spl-token-2022-interface = "2.1"
+spl-token-interface = "2.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tonic = { version = "0.14", features = ["tls-native-roots", "transport"] }
 

@@ -488,7 +488,10 @@ dependencies = [
  "ika-grpc",
  "solana-client",
  "solana-commitment-config",
+ "solana-keccak-hasher",
  "solana-sdk",
+ "spl-token-2022-interface",
+ "spl-token-interface",
  "tokio",
  "tonic",
 ]

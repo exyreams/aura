@@ -7,6 +7,7 @@
 
 pub mod confidential;
 pub mod dwallet;
+pub mod live_tokens;
 pub mod policy;
 
 use std::{
@@ -634,7 +635,7 @@ pub fn ensure_encrypt_deposit(
 // Live dWallet
 
 /// Result of a successful DKG provisioning call.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LiveDWallet {
     pub attestation: NetworkSignedAttestation,
     pub public_key: Vec<u8>,
@@ -876,6 +877,12 @@ pub struct FinalizeSidecars {
     pub signing_message: Option<Vec<u8>>,
 }
 
+#[derive(Clone, Debug)]
+pub struct FinalizeDwalletResult {
+    pub message_approval: Pubkey,
+    pub signature: Vec<u8>,
+}
+
 /// Drive the `execute_pending` → presign → sign → `finalize_execution`
 /// pipeline for an **approved** proposal.
 ///
@@ -926,6 +933,31 @@ pub async fn finalize_via_dwallet_with_sidecars(
     now: i64,
     sidecars: FinalizeSidecars,
 ) -> anyhow::Result<()> {
+    finalize_via_dwallet_with_sidecars_result(
+        rpc,
+        payer,
+        dwallet_client,
+        treasury,
+        dwallet_program,
+        live,
+        now,
+        sidecars,
+    )
+    .await
+    .map(|_| ())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn finalize_via_dwallet_with_sidecars_result(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    dwallet_client: &mut DWalletServiceClient<tonic::transport::Channel>,
+    treasury: Pubkey,
+    dwallet_program: &Pubkey,
+    live: &LiveDWallet,
+    now: i64,
+    sidecars: FinalizeSidecars,
+) -> anyhow::Result<FinalizeDwalletResult> {
     let domain = fetch_treasury_domain(rpc, &treasury)?;
     let pending = domain
         .pending
@@ -1110,5 +1142,8 @@ pub async fn finalize_via_dwallet_with_sidecars(
             finalized.total_transactions
         );
     }
-    Ok(())
+    Ok(FinalizeDwalletResult {
+        message_approval: approval_req.message_approval_account,
+        signature: signature_bytes,
+    })
 }
