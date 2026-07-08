@@ -49,8 +49,8 @@ macro_rules! program_errors {
     ($($variant:ident => $message:literal),* $(,)?) => {
         /// Every `aura-core` program error, ordered by code.
         ///
-        /// `code` is derived from the live [`AuraCoreError`] enum, so it can
-        /// never drift from the deployed program's numbering.
+        /// `code` is derived from the compiled [`AuraCoreError`] enum, so SDK
+        /// tests catch drift from the checked-in program source.
         pub const AURA_PROGRAM_ERRORS: &[AuraProgramError] = &[
             $(
                 AuraProgramError {

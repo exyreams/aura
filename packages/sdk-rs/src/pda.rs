@@ -36,6 +36,10 @@ fn u64_le(value: u64) -> [u8; 8] {
     value.to_le_bytes()
 }
 
+fn u32_le(value: u32) -> [u8; 4] {
+    value.to_le_bytes()
+}
+
 fn u16_le(value: u16) -> [u8; 2] {
     value.to_le_bytes()
 }
@@ -152,7 +156,7 @@ pub fn derive_external_liveness_pda(treasury: &Pubkey, program_id: &Pubkey) -> (
 pub fn derive_policy_attestation_pda(
     treasury: &Pubkey,
     attester: &Pubkey,
-    policy_version: u64,
+    policy_version: u32,
     program_id: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
@@ -160,7 +164,7 @@ pub fn derive_policy_attestation_pda(
             POLICY_ATTESTATION_SEED,
             treasury.as_ref(),
             attester.as_ref(),
-            &u64_le(policy_version),
+            &u32_le(policy_version),
         ],
         program_id,
     )
@@ -336,7 +340,7 @@ mod tests {
                     POLICY_ATTESTATION_SEED,
                     treasury.as_ref(),
                     attester.as_ref(),
-                    &10_u64.to_le_bytes(),
+                    &10_u32.to_le_bytes(),
                 ],
                 &program_id,
             )

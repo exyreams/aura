@@ -4,7 +4,7 @@
 //! renaming, removing, or failing to wire up any builder breaks compilation.
 //! Because each builder is type-checked against the real Anchor-generated
 //! account context and instruction-data structs, this also pins every builder's
-//! signature to the deployed program surface.
+//! signature to the checked-in program surface.
 
 use solana_sdk::pubkey::Pubkey;
 

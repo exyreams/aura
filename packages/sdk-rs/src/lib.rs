@@ -61,8 +61,8 @@ pub use aura_core::{accounts as anchor_accounts, instruction as anchor_instructi
 pub use client::AuraClient;
 pub use errors::SdkError;
 pub use program_errors::{
-    parse_program_error, program_error_by_code, program_error_by_name, AuraCoreError,
-    AuraProgramError, AURA_ERROR_CODE_OFFSET, AURA_PROGRAM_ERRORS,
+    is_program_error, parse_program_error, program_error_by_code, program_error_by_name,
+    AuraCoreError, AuraProgramError, AURA_ERROR_CODE_OFFSET, AURA_PROGRAM_ERRORS,
 };
 pub use types::*;
 
