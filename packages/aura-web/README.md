@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# @aura-protocol/aura-web
 
-## Getting Started
+New AURA control center package.
 
-First, run the development server:
+This app is intentionally separate from `packages/web` while the control-plane
+model moves to Supabase and Conduit is rewritten around that shared state.
+
+## Setup
+
+Create `packages/aura-web/.env`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_SOLANA_RPC_URL=
+NEXT_PUBLIC_AURA_PROGRAM_ID=auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`NEXT_PUBLIC_SOLANA_RPC_URL` and `NEXT_PUBLIC_AURA_PROGRAM_ID` are optional.
+The app defaults to Solana devnet and the deployed devnet AURA program ID.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Apply the first Supabase migration:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+supabase db push
+```
 
-## Learn More
+The migration creates owner profiles, wallet metadata, agent session metadata,
+device-code records, sign requests, activity events, and service-only secret
+tables. Browser reads are protected by RLS; bearer-token and device-code hashes
+are service-role-only.
 
-To learn more about Next.js, take a look at the following resources:
+## Run
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+bun install
+bun run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The first implemented surface is `/dashboard/wallets`:
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- wallet metadata is read from Supabase
+- Solana balances are read live from RPC
+- fund movement is intentionally gated until the real AURA proposal and dWallet
+  signing path is wired
