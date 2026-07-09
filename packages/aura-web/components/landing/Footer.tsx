@@ -51,7 +51,8 @@ function GitHubIcon({ className }: { className?: string }) {
 // Landing page anchor links (shown when not connected)
 const LANDING_LINKS = [
   { label: "The Problem", href: "#problem" },
-  { label: "Technology", href: "#fhe" },
+  { label: "Control Plane", href: "#control-plane" },
+  { label: "Architecture", href: "#architecture" },
   { label: "Features", href: "#features" },
   { label: "Ecosystem", href: "#ecosystem" },
   { label: "How It Works", href: "#how-it-works" },
@@ -127,8 +128,8 @@ export function Footer() {
               suppressHydrationWarning
             />
             <p className="text-sm text-(--text-muted) leading-relaxed">
-              Encrypted guardrails for autonomous AI agent treasuries on Solana.
-              Secured by FHE and multi-chain dWallets.
+              A control plane for AI agents that need visible wallets,
+              enforceable policy, recoverable custody, and dWallet settlement.
             </p>
             <div className="flex items-center gap-2 pt-1">
               <div className="size-2 rounded-full bg-primary animate-pulse" />
@@ -265,12 +266,12 @@ export function Footer() {
           </span>
           <div className="flex items-center gap-6">
             <span className="font-mono text-[9px] uppercase text-(--text-muted)">
-              Program: <span className="text-(--text-main)">EaRoLV…bhHs</span>
+              Program: <span className="text-(--text-main)">auraEg…W1ce</span>
             </span>
             <div className="flex items-center gap-2">
               <div className="size-2 rounded-full bg-primary animate-pulse" />
               <span className="font-mono text-[9px] uppercase text-(--text-muted)">
-                Encrypt Net Active
+                Devnet Control Plane
               </span>
             </div>
           </div>

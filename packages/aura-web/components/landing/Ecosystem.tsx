@@ -22,11 +22,12 @@ export function Ecosystem() {
             Interoperability
           </span>
           <h2 className="text-3xl md:text-4xl font-semibold text-(--text-main)">
-            Native Multi-Chain Settlement
+            Multi-chain custody context
           </h2>
-          <p className="text-(--text-muted) mt-4 text-sm md:text-base">
-            Co-sign transactions directly on the destination layer via dWallet
-            tech.
+          <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
+            AURA models chain profiles, wallet records, and dWallet settlement
+            paths so an agent can request actions across ecosystems without
+            becoming the key holder.
           </p>
         </div>
 

@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowRight, BookOpen } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  ShieldCheck,
+  Wallet,
+  Workflow,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/global/Badge";
@@ -8,6 +14,12 @@ import { Button } from "@/components/global/Button";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+const signals = [
+  { icon: Wallet, label: "Live wallet controls" },
+  { icon: ShieldCheck, label: "Policy-gated execution" },
+  { icon: Workflow, label: "dWallet settlement path" },
+];
 
 export function Hero() {
   const [streamContent, setStreamContent] = useState("");
@@ -49,23 +61,24 @@ export function Hero() {
 
       <div className="max-w-4xl relative z-10">
         <div className="mb-6">
-          <Badge variant="active">Pre-Alpha · Devnet</Badge>
+          <Badge variant="active">Pre-Alpha · Devnet Control Plane</Badge>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[0.9] mb-8 text-(--text-main)">
-          Autonomous
+          AURA
           <br />
-          Universal
+          Control
           <br />
           <span className="bg-linear-to-r from-(--text-main) via-(--text-muted) to-primary bg-clip-text text-transparent">
-            Resource Agent
+            Plane
           </span>
         </h1>
 
         <p className="text-lg md:text-xl text-(--text-muted) max-w-2xl leading-[1.6] font-light mb-10">
-          Encrypted guardrails for AI agent treasuries on Solana. Spending
-          limits stay as FHE ciphertexts — unreadable on-chain, evaluated by
-          Ika's Encrypt network, executed via dWallet co-signing.
+          Give AI agents operational wallets without handing them raw keys. AURA
+          combines owner-visible wallet controls, on-chain policy checks,
+          Conduit agent sessions, and dWallet-signed settlement so every spend
+          is visible, gated, and recoverable.
         </p>
 
         <div className="flex flex-wrap gap-4">
@@ -75,7 +88,7 @@ export function Hero() {
               icon={<ArrowRight className="size-4" />}
               iconPosition="right"
             >
-              Open Dashboard
+              Open Control Center
             </Button>
           </Link>
           <a href={DEFAULT_DOCS_URL} target="_blank" rel="noreferrer">
@@ -87,6 +100,23 @@ export function Hero() {
               Documentation
             </Button>
           </a>
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          {signals.map((signal) => {
+            const Icon = signal.icon;
+            return (
+              <div
+                key={signal.label}
+                className="inline-flex min-h-10 items-center gap-2 border border-border bg-(--card-bg) px-3 py-2"
+              >
+                <Icon className="size-4 text-primary" aria-hidden="true" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                  {signal.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

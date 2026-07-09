@@ -1,43 +1,57 @@
-import { FileCheck, Globe, Lock, Shield, Users, Zap } from "lucide-react";
+import {
+  Activity,
+  Bot,
+  FileCheck,
+  KeyRound,
+  Lock,
+  Shield,
+  Wallet,
+} from "lucide-react";
 import { Reveal } from "@/components/landing/Reveal";
 
 export function Features() {
   const features = [
     {
-      icon: Lock,
-      title: "FHE Encrypted Limits",
+      icon: Wallet,
+      title: "Wallet Control Center",
       detail:
-        "Daily limits, per-transaction caps, and running spend counters stored as FHE scalar ciphertexts on-chain via Ika's Encrypt network. No validator, observer, or MEV bot can read the actual values.",
+        "Owners can see registered agent wallets, chain addresses, dWallet metadata, and live Solana balances without trusting cached balance rows.",
     },
     {
-      icon: Zap,
-      title: "dWallet Multi-Chain Execution",
+      icon: Bot,
+      title: "Conduit Agent Sessions",
       detail:
-        "Approved proposals are co-signed by Ika dWallet records. Native execution on Ethereum, Bitcoin, Solana, Polygon, Arbitrum, and Optimism — no bridges, no raw key exposure.",
+        "AI-facing tools can use scoped sessions, device approvals, idempotency keys, sign requests, and activity events instead of raw owner wallet access.",
     },
     {
       icon: Shield,
-      title: "17-Rule Policy Engine",
+      title: "On-Chain Policy Engine",
       detail:
-        "Public rules evaluated locally before any FHE call: per-tx and daily limits, velocity, time windows, slippage, protocol allowlists, counterparty risk, reputation scaling, approval ladders, budget envelopes, swarm pool, and scoped pauses.",
+        "Budgets, exposure groups, address lists, chain profiles, velocity limits, session quotas, scoped pauses, and approval ladders gate proposals before settlement.",
     },
     {
-      icon: Users,
-      title: "Agent Swarms",
+      icon: KeyRound,
+      title: "dWallet Settlement",
       detail:
-        "Multiple agents share a single treasury with a unified spending pool. Aggregate spend is tracked across all members — one agent can't exceed the collective cap.",
+        "Approved proposals can be routed through dWallet records so an agent can execute without directly holding the private key that controls funds.",
+    },
+    {
+      icon: Lock,
+      title: "Confidential Policy State",
+      detail:
+        "Where private thresholds matter, AURA supports FHE-backed confidential guardrails for encrypted limits and spend counters.",
+    },
+    {
+      icon: Activity,
+      title: "Audit and Observability",
+      detail:
+        "Activity logs, policy receipts, snapshots, health scores, liveness checks, and close paths make agent activity reviewable over time.",
     },
     {
       icon: FileCheck,
-      title: "Governance and Safety",
+      title: "Recovery and Governance",
       detail:
-        "Emergency multisig override, guardian co-signing, AI authority rotation, dangerous-config timelocks, session keys, and scoped pauses for break-glass scenarios.",
-    },
-    {
-      icon: Globe,
-      title: "Audit and Observability",
-      detail:
-        "Append-only audit trail, policy receipts, decision history, activity logs, health scoring, snapshots, and invariant reports — full operational visibility without exposing strategy.",
+        "Break-glass flows, guardian approvals, authority rotation, dangerous-config timelocks, and role records give owners operational exits.",
     },
   ];
 
@@ -52,11 +66,12 @@ export function Features() {
             Feature Surface
           </span>
           <h2 className="text-3xl md:text-4xl font-semibold text-(--text-main)">
-            Built for real operators, not mock treasury demos
+            Built around real agent operations
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            Every component is production-grade and deployed on Solana devnet.
-            Cryptographic guarantees, not configuration flags.
+            AURA spans the human dashboard, agent API path, Solana program
+            state, policy enforcement, and dWallet settlement. Confidential
+            guardrails are one capability inside that larger system.
           </p>
         </div>
 
@@ -68,7 +83,7 @@ export function Features() {
                 key={feature.title}
                 className="bg-(--bg) border border-border p-6 md:p-8 transition-all duration-300 hover:bg-white/5 hover:border-primary group"
               >
-                <div className="size-10 md:size-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 md:mb-6 transition-colors group-hover:bg-primary/20">
+                <div className="size-10 md:size-12 rounded-md bg-primary/10 flex items-center justify-center mb-4 md:mb-6 transition-colors group-hover:bg-primary/20">
                   <Icon className="size-5 md:size-6 text-primary" />
                 </div>
                 <h3 className="text-base md:text-lg font-semibold text-(--text-main) mb-2 md:mb-3">

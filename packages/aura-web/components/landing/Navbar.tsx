@@ -29,9 +29,9 @@ import { DEFAULT_DOCS_URL } from "@/lib/settings";
 // Landing page anchor links — shown when not connected
 const LANDING_LINKS = [
   { label: "Problem", href: "#problem" },
-  { label: "Technology", href: "#fhe" },
+  { label: "Control", href: "#control-plane" },
+  { label: "Architecture", href: "#architecture" },
   { label: "Features", href: "#features" },
-  { label: "Ecosystem", href: "#ecosystem" },
   { label: "FAQ", href: "#faq" },
 ];
 

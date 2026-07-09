@@ -1,5 +1,6 @@
 "use client";
 
+import { ControlPlane } from "@/components/landing/ControlPlane";
 import { Ecosystem } from "@/components/landing/Ecosystem";
 import { FAQ } from "@/components/landing/FAQ";
 import { Features } from "@/components/landing/Features";
@@ -26,30 +27,11 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* Glow Orbs */}
-      <div
-        className="fixed size-[600px] rounded-full pointer-events-none z-0"
-        style={{
-          top: "-10%",
-          right: "-10%",
-          background:
-            "radial-gradient(circle, rgba(107, 114, 128, 0.03) 0%, transparent 70%)",
-        }}
-      />
-      <div
-        className="fixed size-[600px] rounded-full pointer-events-none z-0"
-        style={{
-          bottom: "-10%",
-          left: "-10%",
-          background:
-            "radial-gradient(circle, rgba(107, 114, 128, 0.03) 0%, transparent 70%)",
-        }}
-      />
-
       <Navbar />
       <main className="relative z-10">
         <Hero />
         <Problem />
+        <ControlPlane />
         <Technology />
         <Features />
         <Ecosystem />

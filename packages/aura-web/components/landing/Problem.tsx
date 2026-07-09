@@ -11,28 +11,28 @@ interface ProblemRow extends Record<string, unknown> {
 export function Problem() {
   const data: ProblemRow[] = [
     {
-      approach: "Raw Key Access",
+      approach: "Raw agent key access",
       compromise:
-        "One prompt injection or model bug drains the treasury. The agent holds the keys — there is no safety net.",
+        "The agent can sign anything the wallet can sign. A prompt injection, bad tool call, or compromised runtime becomes a direct funds-loss path.",
       status: "CRITICAL RISK",
     },
     {
-      approach: "Public Spending Limits",
+      approach: "Dashboard-only monitoring",
       compromise:
-        "Limits visible on-chain let MEV bots read your strategy, front-run trades, and route around known thresholds.",
-      status: "EXPOSED",
+        "You see balances after the fact, but the agent still acts before policy, approvals, or recovery workflows can intervene.",
+      status: "TOO LATE",
     },
     {
-      approach: "Centralized Approval Server",
+      approach: "Centralized approval server",
       compromise:
-        "A single off-chain server decides every spend. It becomes the bottleneck, the honeypot, and the single point of failure.",
+        "A private backend can block requests, but it also becomes the bottleneck, custody choke point, and operational single point of failure.",
       status: "FRAGILE",
     },
     {
-      approach: "AURA — FHE + dWallet",
+      approach: "AURA — policy + dWallet control plane",
       compromise:
-        "Limits are encrypted ciphertexts. Policy runs over secrets via Ika Encrypt. Execution is co-signed by dWallet — no raw key, no readable limits, no central gatekeeper.",
-      status: "AUTONOMOUS",
+        "Agents request actions through Conduit, owners see wallet state in AURA Web, policy gates execution on-chain, and approved settlements use dWallet signing.",
+      status: "CONTROLLED",
       isAura: true,
     },
   ];
@@ -77,14 +77,15 @@ export function Problem() {
       <Reveal className="max-w-6xl mx-auto">
         <div className="mb-16 text-center">
           <span className="font-mono text-xs uppercase tracking-widest text-(--text-muted) mb-4 block">
-            The Dilemma
+            The Problem
           </span>
           <h2 className="text-4xl md:text-6xl font-semibold tracking-tight text-(--text-main)">
-            The Agentic Trust Gap
+            Agent wallets need more than a balance view
           </h2>
           <p className="text-(--text-muted) mt-4 max-w-2xl mx-auto text-sm md:text-base">
-            Every existing approach forces a tradeoff between autonomy,
-            security, and privacy. AURA eliminates all three.
+            If an AI system can move funds, operators need request visibility,
+            policy enforcement, custody separation, and recovery controls before
+            the transaction settles.
           </p>
         </div>
 
