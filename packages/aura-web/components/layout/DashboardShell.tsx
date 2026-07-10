@@ -1,0 +1,571 @@
+"use client";
+
+import {
+  Activity,
+  BookOpenText,
+  Bot,
+  LayoutDashboard,
+  type LucideIcon,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Wallet,
+  X,
+} from "lucide-react";
+import { AnimatePresence, m } from "motion/react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { AuthButton } from "@/components/auth/AuthButton";
+import { StatusBadge } from "@/components/global/StatusBadge";
+import { Tooltip } from "@/components/global/Tooltip";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { DEFAULT_DOCS_URL } from "@/lib/settings";
+import { cn } from "@/lib/utils";
+
+interface DashboardShellProps {
+  children: ReactNode;
+}
+
+interface NavItem {
+  href: string;
+  label: string;
+  description?: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  external?: boolean;
+  badge?: string;
+}
+
+const primaryNav: NavItem[] = [
+  {
+    href: "/dashboard",
+    label: "Overview",
+    description: "Control center summary",
+    icon: LayoutDashboard,
+    exact: true,
+  },
+  {
+    href: "/dashboard/wallets",
+    label: "Wallets",
+    description: "Registry and balances",
+    icon: Wallet,
+  },
+  {
+    href: "/dashboard/agents",
+    label: "Agents",
+    description: "Sessions and scopes",
+    icon: Bot,
+  },
+  {
+    href: "/dashboard/activity",
+    label: "Activity",
+    description: "Events and approvals",
+    icon: Activity,
+  },
+];
+
+const utilityNav: NavItem[] = [
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    description: "Runtime defaults",
+    icon: Settings,
+  },
+  {
+    href: DEFAULT_DOCS_URL,
+    label: "Documentation",
+    description: "Program and SDK references",
+    icon: BookOpenText,
+    external: true,
+  },
+];
+
+const sidebarTransition = {
+  type: "spring",
+  stiffness: 420,
+  damping: 38,
+  mass: 0.7,
+} as const;
+
+const pageMeta = [
+  {
+    href: "/dashboard",
+    exact: true,
+    title: "Overview",
+    description: "Agent custody and control-plane status",
+  },
+  {
+    href: "/dashboard/wallets",
+    title: "Wallets",
+    description: "Registered agent wallets and live balance reads",
+  },
+  {
+    href: "/dashboard/agents",
+    title: "Agents",
+    description: "Conduit sessions, scopes, and approvals",
+  },
+  {
+    href: "/dashboard/activity",
+    title: "Activity",
+    description: "Control-plane events and settlement trail",
+  },
+  {
+    href: "/dashboard/settings",
+    title: "Settings",
+    description: "Runtime, RPC, and program configuration",
+  },
+];
+
+function usePersistedSidebarState() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("aura:dashboard-sidebar");
+    if (stored === "collapsed") {
+      setCollapsed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "aura:dashboard-sidebar",
+      collapsed ? "collapsed" : "expanded",
+    );
+  }, [collapsed]);
+
+  return [collapsed, setCollapsed] as const;
+}
+
+function useLogoSrc() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return !mounted || resolvedTheme === "dark"
+    ? "/dark-logo-wordmark.svg"
+    : "/light-logo-wordmark.svg";
+}
+
+function SidebarNavItem({
+  item,
+  collapsed,
+  onNavigate,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const Icon = item.icon;
+  const active =
+    item.exact || item.href === "/"
+      ? pathname === item.href
+      : !item.external && pathname.startsWith(item.href);
+
+  const content = (
+    <>
+      {active ? (
+        <m.span
+          layoutId="dashboard-sidebar-active"
+          className="absolute left-1 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary"
+          transition={sidebarTransition}
+        />
+      ) : null}
+      <Icon
+        className={cn(
+          "size-4 shrink-0 transition-colors",
+          active
+            ? "text-(--text-main)"
+            : "text-(--text-muted) group-hover:text-(--text-main)",
+        )}
+        aria-hidden="true"
+      />
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-left transition-opacity",
+          collapsed && "lg:sr-only",
+        )}
+      >
+        {item.label}
+      </span>
+      {item.badge && !collapsed ? (
+        <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase text-(--text-muted)">
+          {item.badge}
+        </span>
+      ) : null}
+    </>
+  );
+
+  const className = cn(
+    "group relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)",
+    collapsed && "lg:h-10 lg:w-10 lg:flex-none lg:justify-center lg:px-0",
+    active
+      ? "bg-white/[0.055] text-(--text-main) light:bg-black/[0.055]"
+      : "text-(--text-muted) hover:bg-white/[0.04] hover:text-(--text-main) light:hover:bg-black/[0.04]",
+  );
+
+  const node = item.external ? (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={collapsed ? item.label : undefined}
+      className={className}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+    >
+      {content}
+    </a>
+  ) : (
+    <Link
+      href={item.href}
+      aria-label={collapsed ? item.label : undefined}
+      className={className}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+    >
+      {content}
+    </Link>
+  );
+
+  return collapsed ? (
+    <Tooltip
+      content={item.label}
+      position="right"
+      className="flex w-full justify-center"
+    >
+      {node}
+    </Tooltip>
+  ) : (
+    node
+  );
+}
+
+function SidebarUtilityLink({
+  item,
+  onNavigate,
+  tooltipPosition,
+}: {
+  item: NavItem;
+  onNavigate?: () => void;
+  tooltipPosition: "top" | "right";
+}) {
+  const pathname = usePathname();
+  const Icon = item.icon;
+  const active =
+    item.exact || item.href === "/"
+      ? pathname === item.href
+      : !item.external && pathname.startsWith(item.href);
+  const className = cn(
+    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-(--text-muted) transition-colors hover:bg-white/[0.04] hover:text-(--text-main) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) light:hover:bg-black/[0.04]",
+    active && "bg-white/[0.055] text-(--text-main) light:bg-black/[0.055]",
+  );
+  const content = <Icon className="size-4" aria-hidden="true" />;
+  const node = item.external ? (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={item.label}
+      className={className}
+      onClick={onNavigate}
+    >
+      {content}
+    </a>
+  ) : (
+    <Link
+      href={item.href}
+      aria-label={item.label}
+      className={className}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+    >
+      {content}
+    </Link>
+  );
+
+  return (
+    <Tooltip content={item.label} position={tooltipPosition}>
+      {node}
+    </Tooltip>
+  );
+}
+
+function SidebarUtilityBar({
+  collapsed,
+  onToggleCollapse,
+  onNavigate,
+  mobile,
+}: {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  onNavigate?: () => void;
+  mobile: boolean;
+}) {
+  const vertical = collapsed && !mobile;
+  const tooltipPosition = vertical ? "right" : "top";
+
+  return (
+    <div
+      className={cn(
+        "mt-auto flex pt-4",
+        vertical ? "flex-col items-center gap-1" : "items-center gap-1",
+      )}
+    >
+      <nav
+        className={cn("flex gap-1", vertical && "flex-col")}
+        aria-label="Dashboard utility navigation"
+      >
+        {utilityNav.map((item) => (
+          <SidebarUtilityLink
+            key={item.href}
+            item={item}
+            onNavigate={onNavigate}
+            tooltipPosition={tooltipPosition}
+          />
+        ))}
+      </nav>
+
+      <div
+        className={cn(
+          "flex gap-1",
+          vertical ? "flex-col" : "ml-auto items-center",
+        )}
+      >
+        <Tooltip content="Toggle theme" position={tooltipPosition}>
+          <ThemeToggle className="h-10! w-10! min-w-10! rounded-md! border-0! bg-transparent! px-0! py-0! text-(--text-muted) hover:bg-white/[0.04]! hover:text-(--text-main) light:hover:bg-black/[0.04]!" />
+        </Tooltip>
+
+        {!mobile ? (
+          <Tooltip
+            content={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            position={tooltipPosition}
+          >
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-(--text-muted) transition-colors hover:bg-white/[0.04] hover:text-(--text-main) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) light:hover:bg-black/[0.04]"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-4" aria-hidden />
+              ) : (
+                <PanelLeftClose className="size-4" aria-hidden />
+              )}
+            </button>
+          </Tooltip>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SidebarContent({
+  collapsed,
+  setCollapsed,
+  onNavigate,
+  mobile = false,
+}: {
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+  onNavigate?: () => void;
+  mobile?: boolean;
+}) {
+  const logoSrc = useLogoSrc();
+
+  return (
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-[14px] border border-[rgba(255,255,255,0.12)] bg-[rgba(28,28,32,0.82)] shadow-[0_8px_40px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-[16px] light:border-[rgba(0,0,0,0.1)] light:bg-[rgba(255,255,255,0.72)] light:shadow-[0_8px_40px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]">
+      <div
+        className={cn(
+          "flex min-h-16 items-center px-4",
+          collapsed && !mobile && "lg:justify-center lg:px-2",
+        )}
+      >
+        <Link
+          href="/"
+          className={cn(
+            "flex min-h-10 min-w-10 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)",
+            collapsed && !mobile ? "justify-center" : "justify-start",
+          )}
+          onClick={onNavigate}
+          title="AURA"
+        >
+          <m.span
+            className="block h-[23px] overflow-hidden"
+            animate={{ width: collapsed && !mobile ? 26 : 92 }}
+            transition={sidebarTransition}
+          >
+            <Image
+              src={logoSrc}
+              alt="AURA"
+              width={92}
+              height={23}
+              className="h-[23px] w-[92px] max-w-none"
+              suppressHydrationWarning
+            />
+          </m.span>
+        </Link>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
+        <nav className="space-y-1" aria-label="Dashboard primary navigation">
+          {primaryNav.map((item) => (
+            <SidebarNavItem
+              key={item.href}
+              item={item}
+              collapsed={collapsed && !mobile}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </nav>
+
+        <SidebarUtilityBar
+          collapsed={collapsed && !mobile}
+          onToggleCollapse={() => setCollapsed(!collapsed)}
+          onNavigate={onNavigate}
+          mobile={mobile}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function DashboardShell({ children }: DashboardShellProps) {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = usePersistedSidebarState();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+      }
+    };
+
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleKeyDown);
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileOpen]);
+
+  const currentPage = useMemo(
+    () =>
+      pageMeta.find((page) =>
+        page.exact ? pathname === page.href : pathname.startsWith(page.href),
+      ) ?? pageMeta[0],
+    [pathname],
+  );
+
+  return (
+    <div className="min-h-screen bg-(--bg) text-(--text-main)">
+      <m.aside
+        animate={{ width: collapsed ? 88 : 288 }}
+        transition={sidebarTransition}
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden p-3 lg:flex",
+          collapsed ? "w-[88px]" : "w-[288px]",
+        )}
+      >
+        <SidebarContent collapsed={collapsed} setCollapsed={setCollapsed} />
+      </m.aside>
+
+      <AnimatePresence>
+        {mobileOpen ? (
+          <m.div
+            className="fixed inset-0 z-[120] lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+          >
+            <button
+              type="button"
+              aria-label="Close navigation"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setMobileOpen(false)}
+            />
+            <m.aside
+              className="relative flex h-full w-[min(320px,calc(100vw-32px))] flex-col p-3"
+              initial={{ x: -28, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -28, opacity: 0 }}
+              transition={sidebarTransition}
+            >
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="absolute right-6 top-6 z-10 flex min-h-10 min-w-10 items-center justify-center rounded-md border border-border bg-(--card-bg) text-(--text-muted) hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)"
+                aria-label="Close navigation"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+              <SidebarContent
+                collapsed={false}
+                setCollapsed={setCollapsed}
+                mobile={true}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </m.aside>
+          </m.div>
+        ) : null}
+      </AnimatePresence>
+
+      <div
+        className={cn(
+          "min-h-screen transition-[padding] duration-200",
+          collapsed ? "lg:pl-[100px]" : "lg:pl-[304px]",
+        )}
+      >
+        <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
+          <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                className="flex min-h-10 min-w-10 items-center justify-center rounded-md border border-border text-(--text-muted) transition-colors hover:bg-(--hover-bg) hover:text-(--text-main) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) lg:hidden"
+                aria-label="Open navigation"
+                aria-expanded={mobileOpen}
+              >
+                <Menu className="size-4" aria-hidden />
+              </button>
+
+              <div className="min-w-0">
+                <p className="truncate font-mono text-[10px] uppercase tracking-widest text-(--text-muted)">
+                  {currentPage.title}
+                </p>
+                <p className="mt-1 hidden truncate text-sm text-(--text-muted) sm:block">
+                  {currentPage.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <StatusBadge tone="success" className="hidden sm:inline-flex">
+                Devnet
+              </StatusBadge>
+              <AuthButton />
+            </div>
+          </div>
+        </header>
+
+        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+      </div>
+    </div>
+  );
+}

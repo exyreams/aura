@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
 
 const toneClass = {
-  neutral: "border-border bg-surface text-muted",
-  success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  warning: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-  danger: "border-red-500/25 bg-red-500/10 text-red-300",
+  neutral: "border-border bg-surface text-muted-foreground",
+  success: "border-success/30 bg-success/10 text-success",
+  warning: "border-warning/30 bg-warning/10 text-warning",
+  danger: "border-danger/30 bg-danger/10 text-danger",
 } as const;
 
 export function StatusBadge({

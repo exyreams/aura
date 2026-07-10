@@ -5,8 +5,13 @@ import { m } from "motion/react";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/global/Button";
+import { cn } from "@/lib/utils";
 
-export const ThemeToggle = () => {
+interface ThemeToggleProps {
+  className?: string;
+}
+
+export const ThemeToggle = ({ className }: ThemeToggleProps) => {
   const { setTheme, resolvedTheme } = useTheme();
   const mountedRef = useRef(false);
   const [, forceUpdate] = useState(0);
@@ -18,7 +23,12 @@ export const ThemeToggle = () => {
 
   if (!mountedRef.current) {
     return (
-      <Button variant="ghost" size="small" className="w-[34px]! px-0!">
+      <Button
+        variant="ghost"
+        size="small"
+        className={cn("w-[34px]! px-0!", className)}
+        aria-label="Toggle theme"
+      >
         <span className="size-4" />
       </Button>
     );
@@ -30,7 +40,7 @@ export const ThemeToggle = () => {
     <Button
       variant="ghost"
       size="small"
-      className="w-[34px]! px-0! relative overflow-hidden"
+      className={cn("w-[34px]! px-0! relative overflow-hidden", className)}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label="Toggle theme"
     >

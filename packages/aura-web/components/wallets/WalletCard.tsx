@@ -145,7 +145,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
             <Skeleton className="h-14" />
           </div>
         ) : balanceQuery.isError ? (
-          <p className="text-sm text-red-200">
+          <p className="text-sm text-danger">
             Could not load live balances. Check the address and RPC endpoint.
           </p>
         ) : balanceQuery.data ? (

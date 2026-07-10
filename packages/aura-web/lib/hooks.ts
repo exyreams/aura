@@ -84,6 +84,7 @@ export function useAgents() {
   };
 }
 
+export { useActivityEvents } from "@/lib/hooks/use-activity-events";
 export { useAgentSessions } from "@/lib/hooks/use-agent-sessions";
 export { useSolanaWalletBalance } from "@/lib/hooks/use-solana-wallet-balance";
 export { useWalletRegistry } from "@/lib/hooks/use-wallet-registry";

@@ -10,7 +10,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (auth.isLoading) {
     return (
-      <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl gap-4">
         <Skeleton className="h-28" />
         <Skeleton className="h-72" />
       </div>
@@ -19,7 +19,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!auth.isAuthenticated) {
     return (
-      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-7xl items-center justify-center py-16">
         <section className="w-full max-w-xl rounded-lg border border-border bg-surface p-6">
           <div className="mb-5 flex size-10 items-center justify-center rounded-md border border-border bg-surface-raised">
             <Wallet
@@ -35,7 +35,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             approvals, proposals, and activity.
           </p>
           {auth.error ? (
-            <p className="mt-4 rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p className="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
               {auth.error}
             </p>
           ) : null}
@@ -43,7 +43,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <AuthButton />
           </div>
         </section>
-      </main>
+      </div>
     );
   }
 

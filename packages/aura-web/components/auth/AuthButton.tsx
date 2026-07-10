@@ -38,7 +38,7 @@ export function AuthButton() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden rounded-md border border-border bg-surface px-3 py-2 font-mono text-xs text-muted md:inline-flex">
+      <span className="hidden rounded-md border border-border bg-surface px-3 py-2 font-mono text-xs text-foreground md:inline-flex">
         {formatAddress(address)}
       </span>
       <Button
