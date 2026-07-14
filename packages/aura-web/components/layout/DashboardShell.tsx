@@ -18,7 +18,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { Tooltip } from "@/components/global/Tooltip";
@@ -89,6 +95,16 @@ const sidebarTransition = {
   stiffness: 420,
   damping: 38,
   mass: 0.7,
+} as const;
+
+const SIDEBAR_WIDTH = {
+  collapsed: 88,
+  expanded: 288,
+} as const;
+
+const SHELL_OFFSET = {
+  collapsed: 100,
+  expanded: 304,
 } as const;
 
 const pageMeta = [
@@ -187,16 +203,22 @@ function SidebarNavItem({
         )}
         aria-hidden="true"
       />
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-left transition-opacity",
-          collapsed && "lg:sr-only",
-        )}
+      <m.span
+        aria-hidden={collapsed}
+        animate={{
+          opacity: collapsed ? 0 : 1,
+          transform: collapsed
+            ? "translate3d(-4px, 0, 0)"
+            : "translate3d(0, 0, 0)",
+        }}
+        className="pointer-events-none absolute left-10 right-3 min-w-0 truncate whitespace-nowrap text-left"
+        initial={false}
+        transition={sidebarTransition}
       >
         {item.label}
-      </span>
+      </m.span>
       {item.badge && !collapsed ? (
-        <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase text-(--text-muted)">
+        <span className="ml-auto rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase text-(--text-muted)">
           {item.badge}
         </span>
       ) : null}
@@ -204,7 +226,7 @@ function SidebarNavItem({
   );
 
   const className = cn(
-    "group relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",
+    "group relative flex min-h-10 items-center gap-3 overflow-hidden rounded-md px-3 text-sm transition-colors",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)",
     collapsed && "lg:h-10 lg:w-10 lg:flex-none lg:justify-center lg:px-0",
     active
@@ -443,6 +465,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = usePersistedSidebarState();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const shellOffset = collapsed
+    ? SHELL_OFFSET.collapsed
+    : SHELL_OFFSET.expanded;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -475,7 +500,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <div className="min-h-screen bg-(--bg) text-(--text-main)">
       <m.aside
-        animate={{ width: collapsed ? 88 : 288 }}
+        animate={{
+          width: collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded,
+        }}
+        initial={false}
         transition={sidebarTransition}
         className={cn(
           "fixed inset-y-0 left-0 z-40 hidden p-3 lg:flex",
@@ -526,11 +554,20 @@ export function DashboardShell({ children }: DashboardShellProps) {
         ) : null}
       </AnimatePresence>
 
-      <div
-        className={cn(
-          "min-h-screen transition-[padding] duration-200",
-          collapsed ? "lg:pl-[100px]" : "lg:pl-[304px]",
-        )}
+      <m.div
+        animate={
+          {
+            "--dashboard-shell-offset": `${shellOffset}px`,
+          } as Record<string, string>
+        }
+        className="min-h-screen lg:pl-[var(--dashboard-shell-offset)]"
+        initial={false}
+        style={
+          {
+            "--dashboard-shell-offset": `${shellOffset}px`,
+          } as CSSProperties
+        }
+        transition={sidebarTransition}
       >
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -565,7 +602,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </header>
 
         <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
-      </div>
+      </m.div>
     </div>
   );
 }
