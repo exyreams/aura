@@ -4,7 +4,6 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl, PublicKey } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
@@ -114,10 +113,8 @@ function SolanaProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={settings.endpoint}>
-        <WalletProvider wallets={[]} autoConnect={true}>
-          <WalletModalProvider>
-            <OwnerAuthProvider>{children}</OwnerAuthProvider>
-          </WalletModalProvider>
+        <WalletProvider wallets={[]} autoConnect={false}>
+          <OwnerAuthProvider>{children}</OwnerAuthProvider>
         </WalletProvider>
       </ConnectionProvider>
     </QueryClientProvider>

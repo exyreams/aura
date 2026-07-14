@@ -12,12 +12,15 @@ Create `packages/aura-web/.env`:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
 NEXT_PUBLIC_SOLANA_RPC_URL=
 NEXT_PUBLIC_AURA_PROGRAM_ID=auraEgX8ZUK3Xr8X81aRfgyTmoyNdsdfL6XfDN8W1ce
 ```
 
-`NEXT_PUBLIC_SOLANA_RPC_URL` and `NEXT_PUBLIC_AURA_PROGRAM_ID` are optional.
-The app defaults to Solana devnet and the deployed devnet AURA program ID.
+`SUPABASE_SECRET_KEY` is server-only and is required for web-created agent
+sessions because bearer-token hashes live in service-role-only tables.
+`NEXT_PUBLIC_SOLANA_RPC_URL` and `NEXT_PUBLIC_AURA_PROGRAM_ID` are optional. The
+app defaults to Solana devnet and the deployed devnet AURA program ID.
 
 Apply the first Supabase migration:
 

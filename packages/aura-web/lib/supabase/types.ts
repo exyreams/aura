@@ -171,6 +171,32 @@ export interface Database {
           },
         ];
       };
+      agent_session_secrets: {
+        Row: {
+          session_id: string;
+          token_hash: string;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        Insert: {
+          session_id: string;
+          token_hash: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["agent_session_secrets"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "agent_session_secrets_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: true;
+            referencedRelation: "agent_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sign_requests: {
         Row: {
           id: string;

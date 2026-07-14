@@ -1,29 +1,20 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import {
-  Activity,
-  BookOpen,
-  Bot,
-  Check,
-  Copy,
-  ExternalLink,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Settings,
-  Wallet,
-  X,
-} from "lucide-react";
+import { BookOpen, LogOut, Menu, Wallet, X } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/global/Button";
+import {
+  WALLET_APP_LINKS,
+  WalletAccountMenu,
+} from "@/components/global/WalletAccountMenu";
 import { WalletModal } from "@/components/global/WalletModal";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { useAppSettings, useAuth } from "@/lib/hooks";
+import { useAuth } from "@/lib/hooks";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 // Landing page anchor links — shown when not connected
@@ -35,27 +26,14 @@ const LANDING_LINKS = [
   { label: "FAQ", href: "#faq" },
 ];
 
-// App page links — shown in wallet dropdown when connected
-const APP_LINKS = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
-  { label: "Agents", href: "/dashboard/agents", icon: Bot },
-  { label: "Activity", href: "/dashboard/activity", icon: Activity },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
-];
-
 export function Navbar() {
   const { resolvedTheme } = useTheme();
   const { publicKey, disconnect } = useWallet();
-  const settings = useAppSettings();
   const auth = useAuth();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const [walletMenuOpen, setWalletMenuOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const walletMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -67,21 +45,6 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        walletMenuRef.current &&
-        !walletMenuRef.current.contains(event.target as Node)
-      ) {
-        setWalletMenuOpen(false);
-      }
-    };
-    if (walletMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [walletMenuOpen]);
-
   const logoSrc =
     !mounted || resolvedTheme === "dark"
       ? "/dark-logo-wordmark.svg"
@@ -90,32 +53,11 @@ export function Navbar() {
   const isDark = !mounted || resolvedTheme === "dark";
   const isConnected = mounted && publicKey;
   const walletAddress = publicKey?.toBase58();
-  const shortAddress = walletAddress
-    ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
-    : "";
   const docsUrl = DEFAULT_DOCS_URL;
-
-  const handleCopyAddress = async () => {
-    if (walletAddress) {
-      await navigator.clipboard.writeText(walletAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   const handleDisconnect = async () => {
     await auth.logout();
     await disconnect();
-    setWalletMenuOpen(false);
-  };
-
-  const handleViewExplorer = () => {
-    if (walletAddress) {
-      window.open(
-        `https://explorer.solana.com/address/${walletAddress}?cluster=${settings.network}`,
-        "_blank",
-      );
-    }
   };
 
   // Lock body scroll when mobile menu is open
@@ -236,107 +178,10 @@ export function Navbar() {
                   </Button>
                 </Link>
 
-                <div className="relative" ref={walletMenuRef}>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => setWalletMenuOpen(!walletMenuOpen)}
-                    icon={
-                      <div className="size-1.5 rounded-full bg-primary animate-pulse" />
-                    }
-                    iconPosition="left"
-                  >
-                    {shortAddress}
-                  </Button>
-
-                  <AnimatePresence>
-                    {walletMenuOpen && (
-                      <m.div
-                        initial={{ opacity: 0, scale: 0.96, y: -4 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.96, y: -4 }}
-                        transition={{ duration: 0.12, ease: "easeOut" }}
-                        style={{ transformOrigin: "top right" }}
-                        className="absolute right-0 mt-2 w-60 bg-(--card-bg) border border-border rounded-lg shadow-2xl overflow-hidden"
-                      >
-                        {/* Wallet address header */}
-                        <div className="px-3 py-2.5 border-b border-border bg-(--card-bg)">
-                          <p className="text-[9px] font-mono text-(--text-muted) mb-1 uppercase tracking-wider">
-                            Connected
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <div className="size-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-                            <p className="text-[10px] font-mono text-(--text-main) truncate">
-                              {walletAddress}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* App navigation */}
-                        <div className="p-1.5">
-                          <p className="text-[9px] font-mono text-(--text-muted) uppercase tracking-wider px-2 py-1">
-                            Navigate
-                          </p>
-                          {APP_LINKS.map(({ label, href, icon: Icon }) => (
-                            <Link
-                              key={href}
-                              href={href}
-                              onClick={() => setWalletMenuOpen(false)}
-                              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
-                            >
-                              <Icon className="size-3.5 text-(--text-muted)" />
-                              <span>{label}</span>
-                            </Link>
-                          ))}
-                        </div>
-
-                        {/* Utility actions */}
-                        <div className="p-1.5 border-t border-border">
-                          <button
-                            type="button"
-                            onClick={handleCopyAddress}
-                            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
-                          >
-                            {copied ? (
-                              <Check className="size-3.5 text-primary" />
-                            ) : (
-                              <Copy className="size-3.5 text-(--text-muted)" />
-                            )}
-                            <span>{copied ? "Copied!" : "Copy Address"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleViewExplorer}
-                            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-(--text-main) hover:bg-(--hover-bg) rounded-md transition-colors"
-                          >
-                            <ExternalLink className="size-3.5 text-(--text-muted)" />
-                            <span>View on Explorer</span>
-                          </button>
-                          <div className="my-1 border-t border-border" />
-                          <button
-                            type="button"
-                            onClick={handleDisconnect}
-                            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-danger hover:bg-danger/10 rounded-md transition-colors"
-                          >
-                            <LogOut className="size-3.5" />
-                            <span>Disconnect</span>
-                          </button>
-                        </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <WalletAccountMenu />
               </>
             ) : (
-              <Button
-                variant="primary"
-                size="small"
-                className="font-mono! text-[10px]! uppercase! tracking-widest!"
-                icon={<Wallet className="size-3" />}
-                onClick={() => setWalletModalOpen(true)}
-              >
-                Connect Wallet
-              </Button>
+              <WalletAccountMenu connectLabel="Connect Wallet" />
             )}
 
             <ThemeToggle />
@@ -473,7 +318,7 @@ export function Navbar() {
                         </span>
                       </div>
 
-                      {APP_LINKS.map(({ label, href, icon: Icon }) => (
+                      {WALLET_APP_LINKS.map(({ label, href, icon: Icon }) => (
                         <Link
                           key={href}
                           href={href}

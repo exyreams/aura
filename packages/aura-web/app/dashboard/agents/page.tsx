@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, RefreshCw } from "lucide-react";
+import { CreateAgentForm } from "@/components/agents/CreateAgentForm";
 import {
   DashboardContent,
   DashboardEmptyState,
@@ -9,6 +10,7 @@ import {
   DashboardPanelHeader,
 } from "@/components/dashboard/DashboardPrimitives";
 import { Button } from "@/components/global/Button";
+import { Skeleton } from "@/components/global/Skeleton";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { formatAddress } from "@/lib/formatting/addresses";
 import { useAgentSessions } from "@/lib/hooks/use-agent-sessions";
@@ -45,7 +47,7 @@ export default function AgentsPage() {
         <DashboardPanelHeader
           eyebrow="Agents"
           title="Agent sessions"
-          description="Sessions are read from Supabase and represent the control-plane grants an owner can later revoke, suspend, or narrow."
+          description="Create web-minted sessions now, then reuse the same Supabase contract when Conduit starts approving device-flow agents."
           action={
             <Button
               type="button"
@@ -60,10 +62,25 @@ export default function AgentsPage() {
         />
       </DashboardPanel>
 
+      <CreateAgentForm />
+
       {sessionsQuery.isLoading ? (
         <div className="grid gap-3">
           {[0, 1, 2].map((item) => (
-            <DashboardPanel key={item} className="h-28 animate-pulse" />
+            <DashboardPanel key={item} className="p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="grid flex-1 gap-3">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Skeleton className="h-10" />
+                    <Skeleton className="h-10" />
+                    <Skeleton className="h-10" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-24" />
+              </div>
+            </DashboardPanel>
           ))}
         </div>
       ) : sessionsQuery.isError ? (
@@ -137,17 +154,14 @@ export default function AgentsPage() {
                 <div className="flex max-w-xl flex-wrap gap-2 lg:justify-end">
                   {session.scopes.length > 0 ? (
                     session.scopes.map((scope) => (
-                      <span
-                        key={scope}
-                        className="rounded-md border border-border bg-background/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
-                      >
+                      <StatusBadge key={scope} tone="neutral">
                         {scope}
-                      </span>
+                      </StatusBadge>
                     ))
                   ) : (
-                    <span className="rounded-md border border-border bg-background/40 px-2.5 py-1 text-sm text-muted-foreground">
+                    <StatusBadge tone="neutral" className="normal-case">
                       No scopes recorded
-                    </span>
+                    </StatusBadge>
                   )}
                 </div>
               </div>
