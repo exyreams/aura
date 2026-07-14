@@ -1,24 +1,13 @@
 "use client";
 
-import {
-  Activity,
-  BookOpenText,
-  Bot,
-  LayoutDashboard,
-  type LucideIcon,
-  Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Settings,
-  Wallet,
-  X,
-} from "lucide-react";
-import { AnimatePresence, m } from "motion/react";
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
+  type ComponentType,
   type CSSProperties,
   type ReactNode,
   useEffect,
@@ -28,6 +17,14 @@ import {
 import { AuthButton } from "@/components/auth/AuthButton";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { Tooltip } from "@/components/global/Tooltip";
+import {
+  Activity,
+  Agent,
+  Documentations,
+  LayoutDashboard,
+  Settings,
+  Wallet,
+} from "@/components/icons";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 import { cn } from "@/lib/utils";
@@ -40,11 +37,25 @@ interface NavItem {
   href: string;
   label: string;
   description?: string;
-  icon: LucideIcon;
+  icon: SidebarIcon;
+  animated?: boolean;
   exact?: boolean;
   external?: boolean;
   badge?: string;
 }
+
+interface SidebarIconProps {
+  className?: string;
+  size?: number;
+  strokeWidth?: number;
+  "aria-hidden"?: boolean;
+}
+
+interface AnimatedSidebarIconProps extends SidebarIconProps {
+  animateOnHover?: boolean;
+}
+
+type SidebarIcon = ComponentType<SidebarIconProps>;
 
 const primaryNav: NavItem[] = [
   {
@@ -52,6 +63,7 @@ const primaryNav: NavItem[] = [
     label: "Overview",
     description: "Control center summary",
     icon: LayoutDashboard,
+    animated: true,
     exact: true,
   },
   {
@@ -59,18 +71,21 @@ const primaryNav: NavItem[] = [
     label: "Wallets",
     description: "Registry and balances",
     icon: Wallet,
+    animated: true,
   },
   {
     href: "/dashboard/agents",
     label: "Agents",
     description: "Sessions and scopes",
-    icon: Bot,
+    icon: Agent,
+    animated: true,
   },
   {
     href: "/dashboard/activity",
     label: "Activity",
     description: "Events and approvals",
     icon: Activity,
+    animated: true,
   },
 ];
 
@@ -80,12 +95,14 @@ const utilityNav: NavItem[] = [
     label: "Settings",
     description: "Runtime defaults",
     icon: Settings,
+    animated: true,
   },
   {
     href: DEFAULT_DOCS_URL,
     label: "Documentation",
     description: "Program and SDK references",
-    icon: BookOpenText,
+    icon: Documentations,
+    animated: true,
     external: true,
   },
 ];
@@ -106,6 +123,8 @@ const SHELL_OFFSET = {
   collapsed: 100,
   expanded: 304,
 } as const;
+
+const SIDEBAR_ICON_STROKE_WIDTH = 2.25;
 
 const pageMeta = [
   {
@@ -179,11 +198,39 @@ function SidebarNavItem({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
   const Icon = item.icon;
   const active =
     item.exact || item.href === "/"
       ? pathname === item.href
       : !item.external && pathname.startsWith(item.href);
+  const iconClassName = cn(
+    "size-4 shrink-0 transition-colors",
+    active
+      ? "text-(--text-main)"
+      : "text-(--text-muted) group-hover:text-(--text-main)",
+  );
+  const icon = item.animated ? (
+    (() => {
+      const AnimatedIcon = Icon as ComponentType<AnimatedSidebarIconProps>;
+      return (
+        <AnimatedIcon
+          animateOnHover={!reduceMotion}
+          className={iconClassName}
+          size={16}
+          strokeWidth={SIDEBAR_ICON_STROKE_WIDTH}
+          aria-hidden={true}
+        />
+      );
+    })()
+  ) : (
+    <Icon
+      className={iconClassName}
+      size={16}
+      strokeWidth={SIDEBAR_ICON_STROKE_WIDTH}
+      aria-hidden={true}
+    />
+  );
 
   const content = (
     <>
@@ -194,15 +241,7 @@ function SidebarNavItem({
           transition={sidebarTransition}
         />
       ) : null}
-      <Icon
-        className={cn(
-          "size-4 shrink-0 transition-colors",
-          active
-            ? "text-(--text-main)"
-            : "text-(--text-muted) group-hover:text-(--text-main)",
-        )}
-        aria-hidden="true"
-      />
+      {icon}
       <m.span
         aria-hidden={collapsed}
         animate={{
@@ -281,6 +320,7 @@ function SidebarUtilityLink({
   tooltipPosition: "top" | "right";
 }) {
   const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
   const Icon = item.icon;
   const active =
     item.exact || item.href === "/"
@@ -290,7 +330,20 @@ function SidebarUtilityLink({
     "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-(--text-muted) transition-colors hover:bg-white/[0.04] hover:text-(--text-main) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) light:hover:bg-black/[0.04]",
     active && "bg-white/[0.055] text-(--text-main) light:bg-black/[0.055]",
   );
-  const content = <Icon className="size-4" aria-hidden="true" />;
+  const iconProps = {
+    className: "size-4",
+    size: 16,
+    strokeWidth: SIDEBAR_ICON_STROKE_WIDTH,
+    "aria-hidden": true,
+  } satisfies SidebarIconProps;
+  const content = item.animated ? (
+    (() => {
+      const AnimatedIcon = Icon as ComponentType<AnimatedSidebarIconProps>;
+      return <AnimatedIcon animateOnHover={!reduceMotion} {...iconProps} />;
+    })()
+  ) : (
+    <Icon {...iconProps} />
+  );
   const node = item.external ? (
     <a
       href={item.href}
