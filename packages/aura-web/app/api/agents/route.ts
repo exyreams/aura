@@ -18,6 +18,8 @@ const EXPIRY_OPTIONS = new Set(["7", "30", "90", "never"]);
 interface CreateAgentRequest {
   agentId?: unknown;
   label?: unknown;
+  authorityPublicKey?: unknown;
+  agentPublicKey?: unknown;
   treasuryPda?: unknown;
   scopes?: unknown;
   expiresInDays?: unknown;
@@ -87,6 +89,24 @@ function normalizeTreasuryPda(value: unknown) {
   }
 }
 
+function normalizeAuthorityPublicKey(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return new PublicKey(trimmed).toBase58();
+  } catch {
+    throw new Error("Authority public key must be a valid Solana public key.");
+  }
+}
+
 function normalizeExpiresAt(value: unknown) {
   const option = typeof value === "string" ? value : "30";
 
@@ -128,6 +148,7 @@ export async function POST(request: Request) {
 
   let agentId: string;
   let agentLabel: string | null;
+  let authorityPublicKey: string | null;
   let treasuryPda: string | null;
   let expiresAt: string | null;
   const scopes = normalizeAgentScopes(body.scopes);
@@ -135,6 +156,9 @@ export async function POST(request: Request) {
   try {
     agentId = normalizeAgentId(body.agentId);
     agentLabel = normalizeLabel(body.label);
+    authorityPublicKey = normalizeAuthorityPublicKey(
+      body.authorityPublicKey ?? body.agentPublicKey,
+    );
     treasuryPda = normalizeTreasuryPda(body.treasuryPda);
     expiresAt = normalizeExpiresAt(body.expiresInDays);
   } catch (cause) {
@@ -200,7 +224,13 @@ export async function POST(request: Request) {
       expires_at: expiresAt,
       metadata: {
         created_via: "web",
+        identity_status: authorityPublicKey
+          ? "authority_recorded"
+          : "session_only",
+        onchain_status: treasuryPda ? "treasury_linked" : "not_bound",
         owner_wallet: profile.wallet_address,
+        publicKey: authorityPublicKey,
+        authority_public_key: authorityPublicKey,
         token_prefix: "aurak",
       },
     })
@@ -238,6 +268,7 @@ export async function POST(request: Request) {
     summary: `${displayName} can now authenticate with a Conduit-compatible bearer token.`,
     metadata: {
       agent_id: agentId,
+      authority_public_key: authorityPublicKey,
       created_via: "web",
       scopes,
     },

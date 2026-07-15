@@ -1,174 +1,322 @@
 "use client";
 
-import { Bot, RefreshCw } from "lucide-react";
-import { CreateAgentForm } from "@/components/agents/CreateAgentForm";
-import {
-  DashboardContent,
-  DashboardEmptyState,
-  DashboardErrorState,
-  DashboardPanel,
-  DashboardPanelHeader,
-} from "@/components/dashboard/DashboardPrimitives";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useEffect, useRef, useState } from "react";
+import { AgentEmptyState } from "@/components/agents/AgentEmptyState";
+import { AgentRow, type AgentTreasuryLink } from "@/components/agents/AgentRow";
+import { AgentStatsBar } from "@/components/agents/AgentStatsBar";
+import { CreateAgentModal } from "@/components/agents/CreateAgentModal";
+import { DashboardContent } from "@/components/dashboard/DashboardPrimitives";
 import { Button } from "@/components/global/Button";
+import { Modal } from "@/components/global/Modal";
 import { Skeleton } from "@/components/global/Skeleton";
-import { StatusBadge } from "@/components/global/StatusBadge";
-import { formatAddress } from "@/lib/formatting/addresses";
-import { useAgentSessions } from "@/lib/hooks/use-agent-sessions";
-import type { AgentSessionRow } from "@/lib/supabase/types";
+import { Plus, RefreshCw, Zap } from "@/components/icons";
+import type { AgentKeypair } from "@/lib/hooks";
+import { useAgents } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
-const sessionTone: Record<
-  AgentSessionRow["status"],
-  "success" | "warning" | "danger" | "neutral"
-> = {
-  active: "success",
-  expired: "neutral",
-  revoked: "danger",
-  suspended: "warning",
-};
+function downloadJson(filename: string, value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], {
+    type: "application/json",
+  });
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(href);
+}
 
-function formatTimestamp(value: string | null) {
-  if (!value) {
-    return "No expiry";
+function linkedFor(agent: AgentKeypair): AgentTreasuryLink[] {
+  if (!agent.treasuryPda || agent.onchainStatus !== "treasury_linked") {
+    return [];
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return [
+    {
+      agentId: agent.agentId,
+      treasuryPda: agent.treasuryPda,
+    },
+  ];
+}
+
+function useAgentBalances(agents: AgentKeypair[]) {
+  const { connection } = useConnection();
+  const [balances, setBalances] = useState<Record<string, number>>({});
+  const fetchedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    for (const agent of agents) {
+      if (!agent.publicKey || fetchedRef.current.has(agent.publicKey)) {
+        continue;
+      }
+
+      fetchedRef.current.add(agent.publicKey);
+
+      try {
+        const publicKey = new PublicKey(agent.publicKey);
+        connection
+          .getBalance(publicKey)
+          .then((lamports) => {
+            setBalances((prev) => ({
+              ...prev,
+              [agent.publicKey]: lamports / LAMPORTS_PER_SOL,
+            }));
+          })
+          .catch(() => {});
+      } catch {
+        // Session-only agents do not have a usable on-chain authority key yet.
+      }
+    }
+  }, [agents, connection]);
+
+  return balances;
+}
+
+function RevokeAgentModal({
+  agent,
+  loading,
+  onClose,
+  onConfirm,
+}: {
+  agent: AgentKeypair | null;
+  loading: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      isOpen={Boolean(agent)}
+      onClose={onClose}
+      ariaLabelledBy="revoke-agent-title"
+      ariaDescribedBy="revoke-agent-description"
+      className="sm:max-w-md"
+    >
+      <div className="grid gap-5 pt-2 pr-8">
+        <div>
+          <h2 id="revoke-agent-title" className="text-lg font-semibold">
+            Revoke agent
+          </h2>
+          <p
+            id="revoke-agent-description"
+            className="mt-2 text-sm leading-6 text-muted-foreground"
+          >
+            This revokes the web session token. It does not change any on-chain
+            treasury authority. Rotate or update the treasury separately if this
+            signer is already the{" "}
+            <span className="font-mono">ai_authority</span>.
+          </p>
+        </div>
+
+        {agent ? (
+          <div className="grid gap-2 rounded-sm border border-border bg-background p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Agent ID
+              </span>
+              <span className="truncate font-mono text-xs">
+                {agent.agentId}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Public key
+              </span>
+              <span className="truncate font-mono text-xs">
+                {agent.publicKey || "Not recorded"}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={onConfirm}
+            loading={loading}
+          >
+            Revoke
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 export default function AgentsPage() {
-  const sessionsQuery = useAgentSessions();
-  const sessions = sessionsQuery.data ?? [];
+  const [createOpen, setCreateOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AgentKeypair | null>(null);
+  const {
+    agents,
+    selectedAgent,
+    setSelectedAgentId,
+    isLoading,
+    error,
+    deleteAgent,
+    deleteAgentMutation,
+    downloadAgentIdentity,
+    refetch,
+  } = useAgents();
+  const balances = useAgentBalances(agents);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await deleteAgent(deleteTarget.id);
+    setDeleteTarget(null);
+  };
+
+  const errorMessage = error instanceof Error ? error.message : null;
 
   return (
-    <DashboardContent>
-      <DashboardPanel>
-        <DashboardPanelHeader
-          eyebrow="Agents"
-          title="Agent sessions"
-          description="Create web-minted sessions now, then reuse the same Supabase contract when Conduit starts approving device-flow agents."
-          action={
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void sessionsQuery.refetch()}
-              disabled={sessionsQuery.isFetching}
-            >
-              <RefreshCw className="size-4" aria-hidden="true" />
-              Refresh sessions
-            </Button>
+    <DashboardContent className="max-w-[1600px]">
+      <CreateAgentModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(session) => {
+          setSelectedAgentId(session.agent_id);
+        }}
+      />
+
+      <RevokeAgentModal
+        agent={deleteTarget}
+        loading={deleteAgentMutation.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteConfirm()}
+      />
+
+      <header className="mb-4 flex flex-col justify-between gap-4 sm:mb-2 sm:flex-row sm:items-end">
+        <div>
+          <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            Agent Vault
+          </span>
+          <h1 className="mb-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">
+            Signer Agents
+          </h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Runtime signer keypairs for AURA treasuries. Treasury and dWallet
+            records are created through wallet-signed on-chain flows.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            icon={
+              <RefreshCw
+                className={cn("size-3.5", refreshing && "animate-spin")}
+                animateOnHover
+              />
+            }
+            onClick={() => void handleRefresh()}
+            disabled={refreshing}
+          >
+            Refresh
+          </Button>
+          <Button
+            type="button"
+            icon={<Plus className="size-4" animateOnHover />}
+            onClick={() => setCreateOpen(true)}
+          >
+            New Agent
+          </Button>
+        </div>
+      </header>
+
+      {!isLoading && agents.length > 0 ? (
+        <AgentStatsBar
+          total={agents.length}
+          selected={selectedAgent?.agentId ?? null}
+          lowBalanceCount={
+            agents.filter((agent) => {
+              const balance = balances[agent.publicKey];
+              return balance !== undefined && balance < 0.005;
+            }).length
           }
         />
-      </DashboardPanel>
+      ) : null}
 
-      <CreateAgentForm />
-
-      {sessionsQuery.isLoading ? (
-        <div className="grid gap-3">
-          {[0, 1, 2].map((item) => (
-            <DashboardPanel key={item} className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="grid flex-1 gap-3">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-4 w-32" />
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <Skeleton className="h-10" />
-                    <Skeleton className="h-10" />
-                    <Skeleton className="h-10" />
-                  </div>
-                </div>
-                <Skeleton className="h-8 w-24" />
-              </div>
-            </DashboardPanel>
-          ))}
-        </div>
-      ) : sessionsQuery.isError ? (
-        <DashboardErrorState
-          title="Could not load agent sessions"
-          description="Check the owner session and the agent_sessions RLS policy."
-          onRetry={() => void sessionsQuery.refetch()}
+      <div className="flex items-start gap-2.5 rounded-sm border border-border bg-surface px-3 py-2.5">
+        <Zap
+          className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+          animateOnHover
         />
-      ) : sessions.length === 0 ? (
-        <DashboardEmptyState
-          icon={Bot}
-          title="No agent sessions"
-          description="When the Conduit device flow creates an owner-approved session, it will appear here with its scopes, treasury binding, and expiry."
-        />
-      ) : (
-        <div className="grid gap-3">
-          {sessions.map((session) => (
-            <DashboardPanel key={session.id} className="p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex size-9 items-center justify-center rounded-md border border-border bg-surface-raised">
-                      <Bot
-                        className="size-4 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="truncate text-base font-semibold">
-                        {session.agent_label ?? "Unnamed agent"}
-                      </h2>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {formatAddress(session.agent_id)}
-                      </p>
-                    </div>
-                    <StatusBadge tone={sessionTone[session.status]}>
-                      {session.status}
-                    </StatusBadge>
-                  </div>
+        <p className="text-[11px] leading-5 text-muted-foreground">
+          The agent public key is the{" "}
+          <code className="font-mono text-[10px] text-foreground">
+            ai_authority
+          </code>{" "}
+          when creating a treasury. Agent creation prepares the signer and
+          runtime token; it does not bind a treasury until the wallet signs the
+          on-chain create/register flow.
+        </p>
+      </div>
 
-                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                    <div>
-                      <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Treasury
-                      </dt>
-                      <dd className="mt-1 font-mono">
-                        {session.treasury_pda
-                          ? formatAddress(session.treasury_pda)
-                          : "Not bound"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Created
-                      </dt>
-                      <dd className="mt-1">
-                        {formatTimestamp(session.created_at)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Expires
-                      </dt>
-                      <dd className="mt-1">
-                        {formatTimestamp(session.expires_at)}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div className="flex max-w-xl flex-wrap gap-2 lg:justify-end">
-                  {session.scopes.length > 0 ? (
-                    session.scopes.map((scope) => (
-                      <StatusBadge key={scope} tone="neutral">
-                        {scope}
-                      </StatusBadge>
-                    ))
-                  ) : (
-                    <StatusBadge tone="neutral" className="normal-case">
-                      No scopes recorded
-                    </StatusBadge>
-                  )}
-                </div>
-              </div>
-            </DashboardPanel>
-          ))}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {isLoading && agents.length === 0
+              ? "Loading..."
+              : agents.length === 0
+                ? "No agents"
+                : `${agents.length} agent${agents.length !== 1 ? "s" : ""}`}
+          </h2>
         </div>
-      )}
+
+        {isLoading && agents.length === 0 ? (
+          <div className="space-y-3">
+            <Skeleton className="h-36" />
+            <Skeleton className="h-36" />
+          </div>
+        ) : null}
+
+        {!isLoading && errorMessage ? (
+          <div className="rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            {errorMessage}
+          </div>
+        ) : null}
+
+        {!isLoading && !errorMessage && agents.length === 0 ? (
+          <AgentEmptyState onCreateClick={() => setCreateOpen(true)} />
+        ) : null}
+
+        {agents.length > 0 ? (
+          <div className="space-y-2">
+            {agents.map((agent) => (
+              <AgentRow
+                key={agent.id}
+                agent={agent}
+                selected={selectedAgent?.agentId === agent.agentId}
+                linkedTreasuries={linkedFor(agent)}
+                solBalance={balances[agent.publicKey] ?? null}
+                deleting={deleteAgentMutation.isPending}
+                onSelect={() => setSelectedAgentId(agent.agentId)}
+                onDownload={async () => {
+                  const identity = await downloadAgentIdentity(agent);
+                  downloadJson(`${agent.agentId}.aura-agent.json`, identity);
+                }}
+                onDelete={() => setDeleteTarget(agent)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
     </DashboardContent>
   );
 }

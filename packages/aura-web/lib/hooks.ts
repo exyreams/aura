@@ -1,27 +1,27 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useOwnerAuth } from "@/components/auth/OwnerAuthProvider";
+import {
+  getAgentAuthorityPublicKey,
+  getAgentOnchainStatus,
+} from "@/lib/agents/metadata";
 import { useAgentSessions } from "@/lib/hooks/use-agent-sessions";
 import { AppSettingsContext } from "@/lib/settings";
-import type { Json } from "@/lib/supabase/types";
 
 export interface AgentKeypair {
-  id: number;
+  id: string;
   agentId: string;
   label: string;
   publicKey: string;
   createdAt: number;
-}
-
-function readStringMetadata(metadata: Json, key: string) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return "";
-  }
-
-  const value = metadata[key];
-  return typeof value === "string" ? value : "";
+  treasuryPda: string | null;
+  onchainStatus: string;
+  status: "active" | "expired" | "revoked" | "suspended";
+  scopes: string[];
+  expiresAt: string | null;
 }
 
 export function useAppSettings() {
@@ -53,16 +53,22 @@ export function useAuth() {
 
 export function useAgents() {
   const settings = useAppSettings();
+  const queryClient = useQueryClient();
   const sessionsQuery = useAgentSessions();
 
   const agents = useMemo<AgentKeypair[]>(
     () =>
-      (sessionsQuery.data ?? []).map((session, index) => ({
-        id: index,
+      (sessionsQuery.data ?? []).map((session) => ({
+        id: session.id,
         agentId: session.agent_id,
         label: session.agent_label ?? session.agent_id,
-        publicKey: readStringMetadata(session.metadata, "publicKey"),
+        publicKey: getAgentAuthorityPublicKey(session.metadata),
         createdAt: Math.floor(new Date(session.created_at).getTime() / 1000),
+        treasuryPda: session.treasury_pda,
+        onchainStatus: getAgentOnchainStatus(session.metadata),
+        status: session.status,
+        scopes: session.scopes,
+        expiresAt: session.expires_at,
       })),
     [sessionsQuery.data],
   );
@@ -72,6 +78,39 @@ export function useAgents() {
     agents[0] ??
     null;
   const selectedAgentId = selectedAgent?.agentId ?? settings.selectedAgentId;
+  const deleteAgentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/agents/${id}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(body.error ?? "Could not delete agent.");
+      }
+    },
+    onSuccess: async (_result, id) => {
+      const deleted = agents.find((agent) => agent.id === id);
+      if (deleted?.agentId === settings.selectedAgentId) {
+        settings.setSelectedAgentId("");
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["agent-sessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity-events"] }),
+      ]);
+    },
+  });
+
+  const downloadAgentIdentity = async (agent: AgentKeypair) => ({
+    format: "aura-agent-public-identity-v1",
+    agentId: agent.agentId,
+    label: agent.label,
+    publicKey: agent.publicKey,
+    treasuryPda: agent.treasuryPda,
+    scopes: agent.scopes,
+    status: agent.status,
+    expiresAt: agent.expiresAt,
+  });
 
   return {
     agents,
@@ -81,6 +120,9 @@ export function useAgents() {
     isLoading: sessionsQuery.isLoading,
     error: sessionsQuery.error,
     refetch: sessionsQuery.refetch,
+    deleteAgent: deleteAgentMutation.mutateAsync,
+    deleteAgentMutation,
+    downloadAgentIdentity,
   };
 }
 
