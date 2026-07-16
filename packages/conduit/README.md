@@ -49,7 +49,7 @@ The OpenAPI spec is served at `/openapi.json`.
 
 ## Tool Surface
 
-Conduit currently exposes 14 tools:
+Conduit currently exposes 18 tools:
 
 - `aura.whoami`
 - `aura.instructions.list`
@@ -58,6 +58,10 @@ Conduit currently exposes 14 tools:
 - `aura.instruction.request_signature`
 - `aura.treasury.get`
 - `aura.policy.preview`
+- `aura.spend.request`
+- `aura.execution.pause.request`
+- `aura.recipient_limit.set.request`
+- `aura.recipient_limit.remove.request`
 - `aura.session.status`
 - `aura.activity.tail`
 - `aura.proposal.list`
@@ -72,6 +76,8 @@ The instruction tools are IDL-driven. They cover the current AURA program instru
 - `aura.instruction.describe` returns accounts, args, signer accounts, and sample input.
 - `aura.instruction.prepare` validates accounts/args and returns serialized instruction bytes without signing.
 - `aura.instruction.request_signature` builds an unsigned transaction and queues it for human review. It never signs or submits directly.
+- `aura.spend.request` is the friendly proposal path for common treasury spends.
+- `aura.execution.pause.request`, `aura.recipient_limit.set.request`, and `aura.recipient_limit.remove.request` are friendly owner-review queueing paths for common treasury controls.
 
 ## CLI
 

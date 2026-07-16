@@ -11,6 +11,12 @@ import { TocTouGuard } from "../toctou.js";
 import type { Tool } from "../types.js";
 
 import { createActivityTailTool } from "./activity-tail.js";
+import {
+  createExecutionPauseRequestTool,
+  createRecipientLimitRemoveRequestTool,
+  createRecipientLimitSetRequestTool,
+  createSpendRequestTool,
+} from "./common-flows.js";
 import { createExecutePendingTool } from "./execute-pending.js";
 import { instructionDescribeTool } from "./instruction-describe.js";
 import { instructionListTool } from "./instruction-list.js";
@@ -48,6 +54,25 @@ export function buildToolCatalogue(
     }),
     createTreasuryGetTool(options.solana),
     createPolicyPreviewTool(options.solana, toctou),
+    createSpendRequestTool({
+      db: options.db,
+      solana: options.solana,
+      signer: options.signer,
+      dashboardBaseUrl: options.dashboardBaseUrl,
+      toctou,
+    }),
+    createExecutionPauseRequestTool({
+      db: options.db,
+      solana: options.solana,
+    }),
+    createRecipientLimitSetRequestTool({
+      db: options.db,
+      solana: options.solana,
+    }),
+    createRecipientLimitRemoveRequestTool({
+      db: options.db,
+      solana: options.solana,
+    }),
     createSessionStatusTool(options.solana),
     createActivityTailTool(options.db),
     createProposalListTool(options.db),
@@ -74,6 +99,7 @@ export function buildToolCatalogue(
 export {
   createActivityTailTool,
   createExecutePendingTool,
+  createExecutionPauseRequestTool,
   createInstructionPrepareTool,
   createInstructionSignRequestTool,
   createPolicyPreviewTool,
@@ -81,7 +107,10 @@ export {
   createProposalCreateTool,
   createProposalGetTool,
   createProposalListTool,
+  createRecipientLimitRemoveRequestTool,
+  createRecipientLimitSetRequestTool,
   createSessionStatusTool,
+  createSpendRequestTool,
   createTreasuryGetTool,
   instructionDescribeTool,
   instructionListTool,

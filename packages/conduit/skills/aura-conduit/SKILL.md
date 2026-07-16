@@ -34,18 +34,22 @@ Read-only tools:
 Human-review queueing tools:
 
 - `aura.instruction.request_signature`
+- `aura.execution.pause.request`
+- `aura.recipient_limit.set.request`
+- `aura.recipient_limit.remove.request`
 - `aura.proposal.cancel`
 
 Session-scoped write tools:
 
 - `aura.proposal.create`
+- `aura.spend.request`
 - `aura.execute.pending`
 
 ## Rules
 
 - Never ask for or handle an owner private key.
 - Use `aura.instruction.prepare` before requesting a signature for unfamiliar instructions.
-- Use `aura.policy.preview` before `aura.proposal.create` when a policy decision matters.
+- Use `aura.policy.preview` before `aura.proposal.create` or `aura.spend.request` when a policy decision matters.
 - Treat `aura.instruction.request_signature` as a queueing action, not as execution.
 - Report the returned sign request id or proposal id to the human.
 - Do not retry writes without the same idempotency key.
