@@ -33,6 +33,16 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected auth error.";
 }
 
+function getWeb3SignInUrl() {
+  const { hostname, port, protocol } = window.location;
+
+  if (hostname === "127.0.0.1" && port === "3000") {
+    return "http://localhost:3000";
+  }
+
+  return `${protocol}//${window.location.host}`;
+}
+
 export function OwnerAuthProvider({ children }: { children: ReactNode }) {
   const wallet = useWallet();
   const [supabase] = useState(() => createBrowserSupabaseClient());
@@ -136,6 +146,9 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
         chain: "solana",
         statement: "Sign in to AURA Control Center.",
         wallet: walletForAuth,
+        options: {
+          url: getWeb3SignInUrl(),
+        },
       });
 
       if (signInError) {

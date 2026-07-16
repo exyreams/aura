@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { type ReactNode, useMemo, useState } from "react";
 import { OwnerAuthProvider } from "@/components/auth/OwnerAuthProvider";
+import { ToastProvider } from "@/components/global/Toast";
 import { FaviconSwitcher } from "@/components/theme/FaviconSwitcher";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import {
@@ -114,7 +115,9 @@ function SolanaProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={settings.endpoint}>
         <WalletProvider wallets={[]} autoConnect={false}>
-          <OwnerAuthProvider>{children}</OwnerAuthProvider>
+          <OwnerAuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </OwnerAuthProvider>
         </WalletProvider>
       </ConnectionProvider>
     </QueryClientProvider>

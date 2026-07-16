@@ -1,27 +1,209 @@
 "use client";
 
-import { Copy, ExternalLink, RefreshCw, Send, Wallet } from "lucide-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  Copy,
+  ExternalLink,
+  Link2,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/global/Button";
 import { Skeleton } from "@/components/global/Skeleton";
 import { StatusBadge } from "@/components/global/StatusBadge";
+import { useToast } from "@/components/global/Toast";
+import { WalletReceiveModal } from "@/components/wallets/WalletReceiveModal";
+import { WalletTransferModal } from "@/components/wallets/WalletTransferModal";
 import { SOLANA_CHAIN_ID } from "@/lib/aura/chains";
 import { formatAddress } from "@/lib/formatting/addresses";
 import { formatSol, formatTokenAmount } from "@/lib/formatting/amounts";
-import { useSolanaWalletBalance } from "@/lib/hooks/use-solana-wallet-balance";
-import type { WalletRegistryRow } from "@/lib/supabase/types";
+import { useAgents, useAppSettings, useSolanaWalletBalance } from "@/lib/hooks";
+import {
+  confirmAgentTreasuryLink,
+  confirmDWalletRegistration,
+  createAgentTreasuryOnChain,
+  registerDWalletOnChain,
+} from "@/lib/solana/dwallet-registration";
+import type { Json, WalletRegistryRow } from "@/lib/supabase/types";
 
 function explorerUrl(address: string) {
   return `https://explorer.solana.com/address/${address}?cluster=devnet`;
 }
 
+function metadataString(metadata: Json, key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const value = metadata[key];
+  return typeof value === "string" ? value : null;
+}
+
+function metadataNestedString(metadata: Json, parent: string, key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const value = metadata[parent];
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const nested = value[key];
+  return typeof nested === "string" ? nested : null;
+}
+
+function statusTone(status: string) {
+  if (status === "onchain_registered" || status === "ika_provisioned") {
+    return "success" as const;
+  }
+
+  if (status === "metadata_registered" || status === "unknown") {
+    return "warning" as const;
+  }
+
+  return "neutral" as const;
+}
+
+function statusLabel(status: string) {
+  return status.replaceAll("_", " ");
+}
+
 export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
+  const { connection } = useConnection();
+  const ownerWallet = useWallet();
+  const settings = useAppSettings();
+  const { agents } = useAgents();
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const [copied, setCopied] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const supportsLiveBalance = wallet.chain_id === SOLANA_CHAIN_ID;
   const balanceQuery = useSolanaWalletBalance(
     wallet.chain_address,
     supportsLiveBalance,
   );
+  const sessionMaterial = metadataString(wallet.metadata, "session_material");
+  const createdVia = metadataString(wallet.metadata, "source");
+  const provider = metadataString(wallet.metadata, "provider");
+  const authorizedUser = metadataNestedString(
+    wallet.metadata,
+    "dwallet",
+    "authorized_user_pubkey",
+  );
+  const linkedAgent = wallet.agent_session_id
+    ? (agents.find((agent) => agent.id === wallet.agent_session_id) ?? null)
+    : null;
+  const hasEncryptedSession = sessionMaterial === "encrypted_service_only";
+  const isAuraBound = wallet.status === "onchain_registered";
+  const linkActionTitle = wallet.treasury_pda
+    ? "Register this dWallet on the AURA treasury."
+    : "Create the signer agent treasury, then register this dWallet.";
+  const balanceError =
+    balanceQuery.error instanceof Error ? balanceQuery.error.message : null;
+  const linkMutation = useMutation({
+    mutationFn: async () => {
+      const ownerAddress = ownerWallet.publicKey?.toBase58();
+
+      if (!ownerAddress) {
+        throw new Error(
+          "Connect the owner wallet before linking this dWallet.",
+        );
+      }
+
+      let treasurySignature: string | null = null;
+      let walletForRegistration = wallet;
+
+      if (!walletForRegistration.treasury_pda) {
+        if (!wallet.agent_session_id) {
+          throw new Error(
+            "This dWallet is not attached to a signer agent session.",
+          );
+        }
+
+        const agent = agents.find(
+          (candidate) => candidate.id === wallet.agent_session_id,
+        );
+
+        if (!agent) {
+          throw new Error(
+            "Could not find the signer agent for this dWallet. Refresh agents and try again.",
+          );
+        }
+
+        const treasury = await createAgentTreasuryOnChain({
+          connection,
+          walletAdapter: ownerWallet,
+          agent,
+          programId: settings.resolvedProgramId,
+        });
+
+        if (!treasury.signature) {
+          throw new Error(
+            "This signer agent has a treasury, but this wallet registry row is stale. Refresh the page and try again.",
+          );
+        }
+
+        await confirmAgentTreasuryLink({
+          agentSessionId: agent.id,
+          ownerAddress,
+          treasuryPda: treasury.treasuryPda,
+          signature: treasury.signature,
+        });
+
+        treasurySignature = treasury.signature;
+        walletForRegistration = {
+          ...walletForRegistration,
+          treasury_pda: treasury.treasuryPda,
+        };
+      }
+
+      const signature = await registerDWalletOnChain({
+        connection,
+        walletAdapter: ownerWallet,
+        wallet: walletForRegistration,
+        programId: settings.resolvedProgramId,
+      });
+      const updatedWallet = await confirmDWalletRegistration({
+        walletId: wallet.id,
+        ownerAddress,
+        signature,
+      });
+
+      return { signature, treasurySignature, wallet: updatedWallet };
+    },
+    onSuccess: async ({ signature, treasurySignature }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["agent-sessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-registry"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity-events"] }),
+      ]);
+      toast.success("dWallet linked on-chain", {
+        description: treasurySignature
+          ? "The owner wallet created the AURA treasury and registered the dWallet."
+          : "The owner wallet signed the AURA registration transaction.",
+        action: {
+          label: "View transaction",
+          href: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+        },
+      });
+    },
+    onError: (error) => {
+      toast.danger("Could not link dWallet", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "The registration transaction could not be completed.",
+      });
+    },
+  });
 
   const copyAddress = async () => {
     await navigator.clipboard.writeText(wallet.chain_address);
@@ -31,6 +213,18 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
 
   return (
     <article className="rounded-lg border border-border bg-surface p-4">
+      <WalletReceiveModal
+        open={receiveOpen}
+        wallet={wallet}
+        onClose={() => setReceiveOpen(false)}
+      />
+      <WalletTransferModal
+        open={transferOpen}
+        wallet={wallet}
+        balance={balanceQuery.data ?? null}
+        onClose={() => setTransferOpen(false)}
+      />
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -45,18 +239,31 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
                 {wallet.label || `${wallet.chain_name} dWallet`}
               </h2>
               <p className="font-mono text-xs text-muted-foreground">
-                {wallet.wallet_kind} / {wallet.status}
+                {formatAddress(wallet.chain_address)}
               </p>
             </div>
+            <StatusBadge tone={statusTone(wallet.status)}>
+              {statusLabel(wallet.status)}
+            </StatusBadge>
             <StatusBadge tone={supportsLiveBalance ? "success" : "warning"}>
-              {supportsLiveBalance ? "live rpc" : "metadata only"}
+              {supportsLiveBalance ? "live balances" : "metadata only"}
+            </StatusBadge>
+            {hasEncryptedSession ? (
+              <StatusBadge tone="success">encrypted session</StatusBadge>
+            ) : null}
+            <StatusBadge tone={isAuraBound ? "success" : "warning"}>
+              {isAuraBound
+                ? "on-chain registered"
+                : wallet.treasury_pda
+                  ? "on-chain pending"
+                  : "treasury pending"}
             </StatusBadge>
           </div>
 
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Address
+                Funding address
               </dt>
               <dd className="mt-1 font-mono text-sm">
                 {formatAddress(wallet.chain_address)}
@@ -64,12 +271,26 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Treasury
+                AURA treasury
               </dt>
               <dd className="mt-1 font-mono text-sm">
-                {formatAddress(wallet.treasury_pda)}
+                {wallet.treasury_pda
+                  ? formatAddress(wallet.treasury_pda)
+                  : "Not bound"}
               </dd>
             </div>
+            {wallet.agent_session_id ? (
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Signer agent
+                </dt>
+                <dd className="mt-1 font-mono text-sm">
+                  {linkedAgent
+                    ? linkedAgent.label
+                    : formatAddress(wallet.agent_session_id)}
+                </dd>
+              </div>
+            ) : null}
             {wallet.dwallet_id ? (
               <div>
                 <dt className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -90,10 +311,52 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
                 </dd>
               </div>
             ) : null}
+            {authorizedUser ? (
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Ika authority
+                </dt>
+                <dd className="mt-1 font-mono text-sm">
+                  {formatAddress(authorizedUser)}
+                </dd>
+              </div>
+            ) : null}
+            {provider || createdVia ? (
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Source
+                </dt>
+                <dd className="mt-1 font-mono text-sm">
+                  {[provider, createdVia].filter(Boolean).join(" / ")}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setReceiveOpen(true)}
+          >
+            <Wallet className="size-4" aria-hidden="true" />
+            Receive
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setTransferOpen(true)}
+            disabled={!supportsLiveBalance || balanceQuery.isLoading}
+            title={
+              supportsLiveBalance
+                ? undefined
+                : "Transfer requests for non-Solana chains need a chain-specific execution path."
+            }
+          >
+            <Send className="size-4" aria-hidden="true" />
+            Transfer
+          </Button>
           <Button type="button" variant="secondary" onClick={copyAddress}>
             <Copy className="size-4" aria-hidden="true" />
             {copied ? "Copied" : "Copy"}
@@ -109,6 +372,18 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
               Refresh
             </Button>
           ) : null}
+          {!isAuraBound ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => linkMutation.mutate()}
+              loading={linkMutation.isPending}
+              title={linkActionTitle}
+            >
+              <Link2 className="size-4" aria-hidden="true" />
+              Link on-chain
+            </Button>
+          ) : null}
           {supportsLiveBalance ? (
             <a
               href={explorerUrl(wallet.chain_address)}
@@ -120,15 +395,6 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
               Explorer
             </a>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={true}
-            title="Real dWallet movement will be enabled after the proposal/signing path is wired."
-          >
-            <Send className="size-4" aria-hidden="true" />
-            Move funds
-          </Button>
         </div>
       </div>
 
@@ -145,49 +411,152 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
             <Skeleton className="h-14" />
           </div>
         ) : balanceQuery.isError ? (
-          <p className="text-sm text-danger">
-            Could not load live balances. Check the address and RPC endpoint.
-          </p>
-        ) : balanceQuery.data ? (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-md border border-border bg-surface p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Native
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid gap-1">
+              <p className="text-sm text-danger">
+                Could not load live balances from the configured Solana RPC.
               </p>
-              <p className="mt-1 font-mono text-lg">
-                {formatSol(balanceQuery.data.native.amount)}
+              {balanceError ? (
+                <p className="text-xs text-muted-foreground">{balanceError}</p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="small"
+              onClick={() => void balanceQuery.refetch()}
+            >
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+              Retry
+            </Button>
+          </div>
+        ) : balanceQuery.data ? (
+          <div className="grid gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <ShieldCheck
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                Live balances
+              </div>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                Refreshed{" "}
+                {new Date(balanceQuery.data.refreshedAt).toLocaleTimeString()}
               </p>
             </div>
-            {balanceQuery.data.tokens.length > 0 ? (
-              balanceQuery.data.tokens.slice(0, 5).map((token) => (
-                <div
-                  key={`${token.tokenProgram}:${token.tokenAccount}`}
-                  className="rounded-md border border-border bg-surface p-3"
-                >
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {token.symbol}
-                  </p>
-                  <p className="mt-1 font-mono text-lg">
-                    {formatTokenAmount(token.amount)}
-                  </p>
-                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    {formatAddress(token.mint)}
+
+            {balanceQuery.data.warnings.length > 0 ? (
+              <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-5 text-warning">
+                <AlertTriangle
+                  className="mt-0.5 size-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span>{balanceQuery.data.warnings[0]?.message}</span>
+              </div>
+            ) : null}
+
+            <div className="overflow-hidden rounded-md border border-border bg-surface">
+              <BalanceAssetRow
+                logoURI={null}
+                symbol="SOL"
+                name="Solana"
+                amount={formatSol(balanceQuery.data.native.amount)}
+                detail={`${balanceQuery.data.native.lamports.toLocaleString("en-US")} lamports`}
+              />
+              {balanceQuery.data.tokens.length > 0 ? (
+                balanceQuery.data.tokens.map((token) => (
+                  <BalanceAssetRow
+                    key={`${token.tokenProgram}:${token.tokenAccount}`}
+                    logoURI={token.logoURI}
+                    symbol={token.symbol}
+                    name={token.name ?? token.symbol}
+                    amount={`${formatTokenAmount(token.amount)} ${token.symbol}`}
+                    detail={`${formatAddress(token.mint)} mint`}
+                  />
+                ))
+              ) : (
+                <div className="border-t border-border px-3 py-4">
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    No funded token accounts found.
                   </p>
                 </div>
-              ))
-            ) : (
-              <div className="rounded-md border border-dashed border-border bg-surface p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Tokens
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  No funded token accounts found.
-                </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : null}
       </div>
+
+      {!isAuraBound ? (
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+          <Link2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            {wallet.treasury_pda
+              ? "This wallet is fundable now. Register it on-chain with the owner wallet before agent execution can use it."
+              : "This wallet is fundable now, but its signer agent has no AURA treasury PDA yet. Link on-chain will create the treasury with your owner wallet, then register the dWallet."}
+          </span>
+        </div>
+      ) : null}
     </article>
+  );
+}
+
+function BalanceAssetRow({
+  logoURI,
+  symbol,
+  name,
+  amount,
+  detail,
+}: {
+  logoURI: string | null;
+  symbol: string;
+  name: string;
+  amount: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-t border-border px-3 py-3 first:border-t-0">
+      <TokenAvatar logoURI={logoURI} symbol={symbol} />
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <p className="truncate text-sm font-medium">{name}</p>
+          <p className="font-mono text-sm tabular-nums text-foreground">
+            {amount}
+          </p>
+        </div>
+        <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+          {detail}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TokenAvatar({
+  logoURI,
+  symbol,
+}: {
+  logoURI: string | null;
+  symbol: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const fallback = symbol.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background">
+      {logoURI && !failed ? (
+        // biome-ignore lint/performance/noImgElement: Token logos come from arbitrary metadata URLs, so next/image remote patterns are not practical here.
+        <img
+          src={logoURI}
+          alt={`${symbol} logo`}
+          className="size-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {fallback}
+        </span>
+      )}
+    </div>
   );
 }

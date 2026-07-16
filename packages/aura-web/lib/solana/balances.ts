@@ -4,6 +4,7 @@ import {
   type ParsedAccountData,
   PublicKey,
 } from "@solana/web3.js";
+import { getTokenMetadataMap } from "@/lib/solana/token-metadata";
 
 export const SPL_TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -26,6 +27,8 @@ export interface TokenBalance {
   tokenAccount: string;
   mint: string;
   symbol: string;
+  name: string | null;
+  logoURI: string | null;
   decimals: number;
   amount: number;
   rawAmount: string;
@@ -35,7 +38,32 @@ export interface SolanaWalletBalances {
   address: string;
   native: NativeSolBalance;
   tokens: TokenBalance[];
+  warnings: SolanaWalletBalanceWarning[];
   refreshedAt: string;
+}
+
+export interface SolanaWalletBalanceWarning {
+  code: "token_2022_unavailable";
+  message: string;
+}
+
+interface OptionalTokenProgramBalances {
+  tokens: TokenBalance[];
+  warnings: SolanaWalletBalanceWarning[];
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return typeof error === "string" ? error : "Unknown RPC error";
+}
+
+function isUnrecognizedTokenProgramError(error: unknown) {
+  return errorMessage(error)
+    .toLowerCase()
+    .includes("unrecognized token program id");
 }
 
 function parseTokenBalance(
@@ -63,6 +91,8 @@ function parseTokenBalance(
     tokenAccount,
     mint,
     symbol: mint.slice(0, 4).toUpperCase(),
+    name: null,
+    logoURI: null,
     decimals,
     amount,
     rawAmount: String(tokenAmount.amount),
@@ -89,16 +119,53 @@ async function fetchTokenProgramBalances(
   });
 }
 
+async function fetchOptionalToken2022Balances(
+  connection: Connection,
+  owner: PublicKey,
+): Promise<OptionalTokenProgramBalances> {
+  try {
+    return {
+      tokens: await fetchTokenProgramBalances(
+        connection,
+        owner,
+        TOKEN_2022_PROGRAM_ID,
+      ),
+      warnings: [],
+    };
+  } catch (error) {
+    if (!isUnrecognizedTokenProgramError(error)) {
+      throw error;
+    }
+
+    return {
+      tokens: [],
+      warnings: [
+        {
+          code: "token_2022_unavailable",
+          message:
+            "Token-2022 balances are unavailable from this RPC. Native SOL and SPL token balances are still shown.",
+        },
+      ],
+    };
+  }
+}
+
 export async function fetchSolanaWalletBalances(
   connection: Connection,
   address: string,
 ): Promise<SolanaWalletBalances> {
   const owner = new PublicKey(address);
-  const [lamports, splTokens, token2022Tokens] = await Promise.all([
+  const [lamports, splTokens, token2022Result] = await Promise.all([
     connection.getBalance(owner, "confirmed"),
     fetchTokenProgramBalances(connection, owner, SPL_TOKEN_PROGRAM_ID),
-    fetchTokenProgramBalances(connection, owner, TOKEN_2022_PROGRAM_ID),
+    fetchOptionalToken2022Balances(connection, owner),
   ]);
+  const tokens = [...splTokens, ...token2022Result.tokens].sort((a, b) =>
+    a.mint.localeCompare(b.mint),
+  );
+  const metadataMap = await getTokenMetadataMap(
+    tokens.map((token) => token.mint),
+  );
 
   return {
     address,
@@ -108,9 +175,21 @@ export async function fetchSolanaWalletBalances(
       amount: lamports / LAMPORTS_PER_SOL,
       lamports,
     },
-    tokens: [...splTokens, ...token2022Tokens].sort((a, b) =>
-      a.mint.localeCompare(b.mint),
-    ),
+    warnings: token2022Result.warnings,
+    tokens: tokens.map((token) => {
+      const metadata = metadataMap.get(token.mint);
+
+      if (!metadata) {
+        return token;
+      }
+
+      return {
+        ...token,
+        symbol: metadata.symbol || token.symbol,
+        name: metadata.name || token.name,
+        logoURI: metadata.icon || token.logoURI,
+      };
+    }),
     refreshedAt: new Date().toISOString(),
   };
 }
