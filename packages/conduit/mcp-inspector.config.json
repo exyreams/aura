@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aura": {
+      "command": "tsx",
+      "args": ["--env-file=.env.local", "src/bin/conduit.ts", "mcp"]
+    }
+  }
+}

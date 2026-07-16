@@ -1,0 +1,77 @@
+{
+  "name": "@aura-protocol/conduit",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "AURA Conduit — agent-facing MCP server and HTTP gateway for the AURA autonomous treasury program",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/exyreams/aura.git"
+  },
+  "homepage": "https://github.com/exyreams/aura",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "conduit": "./bin/conduit.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx --env-file=.env.local src/bin/conduit.ts mcp",
+    "dev:inspect": "mcp-inspector --config mcp-inspector.config.json --server aura",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "start": "node bin/conduit.js mcp",
+    "test": "tsx --test tests/errors.test.ts tests/schemas.test.ts tests/registry.test.ts tests/idempotency.test.ts tests/session.test.ts tests/whoami.test.ts tests/control-plane.test.ts tests/safety.test.ts tests/signing.test.ts tests/dispatch-safety.test.ts tests/toctou.test.ts tests/scheduler.test.ts tests/owner-auth.test.ts tests/instructions.test.ts",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@aura-protocol/sdk-ts": "^0.3.0",
+    "@fastify/cookie": "11.1.2",
+    "@fastify/cors": "11.3.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@napi-rs/keyring": "1.3.0",
+    "@solana/web3.js": "1.98.4",
+    "better-sqlite3": "12.11.1",
+    "bn.js": "5.2.4",
+    "bs58": "6.0.0",
+    "commander": "15.0.0",
+    "fastify": "5.10.0",
+    "tweetnacl": "1.0.3",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.1",
+    "@modelcontextprotocol/inspector": "0.22.0",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/bn.js": "5.2.0",
+    "@types/node": "26.0.1",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
+  }
+}
