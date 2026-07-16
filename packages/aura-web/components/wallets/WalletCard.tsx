@@ -6,17 +6,21 @@ import {
   AlertTriangle,
   Copy,
   ExternalLink,
+  FileText,
   Link2,
   RefreshCw,
   Send,
   ShieldCheck,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/global/Button";
+import { Modal } from "@/components/global/Modal";
 import { Skeleton } from "@/components/global/Skeleton";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { useToast } from "@/components/global/Toast";
+import { DWalletDetailsModal } from "@/components/wallets/DWalletDetailsModal";
 import { WalletReceiveModal } from "@/components/wallets/WalletReceiveModal";
 import { WalletTransferModal } from "@/components/wallets/WalletTransferModal";
 import { SOLANA_CHAIN_ID } from "@/lib/aura/chains";
@@ -29,35 +33,13 @@ import {
   createAgentTreasuryOnChain,
   registerDWalletOnChain,
 } from "@/lib/solana/dwallet-registration";
-import type { Json, WalletRegistryRow } from "@/lib/supabase/types";
-
-function explorerUrl(address: string) {
-  return `https://explorer.solana.com/address/${address}?cluster=devnet`;
-}
-
-function metadataString(metadata: Json, key: string) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const value = metadata[key];
-  return typeof value === "string" ? value : null;
-}
-
-function metadataNestedString(metadata: Json, parent: string, key: string) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const value = metadata[parent];
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const nested = value[key];
-  return typeof nested === "string" ? nested : null;
-}
+import type { WalletRegistryRow } from "@/lib/supabase/types";
+import {
+  metadataNestedString,
+  metadataString,
+  walletAddressExplorerUrl,
+  walletTransactionExplorerUrl,
+} from "@/lib/wallets/dwallet-details";
 
 function statusTone(status: string) {
   if (status === "onchain_registered" || status === "ika_provisioned") {
@@ -75,6 +57,19 @@ function statusLabel(status: string) {
   return status.replaceAll("_", " ");
 }
 
+async function deleteDWallet(walletId: string) {
+  const response = await fetch(`/api/wallets/dwallets/${walletId}`, {
+    method: "DELETE",
+  });
+  const payload = (await response.json()) as { error?: string };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not remove dWallet.");
+  }
+
+  return payload;
+}
+
 export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
   const { connection } = useConnection();
   const ownerWallet = useWallet();
@@ -83,7 +78,9 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [copied, setCopied] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const supportsLiveBalance = wallet.chain_id === SOLANA_CHAIN_ID;
   const balanceQuery = useSolanaWalletBalance(
@@ -103,6 +100,14 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
     : null;
   const hasEncryptedSession = sessionMaterial === "encrypted_service_only";
   const isAuraBound = wallet.status === "onchain_registered";
+  const hasRegistrationTx = Boolean(
+    metadataString(wallet.metadata, "registration_tx_signature") ||
+      metadataNestedString(wallet.metadata, "binding", "tx_signature"),
+  );
+  const canRemoveWallet =
+    wallet.wallet_kind === "dwallet" &&
+    wallet.status !== "onchain_registered" &&
+    !hasRegistrationTx;
   const linkActionTitle = wallet.treasury_pda
     ? "Register this dWallet on the AURA treasury."
     : "Create the signer agent treasury, then register this dWallet.";
@@ -191,7 +196,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
           : "The owner wallet signed the AURA registration transaction.",
         action: {
           label: "View transaction",
-          href: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+          href: walletTransactionExplorerUrl(signature),
         },
       });
     },
@@ -201,6 +206,27 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
           error instanceof Error
             ? error.message
             : "The registration transaction could not be completed.",
+      });
+    },
+  });
+  const removeMutation = useMutation({
+    mutationFn: () => deleteDWallet(wallet.id),
+    onSuccess: async () => {
+      setRemoveOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["wallet-registry"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity-events"] }),
+      ]);
+      toast.success("dWallet removed", {
+        description: "The unregistered dWallet was removed from the dashboard.",
+      });
+    },
+    onError: (error) => {
+      toast.danger("Could not remove dWallet", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "The dWallet record could not be removed.",
       });
     },
   });
@@ -217,6 +243,18 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
         open={receiveOpen}
         wallet={wallet}
         onClose={() => setReceiveOpen(false)}
+      />
+      <DWalletDetailsModal
+        open={detailsOpen}
+        wallet={wallet}
+        onClose={() => setDetailsOpen(false)}
+      />
+      <RemoveDWalletModal
+        open={removeOpen}
+        wallet={wallet}
+        loading={removeMutation.isPending}
+        onClose={() => setRemoveOpen(false)}
+        onConfirm={() => removeMutation.mutate()}
       />
       <WalletTransferModal
         open={transferOpen}
@@ -346,6 +384,14 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
           <Button
             type="button"
             variant="secondary"
+            onClick={() => setDetailsOpen(true)}
+          >
+            <FileText className="size-4" aria-hidden="true" />
+            Details
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
             onClick={() => setTransferOpen(true)}
             disabled={!supportsLiveBalance || balanceQuery.isLoading}
             title={
@@ -386,7 +432,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
           ) : null}
           {supportsLiveBalance ? (
             <a
-              href={explorerUrl(wallet.chain_address)}
+              href={walletAddressExplorerUrl(wallet.chain_address)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -394,6 +440,17 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
               <ExternalLink className="size-4" aria-hidden="true" />
               Explorer
             </a>
+          ) : null}
+          {canRemoveWallet ? (
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => setRemoveOpen(true)}
+              disabled={removeMutation.isPending}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Remove
+            </Button>
           ) : null}
         </div>
       </div>
@@ -498,6 +555,99 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
         </div>
       ) : null}
     </article>
+  );
+}
+
+function RemoveDWalletModal({
+  open,
+  wallet,
+  loading,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  wallet: WalletRegistryRow;
+  loading: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      ariaLabelledBy="remove-dwallet-title"
+      ariaDescribedBy="remove-dwallet-description"
+      className="sm:max-w-md"
+    >
+      <div className="grid gap-5 pt-2 pr-8">
+        <div>
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-sm border border-danger/30 bg-danger/10">
+              <Trash2 className="size-4 text-danger" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 id="remove-dwallet-title" className="text-lg font-semibold">
+                Remove dWallet
+              </h2>
+              <p
+                id="remove-dwallet-description"
+                className="mt-2 text-sm leading-6 text-muted-foreground"
+              >
+                This removes the unregistered dWallet from the dashboard and
+                deletes its saved session record. It does not move funds or
+                change anything on-chain.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-2 rounded-sm border border-border bg-background p-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Wallet
+            </span>
+            <span className="truncate text-xs font-medium">
+              {wallet.label || `${wallet.chain_name} dWallet`}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Address
+            </span>
+            <span className="truncate font-mono text-xs">
+              {formatAddress(wallet.chain_address)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Status
+            </span>
+            <span className="truncate font-mono text-xs">
+              {statusLabel(wallet.status)}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={onConfirm}
+            loading={loading}
+          >
+            Remove
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

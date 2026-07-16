@@ -80,7 +80,7 @@ async function verifyTreasuryTransaction(input: {
     process.env.NEXT_PUBLIC_AURA_PROGRAM_ID?.trim() || DEFAULT_AURA_PROGRAM_ID;
 
   if (!rpcUrl) {
-    return;
+    return null;
   }
 
   const connection = new Connection(rpcUrl, "confirmed");
@@ -127,7 +127,12 @@ async function verifyTreasuryTransaction(input: {
         );
       }
 
-      return;
+      return {
+        slot: transaction.slot,
+        blockTime: transaction.blockTime
+          ? new Date(transaction.blockTime * 1000).toISOString()
+          : null,
+      };
     }
 
     await new Promise((resolve) => setTimeout(resolve, 700));
@@ -143,6 +148,8 @@ function walletMetadataWithTreasury(
   treasuryPda: string,
   ownerAddress: string,
   signature: string,
+  txSlot: number | null,
+  txBlockTime: string | null,
   linkedAt: string,
 ): Json {
   const metadata = metadataObject(wallet.metadata);
@@ -160,6 +167,8 @@ function walletMetadataWithTreasury(
       owner_wallet: ownerAddress,
       treasury_pda: treasuryPda,
       tx_signature: signature,
+      tx_slot: txSlot,
+      tx_block_time: txBlockTime,
       linked_at: linkedAt,
     },
   };
@@ -251,8 +260,10 @@ export async function POST(
     );
   }
 
+  let transactionInfo: Awaited<ReturnType<typeof verifyTreasuryTransaction>>;
+
   try {
-    await verifyTreasuryTransaction({
+    transactionInfo = await verifyTreasuryTransaction({
       signature,
       ownerAddress,
       treasuryPda,
@@ -272,6 +283,8 @@ export async function POST(
       owner_wallet: ownerAddress,
       treasury_pda: treasuryPda,
       tx_signature: signature,
+      tx_slot: transactionInfo?.slot ?? null,
+      tx_block_time: transactionInfo?.blockTime ?? null,
       linked_at: linkedAt,
     },
   };
@@ -311,6 +324,8 @@ export async function POST(
           treasuryPda,
           ownerAddress,
           signature,
+          transactionInfo?.slot ?? null,
+          transactionInfo?.blockTime ?? null,
           linkedAt,
         ),
       })
@@ -336,6 +351,8 @@ export async function POST(
       owner_wallet: ownerAddress,
       agent_id: session.agent_id,
       treasury_pda: treasuryPda,
+      tx_slot: transactionInfo?.slot ?? null,
+      tx_block_time: transactionInfo?.blockTime ?? null,
     },
   });
 

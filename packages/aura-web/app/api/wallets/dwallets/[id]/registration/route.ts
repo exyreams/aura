@@ -79,7 +79,7 @@ async function verifyRegistrationTransaction(input: {
     process.env.NEXT_PUBLIC_AURA_PROGRAM_ID?.trim() || DEFAULT_AURA_PROGRAM_ID;
 
   if (!rpcUrl) {
-    return;
+    return null;
   }
 
   const connection = new Connection(rpcUrl, "confirmed");
@@ -126,7 +126,12 @@ async function verifyRegistrationTransaction(input: {
         );
       }
 
-      return;
+      return {
+        slot: transaction.slot,
+        blockTime: transaction.blockTime
+          ? new Date(transaction.blockTime * 1000).toISOString()
+          : null,
+      };
     }
 
     await new Promise((resolve) => setTimeout(resolve, 700));
@@ -226,8 +231,12 @@ export async function POST(
     return jsonError("This wallet is missing an AURA treasury PDA.", 409);
   }
 
+  let transactionInfo: Awaited<
+    ReturnType<typeof verifyRegistrationTransaction>
+  >;
+
   try {
-    await verifyRegistrationTransaction({
+    transactionInfo = await verifyRegistrationTransaction({
       signature,
       ownerAddress,
       treasuryPda: wallet.treasury_pda,
@@ -248,6 +257,8 @@ export async function POST(
       owner_wallet: ownerAddress,
       treasury_pda: wallet.treasury_pda,
       tx_signature: signature,
+      tx_slot: transactionInfo?.slot ?? null,
+      tx_block_time: transactionInfo?.blockTime ?? null,
       linked_at: linkedAt,
     },
   };
@@ -283,6 +294,8 @@ export async function POST(
           method: "aura_program_register_dwallet",
           owner_wallet: ownerAddress,
           tx_signature: signature,
+          tx_slot: transactionInfo?.slot ?? null,
+          tx_block_time: transactionInfo?.blockTime ?? null,
           linked_at: linkedAt,
         },
       },
@@ -311,6 +324,8 @@ export async function POST(
       chain_name: wallet.chain_name,
       chain_address: wallet.chain_address,
       dwallet_id: wallet.dwallet_id,
+      tx_slot: transactionInfo?.slot ?? null,
+      tx_block_time: transactionInfo?.blockTime ?? null,
     },
   });
 

@@ -2,9 +2,18 @@
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Check, Copy, ExternalLink, Wallet } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  Check,
+  Copy,
+  ExternalLink,
+  Upload,
+  Wallet,
+} from "lucide-react";
+import type { ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/global/Toast";
+import { DWalletDetailsPanel } from "@/components/wallets/DWalletDetailsPanel";
 import { AURA_CHAINS, SOLANA_CHAIN_ID } from "@/lib/aura/chains";
 import { formatAddress } from "@/lib/formatting/addresses";
 import { useAgents, useAppSettings } from "@/lib/hooks";
@@ -17,6 +26,10 @@ import {
 } from "@/lib/solana/dwallet-registration";
 import type { WalletRegistryRow } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import {
+  walletAddressExplorerUrl,
+  walletTransactionExplorerUrl,
+} from "@/lib/wallets/dwallet-details";
 import { Button } from "../global/Button";
 import { Dropdown } from "../global/Dropdown";
 import { FieldGroup } from "../global/FieldGroup";
@@ -39,7 +52,7 @@ interface RegisterDWalletResponse {
 }
 
 const emptyForm = {
-  mode: "register" as RegisterMode,
+  mode: "provision" as RegisterMode,
   provider: "ika" as ProviderMode,
   agentSessionId: "",
   chainId: String(SOLANA_CHAIN_ID),
@@ -54,35 +67,98 @@ const emptyForm = {
   registrationTxSignature: "",
 };
 
-function addressExplorerUrl(address: string) {
-  return `https://explorer.solana.com/address/${address}?cluster=devnet`;
-}
-
-function transactionExplorerUrl(signature: string) {
-  return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
-}
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not register dWallet.";
 }
 
-function metadataNestedString(
-  metadata: WalletRegistryRow["metadata"],
-  parent: string,
-  key: string,
-) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
+function objectRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function importString(record: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
   }
 
-  const value = metadata[parent];
+  return "";
+}
 
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
+function importChainId(record: Record<string, unknown>) {
+  const value = record.chainId ?? record.chain_id;
+
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return String(value);
   }
 
-  const nested = value[key];
-  return typeof nested === "string" ? nested : null;
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return "";
+}
+
+function parseDWalletDetailsImport(payload: unknown) {
+  const root = objectRecord(payload);
+  const wallet = objectRecord(root?.wallet) ?? root;
+
+  if (!wallet) {
+    throw new Error("Choose a valid dWallet details JSON file.");
+  }
+
+  const chainAddress = importString(
+    wallet,
+    "depositAddress",
+    "chainAddress",
+    "chain_address",
+    "address",
+  );
+  const dwalletId = importString(wallet, "dwalletId", "dwallet_id");
+
+  if (!chainAddress || !dwalletId) {
+    throw new Error(
+      "The imported file must include a deposit address and dWallet ID.",
+    );
+  }
+
+  return {
+    label: importString(wallet, "label"),
+    chainId: importChainId(wallet),
+    chainAddress,
+    dwalletId,
+    dwalletStatePda: importString(
+      wallet,
+      "dwalletStatePda",
+      "dwallet_state_pda",
+    ),
+    dwalletAccount: importString(
+      wallet,
+      "runtimeDwalletAccount",
+      "dwalletAccount",
+      "dwallet_account",
+    ),
+    authorizedUserPubkey: importString(
+      wallet,
+      "authorizedUserPubkey",
+      "authorized_user_pubkey",
+    ),
+    messageMetadataDigest: importString(
+      wallet,
+      "messageMetadataDigest",
+      "message_metadata_digest",
+    ),
+    publicKeyHex: importString(wallet, "publicKeyHex", "public_key_hex"),
+    registrationTxSignature: importString(
+      wallet,
+      "registrationTxSignature",
+      "registration_tx_signature",
+    ),
+  };
 }
 
 async function postDWallet(
@@ -133,6 +209,7 @@ export function RegisterDWalletModal({
   const toast = useToast();
   const { connection } = useConnection();
   const ownerWallet = useWallet();
+  const importInputRef = useRef<HTMLInputElement>(null);
   const settings = useAppSettings();
   const { agents, selectedAgent } = useAgents();
   const activeAgents = useMemo(
@@ -141,7 +218,6 @@ export function RegisterDWalletModal({
   );
   const [form, setForm] = useState(emptyForm);
   const [copied, setCopied] = useState(false);
-  const [copiedDetail, setCopiedDetail] = useState<string | null>(null);
   const [linkedWallet, setLinkedWallet] = useState<WalletRegistryRow | null>(
     null,
   );
@@ -235,7 +311,7 @@ export function RegisterDWalletModal({
           : "The owner wallet signed the AURA registration transaction.",
         action: {
           label: "View transaction",
-          href: transactionExplorerUrl(signature),
+          href: walletTransactionExplorerUrl(signature),
         },
       });
     },
@@ -266,8 +342,8 @@ export function RegisterDWalletModal({
           action: {
             label: signature ? "View transaction" : "View address",
             href: signature
-              ? transactionExplorerUrl(signature)
-              : addressExplorerUrl(data.wallet.chain_address),
+              ? walletTransactionExplorerUrl(signature)
+              : walletAddressExplorerUrl(data.wallet.chain_address),
           },
         },
       );
@@ -297,7 +373,6 @@ export function RegisterDWalletModal({
     linkMutation.reset();
     setLinkedWallet(null);
     setCopied(false);
-    setCopiedDetail(null);
   }, [
     activeAgents,
     linkMutation.reset,
@@ -324,7 +399,6 @@ export function RegisterDWalletModal({
       setForm(emptyForm);
       setValidationError(null);
       setCopied(false);
-      setCopiedDetail(null);
       setLinkedWallet(null);
       mutation.reset();
       linkMutation.reset();
@@ -370,83 +444,6 @@ export function RegisterDWalletModal({
   const registeredWalletBlocker = registeredWallet
     ? getDWalletRegistrationBlocker(registeredWallet)
     : null;
-  const registeredWalletDetails = registeredWallet
-    ? [
-        {
-          label: "Deposit address",
-          value: registeredWallet.chain_address,
-          explorer: addressExplorerUrl(registeredWallet.chain_address),
-        },
-        {
-          label: "dWallet ID",
-          value: registeredWallet.dwallet_id,
-          explorer: registeredWallet.dwallet_id
-            ? addressExplorerUrl(registeredWallet.dwallet_id)
-            : null,
-        },
-        {
-          label: "Runtime dWallet account",
-          value:
-            metadataNestedString(
-              registeredWallet.metadata,
-              "dwallet",
-              "dwallet_account",
-            ) ?? registeredWallet.dwallet_state_pda,
-          explorer:
-            (metadataNestedString(
-              registeredWallet.metadata,
-              "dwallet",
-              "dwallet_account",
-            ) ?? registeredWallet.dwallet_state_pda)
-              ? addressExplorerUrl(
-                  metadataNestedString(
-                    registeredWallet.metadata,
-                    "dwallet",
-                    "dwallet_account",
-                  ) ??
-                    registeredWallet.dwallet_state_pda ??
-                    "",
-                )
-              : null,
-        },
-        {
-          label: "Authorized user",
-          value: metadataNestedString(
-            registeredWallet.metadata,
-            "dwallet",
-            "authorized_user_pubkey",
-          ),
-        },
-        {
-          label: "Public key hex",
-          value: metadataNestedString(
-            registeredWallet.metadata,
-            "dwallet",
-            "public_key_hex",
-          ),
-        },
-        {
-          label: "Metadata digest",
-          value: metadataNestedString(
-            registeredWallet.metadata,
-            "dwallet",
-            "message_metadata_digest",
-          ),
-        },
-        {
-          label: "AURA treasury",
-          value: registeredWallet.treasury_pda,
-          explorer: registeredWallet.treasury_pda
-            ? addressExplorerUrl(registeredWallet.treasury_pda)
-            : null,
-        },
-      ].filter(
-        (
-          row,
-        ): row is { label: string; value: string; explorer?: string | null } =>
-          Boolean(row.value),
-      )
-    : [];
   const submitError =
     validationError ??
     (mutation.isError ? getErrorMessage(mutation.error) : null);
@@ -461,10 +458,38 @@ export function RegisterDWalletModal({
     window.setTimeout(() => setCopied(false), 1500);
   };
 
-  const copyDetail = async (label: string, value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopiedDetail(label);
-    window.setTimeout(() => setCopiedDetail(null), 1500);
+  const importDWalletDetails = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const imported = parseDWalletDetailsImport(JSON.parse(await file.text()));
+
+      setForm((current) => ({
+        ...current,
+        mode: "register",
+        label: imported.label || current.label,
+        chainId: imported.chainId || current.chainId,
+        chainAddress: imported.chainAddress,
+        dwalletId: imported.dwalletId,
+        dwalletStatePda: imported.dwalletStatePda,
+        dwalletAccount: imported.dwalletAccount,
+        authorizedUserPubkey: imported.authorizedUserPubkey,
+        messageMetadataDigest: imported.messageMetadataDigest,
+        publicKeyHex: imported.publicKeyHex,
+        registrationTxSignature: imported.registrationTxSignature,
+      }));
+      setValidationError(null);
+      toast.success("dWallet details imported", {
+        description: "Review the signer agent before registering.",
+      });
+    } catch (error) {
+      setValidationError(getErrorMessage(error));
+    }
   };
 
   return (
@@ -538,7 +563,9 @@ export function RegisterDWalletModal({
                   {copied ? "Copied" : "Copy"}
                 </Button>
                 <a
-                  href={addressExplorerUrl(registeredWallet.chain_address)}
+                  href={walletAddressExplorerUrl(
+                    registeredWallet.chain_address,
+                  )}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-sm border border-border bg-surface px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground transition-colors hover:border-primary/50 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -549,51 +576,7 @@ export function RegisterDWalletModal({
               </div>
             </div>
 
-            {registeredWalletDetails.length > 0 ? (
-              <div className="grid gap-2">
-                {registeredWalletDetails.map((row) => (
-                  <div
-                    key={row.label}
-                    className="rounded-md border border-border bg-background p-3"
-                  >
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {row.label}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <p className="min-w-0 flex-1 break-all font-mono text-xs text-foreground">
-                        {row.value}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => void copyDetail(row.label, row.value)}
-                        className="flex size-10 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        aria-label={`Copy ${row.label}`}
-                      >
-                        {copiedDetail === row.label ? (
-                          <Check className="size-3.5" aria-hidden="true" />
-                        ) : (
-                          <Copy className="size-3.5" aria-hidden="true" />
-                        )}
-                      </button>
-                      {row.explorer ? (
-                        <a
-                          href={row.explorer}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex size-10 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                          aria-label={`Open ${row.label} in explorer`}
-                        >
-                          <ExternalLink
-                            className="size-3.5"
-                            aria-hidden="true"
-                          />
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
+            <DWalletDetailsPanel wallet={registeredWallet} />
 
             {!registeredWalletBlocker ? (
               <Button
@@ -722,6 +705,35 @@ export function RegisterDWalletModal({
               </FieldGroup>
             ) : (
               <div className="grid gap-4">
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Import details JSON</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Load an AURA dWallet details export to fill the public
+                      metadata fields.
+                    </p>
+                  </div>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="sr-only"
+                    onChange={(event) => void importDWalletDetails(event)}
+                    disabled={mutation.isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="small"
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={mutation.isPending}
+                    className="shrink-0"
+                  >
+                    <Upload className="size-3.5" aria-hidden="true" />
+                    Import JSON
+                  </Button>
+                </div>
+
                 <FieldGroup label="Required public metadata">
                   <div className="grid gap-4">
                     <Input

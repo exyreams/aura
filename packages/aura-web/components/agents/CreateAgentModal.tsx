@@ -11,6 +11,7 @@ import { Input } from "@/components/global/Input";
 import { Modal } from "@/components/global/Modal";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { Textarea } from "@/components/global/Textarea";
+import { Tooltip } from "@/components/global/Tooltip";
 import { KeyRound } from "@/components/icons";
 import {
   AGENT_SCOPE_OPTIONS,
@@ -436,8 +437,7 @@ export function CreateAgentModal({
                   {AGENT_SCOPE_OPTIONS.map((scope) => {
                     const checked = selectedScopes.includes(scope.value);
                     const required = scope.value === "read";
-
-                    return (
+                    const scopeControl = (
                       <Checkbox
                         key={scope.value}
                         checked={checked}
@@ -449,7 +449,13 @@ export function CreateAgentModal({
                       >
                         <span className="grid gap-1">
                           <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">
+                            <span
+                              className={
+                                required
+                                  ? "text-sm font-medium text-muted-foreground"
+                                  : "text-sm font-medium text-foreground"
+                              }
+                            >
                               {scope.label}
                             </span>
                             <span className="font-mono text-[10px] text-muted-foreground">
@@ -464,6 +470,18 @@ export function CreateAgentModal({
                           </span>
                         </span>
                       </Checkbox>
+                    );
+
+                    return required ? (
+                      <Tooltip
+                        key={scope.value}
+                        content="Read session is required for every runtime token."
+                        className="w-full"
+                      >
+                        <span className="block w-full">{scopeControl}</span>
+                      </Tooltip>
+                    ) : (
+                      <span key={scope.value}>{scopeControl}</span>
                     );
                   })}
                 </div>

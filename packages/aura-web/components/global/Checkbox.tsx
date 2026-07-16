@@ -26,7 +26,8 @@ export function Checkbox({
     <label
       className={cn(
         "group flex cursor-pointer items-start gap-3",
-        disabled && "cursor-not-allowed opacity-60",
+        disabled && "cursor-not-allowed",
+        disabled && (checked ? "opacity-80" : "opacity-60"),
         className,
       )}
     >
@@ -37,9 +38,11 @@ export function Checkbox({
           onChange={(event) => onChange?.(event.target.checked)}
           disabled={disabled}
           className={cn(
-            "peer size-5 appearance-none rounded-sm border border-border bg-background transition-colors",
+            "peer size-5 appearance-none rounded-sm border bg-background transition-colors",
+            checked ? "border-primary bg-primary" : "border-border",
             !disabled &&
-              "cursor-pointer checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            disabled && "cursor-not-allowed",
           )}
         />
         <AnimatePresence>
