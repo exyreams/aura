@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: ["@aura-protocol/sdk-ts"],
 };
 
 export default nextConfig;

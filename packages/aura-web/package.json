@@ -12,6 +12,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aura-protocol/sdk-ts": "0.3.0",
+    "@bufbuild/protobuf": "2.12.1",
+    "@grpc/grpc-js": "1.14.4",
+    "@mysten/bcs": "2.0.0",
+    "@noble/curves": "2.2.0",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/wallet-adapter-react-ui": "^0.9.39",

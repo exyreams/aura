@@ -37,7 +37,8 @@ export interface Database {
         Row: {
           id: string;
           owner_id: string;
-          treasury_pda: string;
+          agent_session_id: string | null;
+          treasury_pda: string | null;
           wallet_kind:
             | "dwallet"
             | "owner_wallet"
@@ -57,7 +58,8 @@ export interface Database {
         Insert: {
           id?: string;
           owner_id: string;
-          treasury_pda: string;
+          agent_session_id?: string | null;
+          treasury_pda?: string | null;
           wallet_kind:
             | "dwallet"
             | "owner_wallet"
@@ -83,6 +85,89 @@ export interface Database {
             columns: ["owner_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "wallet_registry_agent_session_id_fkey";
+            columns: ["agent_session_id"];
+            isOneToOne: false;
+            referencedRelation: "agent_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      dwallet_sessions: {
+        Row: {
+          id: string;
+          wallet_id: string;
+          owner_id: string;
+          agent_session_id: string | null;
+          provider: "manual" | "ika" | "conduit";
+          provider_session_id: string | null;
+          status:
+            | "metadata_only"
+            | "provisioning"
+            | "active"
+            | "failed"
+            | "revoked";
+          session_ciphertext: Json | null;
+          key_version: string | null;
+          public_key_hex: string | null;
+          authorized_user_pubkey: string | null;
+          message_metadata_digest: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          wallet_id: string;
+          owner_id: string;
+          agent_session_id?: string | null;
+          provider?: "manual" | "ika" | "conduit";
+          provider_session_id?: string | null;
+          status?:
+            | "metadata_only"
+            | "provisioning"
+            | "active"
+            | "failed"
+            | "revoked";
+          session_ciphertext?: Json | null;
+          key_version?: string | null;
+          public_key_hex?: string | null;
+          authorized_user_pubkey?: string | null;
+          message_metadata_digest?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["dwallet_sessions"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "dwallet_sessions_wallet_id_fkey";
+            columns: ["wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "wallet_registry";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dwallet_sessions_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dwallet_sessions_agent_session_id_fkey";
+            columns: ["agent_session_id"];
+            isOneToOne: false;
+            referencedRelation: "agent_sessions";
             referencedColumns: ["id"];
           },
         ];
@@ -321,7 +406,11 @@ export interface Database {
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type WalletRegistryRow =
   Database["public"]["Tables"]["wallet_registry"]["Row"];
+export type DWalletSessionRow =
+  Database["public"]["Tables"]["dwallet_sessions"]["Row"];
 export type AgentSessionRow =
   Database["public"]["Tables"]["agent_sessions"]["Row"];
+export type SignRequestRow =
+  Database["public"]["Tables"]["sign_requests"]["Row"];
 export type ActivityEventRow =
   Database["public"]["Tables"]["activity_events"]["Row"];
