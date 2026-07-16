@@ -66,10 +66,14 @@ export function registerInstructionCommands(
         printRows(
           domain.instructions.map((entry) => [
             entry.name,
-            entry.schema?.ownerSignatureRequired ? "owner" : "session/none",
+            entry.schema?.safety.signerClass ?? "unknown",
+            entry.schema?.safety.riskLevel ?? "unknown",
+            entry.schema?.safety.humanReview ?? "unknown",
             entry.description ?? "",
           ]),
-          { header: ["instruction", "signer", "description"] },
+          {
+            header: ["instruction", "signer", "risk", "review", "description"],
+          },
         );
       }
       process.stdout.write(
@@ -194,6 +198,7 @@ export function registerInstructionCommands(
             requiredSigners: prepared.requiredSigners,
             signerAccounts: prepared.signerAccounts,
             ownerSignatureRequired: prepared.ownerSignatureRequired,
+            safety: prepared.schema.safety,
             blockhash,
             lastValidBlockHeight,
           },
@@ -209,6 +214,7 @@ export function registerInstructionCommands(
           requiredSigners: prepared.requiredSigners,
           signerAccounts: prepared.signerAccounts,
           ownerSignatureRequired: prepared.ownerSignatureRequired,
+          safety: prepared.schema.safety,
         };
         if (opts.json === true) {
           emitJson(output);
@@ -237,6 +243,7 @@ function publicPreparedInstruction(
     requiredSigners: prepared.requiredSigners,
     signerAccounts: prepared.signerAccounts,
     ownerSignatureRequired: prepared.ownerSignatureRequired,
+    safety: prepared.schema.safety,
   };
 }
 
@@ -286,6 +293,13 @@ function printInstructionSchema(
   process.stdout.write(`owner signature: ${schema.ownerSignatureRequired}\n`);
   process.stdout.write(
     `signer accounts: ${schema.signerAccounts.join(", ") || "-"}\n`,
+  );
+  process.stdout.write(`signer class: ${schema.safety.signerClass}\n`);
+  process.stdout.write(`risk: ${schema.safety.riskLevel}\n`);
+  process.stdout.write(`human review: ${schema.safety.humanReview}\n`);
+  process.stdout.write(`agent policy: ${schema.safety.agentPolicy}\n`);
+  process.stdout.write(
+    `safety reasons: ${schema.safety.reasons.join("; ") || "-"}\n`,
   );
   process.stdout.write("\naccounts\n");
   printRows(

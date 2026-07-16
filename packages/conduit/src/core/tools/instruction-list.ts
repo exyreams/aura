@@ -14,7 +14,7 @@ export const instructionListTool: Tool<
 > = {
   name: "aura.instructions.list",
   description:
-    "Lists every current AURA program instruction grouped by feature domain, including account and argument schemas.",
+    "Lists every current AURA program instruction grouped by feature domain, including account, argument, signer, and safety schemas.",
   input,
   requiredScopes: ["read"],
   isWrite: false,

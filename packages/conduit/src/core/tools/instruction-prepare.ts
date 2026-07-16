@@ -33,6 +33,9 @@ export interface InstructionPrepareOutput {
   readonly requiredSigners: readonly string[];
   readonly signerAccounts: readonly string[];
   readonly ownerSignatureRequired: boolean;
+  readonly safety: Awaited<
+    ReturnType<typeof buildProgramInstruction>
+  >["schema"]["safety"];
   readonly note: string;
 }
 
@@ -70,6 +73,7 @@ export function createInstructionPrepareTool(
           requiredSigners: build.requiredSigners,
           signerAccounts: build.signerAccounts,
           ownerSignatureRequired: build.ownerSignatureRequired,
+          safety: build.schema.safety,
           note: "Prepared only. Use aura.instruction.request_signature to queue a human-reviewed transaction.",
         };
       } catch (error) {

@@ -21,7 +21,7 @@ export const instructionDescribeTool: Tool<
 > = {
   name: "aura.instruction.describe",
   description:
-    "Returns the account, argument, signer, and sample-input schema for one AURA program instruction.",
+    "Returns the account, argument, signer, safety, and sample-input schema for one AURA program instruction.",
   input,
   requiredScopes: ["read"],
   isWrite: false,

@@ -40,6 +40,9 @@ export interface InstructionSignRequestOutput {
   readonly requiredSigners: readonly string[];
   readonly signerAccounts: readonly string[];
   readonly ownerSignatureRequired: boolean;
+  readonly safety: Awaited<
+    ReturnType<typeof buildProgramInstruction>
+  >["schema"]["safety"];
   readonly note: string;
 }
 
@@ -96,6 +99,7 @@ export function createInstructionSignRequestTool(
             signerAccounts: build.signerAccounts,
             requiredSigners: build.requiredSigners,
             ownerSignatureRequired: build.ownerSignatureRequired,
+            safety: build.schema.safety,
             reason: parsed.reason ?? null,
             normalizedAccounts: build.normalizedAccounts,
             normalizedArgs: build.normalizedArgs,
@@ -116,6 +120,7 @@ export function createInstructionSignRequestTool(
           requiredSigners: build.requiredSigners,
           signerAccounts: build.signerAccounts,
           ownerSignatureRequired: build.ownerSignatureRequired,
+          safety: build.schema.safety,
           note: "Queued for human review. The transaction was not signed or submitted by Conduit.",
         };
       } catch (error) {

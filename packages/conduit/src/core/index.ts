@@ -2,6 +2,8 @@ export * from "./audit.js";
 export * from "./dispatch.js";
 export * from "./errors.js";
 export * from "./idempotency.js";
+export * from "./instruction-safety.js";
+export * from "./instructions.js";
 export * from "./registry.js";
 export * from "./safety-hooks.js";
 export * from "./scheduler.js";

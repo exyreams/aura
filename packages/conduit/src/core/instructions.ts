@@ -11,6 +11,10 @@ import {
   type TransactionInstruction,
 } from "@solana/web3.js";
 import BN from "bn.js";
+import {
+  classifyInstructionSafety,
+  type InstructionSafetyProfile,
+} from "./instruction-safety.js";
 
 type IdlType = unknown;
 type JsonRecord = Record<string, unknown>;
@@ -65,6 +69,7 @@ export interface ProgramInstructionSchema {
   args: InstructionArgSchema[];
   signerAccounts: string[];
   ownerSignatureRequired: boolean;
+  safety: InstructionSafetyProfile;
 }
 
 export interface SerializedInstruction {
@@ -468,6 +473,10 @@ export function getProgramInstructionSchema(
 ): ProgramInstructionSchema {
   const instruction = getInstruction(name);
   const signerAccounts = signerAccountNames(instruction);
+  const safety = classifyInstructionSafety({
+    name: instruction.name,
+    accounts: instruction.accounts,
+  });
   return {
     name: instruction.name,
     camelName: toCamelCase(instruction.name),
@@ -491,6 +500,7 @@ export function getProgramInstructionSchema(
     })),
     signerAccounts,
     ownerSignatureRequired: ownerSignatureRequired(instruction),
+    safety,
   };
 }
 
