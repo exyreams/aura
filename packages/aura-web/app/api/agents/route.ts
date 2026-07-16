@@ -194,6 +194,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!profile.wallet_address) {
+    return jsonError(
+      "Link a primary owner wallet before creating an agent.",
+      409,
+    );
+  }
+
   const { data: duplicate, error: duplicateError } = await admin
     .from("agent_sessions")
     .select("id")

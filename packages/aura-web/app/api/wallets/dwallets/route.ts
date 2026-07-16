@@ -403,6 +403,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!profile.wallet_address) {
+    return jsonError(
+      "Link a primary owner wallet before registering a dWallet.",
+      409,
+    );
+  }
+
   const { data: agent, error: agentError } = await admin
     .from("agent_sessions")
     .select("*")

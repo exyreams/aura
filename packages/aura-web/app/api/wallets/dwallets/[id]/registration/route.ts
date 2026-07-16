@@ -194,6 +194,13 @@ export async function POST(
     );
   }
 
+  if (!profile.wallet_address) {
+    return jsonError(
+      "Link a primary owner wallet before linking this dWallet.",
+      409,
+    );
+  }
+
   if (profile.wallet_address !== ownerAddress) {
     return jsonError(
       "Connect the owner wallet used to sign in before linking this dWallet.",

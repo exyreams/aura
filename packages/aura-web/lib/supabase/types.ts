@@ -12,26 +12,136 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
-          wallet_address: string;
+          wallet_address: string | null;
+          email: string | null;
+          email_confirmed_at: string | null;
+          last_seen_at: string | null;
+          auth_provider: string;
           display_name: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
-          wallet_address: string;
+          wallet_address?: string | null;
+          email?: string | null;
+          email_confirmed_at?: string | null;
+          last_seen_at?: string | null;
+          auth_provider?: string;
           display_name?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          wallet_address?: string;
+          wallet_address?: string | null;
+          email?: string | null;
+          email_confirmed_at?: string | null;
+          last_seen_at?: string | null;
+          auth_provider?: string;
           display_name?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      account_wallets: {
+        Row: {
+          id: string;
+          owner_id: string;
+          chain_id: number;
+          chain_name: string;
+          wallet_address: string;
+          wallet_address_canonical: string;
+          wallet_label: string | null;
+          is_primary: boolean;
+          verification_message: string;
+          verification_signature: string;
+          verification_method: string;
+          verification_version: string;
+          metadata: Json;
+          linked_at: string;
+          last_verified_at: string;
+          created_at: string;
+          updated_at: string;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          chain_id?: number;
+          chain_name?: string;
+          wallet_address: string;
+          wallet_address_canonical: string;
+          wallet_label?: string | null;
+          is_primary?: boolean;
+          verification_message: string;
+          verification_signature: string;
+          verification_method?: string;
+          verification_version?: string;
+          metadata?: Json;
+          linked_at?: string;
+          last_verified_at?: string;
+          created_at?: string;
+          updated_at?: string;
+          revoked_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["account_wallets"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "account_wallets_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      wallet_link_challenges: {
+        Row: {
+          id: string;
+          owner_id: string;
+          chain_id: number;
+          chain_name: string;
+          wallet_address: string;
+          wallet_address_canonical: string;
+          nonce: string;
+          message: string;
+          status: "pending" | "used" | "expired";
+          metadata: Json;
+          created_at: string;
+          expires_at: string;
+          used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          chain_id?: number;
+          chain_name?: string;
+          wallet_address: string;
+          wallet_address_canonical: string;
+          nonce: string;
+          message: string;
+          status?: "pending" | "used" | "expired";
+          metadata?: Json;
+          created_at?: string;
+          expires_at?: string;
+          used_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["wallet_link_challenges"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "wallet_link_challenges_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       wallet_registry: {
         Row: {
@@ -404,6 +514,8 @@ export interface Database {
 }
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type AccountWallet =
+  Database["public"]["Tables"]["account_wallets"]["Row"];
 export type WalletRegistryRow =
   Database["public"]["Tables"]["wallet_registry"]["Row"];
 export type DWalletSessionRow =

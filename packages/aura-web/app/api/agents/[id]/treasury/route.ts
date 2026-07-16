@@ -224,6 +224,13 @@ export async function POST(
     );
   }
 
+  if (!profile.wallet_address) {
+    return jsonError(
+      "Link a primary owner wallet before linking a treasury.",
+      409,
+    );
+  }
+
   if (profile.wallet_address !== ownerAddress) {
     return jsonError(
       "Connect the owner wallet used to sign in before linking this treasury.",
