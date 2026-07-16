@@ -45,11 +45,14 @@ export async function registerToolRoutes(
       const idempotencyHeader = request.headers["idempotency-key"];
       const callerIdempotencyKey =
         typeof idempotencyHeader === "string" ? idempotencyHeader : undefined;
+      const abort = new AbortController();
+      request.raw.once("close", () => abort.abort());
       const result = await dispatchTool(options.deps, {
         toolName: tool.name,
         rawInput,
         session,
         requestId: request.id,
+        signal: abort.signal,
         ...(callerIdempotencyKey !== undefined ? { callerIdempotencyKey } : {}),
       });
       if (result.ok) {

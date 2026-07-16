@@ -49,12 +49,14 @@ export interface HttpServerOptions {
    */
   readonly cookieSecret?: string;
   readonly secureCookie?: boolean;
+  readonly maxBodyBytes?: number;
 }
 
 export async function createHttpServer(
   options: HttpServerOptions,
 ): Promise<FastifyInstance> {
   const fastify = Fastify({
+    bodyLimit: options.maxBodyBytes ?? 128 * 1024,
     logger: {
       level: process.env.LOG_LEVEL ?? "info",
       redact: {
@@ -88,6 +90,37 @@ export async function createHttpServer(
 
   fastify.addHook("onSend", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    reply.header("x-content-type-options", "nosniff");
+    reply.header("referrer-policy", "no-referrer");
+    reply.header("x-frame-options", "DENY");
+    if (
+      request.url.startsWith("/v1/") ||
+      request.url.startsWith("/control-plane/")
+    ) {
+      reply.header("cache-control", "no-store");
+    }
+    if (options.secureCookie === true) {
+      reply.header(
+        "strict-transport-security",
+        "max-age=31536000; includeSubDomains",
+      );
+    }
+  });
+
+  fastify.setErrorHandler(async (error, request, reply) => {
+    const status = errorStatusCode(error);
+    const message =
+      error instanceof Error ? error.message : "HTTP request failed";
+    if (status >= 500) {
+      request.log.error({ err: error }, "Unhandled HTTP error");
+    }
+    await reply.code(status).send({
+      requestId: request.id,
+      error: {
+        code: errorCodeForStatus(status),
+        message: status >= 500 ? "Internal server error" : message,
+      },
+    });
   });
 
   if (options.corsOrigin !== false) {
@@ -107,6 +140,9 @@ export async function createHttpServer(
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (request.url.startsWith("/v1/")) {
         await auth(request, reply);
+        if (reply.sent) {
+          return;
+        }
       }
     },
   );
@@ -123,6 +159,37 @@ export async function createHttpServer(
   await registerSessionsAdminRoutes(fastify, { db: options.db });
 
   return fastify;
+}
+
+function errorStatusCode(error: unknown): number {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number"
+  ) {
+    return error.statusCode;
+  }
+  return 500;
+}
+
+function errorCodeForStatus(status: number): string {
+  switch (status) {
+    case 400:
+      return "invalid_input";
+    case 401:
+      return "unauthenticated";
+    case 403:
+      return "forbidden";
+    case 404:
+      return "not_found";
+    case 413:
+      return "payload_too_large";
+    case 429:
+      return "rate_limited";
+    default:
+      return "internal";
+  }
 }
 
 export async function startHttpServer(

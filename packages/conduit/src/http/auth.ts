@@ -33,15 +33,18 @@ export function createBearerAuth(options: AuthMiddlewareOptions) {
     reply: FastifyReply,
   ): Promise<void> {
     const header = req.headers.authorization;
-    if (header === undefined || !header.startsWith("Bearer ")) {
+    const token = parseBearerToken(header);
+    if (token === null) {
       await sendError(
         reply,
         401,
-        new ConduitError("unauthenticated", "missing Bearer token"),
+        new ConduitError(
+          "unauthenticated",
+          "missing or malformed Bearer token",
+        ),
       );
       return;
     }
-    const token = header.slice("Bearer ".length).trim();
     const row = options.sessions.findByToken(token);
     if (row !== null) {
       if (row.revokedAt !== null) {
@@ -72,6 +75,21 @@ export function createBearerAuth(options: AuthMiddlewareOptions) {
       new ConduitError("unauthenticated", "unknown token"),
     );
   };
+}
+
+function parseBearerToken(header: string | undefined): string | null {
+  if (header === undefined) {
+    return null;
+  }
+  const match = /^Bearer\s+(\S+)$/iu.exec(header.trim());
+  if (match === null) {
+    return null;
+  }
+  const token = match[1];
+  if (token === undefined || token.length < 16 || token.length > 256) {
+    return null;
+  }
+  return token;
 }
 
 function toSession(row: ReturnType<SessionsRepo["findByToken"]> & {}): Session {

@@ -1,14 +1,12 @@
 /**
  * Minimal hand-built OpenAPI 3.1 description for the Conduit HTTP gateway.
  *
- * Per-tool schemas are derived from each Zod input via `zod-to-json-schema`
- * — but to keep the dep surface tight we serialise the tool's input directly
- * (Zod can emit JSON Schema natively via `_def`). For the launch surface the
- * static skeleton below is sufficient; tool param schemas are derived at
- * runtime in `routes.ts` and merged in.
+ * Per-tool request schemas are derived directly from each Zod input via Zod's
+ * JSON Schema emitter, so the hosted HTTP contract follows the same strict
+ * schemas used by MCP and the shared dispatch path.
  */
 
-import type { ZodTypeAny } from "zod";
+import { toJSONSchema, type ZodTypeAny } from "zod";
 
 import type { ToolRegistry } from "../core/registry.js";
 import { CONDUIT_VERSION } from "../version.js";
@@ -71,70 +69,9 @@ export function buildOpenApiSpec(
 }
 
 function zodToJsonSchema(schema: ZodTypeAny): unknown {
-  // Zod 3.x exposes `_def` with a structural description; for the launch
-  // surface we project the safe subset every tool actually uses (strict
-  // objects of primitives + unions). Anything richer falls back to `any`.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const def = (schema as unknown as { _def: unknown })._def as {
-      typeName?: string;
-    };
-    if (def.typeName === "ZodObject") {
-      return projectObject(schema as unknown as ZodObjectLike);
-    }
+    return toJSONSchema(schema, { io: "input" });
   } catch {
-    /* fallthrough */
-  }
-  return { type: "object" };
-}
-
-interface ZodObjectLike {
-  shape: Record<string, ZodTypeAny>;
-}
-
-function projectObject(schema: ZodObjectLike): unknown {
-  const properties: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(schema.shape)) {
-    properties[key] = projectField(value);
-  }
-  return { type: "object", properties, additionalProperties: false };
-}
-
-function projectField(schema: ZodTypeAny): unknown {
-  const def = (schema as unknown as { _def: { typeName: string } })._def;
-  switch (def.typeName) {
-    case "ZodString":
-      return { type: "string" };
-    case "ZodNumber":
-      return { type: "number" };
-    case "ZodBoolean":
-      return { type: "boolean" };
-    case "ZodOptional":
-      return projectField(
-        (def as unknown as { innerType: ZodTypeAny }).innerType,
-      );
-    case "ZodNullable":
-      return projectField(
-        (def as unknown as { innerType: ZodTypeAny }).innerType,
-      );
-    case "ZodDefault":
-      return projectField(
-        (def as unknown as { innerType: ZodTypeAny }).innerType,
-      );
-    case "ZodUnion":
-      return {
-        oneOf: (
-          (def as unknown as { options: ZodTypeAny[] }).options ?? []
-        ).map(projectField),
-      };
-    case "ZodArray":
-      return {
-        type: "array",
-        items: projectField((def as unknown as { type: ZodTypeAny }).type),
-      };
-    case "ZodObject":
-      return projectObject(schema as unknown as ZodObjectLike);
-    default:
-      return {};
+    return { type: "object" };
   }
 }

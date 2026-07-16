@@ -156,6 +156,8 @@ Transport code lives under `mcp/`, `http/`, and `cli/`. Business logic stays und
 - Every tool call passes through one dispatch path for scopes, idempotency, safety hooks, and audit logging.
 - The registry refuses unsafe tool declarations at startup.
 - HTTP logs redact authorization headers, cookies, set-cookie, and token fields.
+- HTTP responses include request-id/security headers, control-plane and tool routes are `no-store`, and request bodies are capped by `--max-body-bytes`.
+- The OpenAPI surface is generated from each tool's Zod input schema so hosted agents see the same strict input contract used at runtime.
 - `aura.policy.preview` issues TOCTOU tickets; proposal creation rejects mismatched args.
 - The generic instruction tools expose full IDL coverage while keeping signing separate from preparation.
 

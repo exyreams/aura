@@ -144,6 +144,12 @@ commonOptions(program.command("http"))
     "CORS allowlist: 'true' for any, comma-separated origins, or 'false' to disable",
     defaults.corsOrigin,
   )
+  .option<number>(
+    "--max-body-bytes <n>",
+    "maximum JSON body size accepted by the HTTP gateway",
+    (v: string) => Number.parseInt(v, 10),
+    128 * 1024,
+  )
   .action(
     async (
       options: CommonOptions & {
@@ -151,6 +157,7 @@ commonOptions(program.command("http"))
         port: number;
         publicBaseUrl: string;
         corsOrigin: string;
+        maxBodyBytes: number;
       },
     ) => {
       const ctx = await bootCommonContext(options);
@@ -162,6 +169,7 @@ commonOptions(program.command("http"))
         host: options.host,
         port: options.port,
         corsOrigin,
+        maxBodyBytes: options.maxBodyBytes,
       });
       registerCleanup(() => fastify.close());
       process.stderr.write(

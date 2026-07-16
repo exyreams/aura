@@ -44,7 +44,7 @@
     "lint:fix": "biome check --write",
     "format": "biome format --write",
     "start": "node bin/conduit.js mcp",
-    "test": "tsx --test tests/errors.test.ts tests/schemas.test.ts tests/registry.test.ts tests/idempotency.test.ts tests/session.test.ts tests/whoami.test.ts tests/control-plane.test.ts tests/safety.test.ts tests/signing.test.ts tests/dispatch-safety.test.ts tests/toctou.test.ts tests/scheduler.test.ts tests/owner-auth.test.ts tests/instructions.test.ts tests/device-client.test.ts tests/common-flows.test.ts",
+    "test": "tsx --test tests/errors.test.ts tests/schemas.test.ts tests/registry.test.ts tests/idempotency.test.ts tests/session.test.ts tests/whoami.test.ts tests/control-plane.test.ts tests/safety.test.ts tests/signing.test.ts tests/dispatch-safety.test.ts tests/toctou.test.ts tests/scheduler.test.ts tests/owner-auth.test.ts tests/instructions.test.ts tests/device-client.test.ts tests/common-flows.test.ts tests/http-runtime.test.ts",
     "prepack": "npm run build"
   },
   "dependencies": {
