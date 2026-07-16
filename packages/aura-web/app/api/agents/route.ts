@@ -5,6 +5,7 @@ import {
   normalizeAgentScopes,
 } from "@/lib/agents/scopes";
 import { hashAgentToken, mintAgentToken } from "@/lib/agents/tokens";
+import { getPrimaryAccountWallet } from "@/lib/auth/primary-wallet";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -177,24 +178,14 @@ export async function POST(request: Request) {
     return jsonError(getErrorMessage(cause), 500);
   }
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id,wallet_address")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    return jsonError(profileError.message, 500);
+  let primaryWallet: Awaited<ReturnType<typeof getPrimaryAccountWallet>>;
+  try {
+    primaryWallet = await getPrimaryAccountWallet(admin, user.id);
+  } catch (cause) {
+    return jsonError(getErrorMessage(cause), 500);
   }
 
-  if (!profile) {
-    return jsonError(
-      "Owner profile is missing. Sign out and sign in again.",
-      409,
-    );
-  }
-
-  if (!profile.wallet_address) {
+  if (!primaryWallet) {
     return jsonError(
       "Link a primary owner wallet before creating an agent.",
       409,
@@ -235,7 +226,7 @@ export async function POST(request: Request) {
           ? "authority_recorded"
           : "session_only",
         onchain_status: treasuryPda ? "treasury_linked" : "not_bound",
-        owner_wallet: profile.wallet_address,
+        owner_wallet: primaryWallet.wallet_address,
         publicKey: authorityPublicKey,
         authority_public_key: authorityPublicKey,
         token_prefix: "aurak",

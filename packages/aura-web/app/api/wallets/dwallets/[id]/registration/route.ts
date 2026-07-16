@@ -1,6 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { NextResponse } from "next/server";
+import { getPrimaryAccountWallet } from "@/lib/auth/primary-wallet";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Json, WalletRegistryRow } from "@/lib/supabase/types";
@@ -177,33 +178,23 @@ export async function POST(
     return jsonError(getErrorMessage(cause), 500);
   }
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id,wallet_address")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    return jsonError(profileError.message, 500);
+  let primaryWallet: Awaited<ReturnType<typeof getPrimaryAccountWallet>>;
+  try {
+    primaryWallet = await getPrimaryAccountWallet(admin, user.id);
+  } catch (cause) {
+    return jsonError(getErrorMessage(cause), 500);
   }
 
-  if (!profile) {
-    return jsonError(
-      "Owner profile is missing. Sign out and sign in again.",
-      409,
-    );
-  }
-
-  if (!profile.wallet_address) {
+  if (!primaryWallet) {
     return jsonError(
       "Link a primary owner wallet before linking this dWallet.",
       409,
     );
   }
 
-  if (profile.wallet_address !== ownerAddress) {
+  if (primaryWallet.wallet_address !== ownerAddress) {
     return jsonError(
-      "Connect the owner wallet used to sign in before linking this dWallet.",
+      "Connect the primary owner wallet before linking this dWallet.",
       403,
     );
   }

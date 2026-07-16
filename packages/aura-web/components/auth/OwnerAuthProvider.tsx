@@ -477,7 +477,11 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   const primaryWallet =
-    accountWallets.find((walletLink) => walletLink.is_primary) ?? null;
+    accountWallets.find(
+      (walletLink) => walletLink.id === profile?.primary_wallet_id,
+    ) ??
+    accountWallets.find((walletLink) => walletLink.is_primary) ??
+    null;
 
   const value = useMemo<OwnerAuthContextValue>(
     () => ({

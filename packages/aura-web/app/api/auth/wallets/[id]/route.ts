@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { refreshProfilePrimaryWallet } from "@/lib/auth/primary-wallet";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -14,28 +15,6 @@ function jsonError(message: string, status: number) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not update wallet.";
-}
-
-async function refreshPrimaryWallet(input: {
-  admin: ReturnType<typeof createSupabaseAdminClient>;
-  ownerId: string;
-}) {
-  const { data: primary, error: primaryError } = await input.admin
-    .from("account_wallets")
-    .select("wallet_address")
-    .eq("owner_id", input.ownerId)
-    .eq("is_primary", true)
-    .is("revoked_at", null)
-    .maybeSingle();
-
-  if (primaryError) {
-    throw primaryError;
-  }
-
-  await input.admin
-    .from("profiles")
-    .update({ wallet_address: primary?.wallet_address ?? null })
-    .eq("id", input.ownerId);
 }
 
 export async function PATCH(
@@ -100,7 +79,7 @@ export async function PATCH(
       throw updateError;
     }
 
-    await refreshPrimaryWallet({ admin, ownerId: user.id });
+    await refreshProfilePrimaryWallet(admin, user.id);
 
     return NextResponse.json({ wallet: updatedWallet });
   } catch (cause) {
@@ -181,7 +160,7 @@ export async function DELETE(
       }
     }
 
-    await refreshPrimaryWallet({ admin, ownerId: user.id });
+    await refreshProfilePrimaryWallet(admin, user.id);
 
     await admin.from("activity_events").insert({
       owner_id: user.id,

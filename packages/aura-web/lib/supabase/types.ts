@@ -13,6 +13,7 @@ export interface Database {
         Row: {
           id: string;
           wallet_address: string | null;
+          primary_wallet_id: string | null;
           email: string | null;
           email_confirmed_at: string | null;
           last_seen_at: string | null;
@@ -24,6 +25,7 @@ export interface Database {
         Insert: {
           id: string;
           wallet_address?: string | null;
+          primary_wallet_id?: string | null;
           email?: string | null;
           email_confirmed_at?: string | null;
           last_seen_at?: string | null;
@@ -35,6 +37,7 @@ export interface Database {
         Update: {
           id?: string;
           wallet_address?: string | null;
+          primary_wallet_id?: string | null;
           email?: string | null;
           email_confirmed_at?: string | null;
           last_seen_at?: string | null;
@@ -43,7 +46,15 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "profiles_primary_wallet_id_fkey";
+            columns: ["primary_wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "account_wallets";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       account_wallets: {
         Row: {

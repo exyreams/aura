@@ -1,6 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
 import { AURA_CHAINS, getChainName, SOLANA_CHAIN_ID } from "@/lib/aura/chains";
+import { getPrimaryAccountWallet } from "@/lib/auth/primary-wallet";
 import { encryptDWalletSessionMaterial } from "@/lib/dwallet/credentials";
 import { provisionIkaDWallet } from "@/lib/dwallet/provision";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -386,24 +387,14 @@ export async function POST(request: Request) {
     return jsonError(getErrorMessage(cause), 500);
   }
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id,wallet_address")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    return jsonError(profileError.message, 500);
+  let primaryWallet: Awaited<ReturnType<typeof getPrimaryAccountWallet>>;
+  try {
+    primaryWallet = await getPrimaryAccountWallet(admin, user.id);
+  } catch (cause) {
+    return jsonError(getErrorMessage(cause), 500);
   }
 
-  if (!profile) {
-    return jsonError(
-      "Owner profile is missing. Sign out and sign in again.",
-      409,
-    );
-  }
-
-  if (!profile.wallet_address) {
+  if (!primaryWallet) {
     return jsonError(
       "Link a primary owner wallet before registering a dWallet.",
       409,
@@ -438,7 +429,7 @@ export async function POST(request: Request) {
             body,
             provider,
             ownerId: user.id,
-            ownerWallet: profile.wallet_address,
+            ownerWallet: primaryWallet.wallet_address,
             agent,
           })
         : normalizeInput(body, mode, provider);

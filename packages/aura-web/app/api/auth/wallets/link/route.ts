@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { refreshProfilePrimaryWallet } from "@/lib/auth/primary-wallet";
 import {
   normalizeSolanaWalletAddress,
   SOLANA_ACCOUNT_CHAIN_ID,
@@ -162,6 +163,10 @@ export async function POST(request: Request) {
         .update({ status: "used", used_at: new Date().toISOString() })
         .eq("id", challenge.id);
 
+      if (wallet.is_primary) {
+        await refreshProfilePrimaryWallet(admin, user.id);
+      }
+
       return NextResponse.json({ wallet });
     }
 
@@ -197,10 +202,7 @@ export async function POST(request: Request) {
     }
 
     if (shouldBePrimary) {
-      await admin
-        .from("profiles")
-        .update({ wallet_address: wallet.wallet_address })
-        .eq("id", user.id);
+      await refreshProfilePrimaryWallet(admin, user.id);
     }
 
     await admin

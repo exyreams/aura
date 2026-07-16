@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, KeyRound, LinkIcon, Mail } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
@@ -237,9 +237,9 @@ function SignInForm() {
             variant="secondary"
             loading={auth.isSubmitting}
             disabled={auth.isSubmitting}
-            icon={<LinkIcon className="size-3" aria-hidden="true" />}
+            icon={<Mail className="size-3" aria-hidden="true" />}
           >
-            Email me a magic link
+            Magic link
           </Button>
           <p className="text-center text-xs leading-5 text-muted-foreground">
             Magic links are sent to the email above and work for existing AURA
