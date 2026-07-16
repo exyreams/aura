@@ -1,7 +1,8 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
+import bs58 from "bs58";
 import {
   createContext,
   type ReactNode,
@@ -12,69 +13,112 @@ import {
   useState,
 } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import type { Database, Profile } from "@/lib/supabase/types";
+import type { AccountWallet, Database, Profile } from "@/lib/supabase/types";
+
+interface AuthResult {
+  message: string;
+}
 
 interface OwnerAuthContextValue {
   supabase: SupabaseClient<Database>;
   session: Session | null;
+  user: User | null;
   profile: Profile | null;
+  accountWallets: AccountWallet[];
+  primaryWallet: AccountWallet | null;
   isAuthenticated: boolean;
+  needsWalletLink: boolean;
   isLoading: boolean;
   isSigningIn: boolean;
+  isSubmitting: boolean;
+  isLinkingWallet: boolean;
   error: string | null;
-  signIn: () => Promise<void>;
+  signUpWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  signInWithMagicLink: (email: string) => Promise<AuthResult>;
+  sendPasswordReset: (email: string) => Promise<AuthResult>;
+  updatePassword: (password: string) => Promise<AuthResult>;
+  changePassword: (
+    currentPassword: string,
+    nextPassword: string,
+  ) => Promise<AuthResult>;
+  requestEmailChange: (email: string) => Promise<AuthResult>;
+  linkConnectedWallet: () => Promise<void>;
+  setPrimaryWallet: (walletId: string) => Promise<void>;
+  unlinkWallet: (walletId: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+}
+
+interface AccountPayload {
+  user: {
+    id: string;
+    email?: string | null;
+    emailConfirmedAt?: string | null;
+  };
+  profile: Profile;
+  wallets: AccountWallet[];
+}
+
+interface ChallengePayload {
+  challengeId: string;
+  message: string;
+  expiresAt: string;
 }
 
 const OwnerAuthContext = createContext<OwnerAuthContextValue | null>(null);
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unexpected auth error.";
-}
-
-function getWeb3SignInUrl() {
-  const { hostname, port, protocol } = window.location;
-
-  if (hostname === "127.0.0.1" && port === "3000") {
-    return "http://localhost:3000";
+  if (error instanceof Error) {
+    return error.message;
   }
 
-  return `${protocol}//${window.location.host}`;
+  return "Unexpected auth error.";
+}
+
+async function readJson<T>(response: Response) {
+  const body = (await response.json()) as T & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Request failed.");
+  }
+
+  return body;
+}
+
+function getCallbackUrl(next: string) {
+  const url = new URL("/auth/callback", window.location.origin);
+  url.searchParams.set("next", next);
+  return url.toString();
+}
+
+function getEmailRedirectUrl(next: string) {
+  return getCallbackUrl(next);
 }
 
 export function OwnerAuthProvider({ children }: { children: ReactNode }) {
   const wallet = useWallet();
   const [supabase] = useState(() => createBrowserSupabaseClient());
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [accountWallets, setAccountWallets] = useState<AccountWallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLinkingWallet, setIsLinkingWallet] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refreshProfile = useCallback(async () => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const response = await fetch("/api/auth/profile", {
+      method: "GET",
+      credentials: "same-origin",
+    });
+    const payload = await readJson<AccountPayload>(response);
 
-    if (userError || !user) {
-      setProfile(null);
-      return;
-    }
-
-    const { data, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      throw profileError;
-    }
-
-    setProfile(data);
-  }, [supabase]);
+    setProfile(payload.profile);
+    setAccountWallets(payload.wallets);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -85,7 +129,10 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) {
           return;
         }
+
         setSession(data.session);
+        setUser(data.session?.user ?? null);
+
         if (data.session) {
           await refreshProfile();
         }
@@ -105,10 +152,15 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
       if (!nextSession) {
         setProfile(null);
+        setAccountWallets([]);
       } else {
-        void refreshProfile();
+        void refreshProfile().catch((cause: unknown) => {
+          setError(getErrorMessage(cause));
+        });
       }
     });
 
@@ -118,11 +170,225 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshProfile, supabase]);
 
-  const signIn = useCallback(async () => {
+  const signUpWithPassword = useCallback(
+    async (email: string, password: string) => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: getEmailRedirectUrl("/dashboard/settings"),
+          },
+        });
+
+        if (signUpError) {
+          throw signUpError;
+        }
+
+        if (data.session) {
+          setSession(data.session);
+          setUser(data.user);
+          await refreshProfile();
+        }
+
+        return {
+          message: "Account created.",
+        };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [refreshProfile, supabase],
+  );
+
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      setError(null);
+      setIsSigningIn(true);
+      try {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          throw signInError;
+        }
+
+        await refreshProfile();
+        return { message: "Signed in." };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSigningIn(false);
+      }
+    },
+    [refreshProfile, supabase],
+  );
+
+  const signInWithMagicLink = useCallback(
+    async (email: string) => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { error: magicLinkError } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: false,
+            emailRedirectTo: getEmailRedirectUrl("/dashboard"),
+          },
+        });
+
+        if (magicLinkError) {
+          throw magicLinkError;
+        }
+
+        return { message: "Check your email for a magic sign-in link." };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [supabase],
+  );
+
+  const sendPasswordReset = useCallback(
+    async (email: string) => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo: getEmailRedirectUrl("/auth/reset"),
+          },
+        );
+
+        if (resetError) {
+          throw resetError;
+        }
+
+        return { message: "Check your email for a password reset link." };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [supabase],
+  );
+
+  const updatePassword = useCallback(
+    async (password: string) => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password,
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        await refreshProfile();
+        return { message: "Password updated." };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [refreshProfile, supabase],
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, nextPassword: string) => {
+      if (!user?.email) {
+        throw new Error("This account does not have an email address.");
+      }
+
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
+
+        if (reauthError) {
+          throw reauthError;
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: nextPassword,
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        await refreshProfile();
+        return { message: "Password changed." };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [refreshProfile, supabase, user?.email],
+  );
+
+  const requestEmailChange = useCallback(
+    async (email: string) => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { error: updateError } = await supabase.auth.updateUser(
+          { email },
+          { emailRedirectTo: getEmailRedirectUrl("/dashboard/settings") },
+        );
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        return {
+          message: "Email updated.",
+        };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [supabase],
+  );
+
+  const linkConnectedWallet = useCallback(async () => {
     setError(null);
 
     if (!wallet.publicKey) {
-      setError("Connect a Solana wallet before signing in.");
+      setError("Connect a Solana wallet before linking it.");
       return;
     }
 
@@ -131,49 +397,72 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setIsSigningIn(true);
+    setIsLinkingWallet(true);
     try {
-      const signMessage = wallet.signMessage.bind(wallet);
-      const walletForAuth = {
-        publicKey: wallet.publicKey,
-        signMessage(message: Uint8Array, encoding?: string) {
-          void encoding;
-          return signMessage(message);
-        },
-      };
-
-      const { data, error: signInError } = await supabase.auth.signInWithWeb3({
-        chain: "solana",
-        statement: "Sign in to AURA Control Center.",
-        wallet: walletForAuth,
-        options: {
-          url: getWeb3SignInUrl(),
-        },
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      const userId = data.user.id;
       const walletAddress = wallet.publicKey.toBase58();
-
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        wallet_address: walletAddress,
+      const challengeResponse = await fetch("/api/auth/wallets/challenge", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ walletAddress }),
       });
+      const challenge = await readJson<ChallengePayload>(challengeResponse);
+      const messageBytes = new TextEncoder().encode(challenge.message);
+      const signatureBytes = await wallet.signMessage(messageBytes);
+      const signature = bs58.encode(signatureBytes);
 
-      if (profileError) {
-        throw profileError;
-      }
-
+      const linkResponse = await fetch("/api/auth/wallets/link", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          challengeId: challenge.challengeId,
+          walletAddress,
+          signature,
+        }),
+      });
+      await readJson<{ wallet: AccountWallet }>(linkResponse);
       await refreshProfile();
     } catch (cause) {
       setError(getErrorMessage(cause));
     } finally {
-      setIsSigningIn(false);
+      setIsLinkingWallet(false);
     }
-  }, [refreshProfile, supabase, wallet]);
+  }, [refreshProfile, wallet]);
+
+  const setPrimaryWallet = useCallback(
+    async (walletId: string) => {
+      setError(null);
+      const response = await fetch(`/api/auth/wallets/${walletId}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isPrimary: true }),
+      });
+      await readJson<{ wallet: AccountWallet }>(response);
+      await refreshProfile();
+    },
+    [refreshProfile],
+  );
+
+  const unlinkWallet = useCallback(
+    async (walletId: string) => {
+      setError(null);
+      const response = await fetch(`/api/auth/wallets/${walletId}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      await readJson<{ ok: boolean }>(response);
+      await refreshProfile();
+    },
+    [refreshProfile],
+  );
 
   const signOut = useCallback(async () => {
     setError(null);
@@ -181,32 +470,67 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
     if (signOutError) {
       setError(signOutError.message);
     }
+    setSession(null);
+    setUser(null);
     setProfile(null);
+    setAccountWallets([]);
   }, [supabase]);
+
+  const primaryWallet =
+    accountWallets.find((walletLink) => walletLink.is_primary) ?? null;
 
   const value = useMemo<OwnerAuthContextValue>(
     () => ({
       supabase,
       session,
+      user,
       profile,
+      accountWallets,
+      primaryWallet,
       isAuthenticated: Boolean(session && profile),
+      needsWalletLink: Boolean(session && profile && !primaryWallet),
       isLoading,
       isSigningIn,
+      isSubmitting,
+      isLinkingWallet,
       error,
-      signIn,
+      signUpWithPassword,
+      signInWithPassword,
+      signInWithMagicLink,
+      sendPasswordReset,
+      updatePassword,
+      changePassword,
+      requestEmailChange,
+      linkConnectedWallet,
+      setPrimaryWallet,
+      unlinkWallet,
       signOut,
       refreshProfile,
     }),
     [
+      accountWallets,
+      changePassword,
       error,
+      isLinkingWallet,
       isLoading,
       isSigningIn,
+      isSubmitting,
+      linkConnectedWallet,
+      primaryWallet,
       profile,
       refreshProfile,
+      requestEmailChange,
+      sendPasswordReset,
       session,
-      signIn,
+      setPrimaryWallet,
+      signInWithMagicLink,
+      signInWithPassword,
       signOut,
+      signUpWithPassword,
       supabase,
+      unlinkWallet,
+      updatePassword,
+      user,
     ],
   );
 

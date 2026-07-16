@@ -36,16 +36,21 @@ export function useAuth() {
   return {
     user: auth.profile
       ? {
-          wallet: auth.profile.wallet_address,
+          id: auth.profile.id,
+          email: auth.user?.email ?? auth.profile.email,
+          wallet:
+            auth.primaryWallet?.wallet_address ??
+            auth.profile.wallet_address ??
+            null,
         }
       : null,
     walletAddress,
     isAuthenticated: auth.isAuthenticated,
+    needsWalletLink: auth.needsWalletLink,
     isLoading: auth.isLoading,
-    isSigningIn: auth.isSigningIn,
-    needsSignIn: Boolean(walletAddress && !auth.isAuthenticated),
+    isSigningIn: auth.isSigningIn || auth.isSubmitting,
+    needsSignIn: !auth.isAuthenticated,
     error: auth.error,
-    login: auth.signIn,
     logout: auth.signOut,
     refetch: auth.refreshProfile,
   };

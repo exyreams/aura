@@ -22,7 +22,7 @@ import {
   type ButtonVariant,
 } from "@/components/global/Button";
 import { WalletModal } from "@/components/global/WalletModal";
-import { useAppSettings, useAuth } from "@/lib/hooks";
+import { useAppSettings } from "@/lib/hooks";
 import { cn, shortenAddress } from "@/lib/utils";
 
 export interface WalletAppLink {
@@ -69,7 +69,6 @@ export function WalletAccountMenu({
 }: WalletAccountMenuProps) {
   const { publicKey, connected, connecting, disconnect } = useWallet();
   const settings = useAppSettings();
-  const auth = useAuth();
   const reduceMotion = useReducedMotion();
   const menuRef = useRef<HTMLDivElement>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,7 +157,6 @@ export function WalletAccountMenu({
 
   const handleDisconnect = async () => {
     try {
-      await auth.logout();
       await disconnect();
     } finally {
       setMenuOpen(false);

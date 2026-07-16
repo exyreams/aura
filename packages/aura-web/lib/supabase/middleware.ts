@@ -5,6 +5,7 @@ import type { Database } from "@/lib/supabase/types";
 
 export async function updateSupabaseSession(request: NextRequest) {
   const { url, publishableKey } = getSupabaseBrowserEnv();
+  const requestPath = request.nextUrl.pathname;
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(url, publishableKey, {
@@ -26,7 +27,24 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getClaims();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user && requestPath.startsWith("/dashboard")) {
+    const redirectUrl = new URL("/auth/login", request.url);
+    redirectUrl.searchParams.set(
+      "next",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    for (const cookie of response.cookies.getAll()) {
+      redirectResponse.cookies.set(cookie);
+    }
+
+    return redirectResponse;
+  }
 
   return response;
 }

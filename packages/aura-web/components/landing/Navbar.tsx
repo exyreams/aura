@@ -1,20 +1,16 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
-import { BookOpen, LogOut, Menu, Wallet, X } from "lucide-react";
+import { BookOpen, LogOut, Menu, X } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
+import { AuthButton } from "@/components/auth/AuthButton";
+import { useOwnerAuth } from "@/components/auth/OwnerAuthProvider";
 import { Button } from "@/components/global/Button";
-import {
-  WALLET_APP_LINKS,
-  WalletAccountMenu,
-} from "@/components/global/WalletAccountMenu";
-import { WalletModal } from "@/components/global/WalletModal";
+import { WALLET_APP_LINKS } from "@/components/global/WalletAccountMenu";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { useAuth } from "@/lib/hooks";
 import { DEFAULT_DOCS_URL } from "@/lib/settings";
 
 // Landing page anchor links — shown when not connected
@@ -28,11 +24,9 @@ const LANDING_LINKS = [
 
 export function Navbar() {
   const { resolvedTheme } = useTheme();
-  const { publicKey, disconnect } = useWallet();
-  const auth = useAuth();
+  const auth = useOwnerAuth();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -51,14 +45,9 @@ export function Navbar() {
       : "/light-logo-wordmark.svg";
 
   const isDark = !mounted || resolvedTheme === "dark";
-  const isConnected = mounted && publicKey;
-  const walletAddress = publicKey?.toBase58();
+  const isAuthenticated = mounted && auth.isAuthenticated;
+  const accountLabel = auth.user?.email ?? "AURA account";
   const docsUrl = DEFAULT_DOCS_URL;
-
-  const handleDisconnect = async () => {
-    await auth.logout();
-    await disconnect();
-  };
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -135,17 +124,17 @@ export function Navbar() {
             <Image
               src={logoSrc}
               alt="AURA"
-              width={80}
-              height={20}
-              style={{ width: "auto", height: "20px" }}
+              width={96}
+              height={24}
+              style={{ width: "auto", height: "24px" }}
               suppressHydrationWarning
             />
           </Link>
 
           {/* Desktop links */}
           <div className="hidden md:flex gap-6 items-center">
-            {/* Landing links when disconnected, minimal when connected */}
-            {!isConnected &&
+            {/* Landing links when logged out, minimal when logged in */}
+            {!isAuthenticated &&
               LANDING_LINKS.map((link) => (
                 <Link
                   key={link.href}
@@ -166,7 +155,7 @@ export function Navbar() {
 
             <div className="h-4 w-px bg-border" />
 
-            {isConnected ? (
+            {isAuthenticated ? (
               <>
                 <Link href="/dashboard">
                   <Button
@@ -178,10 +167,18 @@ export function Navbar() {
                   </Button>
                 </Link>
 
-                <WalletAccountMenu />
+                <AuthButton />
               </>
             ) : (
-              <WalletAccountMenu connectLabel="Connect Wallet" />
+              <Link href="/auth/login">
+                <Button
+                  variant="primary"
+                  size="small"
+                  className="font-mono! text-[10px]! uppercase! tracking-widest!"
+                >
+                  Launch
+                </Button>
+              </Link>
             )}
 
             <ThemeToggle />
@@ -241,9 +238,9 @@ export function Navbar() {
               <Image
                 src={logoSrc}
                 alt="AURA"
-                width={80}
-                height={20}
-                style={{ width: "auto", height: "20px" }}
+                width={96}
+                height={24}
+                style={{ width: "auto", height: "24px" }}
                 suppressHydrationWarning
               />
             </Link>
@@ -309,12 +306,12 @@ export function Navbar() {
                   }
                 />
                 <div className="flex flex-col p-3 gap-1">
-                  {isConnected ? (
+                  {isAuthenticated ? (
                     <>
                       <div className="flex items-center gap-2 px-3 py-2">
                         <div className="size-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                         <span className="font-mono text-[10px] text-(--text-muted) truncate">
-                          {walletAddress}
+                          {accountLabel}
                         </span>
                       </div>
 
@@ -352,7 +349,7 @@ export function Navbar() {
                       <button
                         type="button"
                         onClick={() => {
-                          void handleDisconnect();
+                          void auth.signOut();
                           setMobileMenuOpen(false);
                         }}
                         className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-danger hover:bg-danger/10 transition-colors w-full text-left"
@@ -389,17 +386,17 @@ export function Navbar() {
                       <div className="my-1 border-t border-border" />
 
                       <div className="px-1 pb-1">
-                        <Button
-                          variant="primary"
-                          className="font-mono! text-[11px]! uppercase! tracking-widest! w-full!"
-                          icon={<Wallet className="size-3" />}
-                          onClick={() => {
-                            setWalletModalOpen(true);
-                            setMobileMenuOpen(false);
-                          }}
+                        <Link
+                          href="/auth/login"
+                          onClick={() => setMobileMenuOpen(false)}
                         >
-                          Connect Wallet
-                        </Button>
+                          <Button
+                            variant="primary"
+                            className="font-mono! w-full! text-[11px]! uppercase! tracking-widest!"
+                          >
+                            Launch
+                          </Button>
+                        </Link>
                       </div>
                     </>
                   )}
@@ -424,11 +421,6 @@ export function Navbar() {
           />
         )}
       </AnimatePresence>
-
-      <WalletModal
-        isOpen={walletModalOpen}
-        onClose={() => setWalletModalOpen(false)}
-      />
     </>
   );
 }
