@@ -14,8 +14,12 @@
 import { Command } from "commander";
 import { registerAgentCommands } from "../cli/agent-commands.js";
 import { registerAuditCommands } from "../cli/audit.js";
+import { registerConfigCommands, resolveConduitConfig } from "../cli/config.js";
 import { registerDoctorCommand } from "../cli/doctor.js";
+import { registerInstructionCommands } from "../cli/instructions.js";
 import { registerKillCommand } from "../cli/kill.js";
+import { registerMcpConfigCommand } from "../cli/mcp-config.js";
+import { registerToolCommands } from "../cli/tools.js";
 import { openConduitDb } from "../core/control-plane/db.js";
 import { createSqliteIdempotencyStore } from "../core/control-plane/idempotency-sqlite.js";
 import {
@@ -38,6 +42,8 @@ const program = new Command()
   .description("AURA Conduit — agent-facing MCP server, HTTP gateway, and CLI")
   .version(CONDUIT_VERSION);
 
+const defaults = resolveConduitConfig();
+
 interface CommonOptions {
   rpcUrl: string;
   cluster: string;
@@ -53,30 +59,22 @@ interface McpOptions extends CommonOptions {
 
 function commonOptions<T extends Command>(cmd: T): T {
   return cmd
-    .option(
-      "--rpc-url <url>",
-      "Solana RPC URL",
-      process.env.CONDUIT_RPC_URL ?? "https://api.devnet.solana.com",
-    )
-    .option(
-      "--cluster <name>",
-      "cluster label for output",
-      process.env.CONDUIT_CLUSTER ?? "devnet",
-    )
+    .option("--rpc-url <url>", "Solana RPC URL", defaults.rpcUrl)
+    .option("--cluster <name>", "cluster label for output", defaults.cluster)
     .option(
       "--program-id <pubkey>",
       "AURA program id (defaults to SDK's bundled id)",
-      process.env.CONDUIT_PROGRAM_ID,
+      defaults.programId ?? undefined,
     )
     .option(
       "--dashboard-base-url <url>",
       "public base URL of the AURA dashboard for inbox links",
-      process.env.CONDUIT_DASHBOARD_BASE_URL ??
-        "https://auraa-protocol.vercel.app",
+      defaults.dashboardBaseUrl,
     )
     .option(
       "--db-path <path>",
       "Conduit SQLite path (defaults to ~/.aura-conduit/conduit.db)",
+      defaults.dbPath,
     ) as unknown as T;
 }
 
@@ -101,7 +99,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 process.on("SIGINT", () => void gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => void gracefulShutdown("SIGTERM"));
 
-commonOptions(program.command("mcp"))
+const mcpCommand = commonOptions(program.command("mcp"))
   .description(
     "Run the MCP stdio server (for Claude Code, Cursor, Codex, etc.)",
   )
@@ -125,28 +123,26 @@ commonOptions(program.command("mcp"))
     });
   });
 
+registerMcpConfigCommand(mcpCommand);
+
 commonOptions(program.command("http"))
   .description("Run the HTTP gateway (Fastify, OpenAPI, SSE).")
-  .option(
-    "--host <host>",
-    "bind host",
-    process.env.CONDUIT_HTTP_HOST ?? "127.0.0.1",
-  )
+  .option("--host <host>", "bind host", defaults.httpHost)
   .option<number>(
     "--port <port>",
     "bind port",
     (v: string) => Number.parseInt(v, 10),
-    Number.parseInt(process.env.CONDUIT_HTTP_PORT ?? "8788", 10),
+    defaults.httpPort,
   )
   .option(
     "--public-base-url <url>",
     "URL agents use to reach this server (for OpenAPI servers field)",
-    process.env.CONDUIT_PUBLIC_BASE_URL ?? "http://127.0.0.1:8788",
+    defaults.publicBaseUrl,
   )
   .option(
     "--cors-origin <value>",
     "CORS allowlist: 'true' for any, comma-separated origins, or 'false' to disable",
-    process.env.CONDUIT_CORS_ORIGIN ?? "true",
+    defaults.corsOrigin,
   )
   .action(
     async (
@@ -174,27 +170,56 @@ commonOptions(program.command("http"))
     },
   );
 
+registerConfigCommands(program);
+
+registerInstructionCommands(program, {
+  defaults: {
+    rpcUrl: defaults.rpcUrl,
+    cluster: defaults.cluster,
+    programId: defaults.programId,
+    dbPath: defaults.dbPath,
+  },
+  openDb: (path: string) => openConduitDb({ path }),
+});
+
+registerToolCommands(program, {
+  loadTools: async () => {
+    const solana = createSolanaContext({
+      rpcUrl: defaults.rpcUrl,
+      cluster: defaults.cluster,
+      ...(defaults.programId !== null ? { programId: defaults.programId } : {}),
+    });
+    const db = openConduitDb({ path: defaults.dbPath });
+    try {
+      return buildToolCatalogue({
+        solana,
+        db,
+        signer: new InMemorySigningService(),
+        dashboardBaseUrl: defaults.dashboardBaseUrl,
+      });
+    } finally {
+      db.close();
+    }
+  },
+});
+
 registerAgentCommands(program, {
-  controlPlaneBaseUrl:
-    process.env.CONDUIT_CONTROL_PLANE_URL ?? "http://127.0.0.1:8788",
-  dashboardBaseUrl:
-    process.env.CONDUIT_DASHBOARD_BASE_URL ?? "http://localhost:3100",
+  controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
+  dashboardBaseUrl: defaults.dashboardBaseUrl,
 });
 
 registerKillCommand(program, {
-  controlPlaneBaseUrl:
-    process.env.CONDUIT_CONTROL_PLANE_URL ?? "http://127.0.0.1:8788",
+  controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
 });
 
 registerDoctorCommand(program, {
-  controlPlaneBaseUrl:
-    process.env.CONDUIT_CONTROL_PLANE_URL ?? "http://127.0.0.1:8788",
-  defaultRpcUrl: process.env.CONDUIT_RPC_URL ?? "https://api.devnet.solana.com",
+  controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
+  defaultRpcUrl: defaults.rpcUrl,
+  defaultDbPath: defaults.dbPath,
 });
 
 registerAuditCommands(program, {
-  controlPlaneBaseUrl:
-    process.env.CONDUIT_CONTROL_PLANE_URL ?? "http://127.0.0.1:8788",
+  controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
 });
 
 program.parseAsync(process.argv).catch((err) => {

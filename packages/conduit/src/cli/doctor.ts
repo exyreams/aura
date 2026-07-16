@@ -14,16 +14,21 @@
 
 import type { Command } from "commander";
 
-import { defaultDbPath, openConduitDb } from "../core/control-plane/db.js";
+import { openConduitDb } from "../core/control-plane/db.js";
 import { createKeychainStore } from "./keychain.js";
 
 export interface DoctorOptions {
   readonly controlPlaneBaseUrl: string;
   readonly defaultRpcUrl: string;
+  readonly defaultDbPath: string;
 }
 
 const REQUIRED_TOOLS = [
   "aura.whoami",
+  "aura.instructions.list",
+  "aura.instruction.describe",
+  "aura.instruction.prepare",
+  "aura.instruction.request_signature",
   "aura.treasury.get",
   "aura.policy.preview",
   "aura.session.status",
@@ -46,7 +51,11 @@ export function registerDoctorCommand(
     )
     .option("--rpc-url <url>", "Solana RPC URL", options.defaultRpcUrl)
     .option("--account <name>", "check that a keychain account has a token")
-    .option("--db-path <path>", "SQLite DB path to probe", defaultDbPath())
+    .option(
+      "--db-path <path>",
+      "SQLite DB path to probe",
+      options.defaultDbPath,
+    )
     .action(
       async (opts: { rpcUrl: string; account?: string; dbPath: string }) => {
         let failed = 0;

@@ -74,8 +74,16 @@ export class DeviceFlowClient {
       const body = (await res.json()) as {
         status: string;
         session_id?: string;
+        token?: string;
         handover_url?: string;
       };
+      if (
+        body.status === "authorized" &&
+        typeof body.session_id === "string" &&
+        typeof body.token === "string"
+      ) {
+        return { session_id: body.session_id, token: body.token };
+      }
       if (body.status === "authorized" && body.handover_url !== undefined) {
         const handover = await this.fetchImpl(
           `${this.base}${body.handover_url}`,
