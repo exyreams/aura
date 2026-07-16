@@ -7,6 +7,7 @@ import { AgentEmptyState } from "@/components/agents/AgentEmptyState";
 import { AgentRow, type AgentTreasuryLink } from "@/components/agents/AgentRow";
 import { AgentStatsBar } from "@/components/agents/AgentStatsBar";
 import { CreateAgentModal } from "@/components/agents/CreateAgentModal";
+import { EditAgentScopesModal } from "@/components/agents/EditAgentScopesModal";
 import { DashboardContent } from "@/components/dashboard/DashboardPrimitives";
 import { Button } from "@/components/global/Button";
 import { Modal } from "@/components/global/Modal";
@@ -157,6 +158,7 @@ export default function AgentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AgentKeypair | null>(null);
+  const [scopeTarget, setScopeTarget] = useState<AgentKeypair | null>(null);
   const {
     agents,
     selectedAgent,
@@ -199,6 +201,11 @@ export default function AgentsPage() {
         loading={deleteAgentMutation.isPending}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void handleDeleteConfirm()}
+      />
+
+      <EditAgentScopesModal
+        agent={scopeTarget}
+        onClose={() => setScopeTarget(null)}
       />
 
       <header className="mb-4 flex flex-col justify-between gap-4 sm:mb-2 sm:flex-row sm:items-end">
@@ -312,6 +319,7 @@ export default function AgentsPage() {
                   downloadJson(`${agent.agentId}.aura-agent.json`, identity);
                 }}
                 onDelete={() => setDeleteTarget(agent)}
+                onEditScopes={() => setScopeTarget(agent)}
               />
             ))}
           </div>

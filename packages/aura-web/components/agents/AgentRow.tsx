@@ -10,7 +10,14 @@ import { AnimatePresence, m } from "motion/react";
 import { useState } from "react";
 import { StatusPill } from "@/components/global/Badge";
 import { Tooltip } from "@/components/global/Tooltip";
-import { ChevronDown, Copy, KeyRound, Xcircle } from "@/components/icons";
+import {
+  ChevronDown,
+  Copy,
+  KeyRound,
+  PenLine,
+  Xcircle,
+} from "@/components/icons";
+import { getAgentScopeLabel } from "@/lib/agents/scopes";
 import type { AgentKeypair } from "@/lib/hooks";
 import { cn, shortenAddress } from "@/lib/utils";
 
@@ -88,6 +95,26 @@ function IconButton({
   );
 }
 
+function ScopeChip({ scope }: { scope: string }) {
+  const label = getAgentScopeLabel(scope);
+  const transferScope = scope === "wallet:transfer";
+
+  return (
+    <Tooltip content={label}>
+      <span
+        className={cn(
+          "inline-flex cursor-default items-center rounded-sm border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide",
+          transferScope
+            ? "border-success/30 bg-success/10 text-success"
+            : "border-border bg-background text-muted-foreground",
+        )}
+      >
+        {scope}
+      </span>
+    </Tooltip>
+  );
+}
+
 export function AgentRow({
   agent,
   selected,
@@ -96,6 +123,7 @@ export function AgentRow({
   onSelect,
   onDownload,
   onDelete,
+  onEditScopes,
   deleting,
 }: {
   agent: AgentKeypair;
@@ -105,6 +133,7 @@ export function AgentRow({
   onSelect: () => void;
   onDownload: () => void;
   onDelete: () => void;
+  onEditScopes: () => void;
   deleting: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -113,6 +142,11 @@ export function AgentRow({
   const revoked = agent.status === "revoked";
   const isBoundOnChain =
     agent.onchainStatus === "treasury_linked" && linkedTreasuries.length > 0;
+  const visibleScopes = agent.scopes.slice(0, 3);
+  const hiddenScopeCount = Math.max(
+    agent.scopes.length - visibleScopes.length,
+    0,
+  );
 
   return (
     <div
@@ -154,6 +188,18 @@ export function AgentRow({
           <span className="block truncate font-mono text-[10px] text-muted-foreground">
             {agent.agentId}
           </span>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {visibleScopes.map((scope) => (
+              <ScopeChip key={scope} scope={scope} />
+            ))}
+            {hiddenScopeCount > 0 ? (
+              <Tooltip content={`${hiddenScopeCount} more scopes`}>
+                <span className="inline-flex cursor-default items-center rounded-sm border border-border bg-background px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                  +{hiddenScopeCount}
+                </span>
+              </Tooltip>
+            ) : null}
+          </div>
         </div>
 
         <div className="hidden shrink-0 items-center gap-1.5 md:flex">
@@ -238,6 +284,16 @@ export function AgentRow({
             </Tooltip>
           ) : null}
           <IconButton
+            label={revoked ? "Revoked agents cannot be edited" : "Edit scopes"}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEditScopes();
+            }}
+            disabled={revoked}
+          >
+            <PenLine className="size-3.5" animateOnHover />
+          </IconButton>
+          <IconButton
             label="Export identity"
             disabled={!hasPublicKey}
             onClick={(event) => {
@@ -318,6 +374,36 @@ export function AgentRow({
                     no wallet-signed treasury link
                   </span>
                 )}
+              </div>
+
+              <div className="grid gap-2 rounded-sm border border-border bg-background px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                    scopes
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEditScopes();
+                    }}
+                    disabled={revoked}
+                    className="inline-flex min-h-8 items-center justify-center rounded-sm border border-border px-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Edit scopes
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {agent.scopes.length > 0 ? (
+                    agent.scopes.map((scope) => (
+                      <ScopeChip key={scope} scope={scope} />
+                    ))
+                  ) : (
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      no scopes recorded
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </m.div>

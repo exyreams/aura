@@ -5,11 +5,18 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Clipboard, Download, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/global/Button";
+import { Checkbox } from "@/components/global/Checkbox";
+import { FieldGroup } from "@/components/global/FieldGroup";
 import { Input } from "@/components/global/Input";
 import { Modal } from "@/components/global/Modal";
+import { StatusBadge } from "@/components/global/StatusBadge";
 import { Textarea } from "@/components/global/Textarea";
 import { KeyRound } from "@/components/icons";
-import { type AgentScope, DEFAULT_AGENT_SCOPES } from "@/lib/agents/scopes";
+import {
+  AGENT_SCOPE_OPTIONS,
+  type AgentScope,
+  DEFAULT_AGENT_SCOPES,
+} from "@/lib/agents/scopes";
 import type { AgentSessionRow } from "@/lib/supabase/types";
 
 const WORDS = [
@@ -163,6 +170,8 @@ export function CreateAgentModal({
   const [created, setCreated] = useState<CreateAgentResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [selectedScopes, setSelectedScopes] =
+    useState<AgentScope[]>(DEFAULT_AGENT_SCOPES);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -173,7 +182,7 @@ export function CreateAgentModal({
         agentId: nextAgentId,
         label: nextLabel,
         authorityPublicKey: identity.publicKey,
-        scopes: DEFAULT_AGENT_SCOPES,
+        scopes: selectedScopes,
       });
 
       return {
@@ -202,6 +211,7 @@ export function CreateAgentModal({
       setCreated(null);
       setCopied(false);
       setDownloaded(false);
+      setSelectedScopes(DEFAULT_AGENT_SCOPES);
       createMutation.reset();
     }, 160);
   };
@@ -229,6 +239,20 @@ export function CreateAgentModal({
     }
     setValidationError(null);
     await createMutation.mutateAsync();
+  };
+
+  const toggleScope = (scope: AgentScope, checked: boolean) => {
+    if (scope === "read") {
+      return;
+    }
+
+    setSelectedScopes((current) => {
+      if (checked) {
+        return Array.from(new Set(["read", ...current, scope])) as AgentScope[];
+      }
+
+      return current.filter((candidate) => candidate !== scope);
+    });
   };
 
   const copyToken = async () => {
@@ -260,7 +284,7 @@ export function CreateAgentModal({
       onClose={resetAndClose}
       ariaLabelledBy="create-agent-title"
       ariaDescribedBy="create-agent-description"
-      className="sm:max-w-sm"
+      className="sm:max-w-xl"
     >
       <div className="grid gap-5 pt-2">
         <div className="flex flex-col items-center pr-8 text-center">
@@ -403,6 +427,47 @@ export function CreateAgentModal({
                 spellCheck={false}
                 disabled={createMutation.isPending}
               />
+
+              <FieldGroup
+                label="Runtime scopes"
+                description="Read session is required. Add transfer permission only when this signer should be able to request wallet transfers."
+              >
+                <div className="grid gap-2">
+                  {AGENT_SCOPE_OPTIONS.map((scope) => {
+                    const checked = selectedScopes.includes(scope.value);
+                    const required = scope.value === "read";
+
+                    return (
+                      <Checkbox
+                        key={scope.value}
+                        checked={checked}
+                        disabled={required || createMutation.isPending}
+                        onChange={(nextChecked) =>
+                          toggleScope(scope.value, nextChecked)
+                        }
+                        className="rounded-sm border border-border bg-background p-3"
+                      >
+                        <span className="grid gap-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">
+                              {scope.label}
+                            </span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {scope.value}
+                            </span>
+                            {required ? (
+                              <StatusBadge tone="neutral">required</StatusBadge>
+                            ) : null}
+                          </span>
+                          <span className="text-xs leading-5 text-muted-foreground">
+                            {scope.description}
+                          </span>
+                        </span>
+                      </Checkbox>
+                    );
+                  })}
+                </div>
+              </FieldGroup>
 
               <div className="rounded-sm border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
                 This creates the signer identity and session token only. The

@@ -48,6 +48,10 @@ const agentScopeSet = new Set<string>(
   AGENT_SCOPE_OPTIONS.map((scope) => scope.value),
 );
 
+export const AGENT_SCOPE_LABELS = Object.fromEntries(
+  AGENT_SCOPE_OPTIONS.map((scope) => [scope.value, scope.label]),
+) as Record<AgentScope, string>;
+
 export function normalizeAgentScopes(value: unknown): AgentScope[] {
   if (!Array.isArray(value)) {
     return DEFAULT_AGENT_SCOPES;
@@ -57,9 +61,13 @@ export function normalizeAgentScopes(value: unknown): AgentScope[] {
     .filter((scope): scope is string => typeof scope === "string")
     .filter((scope) => agentScopeSet.has(scope));
 
-  return Array.from(new Set(uniqueScopes)) as AgentScope[];
+  return Array.from(new Set(["read", ...uniqueScopes])) as AgentScope[];
 }
 
 export function isAgentScope(value: string): value is AgentScope {
   return agentScopeSet.has(value);
+}
+
+export function getAgentScopeLabel(value: string) {
+  return isAgentScope(value) ? AGENT_SCOPE_LABELS[value] : value;
 }
