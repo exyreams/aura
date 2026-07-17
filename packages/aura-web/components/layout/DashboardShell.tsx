@@ -23,6 +23,7 @@ import {
   Documentations,
   LayoutDashboard,
   Settings,
+  Shield,
   Wallet,
 } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -78,6 +79,13 @@ const primaryNav: NavItem[] = [
     label: "Agents",
     description: "Sessions and scopes",
     icon: Agent,
+    animated: true,
+  },
+  {
+    href: "/dashboard/conduit",
+    label: "Conduit",
+    description: "Device login and runtime sessions",
+    icon: Shield,
     animated: true,
   },
   {
@@ -142,6 +150,11 @@ const pageMeta = [
     href: "/dashboard/agents",
     title: "Agents",
     description: "Conduit sessions, scopes, and approvals",
+  },
+  {
+    href: "/dashboard/conduit",
+    title: "Conduit",
+    description: "AI client device login and runtime access",
   },
   {
     href: "/dashboard/activity",

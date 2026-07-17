@@ -403,6 +403,132 @@ export interface Database {
           },
         ];
       };
+      device_codes: {
+        Row: {
+          id: string;
+          user_code: string;
+          owner_id: string | null;
+          requested_agent_label: string | null;
+          requested_agent_id: string | null;
+          requested_scopes: string[];
+          requested_treasury_pda: string | null;
+          requested_caps: Json;
+          client_name: string | null;
+          interval_seconds: number;
+          status: "pending" | "approved" | "denied" | "expired" | "consumed";
+          approved_session_id: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+          expires_at: string;
+          approved_at: string | null;
+          denied_at: string | null;
+          consumed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_code: string;
+          owner_id?: string | null;
+          requested_agent_label?: string | null;
+          requested_agent_id?: string | null;
+          requested_scopes?: string[];
+          requested_treasury_pda?: string | null;
+          requested_caps?: Json;
+          client_name?: string | null;
+          interval_seconds?: number;
+          status?: "pending" | "approved" | "denied" | "expired" | "consumed";
+          approved_session_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+          expires_at: string;
+          approved_at?: string | null;
+          denied_at?: string | null;
+          consumed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["device_codes"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "device_codes_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "device_codes_approved_session_id_fkey";
+            columns: ["approved_session_id"];
+            isOneToOne: false;
+            referencedRelation: "agent_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      device_code_secrets: {
+        Row: {
+          device_code_id: string;
+          device_code_hash: string;
+          created_at: string;
+        };
+        Insert: {
+          device_code_id: string;
+          device_code_hash: string;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["device_code_secrets"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "device_code_secrets_device_code_id_fkey";
+            columns: ["device_code_id"];
+            isOneToOne: true;
+            referencedRelation: "device_codes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      device_token_handoffs: {
+        Row: {
+          device_code_id: string;
+          agent_session_id: string;
+          token_ciphertext: string;
+          token_iv: string;
+          token_tag: string;
+          created_at: string;
+          expires_at: string;
+          consumed_at: string | null;
+        };
+        Insert: {
+          device_code_id: string;
+          agent_session_id: string;
+          token_ciphertext: string;
+          token_iv: string;
+          token_tag: string;
+          created_at?: string;
+          expires_at: string;
+          consumed_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["device_token_handoffs"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "device_token_handoffs_device_code_id_fkey";
+            columns: ["device_code_id"];
+            isOneToOne: true;
+            referencedRelation: "device_codes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "device_token_handoffs_agent_session_id_fkey";
+            columns: ["agent_session_id"];
+            isOneToOne: false;
+            referencedRelation: "agent_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sign_requests: {
         Row: {
           id: string;
@@ -533,6 +659,7 @@ export type DWalletSessionRow =
   Database["public"]["Tables"]["dwallet_sessions"]["Row"];
 export type AgentSessionRow =
   Database["public"]["Tables"]["agent_sessions"]["Row"];
+export type DeviceCodeRow = Database["public"]["Tables"]["device_codes"]["Row"];
 export type SignRequestRow =
   Database["public"]["Tables"]["sign_requests"]["Row"];
 export type ActivityEventRow =

@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Bot,
   CircleDollarSign,
+  PlugZap,
   Settings,
   ShieldCheck,
   Wallet,
@@ -35,6 +36,13 @@ const controlLinks = [
     description: "Supabase-backed sessions and scopes.",
     icon: Bot,
     status: "Next",
+  },
+  {
+    href: "/dashboard/conduit",
+    label: "Conduit",
+    description: "Device login and AI client runtime access.",
+    icon: PlugZap,
+    status: "Live",
   },
   {
     href: "/dashboard/activity",
@@ -93,7 +101,7 @@ export default function DashboardPage() {
           description="The shell is organized around the things an owner needs when agents start requesting wallet actions: custody endpoints, sessions, events, and runtime configuration."
           action={<StatusBadge tone="success">Devnet</StatusBadge>}
         />
-        <div className="mt-5 grid gap-3 lg:grid-cols-4">
+        <div className="mt-5 grid gap-3 lg:grid-cols-5">
           {controlLinks.map((item) => {
             const Icon = item.icon;
 
