@@ -25,7 +25,7 @@ import { createSqliteIdempotencyStore } from "../core/control-plane/idempotency-
 import {
   buildSafetyHooks,
   buildToolCatalogue,
-  createDbSessionResolver,
+  createHybridSessionResolver,
   createJsonLinesAuditLogger,
   createSolanaContext,
   createToolRegistry,
@@ -114,7 +114,9 @@ const mcpCommand = commonOptions(program.command("mcp"))
   )
   .action(async (options: McpOptions) => {
     const ctx = await bootCommonContext(options);
-    const sessionResolver = createDbSessionResolver(ctx.db);
+    const sessionResolver = createHybridSessionResolver(ctx.db, {
+      controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
+    });
     await startStdio({
       deps: ctx.deps,
       sessionResolver,
@@ -204,6 +206,7 @@ registerToolCommands(program, {
         db,
         signer: new InMemorySigningService(),
         dashboardBaseUrl: defaults.dashboardBaseUrl,
+        controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
       });
     } finally {
       db.close();
@@ -279,6 +282,7 @@ async function bootCommonContext(
     db,
     signer,
     dashboardBaseUrl: options.dashboardBaseUrl,
+    controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
     toctou,
   });
   const registry = createToolRegistry(tools);

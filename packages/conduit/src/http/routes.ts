@@ -32,9 +32,12 @@ export async function registerToolRoutes(
   for (const tool of options.deps.registry.list()) {
     const path = `/v1/${tool.name.replace(/^aura\./, "").replace(/\./g, "/")}`;
     fastify.post(path, async (request, reply) => {
-      const session = (
-        request as FastifyRequest & { auth?: { session: Session } }
-      ).auth?.session;
+      const auth = (
+        request as FastifyRequest & {
+          auth?: { session: Session; rawToken: string };
+        }
+      ).auth;
+      const session = auth?.session;
       if (session === undefined) {
         await reply
           .code(401)
@@ -53,6 +56,7 @@ export async function registerToolRoutes(
         session,
         requestId: request.id,
         signal: abort.signal,
+        ...(auth?.rawToken !== undefined ? { credential: auth.rawToken } : {}),
         ...(callerIdempotencyKey !== undefined ? { callerIdempotencyKey } : {}),
       });
       if (result.ok) {

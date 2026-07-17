@@ -19,7 +19,7 @@ export interface AgentCommandOptions {
   readonly clientName?: string;
 }
 
-const DEFAULT_LOGIN_SCOPES = "read,wallet:read,policy:preview";
+const DEFAULT_LOGIN_SCOPES = "read,wallet:read,wallet:create,policy:preview";
 
 export function registerAgentCommands(
   parent: Command,

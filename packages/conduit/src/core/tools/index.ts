@@ -29,6 +29,7 @@ import { createProposalGetTool } from "./proposal-get.js";
 import { createProposalListTool } from "./proposal-list.js";
 import { createSessionStatusTool } from "./session-status.js";
 import { createTreasuryGetTool } from "./treasury-get.js";
+import { createWalletCreateTool } from "./wallet-create.js";
 import { whoamiTool } from "./whoami.js";
 
 export interface BuildCatalogueOptions {
@@ -36,6 +37,7 @@ export interface BuildCatalogueOptions {
   readonly db: ConduitDb;
   readonly signer: SigningService;
   readonly dashboardBaseUrl: string;
+  readonly controlPlaneBaseUrl: string;
   readonly toctou?: TocTouGuard;
 }
 
@@ -53,6 +55,10 @@ export function buildToolCatalogue(
       solana: options.solana,
     }),
     createTreasuryGetTool(options.solana),
+    createWalletCreateTool({
+      controlPlaneBaseUrl: options.controlPlaneBaseUrl,
+      dashboardBaseUrl: options.dashboardBaseUrl,
+    }),
     createPolicyPreviewTool(options.solana, toctou),
     createSpendRequestTool({
       db: options.db,
@@ -112,6 +118,7 @@ export {
   createSessionStatusTool,
   createSpendRequestTool,
   createTreasuryGetTool,
+  createWalletCreateTool,
   instructionDescribeTool,
   instructionListTool,
   whoamiTool,

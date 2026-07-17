@@ -12,7 +12,17 @@ import type { AuditLogger } from "./audit.js";
 import type { ConduitError } from "./errors.js";
 import type { IdempotencyStore } from "./idempotency.js";
 
-export type ToolScope = "read" | "propose" | "execute";
+export type ToolScope =
+  | "read"
+  | "propose"
+  | "execute"
+  | "wallet:read"
+  | "wallet:create"
+  | "wallet:transfer"
+  | "policy:preview"
+  | "proposal:create"
+  | "proposal:execute"
+  | "session:admin";
 
 export interface Session {
   /** Stable identifier for this session row. */
@@ -42,6 +52,7 @@ export interface Session {
  */
 export interface ToolContext {
   readonly session: Session;
+  readonly credential?: string;
   readonly audit: AuditLogger;
   readonly idempotency: IdempotencyStore;
   /** Abort signal propagated from the transport (client disconnect, timeout). */

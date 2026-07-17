@@ -38,6 +38,7 @@ export interface DispatchRequest {
   readonly toolName: string;
   readonly rawInput: unknown;
   readonly session: Session;
+  readonly credential?: string;
   readonly callerIdempotencyKey?: string;
   readonly signal?: AbortSignal;
   readonly requestId?: string;
@@ -187,6 +188,9 @@ export async function dispatchTool(
   try {
     const ctx = {
       session: request.session,
+      ...(request.credential !== undefined
+        ? { credential: request.credential }
+        : {}),
       audit: deps.audit,
       idempotency: deps.idempotency,
       signal: request.signal ?? new AbortController().signal,

@@ -10,6 +10,12 @@ export const AGENT_SCOPE_OPTIONS = [
     description: "Allows wallet registry and live balance reads.",
   },
   {
+    value: "wallet:create",
+    label: "Create wallets",
+    description:
+      "Allows pending dWallet records to be created for dashboard linking.",
+  },
+  {
     value: "policy:preview",
     label: "Preview policy",
     description: "Allows dry-run checks before a proposal is created.",

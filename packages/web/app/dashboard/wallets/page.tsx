@@ -87,7 +87,11 @@ function walletStatusTone(status: string) {
     return "success" as const;
   }
 
-  if (status === "metadata_registered" || status === "unknown") {
+  if (
+    status === "metadata_registered" ||
+    status === "agent_created_pending" ||
+    status === "unknown"
+  ) {
     return "warning" as const;
   }
 
@@ -95,12 +99,20 @@ function walletStatusTone(status: string) {
 }
 
 function walletStatusLabel(status: string) {
+  if (status === "agent_created_pending") {
+    return "link from dashboard";
+  }
+
   return status.replaceAll("_", " ");
 }
 
 function walletBindingLabel(wallet: WalletRegistryRow) {
   if (wallet.status === "onchain_registered") {
     return "on-chain";
+  }
+
+  if (wallet.status === "agent_created_pending") {
+    return "owner link required";
   }
 
   return wallet.treasury_pda ? "pending registration" : "treasury pending";

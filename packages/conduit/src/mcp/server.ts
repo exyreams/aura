@@ -84,6 +84,7 @@ function registerTool(
         toolName: tool.name,
         rawInput,
         session,
+        ...(options.token !== undefined ? { credential: options.token } : {}),
       });
 
       if (result.ok) {

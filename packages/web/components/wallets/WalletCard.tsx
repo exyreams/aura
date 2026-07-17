@@ -46,7 +46,11 @@ function statusTone(status: string) {
     return "success" as const;
   }
 
-  if (status === "metadata_registered" || status === "unknown") {
+  if (
+    status === "metadata_registered" ||
+    status === "agent_created_pending" ||
+    status === "unknown"
+  ) {
     return "warning" as const;
   }
 
@@ -54,6 +58,10 @@ function statusTone(status: string) {
 }
 
 function statusLabel(status: string) {
+  if (status === "agent_created_pending") {
+    return "link from dashboard";
+  }
+
   return status.replaceAll("_", " ");
 }
 
@@ -90,6 +98,8 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
   const sessionMaterial = metadataString(wallet.metadata, "session_material");
   const createdVia = metadataString(wallet.metadata, "source");
   const provider = metadataString(wallet.metadata, "provider");
+  const createdByAgent =
+    metadataString(wallet.metadata, "created_via") === "conduit_agent";
   const authorizedUser = metadataNestedString(
     wallet.metadata,
     "dwallet",
@@ -427,7 +437,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
               title={linkActionTitle}
             >
               <Link2 className="size-4" aria-hidden="true" />
-              Link on-chain
+              Link from dashboard
             </Button>
           ) : null}
           {supportsLiveBalance ? (
@@ -548,9 +558,11 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
         <div className="mt-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
           <Link2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>
-            {wallet.treasury_pda
-              ? "This wallet is fundable now. Register it on-chain with the owner wallet before agent execution can use it."
-              : "This wallet is fundable now, but its signer agent has no AURA treasury PDA yet. Link on-chain will create the treasury with your owner wallet, then register the dWallet."}
+            {createdByAgent
+              ? "This wallet was created by an agent runtime. Review the details, then link it from the dashboard with your owner wallet before agent execution can use it."
+              : wallet.treasury_pda
+                ? "This wallet is fundable now. Register it on-chain with the owner wallet before agent execution can use it."
+                : "This wallet is fundable now, but its signer agent has no AURA treasury PDA yet. Link on-chain will create the treasury with your owner wallet, then register the dWallet."}
           </span>
         </div>
       ) : null}
