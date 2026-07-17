@@ -196,6 +196,9 @@ create unique index if not exists wallet_assets_identity_idx
 create index if not exists agent_sessions_owner_idx
   on public.agent_sessions (owner_id, status, created_at desc);
 
+create unique index if not exists agent_sessions_owner_agent_id_key
+  on public.agent_sessions (owner_id, agent_id);
+
 create index if not exists device_codes_user_code_idx
   on public.device_codes (user_code, status, expires_at);
 
