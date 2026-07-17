@@ -282,6 +282,18 @@ function normalizeProviderResponse(
   };
 }
 
+async function rollbackDWalletCreation(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  walletId: string,
+) {
+  await admin
+    .from("agent_wallet_permissions")
+    .delete()
+    .eq("wallet_id", walletId);
+  await admin.from("dwallet_sessions").delete().eq("wallet_id", walletId);
+  await admin.from("wallet_registry").delete().eq("id", walletId);
+}
+
 async function provisionDWallet(input: {
   body: CreateDWalletBody;
   provider: DWalletProvider;
@@ -533,7 +545,7 @@ export async function POST(request: Request) {
       keyVersion = envelope.key_version;
     }
   } catch (cause) {
-    await admin.from("wallet_registry").delete().eq("id", wallet.id);
+    await rollbackDWalletCreation(admin, wallet.id);
     return jsonError(getErrorMessage(cause), 500);
   }
 
@@ -570,7 +582,7 @@ export async function POST(request: Request) {
     .single();
 
   if (sessionError) {
-    await admin.from("wallet_registry").delete().eq("id", wallet.id);
+    await rollbackDWalletCreation(admin, wallet.id);
     return jsonError(sessionError.message, 500);
   }
 
@@ -600,8 +612,7 @@ export async function POST(request: Request) {
     .single();
 
   if (permissionError) {
-    await admin.from("dwallet_sessions").delete().eq("id", dwalletSession.id);
-    await admin.from("wallet_registry").delete().eq("id", wallet.id);
+    await rollbackDWalletCreation(admin, wallet.id);
     return jsonError(permissionError.message, 500);
   }
 

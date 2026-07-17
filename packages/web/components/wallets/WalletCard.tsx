@@ -41,29 +41,13 @@ import {
   walletAddressExplorerUrl,
   walletTransactionExplorerUrl,
 } from "@/lib/wallets/dwallet-details";
+import {
+  type DWalletStatusTone,
+  getDWalletStatusModel,
+} from "@/lib/wallets/dwallet-status";
 
-function statusTone(status: string) {
-  if (status === "onchain_registered" || status === "ika_provisioned") {
-    return "success" as const;
-  }
-
-  if (
-    status === "metadata_registered" ||
-    status === "agent_created_pending" ||
-    status === "unknown"
-  ) {
-    return "warning" as const;
-  }
-
-  return "neutral" as const;
-}
-
-function statusLabel(status: string) {
-  if (status === "agent_created_pending") {
-    return "link from dashboard";
-  }
-
-  return status.replaceAll("_", " ");
+function badgeTone(tone: DWalletStatusTone) {
+  return tone;
 }
 
 async function deleteDWallet(walletId: string) {
@@ -99,8 +83,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
   const sessionMaterial = metadataString(wallet.metadata, "session_material");
   const createdVia = metadataString(wallet.metadata, "source");
   const provider = metadataString(wallet.metadata, "provider");
-  const createdByAgent =
-    metadataString(wallet.metadata, "created_via") === "conduit_agent";
+  const statusModel = getDWalletStatusModel(wallet);
   const authorizedUser = metadataNestedString(
     wallet.metadata,
     "dwallet",
@@ -110,15 +93,6 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
     ? (agents.find((agent) => agent.id === wallet.agent_session_id) ?? null)
     : null;
   const hasEncryptedSession = sessionMaterial === "encrypted_service_only";
-  const isAuraBound = wallet.status === "onchain_registered";
-  const hasRegistrationTx = Boolean(
-    metadataString(wallet.metadata, "registration_tx_signature") ||
-      metadataNestedString(wallet.metadata, "binding", "tx_signature"),
-  );
-  const canRemoveWallet =
-    wallet.wallet_kind === "dwallet" &&
-    wallet.status !== "onchain_registered" &&
-    !hasRegistrationTx;
   const linkActionTitle = wallet.treasury_pda
     ? "Register this dWallet on the AURA treasury."
     : "Create the signer agent treasury, then register this dWallet.";
@@ -291,8 +265,8 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
                 {formatAddress(wallet.chain_address)}
               </p>
             </div>
-            <StatusBadge tone={statusTone(wallet.status)}>
-              {statusLabel(wallet.status)}
+            <StatusBadge tone={badgeTone(statusModel.statusTone)}>
+              {statusModel.statusLabel}
             </StatusBadge>
             <StatusBadge tone={supportsLiveBalance ? "success" : "warning"}>
               {supportsLiveBalance ? "live balances" : "metadata only"}
@@ -300,12 +274,8 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
             {hasEncryptedSession ? (
               <StatusBadge tone="success">encrypted session</StatusBadge>
             ) : null}
-            <StatusBadge tone={isAuraBound ? "success" : "warning"}>
-              {isAuraBound
-                ? "on-chain registered"
-                : wallet.treasury_pda
-                  ? "on-chain pending"
-                  : "treasury pending"}
+            <StatusBadge tone={badgeTone(statusModel.bindingTone)}>
+              {statusModel.bindingLabel}
             </StatusBadge>
           </div>
 
@@ -429,7 +399,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
               Refresh
             </Button>
           ) : null}
-          {!isAuraBound ? (
+          {statusModel.isOwnerLinkRequired ? (
             <Button
               type="button"
               variant="secondary"
@@ -452,7 +422,7 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
               Explorer
             </a>
           ) : null}
-          {canRemoveWallet ? (
+          {statusModel.canRemove ? (
             <Button
               type="button"
               variant="danger"
@@ -557,16 +527,10 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
         ) : null}
       </div>
 
-      {!isAuraBound ? (
+      {statusModel.nextActionDescription ? (
         <div className="mt-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
           <Link2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>
-            {createdByAgent
-              ? "This wallet was created by an agent runtime. Review the details, then link it from the dashboard with your owner wallet before agent execution can use it."
-              : wallet.treasury_pda
-                ? "This wallet is fundable now. Register it on-chain with the owner wallet before agent execution can use it."
-                : "This wallet is fundable now, but its signer agent has no AURA treasury PDA yet. Link on-chain will create the treasury with your owner wallet, then register the dWallet."}
-          </span>
+          <span>{statusModel.nextActionDescription}</span>
         </div>
       ) : null}
     </article>
@@ -638,7 +602,7 @@ function RemoveDWalletModal({
               Status
             </span>
             <span className="truncate font-mono text-xs">
-              {statusLabel(wallet.status)}
+              {getDWalletStatusModel(wallet).statusLabel}
             </span>
           </div>
         </div>

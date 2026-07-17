@@ -151,6 +151,18 @@ function normalizeMetadata(value: unknown): Json {
   return JSON.parse(serialized) as Json;
 }
 
+async function rollbackDWalletCreation(
+  admin: Awaited<ReturnType<typeof authenticateConduitAgent>>["admin"],
+  walletId: string,
+) {
+  await admin
+    .from("agent_wallet_permissions")
+    .delete()
+    .eq("wallet_id", walletId);
+  await admin.from("dwallet_sessions").delete().eq("wallet_id", walletId);
+  await admin.from("wallet_registry").delete().eq("id", walletId);
+}
+
 export async function POST(request: Request) {
   let auth: Awaited<ReturnType<typeof authenticateConduitAgent>>;
   let body: AgentDWalletBody;
@@ -297,7 +309,7 @@ export async function POST(request: Request) {
     .single();
 
   if (sessionError) {
-    await auth.admin.from("wallet_registry").delete().eq("id", wallet.id);
+    await rollbackDWalletCreation(auth.admin, wallet.id);
     return jsonError(sessionError.message, 500);
   }
 
@@ -326,11 +338,7 @@ export async function POST(request: Request) {
     .single();
 
   if (permissionError) {
-    await auth.admin
-      .from("dwallet_sessions")
-      .delete()
-      .eq("id", dwalletSession.id);
-    await auth.admin.from("wallet_registry").delete().eq("id", wallet.id);
+    await rollbackDWalletCreation(auth.admin, wallet.id);
     return jsonError(permissionError.message, 500);
   }
 

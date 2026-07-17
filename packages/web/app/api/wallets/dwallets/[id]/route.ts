@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Json } from "@/lib/supabase/types";
+import { canRemoveDWalletRecord } from "@/lib/wallets/dwallet-status";
 
 export const runtime = "nodejs";
 
@@ -11,30 +11,6 @@ function jsonError(message: string, status: number) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not remove dWallet.";
-}
-
-function metadataString(metadata: Json, key: string) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const value = metadata[key];
-  return typeof value === "string" ? value : null;
-}
-
-function metadataNestedString(metadata: Json, parent: string, key: string) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const value = metadata[parent];
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const nested = value[key];
-  return typeof nested === "string" ? nested : null;
 }
 
 export async function DELETE(
@@ -73,12 +49,7 @@ export async function DELETE(
       return jsonError("Only dWallet records can be removed here.", 400);
     }
 
-    if (
-      wallet.status === "onchain_registered" ||
-      metadataString(wallet.metadata, "onchain_registration") === "recorded" ||
-      metadataString(wallet.metadata, "registration_tx_signature") ||
-      metadataNestedString(wallet.metadata, "binding", "tx_signature")
-    ) {
+    if (!canRemoveDWalletRecord(wallet)) {
       return jsonError(
         "On-chain registered dWallets cannot be removed from the dashboard.",
         409,

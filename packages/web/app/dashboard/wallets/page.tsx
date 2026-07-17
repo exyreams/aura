@@ -29,6 +29,7 @@ import type {
   WalletRegistryRow,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { getDWalletStatusModel } from "@/lib/wallets/dwallet-status";
 
 function payloadText(payload: Json, key: string) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -82,42 +83,6 @@ function PendingRequestRow({ request }: { request: SignRequestRow }) {
   );
 }
 
-function walletStatusTone(status: string) {
-  if (status === "onchain_registered" || status === "ika_provisioned") {
-    return "success" as const;
-  }
-
-  if (
-    status === "metadata_registered" ||
-    status === "agent_created_pending" ||
-    status === "unknown"
-  ) {
-    return "warning" as const;
-  }
-
-  return "neutral" as const;
-}
-
-function walletStatusLabel(status: string) {
-  if (status === "agent_created_pending") {
-    return "link from dashboard";
-  }
-
-  return status.replaceAll("_", " ");
-}
-
-function walletBindingLabel(wallet: WalletRegistryRow) {
-  if (wallet.status === "onchain_registered") {
-    return "on-chain";
-  }
-
-  if (wallet.status === "agent_created_pending") {
-    return "owner link required";
-  }
-
-  return wallet.treasury_pda ? "pending registration" : "treasury pending";
-}
-
 function WalletListItem({
   wallet,
   selected,
@@ -127,6 +92,8 @@ function WalletListItem({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const statusModel = getDWalletStatusModel(wallet);
+
   return (
     <button
       type="button"
@@ -147,8 +114,8 @@ function WalletListItem({
           <p className="truncate text-sm font-semibold text-foreground">
             {wallet.label || `${wallet.chain_name} dWallet`}
           </p>
-          <StatusBadge tone={walletStatusTone(wallet.status)}>
-            {walletStatusLabel(wallet.status)}
+          <StatusBadge tone={statusModel.statusTone}>
+            {statusModel.statusLabel}
           </StatusBadge>
         </div>
         <p className="mt-1 font-mono text-xs text-muted-foreground">
@@ -159,7 +126,7 @@ function WalletListItem({
             {wallet.chain_name}
           </span>
           <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">
-            {walletBindingLabel(wallet)}
+            {statusModel.bindingLabel}
           </span>
         </div>
       </div>
