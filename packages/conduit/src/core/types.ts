@@ -98,6 +98,11 @@ export interface Tool<
    * invariant without exposing owner-signed instructions on the agent surface.
    */
   readonly proxiesOwnerSignature?: boolean;
+  /**
+   * `true` when this tool mutates Conduit/dashboard control-plane state only
+   * and does not build or submit on-chain instructions.
+   */
+  readonly mutatesOffchainState?: boolean;
   /** The handler. Throws `ConduitError` for any user-visible failure. */
   handler(input: z.infer<TInputSchema>, ctx: ToolContext): Promise<TOutput>;
 }

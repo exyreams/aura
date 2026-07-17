@@ -30,6 +30,10 @@ import { createProposalListTool } from "./proposal-list.js";
 import { createSessionStatusTool } from "./session-status.js";
 import { createTreasuryGetTool } from "./treasury-get.js";
 import { createWalletCreateTool } from "./wallet-create.js";
+import {
+  createWalletTransferRequestTool,
+  createWalletTransferStatusTool,
+} from "./wallet-transfer-request.js";
 import { whoamiTool } from "./whoami.js";
 
 export interface BuildCatalogueOptions {
@@ -56,6 +60,14 @@ export function buildToolCatalogue(
     }),
     createTreasuryGetTool(options.solana),
     createWalletCreateTool({
+      controlPlaneBaseUrl: options.controlPlaneBaseUrl,
+      dashboardBaseUrl: options.dashboardBaseUrl,
+    }),
+    createWalletTransferRequestTool({
+      controlPlaneBaseUrl: options.controlPlaneBaseUrl,
+      dashboardBaseUrl: options.dashboardBaseUrl,
+    }),
+    createWalletTransferStatusTool({
       controlPlaneBaseUrl: options.controlPlaneBaseUrl,
       dashboardBaseUrl: options.dashboardBaseUrl,
     }),
@@ -119,6 +131,8 @@ export {
   createSpendRequestTool,
   createTreasuryGetTool,
   createWalletCreateTool,
+  createWalletTransferRequestTool,
+  createWalletTransferStatusTool,
   instructionDescribeTool,
   instructionListTool,
   whoamiTool,

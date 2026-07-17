@@ -81,10 +81,15 @@ function assertWriteLabelConsistency(tool: Tool): void {
       "declares signer-requiring instructions but isWrite=false",
     );
   }
-  if (!writesOnChain && tool.isWrite && tool.proxiesOwnerSignature !== true) {
+  if (
+    !writesOnChain &&
+    tool.isWrite &&
+    tool.proxiesOwnerSignature !== true &&
+    tool.mutatesOffchainState !== true
+  ) {
     throw new RegistryInvariantError(
       tool.name,
-      "marked isWrite=true but declares no signer-requiring instructions and does not set proxiesOwnerSignature",
+      "marked isWrite=true but declares no signer-requiring instructions and does not declare a dashboard/control-plane write path",
     );
   }
 }

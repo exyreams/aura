@@ -82,6 +82,7 @@ export function createWalletCreateTool(
     isWrite: true,
     triggersInbox: false,
     declaredInstructions: [],
+    mutatesOffchainState: true,
     async handler(
       parsed: WalletCreateInput,
       ctx: ToolContext,

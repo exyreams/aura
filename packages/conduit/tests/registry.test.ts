@@ -1,12 +1,17 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
+import { AURA_PROGRAM_ID } from "@aura-protocol/sdk-ts";
 import { z } from "zod";
 
+import { openConduitDb } from "../src/core/control-plane/db.js";
 import {
   createToolRegistry,
   RegistryInvariantError,
 } from "../src/core/registry.js";
 import { strictObject } from "../src/core/schemas.js";
+import { InMemorySigningService } from "../src/core/signing/in-memory.js";
+import { createSolanaContext } from "../src/core/solana.js";
+import { buildToolCatalogue } from "../src/core/tools/index.js";
 import type { Tool } from "../src/core/types.js";
 
 const emptyInput = strictObject({});
@@ -78,6 +83,16 @@ test("registry enforces write-label consistency: write without instructions thro
   );
 });
 
+test("registry accepts explicit dashboard/control-plane writes", () => {
+  const ok = buildTool({
+    name: "aura.wallet.create",
+    isWrite: true,
+    mutatesOffchainState: true,
+  });
+  const registry = createToolRegistry([ok]);
+  assert.equal(registry.has("aura.wallet.create"), true);
+});
+
 test("registry enforces write-label consistency: instructions without isWrite throws", () => {
   const inconsistent = buildTool({
     name: "aura.bad-read",
@@ -105,6 +120,27 @@ test("registry accepts a well-formed write tool with non-owner signer", () => {
   });
   const registry = createToolRegistry([ok]);
   assert.equal(registry.has("aura.proposal.create"), true);
+});
+
+test("registry accepts the full Conduit tool catalogue", () => {
+  const db = openConduitDb({ inMemory: true });
+  const solana = createSolanaContext({
+    rpcUrl: "http://127.0.0.1:8899",
+    programId: AURA_PROGRAM_ID,
+  });
+  const registry = createToolRegistry(
+    buildToolCatalogue({
+      solana,
+      db,
+      signer: new InMemorySigningService(),
+      dashboardBaseUrl: "http://localhost:3000",
+      controlPlaneBaseUrl: "http://localhost:3000/api/conduit",
+    }),
+  );
+
+  assert.equal(registry.has("aura.wallet.transfer.request"), true);
+  assert.equal(registry.has("aura.wallet.transfer.status"), true);
+  db.close();
 });
 
 // Make sure z import isn't accidentally tree-shaken in CI.
