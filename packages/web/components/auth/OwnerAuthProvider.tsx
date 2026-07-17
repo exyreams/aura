@@ -19,6 +19,8 @@ interface AuthResult {
   message: string;
 }
 
+type SignOutScope = "global" | "local" | "others";
+
 interface OwnerAuthContextValue {
   supabase: SupabaseClient<Database>;
   session: Session | null;
@@ -43,10 +45,11 @@ interface OwnerAuthContextValue {
     nextPassword: string,
   ) => Promise<AuthResult>;
   requestEmailChange: (email: string) => Promise<AuthResult>;
+  updateProfile: (input: { displayName: string }) => Promise<AuthResult>;
   linkConnectedWallet: () => Promise<void>;
   setPrimaryWallet: (walletId: string) => Promise<void>;
   unlinkWallet: (walletId: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (scope?: SignOutScope) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -371,7 +374,8 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
         }
 
         return {
-          message: "Email updated.",
+          message:
+            "Email change requested. Check the new address if confirmation is required.",
         };
       } catch (cause) {
         const message = getErrorMessage(cause);
@@ -384,17 +388,46 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
+  const updateProfile = useCallback(
+    async ({ displayName }: { displayName: string }) => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const response = await fetch("/api/auth/profile", {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ displayName }),
+        });
+        const payload = await readJson<{ profile: Profile }>(response);
+        setProfile(payload.profile);
+        return { message: "Profile saved." };
+      } catch (cause) {
+        const message = getErrorMessage(cause);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [],
+  );
+
   const linkConnectedWallet = useCallback(async () => {
     setError(null);
 
     if (!wallet.publicKey) {
-      setError("Connect a Solana wallet before linking it.");
-      return;
+      const message = "Connect a Solana wallet before linking it.";
+      setError(message);
+      throw new Error(message);
     }
 
     if (!wallet.signMessage) {
-      setError("The connected wallet does not support message signing.");
-      return;
+      const message = "The connected wallet does not support message signing.";
+      setError(message);
+      throw new Error(message);
     }
 
     setIsLinkingWallet(true);
@@ -428,7 +461,9 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
       await readJson<{ wallet: AccountWallet }>(linkResponse);
       await refreshProfile();
     } catch (cause) {
-      setError(getErrorMessage(cause));
+      const message = getErrorMessage(cause);
+      setError(message);
+      throw new Error(message);
     } finally {
       setIsLinkingWallet(false);
     }
@@ -464,17 +499,24 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
     [refreshProfile],
   );
 
-  const signOut = useCallback(async () => {
-    setError(null);
-    const { error: signOutError } = await supabase.auth.signOut();
-    if (signOutError) {
-      setError(signOutError.message);
-    }
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    setAccountWallets([]);
-  }, [supabase]);
+  const signOut = useCallback(
+    async (scope: SignOutScope = "global") => {
+      setError(null);
+      const { error: signOutError } = await supabase.auth.signOut({ scope });
+      if (signOutError) {
+        setError(signOutError.message);
+        throw signOutError;
+      }
+
+      if (scope !== "others") {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setAccountWallets([]);
+      }
+    },
+    [supabase],
+  );
 
   const primaryWallet =
     accountWallets.find(
@@ -505,6 +547,7 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
       updatePassword,
       changePassword,
       requestEmailChange,
+      updateProfile,
       linkConnectedWallet,
       setPrimaryWallet,
       unlinkWallet,
@@ -534,6 +577,7 @@ export function OwnerAuthProvider({ children }: { children: ReactNode }) {
       supabase,
       unlinkWallet,
       updatePassword,
+      updateProfile,
       user,
     ],
   );
