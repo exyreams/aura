@@ -10,7 +10,7 @@ export default async function DashboardConduitDeviceRedirect({
 
   redirect(
     code
-      ? `/conduit/device?code=${encodeURIComponent(code)}`
-      : "/conduit/device",
+      ? `/conduit/authorize?code=${encodeURIComponent(code)}`
+      : "/conduit/authorize",
   );
 }

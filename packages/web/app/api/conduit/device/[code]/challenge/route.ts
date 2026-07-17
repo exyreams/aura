@@ -6,6 +6,7 @@ import {
   buildConduitDeviceApprovalMessage,
   CONDUIT_APPROVAL_CHALLENGE_TTL_MS,
   CONDUIT_DEVICE_APPROVAL_VERSION,
+  getConduitApprovalMetadataString,
   normalizeConduitApprovalAutoApprove,
   normalizeConduitApprovalExpiry,
   normalizeConduitApprovalTreasury,
@@ -100,15 +101,21 @@ export async function POST(
   }
 
   if (!device) {
-    return jsonError("Unknown or expired device code.", 404);
+    return jsonError("Unknown or expired Conduit authorization code.", 404);
   }
 
   if (device.owner_id && device.owner_id !== user.id) {
-    return jsonError("This device code belongs to another account.", 403);
+    return jsonError(
+      "This Conduit authorization code belongs to another account.",
+      403,
+    );
   }
 
   if (device.status !== "pending") {
-    return jsonError(`This device code is already ${device.status}.`, 409);
+    return jsonError(
+      `This Conduit authorization code is already ${device.status}.`,
+      409,
+    );
   }
 
   if (new Date(device.expires_at).getTime() <= Date.now()) {
@@ -117,7 +124,7 @@ export async function POST(
       .update({ status: "expired" })
       .eq("id", device.id)
       .eq("status", "pending");
-    return jsonError("This device code has expired.", 410);
+    return jsonError("This Conduit authorization code has expired.", 410);
   }
 
   let primaryWallet: Awaited<ReturnType<typeof getPrimaryAccountWallet>>;
@@ -163,6 +170,9 @@ export async function POST(
   }
 
   const url = new URL(request.url);
+  const sessionPublicKey =
+    getConduitApprovalMetadataString(device.metadata, "session_public_key") ??
+    getConduitApprovalMetadataString(device.metadata, "authority_public_key");
   const issuedAt = new Date();
   const expiresAt = new Date(
     issuedAt.getTime() + CONDUIT_APPROVAL_CHALLENGE_TTL_MS,
@@ -179,6 +189,7 @@ export async function POST(
     clientName: device.client_name,
     agentId: device.requested_agent_id,
     agentLabel: device.requested_agent_label,
+    sessionPublicKey,
     scopes,
     treasuryPda,
     expiresInDays,
@@ -206,6 +217,7 @@ export async function POST(
         device_code_id: device.id,
         device_user_code: device.user_code,
         scopes,
+        session_public_key: sessionPublicKey,
         treasury_pda: treasuryPda,
         expires_in_days: expiresInDays,
         session_expires_at: sessionExpiresAt,

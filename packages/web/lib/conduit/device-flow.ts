@@ -39,7 +39,7 @@ export function formatUserCode(value: string) {
   const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
   if (compact.length !== USER_CODE_LENGTH) {
-    throw new Error("Enter the 8-character device code from your CLI.");
+    throw new Error("Enter the 8-character Conduit authorization code.");
   }
 
   return `${compact.slice(0, 4)}-${compact.slice(4)}`;

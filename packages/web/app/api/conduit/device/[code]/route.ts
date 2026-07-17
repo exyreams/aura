@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getConduitApprovalMetadataString } from "@/lib/conduit/device-approval";
 import { formatUserCode, secondsUntil } from "@/lib/conduit/device-flow";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -11,7 +12,9 @@ function jsonError(message: string, status: number) {
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Could not load device code.";
+  return error instanceof Error
+    ? error.message
+    : "Could not load Conduit authorization code.";
 }
 
 function serializeDeviceCode(device: DeviceCodeRow) {
@@ -22,6 +25,9 @@ function serializeDeviceCode(device: DeviceCodeRow) {
     clientName: device.client_name,
     requestedAgentId: device.requested_agent_id,
     requestedAgentLabel: device.requested_agent_label,
+    requestedSessionPublicKey:
+      getConduitApprovalMetadataString(device.metadata, "session_public_key") ??
+      getConduitApprovalMetadataString(device.metadata, "authority_public_key"),
     requestedScopes: device.requested_scopes,
     requestedTreasuryPda: device.requested_treasury_pda,
     requestedCaps: device.requested_caps,
@@ -76,11 +82,14 @@ export async function GET(
   }
 
   if (!device) {
-    return jsonError("Unknown or expired device code.", 404);
+    return jsonError("Unknown or expired Conduit authorization code.", 404);
   }
 
   if (device.owner_id && device.owner_id !== user.id) {
-    return jsonError("This device code belongs to another account.", 403);
+    return jsonError(
+      "This Conduit authorization code belongs to another account.",
+      403,
+    );
   }
 
   if (

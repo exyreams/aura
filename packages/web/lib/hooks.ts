@@ -8,6 +8,7 @@ import {
   getAgentAuthorityPublicKey,
   getAgentOnchainStatus,
 } from "@/lib/agents/metadata";
+import { isAgentSessionActive } from "@/lib/agents/session-model";
 import { useAgentSessions } from "@/lib/hooks/use-agent-sessions";
 import { AppSettingsContext } from "@/lib/settings";
 
@@ -22,6 +23,7 @@ export interface AgentKeypair {
   status: "active" | "expired" | "revoked" | "suspended";
   scopes: string[];
   expiresAt: string | null;
+  lastUsedAt: string | null;
 }
 
 export function useAppSettings() {
@@ -74,13 +76,28 @@ export function useAgents() {
         status: session.status,
         scopes: session.scopes,
         expiresAt: session.expires_at,
+        lastUsedAt: session.last_used_at,
       })),
     [sessionsQuery.data],
   );
 
+  const activeAgents = useMemo(
+    () =>
+      (sessionsQuery.data ?? [])
+        .filter(isAgentSessionActive)
+        .filter((session) =>
+          Boolean(getAgentAuthorityPublicKey(session.metadata)),
+        )
+        .map((session) => session.agent_id),
+    [sessionsQuery.data],
+  );
   const selectedAgent =
-    agents.find((agent) => agent.agentId === settings.selectedAgentId) ??
-    agents[0] ??
+    agents.find(
+      (agent) =>
+        agent.agentId === settings.selectedAgentId &&
+        activeAgents.includes(agent.agentId),
+    ) ??
+    agents.find((agent) => activeAgents.includes(agent.agentId)) ??
     null;
   const selectedAgentId = selectedAgent?.agentId ?? settings.selectedAgentId;
   const deleteAgentMutation = useMutation({

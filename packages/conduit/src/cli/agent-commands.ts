@@ -51,6 +51,10 @@ export function registerAgentCommands(
       "--agent-id <label>",
       "human label for the agent (default: --account)",
     )
+    .option(
+      "--signer-public-key <pubkey>",
+      "optional signer authority public key to bind into the owner-approved session",
+    )
     .option("--no-browser", "do not auto-open the browser, just print the URL")
     .action(
       async (opts: {
@@ -58,6 +62,7 @@ export function registerAgentCommands(
         treasury?: string;
         scopes: string;
         agentId?: string;
+        signerPublicKey?: string;
         browser?: boolean;
       }) => {
         const store = createKeychainStore();
@@ -69,6 +74,9 @@ export function registerAgentCommands(
         const code = await client.requestCode({
           requested_scopes: opts.scopes.split(",").map((s) => s.trim()),
           requested_agent_id: opts.agentId ?? opts.account,
+          ...(opts.signerPublicKey !== undefined
+            ? { session_public_key: opts.signerPublicKey }
+            : {}),
           ...(opts.treasury !== undefined
             ? { requested_treasury: opts.treasury }
             : {}),

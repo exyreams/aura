@@ -43,6 +43,7 @@ export class DeviceFlowClient {
   async requestCode(params: {
     requested_scopes: ReadonlyArray<string>;
     requested_agent_id: string;
+    session_public_key?: string;
     requested_treasury?: string;
     requested_caps?: Record<string, unknown>;
   }): Promise<DeviceCodeResponse> {

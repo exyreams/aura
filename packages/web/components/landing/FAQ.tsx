@@ -27,7 +27,7 @@ export function FAQ() {
       id: "4",
       title: "Where does Supabase fit?",
       content:
-        "Supabase stores control-plane metadata: owner profiles, wallet registry rows, agent sessions, device-code records, sign requests, idempotency records, and activity events. It does not become the source of truth for funds. Balances, proposals, policy accounts, and settlement state are still verified against chain state.",
+        "Supabase stores control-plane metadata: owner profiles, wallet registry rows, agent sessions, Conduit authorization records, sign requests, idempotency records, and activity events. It does not become the source of truth for funds. Balances, proposals, policy accounts, and settlement state are still verified against chain state.",
     },
     {
       id: "5",

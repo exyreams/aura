@@ -44,7 +44,7 @@ function jsonError(message: string, status: number) {
 function getErrorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
-    : "Could not approve device code.";
+    : "Could not approve Conduit authorization.";
 }
 
 function byteLength(value: string) {
@@ -192,15 +192,21 @@ export async function POST(
   }
 
   if (!device) {
-    return jsonError("Unknown or expired device code.", 404);
+    return jsonError("Unknown or expired Conduit authorization code.", 404);
   }
 
   if (device.owner_id && device.owner_id !== user.id) {
-    return jsonError("This device code belongs to another account.", 403);
+    return jsonError(
+      "This Conduit authorization code belongs to another account.",
+      403,
+    );
   }
 
   if (device.status !== "pending") {
-    return jsonError(`This device code is already ${device.status}.`, 409);
+    return jsonError(
+      `This Conduit authorization code is already ${device.status}.`,
+      409,
+    );
   }
 
   if (new Date(device.expires_at) <= new Date()) {
@@ -209,7 +215,7 @@ export async function POST(
       .update({ status: "expired" })
       .eq("id", device.id)
       .eq("status", "pending");
-    return jsonError("This device code has expired.", 410);
+    return jsonError("This Conduit authorization code has expired.", 410);
   }
 
   let primaryWallet: Awaited<ReturnType<typeof getPrimaryAccountWallet>>;
@@ -418,7 +424,7 @@ export async function POST(
 
   if (!approvedDevice) {
     await cleanupSession(admin, session.id);
-    return jsonError("This device code was already handled.", 409);
+    return jsonError("This Conduit authorization was already handled.", 409);
   }
 
   await admin

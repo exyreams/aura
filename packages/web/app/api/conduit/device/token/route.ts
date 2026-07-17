@@ -95,14 +95,17 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         status: "authorized",
-        error: "Token already retrieved; restart the device flow.",
+        error: "Token already retrieved; restart Conduit authorization.",
       },
       { status: 410 },
     );
   }
 
   if (!device.approved_session_id) {
-    return jsonError("Approved device code is missing a session.", 500);
+    return jsonError(
+      "Approved Conduit authorization is missing a session.",
+      500,
+    );
   }
 
   const { data: handoff, error: handoffError } = await admin
@@ -119,7 +122,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         status: "authorized",
-        error: "Token handoff expired; restart the device flow.",
+        error: "Token handoff expired; restart Conduit authorization.",
       },
       { status: 410 },
     );
@@ -143,7 +146,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         status: "authorized",
-        error: "Token handoff expired; restart the device flow.",
+        error: "Token handoff expired; restart Conduit authorization.",
       },
       { status: 410 },
     );

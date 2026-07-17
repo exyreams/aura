@@ -213,7 +213,8 @@ export function RegisterDWalletModal({
   const settings = useAppSettings();
   const { agents, selectedAgent } = useAgents();
   const activeAgents = useMemo(
-    () => agents.filter((agent) => agent.status === "active"),
+    () =>
+      agents.filter((agent) => agent.status === "active" && agent.publicKey),
     [agents],
   );
   const [form, setForm] = useState(emptyForm);

@@ -30,6 +30,14 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Could not load agents.";
+}
+
+function getCreateErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Could not create agent.";
+}
+
 function byteLength(value: string) {
   return new TextEncoder().encode(value).length;
 }
@@ -124,8 +132,59 @@ function normalizeExpiresAt(value: unknown) {
   return date.toISOString();
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Could not create agent.";
+export async function GET() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return jsonError("Sign in before viewing agent sessions.", 401);
+  }
+
+  let admin: ReturnType<typeof createSupabaseAdminClient>;
+
+  try {
+    admin = createSupabaseAdminClient();
+  } catch (cause) {
+    return jsonError(getErrorMessage(cause), 500);
+  }
+
+  const { data: sessions, error: sessionsError } = await admin
+    .from("agent_sessions")
+    .select("*")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (sessionsError) {
+    return jsonError(sessionsError.message, 500);
+  }
+
+  const sessionIds = (sessions ?? []).map((session) => session.id);
+  const lastUsedBySession = new Map<string, string | null>();
+
+  if (sessionIds.length > 0) {
+    const { data: secretRows, error: secretsError } = await admin
+      .from("agent_session_secrets")
+      .select("session_id,last_used_at")
+      .in("session_id", sessionIds);
+
+    if (secretsError) {
+      return jsonError(secretsError.message, 500);
+    }
+
+    for (const row of secretRows ?? []) {
+      lastUsedBySession.set(row.session_id, row.last_used_at);
+    }
+  }
+
+  return NextResponse.json({
+    sessions: (sessions ?? []).map((session) => ({
+      ...session,
+      last_used_at: lastUsedBySession.get(session.id) ?? null,
+    })),
+  });
 }
 
 export async function POST(request: Request) {
@@ -163,11 +222,15 @@ export async function POST(request: Request) {
     treasuryPda = normalizeTreasuryPda(body.treasuryPda);
     expiresAt = normalizeExpiresAt(body.expiresInDays);
   } catch (cause) {
-    return jsonError(getErrorMessage(cause), 400);
+    return jsonError(getCreateErrorMessage(cause), 400);
   }
 
   if (scopes.length === 0) {
     return jsonError("Select at least one agent scope.", 400);
+  }
+
+  if (!authorityPublicKey) {
+    return jsonError("Authority public key is required.", 400);
   }
 
   let admin: ReturnType<typeof createSupabaseAdminClient>;
@@ -175,14 +238,14 @@ export async function POST(request: Request) {
   try {
     admin = createSupabaseAdminClient();
   } catch (cause) {
-    return jsonError(getErrorMessage(cause), 500);
+    return jsonError(getCreateErrorMessage(cause), 500);
   }
 
   let primaryWallet: Awaited<ReturnType<typeof getPrimaryAccountWallet>>;
   try {
     primaryWallet = await getPrimaryAccountWallet(admin, user.id);
   } catch (cause) {
-    return jsonError(getErrorMessage(cause), 500);
+    return jsonError(getCreateErrorMessage(cause), 500);
   }
 
   if (!primaryWallet) {
@@ -221,14 +284,12 @@ export async function POST(request: Request) {
       scopes: scopes.length > 0 ? scopes : DEFAULT_AGENT_SCOPES,
       expires_at: expiresAt,
       metadata: {
-        created_via: "web",
-        identity_status: authorityPublicKey
-          ? "authority_recorded"
-          : "session_only",
+        authority_public_key: authorityPublicKey,
+        created_via: "web_signer_agent",
+        identity_status: "authority_recorded",
         onchain_status: treasuryPda ? "treasury_linked" : "not_bound",
         owner_wallet: primaryWallet.wallet_address,
         publicKey: authorityPublicKey,
-        authority_public_key: authorityPublicKey,
         token_prefix: "aurak",
       },
     })
@@ -262,18 +323,21 @@ export async function POST(request: Request) {
     treasury_pda: treasuryPda,
     event_kind: "agent_session.created",
     severity: "success",
-    title: "Agent session created",
-    summary: `${displayName} can now authenticate with a Conduit-compatible bearer token.`,
+    title: "Signer agent created",
+    summary: `${displayName} can now authenticate with a bearer token and act as a recorded signer authority.`,
     metadata: {
       agent_id: agentId,
       authority_public_key: authorityPublicKey,
-      created_via: "web",
+      created_via: "web_signer_agent",
       scopes,
     },
   });
 
   return NextResponse.json({
-    session,
+    session: {
+      ...session,
+      last_used_at: null,
+    },
     agentToken,
   });
 }

@@ -58,15 +58,16 @@ function formatDateTime(value: string) {
 
 const actionLinks = [
   {
-    href: "/conduit/device",
-    label: "Approve device",
-    description: "Enter the code printed by a Conduit CLI or agent runtime.",
+    href: "/conduit/authorize",
+    label: "Authorize agent",
+    description: "Approve a one-time Conduit request from an AI runtime.",
     icon: PlugZap,
   },
   {
     href: "/dashboard/conduit/sessions",
-    label: "Manage sessions",
-    description: "Review scopes, treasury bindings, expiry, and revocation.",
+    label: "Manage access",
+    description:
+      "Review approved agents, scopes, treasury bindings, and revocation.",
     icon: KeyRound,
   },
   {
@@ -84,7 +85,7 @@ export default function ConduitDashboardPage() {
   const sessions = sessionsQuery.data ?? [];
   const events = activityQuery.data ?? [];
   const activeSessions = sessions.filter(isActiveSession);
-  const deviceFlowSessions = sessions.filter(
+  const conduitAuthSessions = sessions.filter(
     (session) =>
       metadataString(session.metadata, "created_via") === "conduit_device_flow",
   );
@@ -100,11 +101,11 @@ export default function ConduitDashboardPage() {
           icon={MonitorCheck}
         />
         <DashboardStatCard
-          label="Device Logins"
+          label="Conduit Auth"
           value={
-            sessionsQuery.isLoading ? "-" : String(deviceFlowSessions.length)
+            sessionsQuery.isLoading ? "-" : String(conduitAuthSessions.length)
           }
-          detail="Sessions approved through the browser device-code flow."
+          detail="Agent sessions approved through Conduit authorization."
           icon={PlugZap}
         />
         <DashboardStatCard
@@ -113,7 +114,7 @@ export default function ConduitDashboardPage() {
           detail={
             auth.primaryWallet
               ? formatAddress(auth.primaryWallet.wallet_address)
-              : "Required before device approvals can mint sessions."
+              : "Required before Conduit authorization can mint sessions."
           }
           icon={ShieldCheck}
         />
@@ -130,8 +131,8 @@ export default function ConduitDashboardPage() {
       <DashboardPanel>
         <DashboardPanelHeader
           eyebrow="Conduit"
-          title="AI client access control"
-          description="Approve device-code logins, inspect scoped runtime sessions, and revoke access without exposing the owner wallet key to agent runtimes."
+          title="Agent access control"
+          description="Conduit is the agent-facing gateway for scoped access, sign requests, and future policy-governed actions. Approve runtime requests without exposing the owner wallet key."
           action={<StatusBadge tone="success">Supabase Auth</StatusBadge>}
         />
 
@@ -193,8 +194,8 @@ export default function ConduitDashboardPage() {
               No Conduit events yet
             </h3>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Approve a device code or revoke a session and the owner-visible
-              trail will appear here.
+              Authorize a Conduit request or revoke a session and the
+              owner-visible trail will appear here.
             </p>
           </div>
         ) : (

@@ -33,14 +33,14 @@ const controlLinks = [
   {
     href: "/dashboard/agents",
     label: "Agents",
-    description: "Supabase-backed sessions and scopes.",
+    description: "Signer agents, sessions, scopes, and revocation.",
     icon: Bot,
     status: "Next",
   },
   {
     href: "/dashboard/conduit",
     label: "Conduit",
-    description: "Device login and AI client runtime access.",
+    description: "Agent gateway for authorization and owner review.",
     icon: PlugZap,
     status: "Live",
   },

@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/global/Button";
 import { Checkbox } from "@/components/global/Checkbox";
 import { FieldGroup } from "@/components/global/FieldGroup";
@@ -16,11 +16,20 @@ import {
   DEFAULT_AGENT_SCOPES,
   isAgentScope,
 } from "@/lib/agents/scopes";
-import type { AgentKeypair } from "@/lib/hooks";
+import {
+  type AgentSessionWithUsage,
+  isAgentSessionEditable,
+} from "@/lib/agents/session-model";
 import type { AgentSessionRow } from "@/lib/supabase/types";
 
 interface UpdateAgentScopesResponse {
   session: AgentSessionRow;
+}
+
+interface ScopeDraft {
+  agentId: string | null;
+  scopes: AgentScope[];
+  validationError: string | null;
 }
 
 function normalizeEditableScopes(scopes: string[]): AgentScope[] {
@@ -59,31 +68,29 @@ export function EditAgentScopesModal({
   agent,
   onClose,
 }: {
-  agent: AgentKeypair | null;
+  agent: AgentSessionWithUsage | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [selectedScopes, setSelectedScopes] =
-    useState<AgentScope[]>(DEFAULT_AGENT_SCOPES);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ScopeDraft>({
+    agentId: null,
+    scopes: DEFAULT_AGENT_SCOPES,
+    validationError: null,
+  });
+  const agentId = agent?.id ?? null;
   const originalScopes = useMemo(
     () =>
       agent ? normalizeEditableScopes(agent.scopes) : DEFAULT_AGENT_SCOPES,
     [agent],
   );
+  const selectedScopes =
+    draft.agentId === agentId ? draft.scopes : originalScopes;
+  const validationError =
+    draft.agentId === agentId ? draft.validationError : null;
   const hasChanges =
     selectedScopes.length !== originalScopes.length ||
     selectedScopes.some((scope) => !originalScopes.includes(scope));
-
-  useEffect(() => {
-    if (!agent) {
-      return;
-    }
-
-    setSelectedScopes(normalizeEditableScopes(agent.scopes));
-    setValidationError(null);
-  }, [agent]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -103,34 +110,57 @@ export function EditAgentScopesModal({
         queryClient.invalidateQueries({ queryKey: ["activity-events"] }),
       ]);
       toast.success("Agent scopes updated", {
-        description: `${agent?.label ?? "Signer agent"} capabilities are now current.`,
+        description: `${agent?.agent_label ?? agent?.agent_id ?? "Agent"} capabilities are now current.`,
+      });
+      setDraft({
+        agentId: null,
+        scopes: DEFAULT_AGENT_SCOPES,
+        validationError: null,
       });
       onClose();
     },
     onError: (error) => {
-      setValidationError(getErrorMessage(error));
+      setDraft({
+        agentId,
+        scopes: selectedScopes,
+        validationError: getErrorMessage(error),
+      });
     },
   });
 
   const toggleScope = (scope: AgentScope, checked: boolean) => {
-    setValidationError(null);
-
     if (scope === "read") {
       return;
     }
 
-    setSelectedScopes((current) => {
+    setDraft((currentDraft) => {
+      const current =
+        currentDraft.agentId === agentId ? currentDraft.scopes : originalScopes;
+      let scopes: AgentScope[];
+
       if (checked) {
-        return Array.from(new Set(["read", ...current, scope])) as AgentScope[];
+        scopes = Array.from(
+          new Set(["read", ...current, scope]),
+        ) as AgentScope[];
+      } else {
+        scopes = current.filter((candidate) => candidate !== scope);
       }
 
-      return current.filter((candidate) => candidate !== scope);
+      return {
+        agentId,
+        scopes,
+        validationError: null,
+      };
     });
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setValidationError(null);
+    setDraft({
+      agentId,
+      scopes: selectedScopes,
+      validationError: null,
+    });
 
     try {
       await mutation.mutateAsync();
@@ -172,11 +202,11 @@ export function EditAgentScopesModal({
         {agent ? (
           <div className="rounded-sm border border-border bg-background p-3">
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Signer agent
+              Agent session
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs text-foreground">
-                {agent.label}
+                {agent.agent_label ?? agent.agent_id}
               </span>
               <StatusBadge
                 tone={agent.status === "active" ? "success" : "warning"}
@@ -264,7 +294,7 @@ export function EditAgentScopesModal({
           <Button
             type="submit"
             loading={mutation.isPending}
-            disabled={!hasChanges || agent?.status === "revoked"}
+            disabled={!hasChanges || !agent || !isAgentSessionEditable(agent)}
           >
             Save scopes
           </Button>

@@ -84,7 +84,7 @@ const primaryNav: NavItem[] = [
   {
     href: "/dashboard/conduit",
     label: "Conduit",
-    description: "Device login and runtime sessions",
+    description: "Agent gateway and approvals",
     icon: Shield,
     animated: true,
   },
@@ -154,7 +154,7 @@ const pageMeta = [
   {
     href: "/dashboard/conduit",
     title: "Conduit",
-    description: "AI client device login and runtime access",
+    description: "Agent gateway, authorization, and runtime access",
   },
   {
     href: "/dashboard/activity",

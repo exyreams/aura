@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { type AgentScope, isAgentScope } from "@/lib/agents/scopes";
+import { isAgentSessionEditable } from "@/lib/agents/session-model";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
@@ -104,8 +105,8 @@ export async function PATCH(
     return jsonError("Agent session was not found.", 404);
   }
 
-  if (session.status === "revoked") {
-    return jsonError("Revoked agents cannot be edited.", 409);
+  if (!isAgentSessionEditable(session)) {
+    return jsonError("Only active agent sessions can be edited.", 409);
   }
 
   const updatedAt = new Date().toISOString();

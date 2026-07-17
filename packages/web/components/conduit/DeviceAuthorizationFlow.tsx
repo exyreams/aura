@@ -39,6 +39,7 @@ interface DeviceCodeDetails {
   clientName: string | null;
   requestedAgentId: string | null;
   requestedAgentLabel: string | null;
+  requestedSessionPublicKey: string | null;
   requestedScopes: string[];
   requestedTreasuryPda: string | null;
   requestedCaps: unknown;
@@ -192,7 +193,7 @@ function CodeGlyph({ code }: { code: string }) {
 
   return (
     <div className="grid grid-cols-2 gap-1.5">
-      <span className="sr-only">Device code {code}</span>
+      <span className="sr-only">Conduit authorization code {code}</span>
       {characters.map(({ character, id }) => (
         <span
           key={id}
@@ -276,14 +277,14 @@ function InitialCodeForm({
           <KeyRound className="size-5 text-muted-foreground" aria-hidden />
         </div>
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          Enter device code
+          Enter Conduit code
         </h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Paste the code printed by the Conduit CLI to continue authorization.
+          Paste the one-time code from the Conduit agent request to continue.
         </p>
         <Input
           id="conduit-standalone-device-code"
-          label="Device code"
+          label="Authorization code"
           value={code}
           placeholder="ABCD-EFGH"
           autoComplete="one-time-code"
@@ -339,13 +340,13 @@ function TerminalPreview({ device }: { device: DeviceCodeDetails }) {
         <span className="size-2.5 rounded-full bg-warning/70" />
         <span className="size-2.5 rounded-full bg-success/70" />
         <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          conduit agent login
+          Conduit authorization
         </span>
       </div>
       <div className="pt-2 font-mono text-xs">
         <TerminalLine
           label="client"
-          value={device.clientName ?? "Conduit CLI"}
+          value={device.clientName ?? "Conduit runtime"}
         />
         <TerminalLine
           label="agent"
@@ -358,6 +359,14 @@ function TerminalPreview({ device }: { device: DeviceCodeDetails }) {
           value={`${device.requestedScopes.length} permission${
             device.requestedScopes.length === 1 ? "" : "s"
           }`}
+        />
+        <TerminalLine
+          label="signer"
+          value={
+            device.requestedSessionPublicKey
+              ? formatAddress(device.requestedSessionPublicKey)
+              : "session only"
+          }
         />
       </div>
     </div>
@@ -396,12 +405,14 @@ function CompletedState({
           {device.status}
         </StatusBadge>
         <h1 className="mt-4 text-xl font-semibold tracking-tight">
-          {approvedSession ? "Device authorized" : `Device ${device.status}`}
+          {approvedSession
+            ? "Conduit authorized"
+            : `Authorization ${device.status}`}
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           {success
-            ? "The CLI can retrieve its one-time token handoff. You can close this window."
-            : "This code can no longer be used. Start a new Conduit login from the CLI."}
+            ? "The requesting agent can retrieve its one-time token handoff. You can close this window."
+            : "This code can no longer be used. Start a new Conduit authorization request."}
         </p>
         {approvedSession ? (
           <div className="mt-5 grid gap-2 rounded-md border border-border bg-background p-3 text-left">
@@ -517,8 +528,8 @@ function ApprovalPrompt({
     },
     onSuccess: async (payload) => {
       setApprovedSession(payload.session);
-      toast.success("Device authorized", {
-        description: "The CLI can retrieve its token on the next poll.",
+      toast.success("Conduit authorized", {
+        description: "The requesting agent can retrieve its token.",
       });
       await Promise.all([
         queryClient.invalidateQueries({
@@ -529,7 +540,7 @@ function ApprovalPrompt({
       ]);
     },
     onError: (cause) => {
-      toast.danger("Could not authorize device", {
+      toast.danger("Could not authorize Conduit request", {
         description:
           cause instanceof Error ? cause.message : "Try again in a moment.",
       });
@@ -545,7 +556,7 @@ function ApprovalPrompt({
         }),
       ),
     onSuccess: async () => {
-      toast.success("Device denied");
+      toast.success("Conduit request denied");
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["conduit-device-code", code],
@@ -554,7 +565,7 @@ function ApprovalPrompt({
       ]);
     },
     onError: (cause) => {
-      toast.danger("Could not deny device", {
+      toast.danger("Could not deny Conduit request", {
         description:
           cause instanceof Error ? cause.message : "Try again in a moment.",
       });
@@ -586,8 +597,8 @@ function ApprovalPrompt({
             Authorize {displayName}
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            A local Conduit process is requesting a scoped AURA session. Only
-            approve this if you started the login command.
+            A Conduit agent runtime is requesting scoped AURA access. Only
+            approve this if you trust the requester and expected this action.
           </p>
 
           <div className="mt-6 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-start">
@@ -603,6 +614,15 @@ function ApprovalPrompt({
                   label="Owner wallet"
                   value={primaryWalletLabel}
                   mono={Boolean(auth.primaryWallet)}
+                />
+                <DetailLine
+                  label="Signer key"
+                  value={
+                    device.requestedSessionPublicKey
+                      ? formatAddress(device.requestedSessionPublicKey)
+                      : "Session only"
+                  }
+                  mono={Boolean(device.requestedSessionPublicKey)}
                 />
               </div>
             </div>
@@ -678,7 +698,7 @@ function ApprovalPrompt({
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     Link and mark a primary owner wallet before authorizing
-                    Conduit clients.
+                    Conduit agents.
                   </p>
                   <Link
                     href="/dashboard/settings"
@@ -754,7 +774,7 @@ function ApprovalPrompt({
 
           <p className="mt-4 text-xs leading-5 text-muted-foreground">
             AURA stores only the token hash after one-time handoff. The owner
-            wallet key is never shared with the CLI.
+            wallet key is never shared with the requesting agent.
           </p>
         </section>
       </div>
@@ -799,7 +819,7 @@ export function DeviceAuthorizationFlow() {
 
     const formatted = formatCodeInput(code);
     setActiveCode(formatted);
-    router.replace(`/conduit/device?code=${encodeURIComponent(formatted)}`);
+    router.replace(`/conduit/authorize?code=${encodeURIComponent(formatted)}`);
   };
 
   return (
@@ -854,7 +874,7 @@ export function DeviceAuthorizationFlow() {
               onClick={() => {
                 setActiveCode(null);
                 setCode("");
-                router.replace("/conduit/device");
+                router.replace("/conduit/authorize");
               }}
               className="mt-5"
             >
@@ -869,7 +889,7 @@ export function DeviceAuthorizationFlow() {
           onReset={() => {
             setActiveCode(null);
             setCode("");
-            router.replace("/conduit/device");
+            router.replace("/conduit/authorize");
           }}
         />
       ) : (

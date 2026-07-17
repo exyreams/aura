@@ -1,10 +1,16 @@
-import { Suspense } from "react";
-import { DeviceAuthorizationFlow } from "@/components/conduit/DeviceAuthorizationFlow";
+import { redirect } from "next/navigation";
 
-export default function ConduitDeviceAuthorizationPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
-      <DeviceAuthorizationFlow />
-    </Suspense>
+export default async function LegacyConduitDeviceRedirect({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  const params = await searchParams;
+  const code = params.code?.trim();
+
+  redirect(
+    code
+      ? `/conduit/authorize?code=${encodeURIComponent(code)}`
+      : "/conduit/authorize",
   );
 }

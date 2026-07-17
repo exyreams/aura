@@ -23,6 +23,7 @@ export interface ConduitApprovalMessageInput {
   clientName: string | null;
   agentId: string | null;
   agentLabel: string | null;
+  sessionPublicKey: string | null;
   scopes: string[];
   treasuryPda: string | null;
   expiresInDays: string;
@@ -97,11 +98,12 @@ export function buildConduitDeviceApprovalMessage(
     `Email: ${input.email ?? "unavailable"}`,
     `Wallet: ${input.walletAddress}`,
     `Wallet ID: ${input.walletId}`,
-    `Device Code ID: ${input.deviceCodeId}`,
-    `User Code: ${input.userCode}`,
-    `Client: ${input.clientName ?? "Conduit CLI"}`,
+    `Conduit Authorization ID: ${input.deviceCodeId}`,
+    `Authorization Code: ${input.userCode}`,
+    `Client: ${input.clientName ?? "Conduit runtime"}`,
     `Agent ID: ${input.agentId ?? "generated on approval"}`,
     `Agent Label: ${input.agentLabel ?? "generated on approval"}`,
+    `Signer Public Key: ${input.sessionPublicKey ?? "session only"}`,
     `Scopes: ${input.scopes.join(", ")}`,
     `Treasury: ${input.treasuryPda ?? "unscoped"}`,
     `Session Expiry: ${input.expiresInDays}`,

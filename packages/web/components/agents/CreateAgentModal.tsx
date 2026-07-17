@@ -18,7 +18,7 @@ import {
   type AgentScope,
   DEFAULT_AGENT_SCOPES,
 } from "@/lib/agents/scopes";
-import type { AgentSessionRow } from "@/lib/supabase/types";
+import type { AgentSessionWithUsage } from "@/lib/agents/session-model";
 
 const WORDS = [
   "sentinel",
@@ -53,7 +53,7 @@ const WORDS = [
 ];
 
 interface CreateAgentResponse {
-  session: AgentSessionRow;
+  session: AgentSessionWithUsage;
   agentToken: string;
   runtimeIdentity: RuntimeIdentity | null;
 }
@@ -69,7 +69,7 @@ interface RuntimeIdentity {
 interface CreateAgentModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated?: (session: AgentSessionRow) => void;
+  onCreated?: (session: AgentSessionWithUsage) => void;
 }
 
 function generateAgentId() {
@@ -304,15 +304,15 @@ export function CreateAgentModal({
             id="create-agent-title"
             className="text-lg font-semibold tracking-tight"
           >
-            {created ? "Agent ready" : "New Signer Agent"}
+            {created ? "Signer agent ready" : "New signer agent"}
           </h2>
           <p
             id="create-agent-description"
-            className="mt-1.5 max-w-[280px] text-xs leading-5 text-muted-foreground"
+            className="mt-1.5 max-w-[300px] text-xs leading-5 text-muted-foreground"
           >
             {created
               ? "Download the runtime identity now. The token and secret key are shown once."
-              : "Generate the runtime keypair used as the future ai_authority. Treasury binding happens in the wallet-signed on-chain flow."}
+              : "Create a user-owned signer identity for treasury binding. Conduit authorization can also create signer-ready sessions when an agent supplies a public key."}
           </p>
         </div>
 
@@ -489,7 +489,7 @@ export function CreateAgentModal({
 
               <div className="rounded-sm border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
                 This creates the signer identity and session token only. The
-                treasury account and dWallet registration are wallet-signed
+                treasury account and dWallet registration remain wallet-signed
                 on-chain actions.
               </div>
 
@@ -509,7 +509,7 @@ export function CreateAgentModal({
                   Cancel
                 </Button>
                 <Button type="submit" loading={createMutation.isPending}>
-                  Create Agent
+                  Create signer
                 </Button>
               </div>
             </div>

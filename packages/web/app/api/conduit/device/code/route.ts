@@ -24,8 +24,11 @@ interface CreateDeviceCodeBody {
   requested_agent_id?: unknown;
   requested_agent_label?: unknown;
   requested_scopes?: unknown;
+  requested_session_public_key?: unknown;
   requested_treasury?: unknown;
   requested_treasury_pda?: unknown;
+  session_public_key?: unknown;
+  authority_public_key?: unknown;
   requested_caps?: unknown;
   metadata?: unknown;
 }
@@ -37,7 +40,7 @@ function jsonError(message: string, status: number) {
 function getErrorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
-    : "Could not create device code.";
+    : "Could not create Conduit authorization code.";
 }
 
 function getOptionalText(value: unknown, maxLength = MAX_TEXT_LENGTH) {
@@ -50,7 +53,7 @@ function getOptionalText(value: unknown, maxLength = MAX_TEXT_LENGTH) {
   return trimmed ? trimmed.slice(0, maxLength) : null;
 }
 
-function getOptionalPublicKey(value: unknown) {
+function getOptionalPublicKey(value: unknown, label: string) {
   const text = getOptionalText(value, 180);
 
   if (!text) {
@@ -60,7 +63,7 @@ function getOptionalPublicKey(value: unknown) {
   try {
     return new PublicKey(text).toBase58();
   } catch {
-    throw new Error("Requested treasury must be a valid Solana address.");
+    throw new Error(`${label} must be a valid Solana address.`);
   }
 }
 
@@ -94,17 +97,25 @@ export async function POST(request: Request) {
   let requestedAgentId: string | null;
   let requestedAgentLabel: string | null;
   let requestedTreasuryPda: string | null;
+  let sessionPublicKey: string | null;
   let requestedCaps: Json;
   let metadata: Json;
   let scopes: string[];
 
   try {
-    clientName = getOptionalText(body.client) ?? "Conduit CLI";
+    clientName = getOptionalText(body.client) ?? "Conduit runtime";
     requestedAgentId = getOptionalText(body.requested_agent_id);
     requestedAgentLabel =
       getOptionalText(body.requested_agent_label) ?? requestedAgentId;
     requestedTreasuryPda = getOptionalPublicKey(
       body.requested_treasury_pda ?? body.requested_treasury,
+      "Requested treasury",
+    );
+    sessionPublicKey = getOptionalPublicKey(
+      body.session_public_key ??
+        body.requested_session_public_key ??
+        body.authority_public_key,
+      "Signer public key",
     );
     requestedCaps = getJsonObject(body.requested_caps, "Requested caps");
     metadata = getJsonObject(body.metadata, "Metadata");
@@ -123,6 +134,13 @@ export async function POST(request: Request) {
 
   const deviceCode = createDeviceCodeSecret();
   const expiresAt = expiresAtFromNow(DEVICE_CODE_TTL_SECONDS);
+  const storedMetadata = sessionPublicKey
+    ? {
+        ...(metadata as Record<string, Json>),
+        authority_public_key: sessionPublicKey,
+        session_public_key: sessionPublicKey,
+      }
+    : metadata;
 
   for (let attempt = 0; attempt < MAX_INSERT_ATTEMPTS; attempt += 1) {
     const userCode = createUserCode();
@@ -136,7 +154,7 @@ export async function POST(request: Request) {
         requested_scopes: scopes,
         requested_treasury_pda: requestedTreasuryPda,
         requested_caps: requestedCaps,
-        metadata,
+        metadata: storedMetadata,
         status: "pending",
         interval_seconds: DEVICE_POLL_INTERVAL_SECONDS,
         expires_at: expiresAt,
@@ -165,7 +183,7 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin;
-    const verifyUrl = `${origin}/conduit/device?code=${encodeURIComponent(
+    const verifyUrl = `${origin}/conduit/authorize?code=${encodeURIComponent(
       device.user_code,
     )}`;
 
@@ -179,5 +197,8 @@ export async function POST(request: Request) {
     });
   }
 
-  return jsonError("Could not allocate a unique device code.", 500);
+  return jsonError(
+    "Could not allocate a unique Conduit authorization code.",
+    500,
+  );
 }
