@@ -194,6 +194,27 @@ export async function POST(request: Request) {
     return jsonError("Signer agent is missing the wallet:transfer scope.", 403);
   }
 
+  const { data: walletPermission, error: permissionError } = await admin
+    .from("agent_wallet_permissions")
+    .select("*")
+    .eq("owner_id", user.id)
+    .eq("wallet_id", wallet.id)
+    .eq("agent_session_id", agent.id)
+    .eq("status", "active")
+    .contains("scopes", ["wallet:transfer"])
+    .maybeSingle();
+
+  if (permissionError) {
+    return jsonError(permissionError.message, 500);
+  }
+
+  if (!walletPermission) {
+    return jsonError(
+      "Grant wallet transfer access to this signer agent first.",
+      403,
+    );
+  }
+
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + REQUEST_TTL_MINUTES);
 
@@ -233,6 +254,15 @@ export async function POST(request: Request) {
       token_program: tokenProgram,
       source_token_account: sourceTokenAccount,
       note,
+    },
+    permission: {
+      id: walletPermission.id,
+      scopes: walletPermission.scopes,
+      grant_source: walletPermission.grant_source,
+    },
+    source: {
+      kind: "owner_web",
+      reviewed_by_owner: true,
     },
     sdk_hint: {
       package: "@aura-protocol/sdk-ts",

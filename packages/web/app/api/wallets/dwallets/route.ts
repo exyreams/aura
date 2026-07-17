@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
+import { walletPermissionScopesForAgent } from "@/lib/agents/wallet-permissions";
 import { AURA_CHAINS, getChainName, SOLANA_CHAIN_ID } from "@/lib/aura/chains";
 import { getPrimaryAccountWallet } from "@/lib/auth/primary-wallet";
 import { encryptDWalletSessionMaterial } from "@/lib/dwallet/credentials";
@@ -573,6 +574,37 @@ export async function POST(request: Request) {
     return jsonError(sessionError.message, 500);
   }
 
+  const permissionScopes = walletPermissionScopesForAgent(agent.scopes);
+  const { data: permission, error: permissionError } = await admin
+    .from("agent_wallet_permissions")
+    .upsert(
+      {
+        owner_id: user.id,
+        agent_session_id: agent.id,
+        wallet_id: wallet.id,
+        scopes: permissionScopes,
+        status: permissionScopes.length > 0 ? "active" : "revoked",
+        grant_source: "owner",
+        revoked_at:
+          permissionScopes.length > 0 ? null : new Date().toISOString(),
+        metadata: {
+          version: "aura.agent_wallet_permission.v1",
+          source: "owner_web",
+          reason: "wallet_created_or_registered",
+          agent_scopes_at_grant: agent.scopes,
+        },
+      },
+      { onConflict: "owner_id,agent_session_id,wallet_id" },
+    )
+    .select("*")
+    .single();
+
+  if (permissionError) {
+    await admin.from("dwallet_sessions").delete().eq("id", dwalletSession.id);
+    await admin.from("wallet_registry").delete().eq("id", wallet.id);
+    return jsonError(permissionError.message, 500);
+  }
+
   await admin.from("activity_events").insert({
     owner_id: user.id,
     agent_session_id: agent.id,
@@ -600,6 +632,8 @@ export async function POST(request: Request) {
       registration_tx_signature: normalized.registrationTxSignature,
       has_encrypted_session: hasEncryptedSession,
       dwallet_session_id: dwalletSession.id,
+      agent_wallet_permission_id: permission.id,
+      agent_wallet_permission_scopes: permission.scopes,
     },
   });
 
@@ -611,6 +645,11 @@ export async function POST(request: Request) {
       status: dwalletSession.status,
       createdAt: dwalletSession.created_at,
       hasEncryptedSession,
+    },
+    agentWalletPermission: {
+      id: permission.id,
+      scopes: permission.scopes,
+      status: permission.status,
     },
   });
 }

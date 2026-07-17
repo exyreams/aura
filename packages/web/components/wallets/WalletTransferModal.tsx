@@ -12,9 +12,10 @@ import { Input } from "@/components/global/Input";
 import { Modal } from "@/components/global/Modal";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { Textarea } from "@/components/global/Textarea";
+import { hasAgentWalletPermission } from "@/lib/agents/wallet-permissions";
 import { SOLANA_CHAIN_ID } from "@/lib/aura/chains";
 import { formatAddress } from "@/lib/formatting/addresses";
-import { useAgents } from "@/lib/hooks";
+import { useAgents, useAgentWalletPermissions } from "@/lib/hooks";
 import { formatRawAmount, parseDecimalAmount } from "@/lib/solana/amounts";
 import type { SolanaWalletBalances, TokenBalance } from "@/lib/solana/balances";
 import {
@@ -132,6 +133,7 @@ export function WalletTransferModal({
   const walletAdapter = useWallet();
   const queryClient = useQueryClient();
   const { agents } = useAgents();
+  const permissionsQuery = useAgentWalletPermissions();
   const assets = useMemo(() => buildAssets(balance), [balance]);
   const linkedAgent = useMemo(
     () =>
@@ -163,6 +165,17 @@ export function WalletTransferModal({
     canWalletSignSource && selectedAsset?.kind === "native"
       ? "wallet_signed"
       : "agent_request";
+  const linkedAgentHasTransferGrant =
+    currentMode !== "agent_request" ||
+    Boolean(
+      linkedAgent &&
+        hasAgentWalletPermission(
+          permissionsQuery.data ?? [],
+          wallet.id,
+          linkedAgent.id,
+          "wallet:transfer",
+        ),
+    );
 
   useEffect(() => {
     if (!open) {
@@ -225,6 +238,18 @@ export function WalletTransferModal({
       !linkedAgent?.scopes.includes("wallet:transfer")
     ) {
       setError("The linked signer agent is missing the wallet:transfer scope.");
+      return;
+    }
+
+    if (currentMode === "agent_request" && permissionsQuery.isLoading) {
+      setError("Wallet permissions are still loading. Try again in a moment.");
+      return;
+    }
+
+    if (currentMode === "agent_request" && !linkedAgentHasTransferGrant) {
+      setError(
+        "Grant wallet transfer access to the linked signer agent before creating a transfer request.",
+      );
       return;
     }
 
@@ -461,6 +486,13 @@ export function WalletTransferModal({
                       {linkedAgent.scopes.includes("wallet:transfer")
                         ? "transfer scope"
                         : "scope missing"}
+                    </StatusBadge>
+                    <StatusBadge
+                      tone={linkedAgentHasTransferGrant ? "success" : "warning"}
+                    >
+                      {linkedAgentHasTransferGrant
+                        ? "wallet grant"
+                        : "grant missing"}
                     </StatusBadge>
                     <span className="font-mono text-xs text-foreground">
                       {linkedAgent.label}

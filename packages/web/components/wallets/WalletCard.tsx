@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/global/Skeleton";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { useToast } from "@/components/global/Toast";
 import { DWalletDetailsModal } from "@/components/wallets/DWalletDetailsModal";
+import { WalletAgentPermissions } from "@/components/wallets/WalletAgentPermissions";
 import { WalletReceiveModal } from "@/components/wallets/WalletReceiveModal";
 import { WalletTransferModal } from "@/components/wallets/WalletTransferModal";
 import { SOLANA_CHAIN_ID } from "@/lib/aura/chains";
@@ -464,6 +465,8 @@ export function WalletCard({ wallet }: { wallet: WalletRegistryRow }) {
           ) : null}
         </div>
       </div>
+
+      <WalletAgentPermissions wallet={wallet} />
 
       <div className="mt-5 rounded-md border border-border bg-background p-4">
         {!supportsLiveBalance ? (

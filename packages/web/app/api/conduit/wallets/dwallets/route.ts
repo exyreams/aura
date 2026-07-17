@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
+import { defaultAgentCreatedWalletScopes } from "@/lib/agents/wallet-permissions";
 import { AURA_CHAINS, getChainName, SOLANA_CHAIN_ID } from "@/lib/aura/chains";
 import {
   assertConduitScope,
@@ -300,6 +301,39 @@ export async function POST(request: Request) {
     return jsonError(sessionError.message, 500);
   }
 
+  const permissionScopes = defaultAgentCreatedWalletScopes(auth.session.scopes);
+  const { data: permission, error: permissionError } = await auth.admin
+    .from("agent_wallet_permissions")
+    .upsert(
+      {
+        owner_id: auth.session.owner_id,
+        agent_session_id: auth.session.id,
+        wallet_id: wallet.id,
+        scopes: permissionScopes,
+        status: permissionScopes.length > 0 ? "active" : "revoked",
+        grant_source: "conduit_agent",
+        revoked_at: permissionScopes.length > 0 ? null : now,
+        metadata: {
+          version: "aura.agent_wallet_permission.v1",
+          source: "conduit_agent",
+          reason: "agent_created_pending_wallet",
+          transfer_requires_owner_grant: true,
+        },
+      },
+      { onConflict: "owner_id,agent_session_id,wallet_id" },
+    )
+    .select("*")
+    .single();
+
+  if (permissionError) {
+    await auth.admin
+      .from("dwallet_sessions")
+      .delete()
+      .eq("id", dwalletSession.id);
+    await auth.admin.from("wallet_registry").delete().eq("id", wallet.id);
+    return jsonError(permissionError.message, 500);
+  }
+
   await auth.admin.from("activity_events").insert({
     owner_id: auth.session.owner_id,
     agent_session_id: auth.session.id,
@@ -324,6 +358,8 @@ export async function POST(request: Request) {
       message_metadata_digest: messageMetadataDigest,
       public_key_hex: publicKeyHex,
       dwallet_session_id: dwalletSession.id,
+      agent_wallet_permission_id: permission.id,
+      agent_wallet_permission_scopes: permission.scopes,
       dashboard_action: "link_wallet_from_dashboard",
     },
   });
@@ -336,6 +372,11 @@ export async function POST(request: Request) {
       status: dwalletSession.status,
       createdAt: dwalletSession.created_at,
       hasEncryptedSession: false,
+    },
+    agentWalletPermission: {
+      id: permission.id,
+      scopes: permission.scopes,
+      status: permission.status,
     },
     nextAction: "link_wallet_from_dashboard",
   });

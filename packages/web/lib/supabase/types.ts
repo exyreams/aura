@@ -293,6 +293,60 @@ export interface Database {
           },
         ];
       };
+      agent_wallet_permissions: {
+        Row: {
+          id: string;
+          owner_id: string;
+          agent_session_id: string;
+          wallet_id: string;
+          scopes: string[];
+          status: "active" | "revoked";
+          grant_source: "owner" | "conduit_agent" | "system_backfill";
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          agent_session_id: string;
+          wallet_id: string;
+          scopes?: string[];
+          status?: "active" | "revoked";
+          grant_source?: "owner" | "conduit_agent" | "system_backfill";
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+          revoked_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["agent_wallet_permissions"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "agent_wallet_permissions_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "agent_wallet_permissions_agent_session_id_fkey";
+            columns: ["agent_session_id"];
+            isOneToOne: false;
+            referencedRelation: "agent_sessions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "agent_wallet_permissions_wallet_id_fkey";
+            columns: ["wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "wallet_registry";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       wallet_assets: {
         Row: {
           id: string;
@@ -715,6 +769,8 @@ export type WalletRegistryRow =
   Database["public"]["Tables"]["wallet_registry"]["Row"];
 export type DWalletSessionRow =
   Database["public"]["Tables"]["dwallet_sessions"]["Row"];
+export type AgentWalletPermissionRow =
+  Database["public"]["Tables"]["agent_wallet_permissions"]["Row"];
 export type AgentSessionRow =
   Database["public"]["Tables"]["agent_sessions"]["Row"];
 export type DeviceCodeRow = Database["public"]["Tables"]["device_codes"]["Row"];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { type AgentScope, isAgentScope } from "@/lib/agents/scopes";
 import { isAgentSessionEditable } from "@/lib/agents/session-model";
+import { normalizeAgentWalletPermissionScopes } from "@/lib/agents/wallet-permissions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
@@ -129,6 +130,56 @@ export async function PATCH(
     return jsonError(updateError.message, 500);
   }
 
+  const { data: walletPermissions, error: walletPermissionsError } = await admin
+    .from("agent_wallet_permissions")
+    .select("*")
+    .eq("owner_id", user.id)
+    .eq("agent_session_id", session.id);
+
+  if (walletPermissionsError) {
+    return jsonError(walletPermissionsError.message, 500);
+  }
+
+  const trimmedWalletPermissions = (walletPermissions ?? [])
+    .map((permission) => ({
+      permission,
+      scopes: normalizeAgentWalletPermissionScopes(permission.scopes, scopes),
+    }))
+    .filter(({ permission, scopes: nextPermissionScopes }) => {
+      const nextScopeSet = new Set<string>(nextPermissionScopes);
+      const sameScopes =
+        permission.scopes.length === nextPermissionScopes.length &&
+        permission.scopes.every((scope) => nextScopeSet.has(scope));
+      const nextStatus = nextPermissionScopes.length > 0 ? "active" : "revoked";
+
+      return !sameScopes || permission.status !== nextStatus;
+    });
+
+  const trimResults = await Promise.all(
+    trimmedWalletPermissions.map(({ permission, scopes: permissionScopes }) =>
+      admin
+        .from("agent_wallet_permissions")
+        .update({
+          scopes: permissionScopes,
+          status: permissionScopes.length > 0 ? "active" : "revoked",
+          revoked_at: permissionScopes.length > 0 ? null : updatedAt,
+          metadata: {
+            ...metadataObject(permission.metadata),
+            trimmed_at: updatedAt,
+            trimmed_via: "agent_scope_update",
+            agent_scopes_after_update: scopes,
+          },
+        })
+        .eq("id", permission.id)
+        .eq("owner_id", user.id),
+    ),
+  );
+  const trimError = trimResults.find((result) => result.error)?.error;
+
+  if (trimError) {
+    return jsonError(trimError.message, 500);
+  }
+
   await admin.from("activity_events").insert({
     owner_id: user.id,
     agent_session_id: session.id,
@@ -140,6 +191,7 @@ export async function PATCH(
     metadata: {
       previous_scopes: session.scopes,
       scopes,
+      trimmed_wallet_permissions: trimmedWalletPermissions.length,
       updated_via: "web",
     },
   });
@@ -208,6 +260,24 @@ export async function DELETE(
 
   if (updateError) {
     return jsonError(updateError.message, 500);
+  }
+
+  const { error: permissionRevokeError } = await admin
+    .from("agent_wallet_permissions")
+    .update({
+      scopes: [],
+      status: "revoked",
+      revoked_at: revokedAt,
+      metadata: {
+        revoked_via: "agent_session_revoke",
+        revoked_at: revokedAt,
+      },
+    })
+    .eq("owner_id", user.id)
+    .eq("agent_session_id", session.id);
+
+  if (permissionRevokeError) {
+    return jsonError(permissionRevokeError.message, 500);
   }
 
   await admin.from("activity_events").insert({
