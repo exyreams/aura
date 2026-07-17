@@ -1,37 +1,40 @@
-import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
 import { hashAgentToken, mintAgentToken } from "@/lib/agents/tokens";
 import { getPrimaryAccountWallet } from "@/lib/auth/primary-wallet";
 import {
+  normalizeSolanaWalletAddress,
+  verifySolanaWalletSignature,
+} from "@/lib/auth/wallet-linking";
+import {
+  CONDUIT_DEVICE_APPROVAL_VERSION,
+  getConduitApprovalMetadataObject,
+  getConduitApprovalMetadataString,
+  getConduitApprovalMetadataStringArray,
+} from "@/lib/conduit/device-approval";
+import {
   encryptHandoffToken,
   expiresAtFromNow,
   formatUserCode,
-  normalizeDeviceScopes,
   secondsUntil,
   TOKEN_HANDOFF_TTL_SECONDS,
 } from "@/lib/conduit/device-flow";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Database, DeviceCodeRow, Json } from "@/lib/supabase/types";
+import type { Database, DeviceCodeRow } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
 const AGENT_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
 const MAX_AGENT_ID_BYTES = 64;
-const EXPIRY_OPTIONS = new Set(["7", "30", "90", "never"]);
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
 type AgentSessionInsert =
   Database["public"]["Tables"]["agent_sessions"]["Insert"];
 
 interface ApproveDeviceBody {
-  scopes?: unknown;
-  treasuryPda?: unknown;
-  treasury_pubkey?: unknown;
-  sessionPubkey?: unknown;
-  session_pubkey?: unknown;
-  expiresInDays?: unknown;
-  autoApprove?: unknown;
+  challengeId?: unknown;
+  walletAddress?: unknown;
+  signature?: unknown;
 }
 
 function jsonError(message: string, status: number) {
@@ -48,48 +51,12 @@ function byteLength(value: string) {
   return new TextEncoder().encode(value).length;
 }
 
-function getOptionalPublicKey(value: unknown, label: string) {
+function getString(value: unknown, label: string) {
   if (typeof value !== "string" || !value.trim()) {
-    return null;
+    throw new Error(`${label} is required.`);
   }
 
-  try {
-    return new PublicKey(value.trim()).toBase58();
-  } catch {
-    throw new Error(`${label} must be a valid Solana address.`);
-  }
-}
-
-function normalizeExpiresAt(value: unknown) {
-  const option = typeof value === "string" ? value : "90";
-
-  if (!EXPIRY_OPTIONS.has(option)) {
-    throw new Error("Choose a valid expiry window.");
-  }
-
-  if (option === "never") {
-    return null;
-  }
-
-  const date = new Date();
-  date.setDate(date.getDate() + Number(option));
-  return date.toISOString();
-}
-
-function normalizeAutoApprove(value: unknown): Json {
-  if (value === undefined || value === null || value === "never") {
-    return "never";
-  }
-
-  if (typeof value === "string") {
-    return value.slice(0, 80);
-  }
-
-  if (typeof value === "object" && !Array.isArray(value)) {
-    return JSON.parse(JSON.stringify(value)) as Json;
-  }
-
-  throw new Error("Auto approval policy must be a string or object.");
+  return value.trim();
 }
 
 function slugAgentId(value: string) {
@@ -193,9 +160,15 @@ export async function POST(
   }
 
   let code: string;
+  let challengeId: string;
+  let walletAddress: string;
+  let signature: string;
 
   try {
     code = formatUserCode((await params).code);
+    challengeId = getString(body.challengeId, "Approval challenge ID");
+    walletAddress = normalizeSolanaWalletAddress(body.walletAddress);
+    signature = getString(body.signature, "Wallet signature");
   } catch (cause) {
     return jsonError(getErrorMessage(cause), 400);
   }
@@ -249,32 +222,88 @@ export async function POST(
 
   if (!primaryWallet) {
     return jsonError(
-      "Link a primary owner wallet before approving Conduit devices.",
+      "Set up a primary owner wallet before approving Conduit devices.",
       409,
     );
   }
 
-  let scopes: string[];
-  let treasuryPda: string | null;
-  let sessionPubkey: string | null;
-  let expiresAt: string | null;
-  let autoApprove: Json;
-
-  try {
-    scopes = normalizeDeviceScopes(body.scopes ?? device.requested_scopes);
-    treasuryPda =
-      getOptionalPublicKey(
-        body.treasuryPda ?? body.treasury_pubkey,
-        "Treasury",
-      ) ?? device.requested_treasury_pda;
-    sessionPubkey = getOptionalPublicKey(
-      body.sessionPubkey ?? body.session_pubkey,
-      "Session public key",
+  if (primaryWallet.wallet_address !== walletAddress) {
+    return jsonError(
+      "Wallet signature must come from the primary owner wallet.",
+      409,
     );
-    expiresAt = normalizeExpiresAt(body.expiresInDays);
-    autoApprove = normalizeAutoApprove(body.autoApprove);
-  } catch (cause) {
-    return jsonError(getErrorMessage(cause), 400);
+  }
+
+  const { data: challenge, error: challengeError } = await admin
+    .from("conduit_device_approval_challenges")
+    .select("*")
+    .eq("id", challengeId)
+    .eq("owner_id", user.id)
+    .eq("device_code_id", device.id)
+    .maybeSingle();
+
+  if (challengeError) {
+    return jsonError(challengeError.message, 500);
+  }
+
+  if (!challenge) {
+    return jsonError("Approval challenge was not found.", 404);
+  }
+
+  if (challenge.status !== "pending" || challenge.used_at) {
+    return jsonError("Approval challenge has already been used.", 409);
+  }
+
+  if (new Date(challenge.expires_at).getTime() <= Date.now()) {
+    await admin
+      .from("conduit_device_approval_challenges")
+      .update({ status: "expired" })
+      .eq("id", challenge.id)
+      .eq("status", "pending");
+    return jsonError("Approval challenge has expired.", 410);
+  }
+
+  if (
+    challenge.wallet_address_canonical !== walletAddress ||
+    challenge.wallet_id !== primaryWallet.id
+  ) {
+    return jsonError("Approval challenge is not for this owner wallet.", 403);
+  }
+
+  const signatureValid = verifySolanaWalletSignature({
+    walletAddress,
+    message: challenge.message,
+    signature,
+  });
+
+  if (!signatureValid) {
+    return jsonError("Owner wallet signature could not be verified.", 400);
+  }
+
+  const signedMetadata = getConduitApprovalMetadataObject(challenge.metadata);
+  const scopes =
+    getConduitApprovalMetadataStringArray(challenge.metadata, "scopes") ??
+    device.requested_scopes;
+  const treasuryPda = getConduitApprovalMetadataString(
+    challenge.metadata,
+    "treasury_pda",
+  );
+  const expiresAt = getConduitApprovalMetadataString(
+    challenge.metadata,
+    "session_expires_at",
+  );
+  const autoApprove = signedMetadata.auto_approve ?? "never";
+  const sessionPubkey = getConduitApprovalMetadataString(
+    challenge.metadata,
+    "session_public_key",
+  );
+
+  if (
+    signedMetadata.version !== CONDUIT_DEVICE_APPROVAL_VERSION ||
+    signedMetadata.device_code_id !== device.id ||
+    signedMetadata.wallet_address !== walletAddress
+  ) {
+    return jsonError("Approval challenge metadata is invalid.", 400);
   }
 
   let agentId: string;
@@ -314,10 +343,19 @@ export async function POST(
       identity_status: sessionPubkey ? "authority_recorded" : "session_only",
       onchain_status: "not_bound",
       owner_wallet: primaryWallet.wallet_address,
+      owner_wallet_id: primaryWallet.id,
       publicKey: sessionPubkey,
       requested_caps: device.requested_caps,
       token_prefix: "aurak",
       treasury_scope_status: treasuryPda ? "requested" : "unscoped",
+      wallet_approval: {
+        version: CONDUIT_DEVICE_APPROVAL_VERSION,
+        challenge_id: challenge.id,
+        wallet_id: primaryWallet.id,
+        wallet_address: primaryWallet.wallet_address,
+        signed_at: new Date().toISOString(),
+      },
+      wallet_approval_signature: signature,
     },
   };
 
@@ -383,6 +421,12 @@ export async function POST(
     return jsonError("This device code was already handled.", 409);
   }
 
+  await admin
+    .from("conduit_device_approval_challenges")
+    .update({ status: "used", used_at: approvedAt })
+    .eq("id", challenge.id)
+    .eq("status", "pending");
+
   await admin.from("activity_events").insert({
     owner_id: user.id,
     agent_session_id: session.id,
@@ -395,6 +439,11 @@ export async function POST(
       agent_id: agentId,
       client_name: device.client_name,
       device_code_id: device.id,
+      approval_challenge_id: challenge.id,
+      approval_wallet: primaryWallet.wallet_address,
+      approval_wallet_id: primaryWallet.id,
+      approval_version: CONDUIT_DEVICE_APPROVAL_VERSION,
+      approval_signature: signature,
       scopes,
       treasury_pda: treasuryPda,
     },

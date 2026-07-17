@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin;
-    const verifyUrl = `${origin}/dashboard/conduit/device?code=${encodeURIComponent(
+    const verifyUrl = `${origin}/conduit/device?code=${encodeURIComponent(
       device.user_code,
     )}`;
 

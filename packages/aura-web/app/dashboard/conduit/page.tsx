@@ -58,7 +58,7 @@ function formatDateTime(value: string) {
 
 const actionLinks = [
   {
-    href: "/dashboard/conduit/device",
+    href: "/conduit/device",
     label: "Approve device",
     description: "Enter the code printed by a Conduit CLI or agent runtime.",
     icon: PlugZap,

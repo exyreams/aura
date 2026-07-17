@@ -488,6 +488,64 @@ export interface Database {
           },
         ];
       };
+      conduit_device_approval_challenges: {
+        Row: {
+          id: string;
+          owner_id: string;
+          device_code_id: string;
+          wallet_id: string | null;
+          wallet_address: string;
+          wallet_address_canonical: string;
+          nonce: string;
+          message: string;
+          status: "pending" | "used" | "expired";
+          metadata: Json;
+          created_at: string;
+          expires_at: string;
+          used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          device_code_id: string;
+          wallet_id?: string | null;
+          wallet_address: string;
+          wallet_address_canonical: string;
+          nonce: string;
+          message: string;
+          status?: "pending" | "used" | "expired";
+          metadata?: Json;
+          created_at?: string;
+          expires_at?: string;
+          used_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["conduit_device_approval_challenges"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "conduit_device_approval_challenges_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "conduit_device_approval_challenges_device_code_id_fkey";
+            columns: ["device_code_id"];
+            isOneToOne: false;
+            referencedRelation: "device_codes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "conduit_device_approval_challenges_wallet_id_fkey";
+            columns: ["wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "account_wallets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       device_token_handoffs: {
         Row: {
           device_code_id: string;
