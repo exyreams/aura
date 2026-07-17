@@ -14,9 +14,12 @@ import { createKeychainStore, type TokenStore } from "./keychain.js";
 
 export interface AgentCommandOptions {
   readonly controlPlaneBaseUrl: string;
+  readonly deviceFlowPath?: string;
   readonly dashboardBaseUrl: string;
   readonly clientName?: string;
 }
+
+const DEFAULT_LOGIN_SCOPES = "read,wallet:read,policy:preview";
 
 export function registerAgentCommands(
   parent: Command,
@@ -41,8 +44,8 @@ export function registerAgentCommands(
     )
     .option(
       "--scopes <list>",
-      "comma-separated scopes (default: read,propose)",
-      "read,propose",
+      "comma-separated scopes (default: read,wallet:read,policy:preview)",
+      DEFAULT_LOGIN_SCOPES,
     )
     .option(
       "--agent-id <label>",
@@ -60,6 +63,7 @@ export function registerAgentCommands(
         const store = createKeychainStore();
         const client = new DeviceFlowClient({
           controlPlaneBaseUrl: options.controlPlaneBaseUrl,
+          deviceFlowPath: options.deviceFlowPath,
           client: options.clientName ?? `aura-cli/${CONDUIT_VERSION}`,
         });
         const code = await client.requestCode({
@@ -69,10 +73,14 @@ export function registerAgentCommands(
             ? { requested_treasury: opts.treasury }
             : {}),
         });
+        const verifyUrl = buildVerifyUrl(
+          options.dashboardBaseUrl,
+          code.verify_url,
+          code.user_code,
+        );
         process.stderr.write(
           `! First copy your one-time code: ${code.user_code}\n` +
-            `- Open ${options.dashboardBaseUrl}${code.verify_url}?code=${code.user_code} in your browser\n` +
-            `  (or visit ${options.dashboardBaseUrl}${code.verify_url} and enter the code)\n`,
+            `- Open ${verifyUrl} in your browser\n`,
         );
         const handover = await client.pollForToken(code.device_code, {
           interval: code.interval,
@@ -178,8 +186,8 @@ export function registerAgentCommands(
     )
     .option(
       "--scopes <list>",
-      "comma-separated scopes (default: read,propose)",
-      "read,propose",
+      "comma-separated scopes (default: read,wallet:read,policy:preview)",
+      DEFAULT_LOGIN_SCOPES,
     )
     .option("--agent-id <label>", "human label for the agent")
     .action(
@@ -192,6 +200,7 @@ export function registerAgentCommands(
         const store = createKeychainStore();
         const client = new DeviceFlowClient({
           controlPlaneBaseUrl: options.controlPlaneBaseUrl,
+          deviceFlowPath: options.deviceFlowPath,
           client: options.clientName ?? `aura-cli/${CONDUIT_VERSION}`,
         });
         const code = await client.requestCode({
@@ -201,9 +210,13 @@ export function registerAgentCommands(
             ? { requested_treasury: opts.treasury }
             : {}),
         });
+        const verifyUrl = buildVerifyUrl(
+          options.dashboardBaseUrl,
+          code.verify_url,
+          code.user_code,
+        );
         process.stderr.write(
-          `! Refresh code: ${code.user_code}\n` +
-            `- Open ${options.dashboardBaseUrl}${code.verify_url}?code=${code.user_code}\n`,
+          `! Refresh code: ${code.user_code}\n` + `- Open ${verifyUrl}\n`,
         );
         const handover = await client.pollForToken(code.device_code, {
           interval: code.interval,
@@ -217,4 +230,21 @@ export function registerAgentCommands(
         );
       },
     );
+}
+
+function buildVerifyUrl(
+  dashboardBaseUrl: string,
+  verifyUrl: string,
+  userCode: string,
+): string {
+  const base = dashboardBaseUrl.replace(/\/$/, "");
+  const url = /^https?:\/\//i.test(verifyUrl)
+    ? new URL(verifyUrl)
+    : new URL(`${base}${verifyUrl.startsWith("/") ? "" : "/"}${verifyUrl}`);
+
+  if (!url.searchParams.has("code")) {
+    url.searchParams.set("code", userCode);
+  }
+
+  return url.toString();
 }

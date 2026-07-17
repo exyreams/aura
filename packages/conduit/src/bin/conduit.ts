@@ -213,6 +213,7 @@ registerToolCommands(program, {
 
 registerAgentCommands(program, {
   controlPlaneBaseUrl: defaults.controlPlaneBaseUrl,
+  deviceFlowPath: defaults.deviceFlowPath,
   dashboardBaseUrl: defaults.dashboardBaseUrl,
 });
 

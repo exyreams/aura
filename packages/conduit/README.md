@@ -108,10 +108,28 @@ CONDUIT_HTTP_HOST
 CONDUIT_HTTP_PORT
 CONDUIT_PUBLIC_BASE_URL
 CONDUIT_CONTROL_PLANE_URL
+CONDUIT_DEVICE_FLOW_PATH
 CONDUIT_CORS_ORIGIN
 CONDUIT_DASHBOARD_BASE_URL
 AURA_CONDUIT_TOKEN
 ```
+
+### Test login against aura-web
+
+When `packages/aura-web` is running on `http://localhost:3000`, the CLI can
+drive the Supabase-backed device login UI directly:
+
+```bash
+CONDUIT_CONTROL_PLANE_URL=http://localhost:3000/api/conduit \
+CONDUIT_DEVICE_FLOW_PATH=/device \
+CONDUIT_DASHBOARD_BASE_URL=http://localhost:3000 \
+node packages/conduit/bin/conduit.js agent login \
+  --account claude-code-local \
+  --agent-id claude-code-local
+```
+
+Open the printed `/dashboard/conduit/device?code=...` URL, approve the session,
+then the CLI stores the returned `aurak_...` token in the OS keychain.
 
 ## Architecture
 

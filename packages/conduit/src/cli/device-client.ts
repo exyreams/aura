@@ -9,6 +9,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 export interface DeviceFlowClientOptions {
   readonly controlPlaneBaseUrl: string;
+  readonly deviceFlowPath?: string;
   readonly client: string;
   readonly fetchImpl?: typeof fetch;
 }
@@ -28,11 +29,13 @@ export interface TokenHandover {
 
 export class DeviceFlowClient {
   private readonly base: string;
+  private readonly deviceFlowPath: string;
   private readonly client: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: DeviceFlowClientOptions) {
     this.base = options.controlPlaneBaseUrl.replace(/\/$/, "");
+    this.deviceFlowPath = normalizeDeviceFlowPath(options.deviceFlowPath);
     this.client = options.client;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
   }
@@ -43,7 +46,7 @@ export class DeviceFlowClient {
     requested_treasury?: string;
     requested_caps?: Record<string, unknown>;
   }): Promise<DeviceCodeResponse> {
-    const res = await this.fetchImpl(`${this.base}/control-plane/device/code`, {
+    const res = await this.fetchImpl(this.deviceUrl("code"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ client: this.client, ...params }),
@@ -59,14 +62,11 @@ export class DeviceFlowClient {
     const deadline = Date.now() + options.expires_in * 1000;
     while (Date.now() < deadline) {
       await sleep(options.interval * 1000);
-      const res = await this.fetchImpl(
-        `${this.base}/control-plane/device/token`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ device_code: deviceCode }),
-        },
-      );
+      const res = await this.fetchImpl(this.deviceUrl("token"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ device_code: deviceCode }),
+      });
       if (res.status === 202) continue;
       if (res.status === 410) throw new Error("device code expired");
       if (res.status === 403) throw new Error("authorization denied");
@@ -97,4 +97,14 @@ export class DeviceFlowClient {
     }
     throw new Error("device code expired before authorization");
   }
+
+  private deviceUrl(endpoint: "code" | "token"): string {
+    return `${this.base}${this.deviceFlowPath}/${endpoint}`;
+  }
+}
+
+function normalizeDeviceFlowPath(path: string | undefined): string {
+  const raw = path?.trim() || "/control-plane/device";
+  const withLeadingSlash = raw.startsWith("/") ? raw : `/${raw}`;
+  return withLeadingSlash.replace(/\/+$/, "");
 }

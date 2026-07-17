@@ -12,6 +12,7 @@ export interface ConduitCliConfig {
   programId: string | null;
   dashboardBaseUrl: string;
   controlPlaneBaseUrl: string;
+  deviceFlowPath: string;
   dbPath: string;
   httpHost: string;
   httpPort: number;
@@ -27,6 +28,7 @@ export const DEFAULT_CONDUIT_CONFIG: ConduitCliConfig = {
   programId: null,
   dashboardBaseUrl: "http://localhost:3100",
   controlPlaneBaseUrl: "http://127.0.0.1:8788",
+  deviceFlowPath: "/control-plane/device",
   dbPath: defaultDbPath(),
   httpHost: "127.0.0.1",
   httpPort: 8788,
@@ -40,6 +42,7 @@ const CONFIG_KEYS = new Set<ConduitCliConfigKey>([
   "programId",
   "dashboardBaseUrl",
   "controlPlaneBaseUrl",
+  "deviceFlowPath",
   "dbPath",
   "httpHost",
   "httpPort",
@@ -103,6 +106,10 @@ export function resolveConduitConfig(
       env.CONDUIT_CONTROL_PLANE_URL ??
       file.controlPlaneBaseUrl ??
       DEFAULT_CONDUIT_CONFIG.controlPlaneBaseUrl,
+    deviceFlowPath:
+      env.CONDUIT_DEVICE_FLOW_PATH ??
+      file.deviceFlowPath ??
+      DEFAULT_CONDUIT_CONFIG.deviceFlowPath,
     dbPath: env.CONDUIT_DB_PATH ?? file.dbPath ?? DEFAULT_CONDUIT_CONFIG.dbPath,
     httpHost:
       env.CONDUIT_HTTP_HOST ?? file.httpHost ?? DEFAULT_CONDUIT_CONFIG.httpHost,
@@ -241,6 +248,8 @@ function normalizeConfigRecord(
       typeof raw.controlPlaneBaseUrl === "string"
         ? raw.controlPlaneBaseUrl
         : undefined,
+    deviceFlowPath:
+      typeof raw.deviceFlowPath === "string" ? raw.deviceFlowPath : undefined,
     dbPath: typeof raw.dbPath === "string" ? raw.dbPath : undefined,
     httpHost: typeof raw.httpHost === "string" ? raw.httpHost : undefined,
     httpPort: typeof raw.httpPort === "number" ? raw.httpPort : undefined,
