@@ -57,7 +57,7 @@ test("device client accepts direct token handoff from control-plane", async () =
   assert.equal(calls.length, 3);
 });
 
-test("device client can target aura-web device flow routes", async () => {
+test("device client can target web device flow routes", async () => {
   const calls: string[] = [];
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);

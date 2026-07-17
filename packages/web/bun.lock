@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "aura-web",
+      "name": "web",
       "dependencies": {
         "@aura-protocol/sdk-ts": "0.3.0",
         "@bufbuild/protobuf": "2.12.1",

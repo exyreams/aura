@@ -311,7 +311,7 @@ async function provisionDWallet(input: {
 
   if (!endpoint) {
     throw new Error(
-      "Conduit dWallet provisioning is not wired in aura-web yet. Use Ika online creation or register an existing dWallet.",
+      "Conduit dWallet provisioning is not wired in the web app yet. Use Ika online creation or register an existing dWallet.",
     );
   }
 
@@ -478,7 +478,7 @@ export async function POST(request: Request) {
           : "metadata_registered",
       metadata: {
         version: "aura.wallet_registry.dwallet.v1",
-        created_via: "aura-web",
+        created_via: "web",
         source: mode,
         provider: normalized.provider,
         provider_session_id: normalized.providerSessionId,
@@ -553,7 +553,7 @@ export async function POST(request: Request) {
       message_metadata_digest: normalized.messageMetadataDigest,
       metadata: {
         version: "aura.dwallet_session.v1",
-        created_via: "aura-web",
+        created_via: "web",
         source: mode,
         chain_id: normalized.chainId,
         chain_name: chainName,

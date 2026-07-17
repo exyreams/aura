@@ -21,7 +21,7 @@ export function FAQ() {
       id: "3",
       title: "What does the web control center show today?",
       content:
-        "The current aura-web slice supports Solana wallet auth, owner profiles, dashboard navigation, registered wallet metadata from Supabase, and live SOL/SPL/Token-2022 balance reads from RPC. Fund movement remains disabled until the real AURA proposal and dWallet signing path is wired into the UI.",
+        "The current web control center supports Solana wallet auth, owner profiles, dashboard navigation, registered wallet metadata from Supabase, and live SOL/SPL/Token-2022 balance reads from RPC. Fund movement remains disabled until the real AURA proposal and dWallet signing path is wired into the UI.",
     },
     {
       id: "4",

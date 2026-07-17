@@ -1,13 +1,13 @@
-# @aura-protocol/aura-web
+# @aura-protocol/web
 
 New AURA control center package.
 
-This app is intentionally separate from `packages/web` while the control-plane
-model moves to Supabase and Conduit is rewritten around that shared state.
+This app is the active AURA web package. The control-plane model now lives in
+Supabase and Conduit is built around that shared state.
 
 ## Setup
 
-Create `packages/aura-web/.env`:
+Create `packages/web/.env`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=

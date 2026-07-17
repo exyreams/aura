@@ -186,7 +186,7 @@ export async function POST(request: Request) {
         verification_version: WALLET_LINK_VERSION,
         metadata: {
           version: WALLET_LINK_VERSION,
-          linked_via: "aura-web",
+          linked_via: "web",
           challenge_id: challenge.id,
         },
       })

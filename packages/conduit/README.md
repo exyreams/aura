@@ -114,9 +114,9 @@ CONDUIT_DASHBOARD_BASE_URL
 AURA_CONDUIT_TOKEN
 ```
 
-### Test login against aura-web
+### Test login against web
 
-When `packages/aura-web` is running on `http://localhost:3000`, the CLI can
+When `packages/web` is running on `http://localhost:3000`, the CLI can
 drive the Supabase-backed device login UI directly:
 
 ```bash

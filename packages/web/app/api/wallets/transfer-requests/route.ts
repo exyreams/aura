@@ -203,7 +203,7 @@ export async function POST(request: Request) {
 
   const payload = {
     version: "aura.wallet_transfer_request.v1",
-    created_via: "aura-web",
+    created_via: "web",
     execution_status: "pending_agent_signing",
     wallet: {
       id: wallet.id,
