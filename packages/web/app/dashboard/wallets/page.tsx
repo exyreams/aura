@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ChevronRight,
-  FileSignature,
-  Plus,
-  RefreshCw,
-  Wallet,
-} from "lucide-react";
+import { ChevronRight, Plus, RefreshCw, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   DashboardContent,
@@ -20,68 +14,13 @@ import { Skeleton } from "@/components/global/Skeleton";
 import { StatusBadge } from "@/components/global/StatusBadge";
 import { RegisterDWalletModal } from "@/components/wallets/RegisterDWalletModal";
 import { WalletCard } from "@/components/wallets/WalletCard";
+import { WalletTransferRequestsPanel } from "@/components/wallets/WalletTransferRequestsPanel";
 import { formatAddress } from "@/lib/formatting/addresses";
 import { useSignRequests } from "@/lib/hooks";
 import { useWalletRegistry } from "@/lib/hooks/use-wallet-registry";
-import type {
-  Json,
-  SignRequestRow,
-  WalletRegistryRow,
-} from "@/lib/supabase/types";
+import type { WalletRegistryRow } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import { getDWalletStatusModel } from "@/lib/wallets/dwallet-status";
-
-function payloadText(payload: Json, key: string) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return null;
-  }
-
-  const transfer = payload.transfer;
-  if (!transfer || typeof transfer !== "object" || Array.isArray(transfer)) {
-    return null;
-  }
-
-  const value = transfer[key];
-  return typeof value === "string" ? value : null;
-}
-
-function PendingRequestRow({ request }: { request: SignRequestRow }) {
-  const symbol = payloadText(request.payload, "symbol") ?? "asset";
-  const amount = payloadText(request.payload, "amount_ui") ?? "unknown";
-  const recipient = payloadText(request.payload, "recipient_address");
-
-  return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge
-            tone={
-              request.status === "pending"
-                ? "warning"
-                : request.status === "approved" || request.status === "consumed"
-                  ? "success"
-                  : "neutral"
-            }
-          >
-            {request.status}
-          </StatusBadge>
-          <p className="font-mono text-xs text-muted-foreground">
-            {new Date(request.created_at).toLocaleString()}
-          </p>
-        </div>
-        <p className="mt-2 text-sm font-medium">
-          {amount} {symbol}
-        </p>
-        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-          {recipient ? `to ${formatAddress(recipient)}` : request.message}
-        </p>
-      </div>
-      <p className="shrink-0 font-mono text-[11px] text-muted-foreground">
-        {formatAddress(request.id)}
-      </p>
-    </div>
-  );
-}
 
 function WalletListItem({
   wallet,
@@ -274,47 +213,13 @@ export default function WalletsPage() {
         </div>
       )}
 
-      {signRequests.length > 0 ? (
-        <DashboardPanel className="grid gap-4">
-          <DashboardPanelHeader
-            eyebrow="Signer queue"
-            title="Pending wallet transfer requests"
-            description="Wallet movement requests are recorded here for review, policy checks, and later execution by the signer runtime."
-            action={
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void signRequestsQuery.refetch()}
-                disabled={signRequestsQuery.isFetching}
-              >
-                <RefreshCw className="size-4" aria-hidden="true" />
-                Refresh
-              </Button>
-            }
-          />
-          <div className="grid gap-2">
-            {signRequests.slice(0, 5).map((request) => (
-              <PendingRequestRow key={request.id} request={request} />
-            ))}
-          </div>
-        </DashboardPanel>
-      ) : walletsQuery.isLoading || signRequestsQuery.isLoading ? null : (
-        <div className="flex items-start gap-3 rounded-lg border border-dashed border-border bg-background/40 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface">
-            <FileSignature
-              className="size-4 text-muted-foreground"
-              aria-hidden="true"
-            />
-          </div>
-          <div>
-            <p className="text-sm font-medium">No transfer requests queued</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              dWallet and token transfers will appear here after you create a
-              signer-agent request.
-            </p>
-          </div>
-        </div>
-      )}
+      <WalletTransferRequestsPanel
+        requests={signRequests}
+        wallets={wallets}
+        isLoading={walletsQuery.isLoading || signRequestsQuery.isLoading}
+        isFetching={signRequestsQuery.isFetching}
+        onRefresh={() => void signRequestsQuery.refetch()}
+      />
     </DashboardContent>
   );
 }
