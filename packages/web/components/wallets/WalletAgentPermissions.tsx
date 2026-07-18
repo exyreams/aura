@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import { Info, KeyRound, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/global/Button";
 import { Checkbox } from "@/components/global/Checkbox";
 import { Skeleton } from "@/components/global/Skeleton";
@@ -68,6 +68,9 @@ function agentDisplayAddress(agent: AgentKeypair) {
     ? formatAddress(agent.publicKey)
     : formatAddress(agent.id);
 }
+
+const permissionGridClass =
+  "grid min-w-[600px] grid-cols-[minmax(220px,1fr)_repeat(3,minmax(108px,128px))] items-center gap-3";
 
 function nextScopes(
   currentScopes: readonly string[],
@@ -209,99 +212,128 @@ export function WalletAgentPermissions({
           </div>
         </div>
       ) : (
-        <div className="divide-y divide-border">
-          {activeWalletAgents.map((agent) => {
-            const permission = findActiveWalletPermission(
-              permissions,
-              wallet.id,
-              agent.id,
-            );
-            const grantedScopes = permission?.scopes ?? [];
-            const pending =
-              mutation.isPending &&
-              mutation.variables?.agentSessionId === agent.id;
-            const isWalletSigner = wallet.agent_session_id === agent.id;
+        <div className="overflow-x-auto">
+          <div className="min-w-[600px]">
+            <div
+              className={cn(
+                permissionGridClass,
+                "border-b border-border bg-surface/40 px-4 py-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground",
+              )}
+            >
+              <span>Agent</span>
+              {AGENT_WALLET_PERMISSION_SCOPES.map((scope) => (
+                <span
+                  key={scope}
+                  className="inline-flex min-h-8 items-center justify-center gap-1.5 px-2 text-center"
+                >
+                  <span>{getAgentWalletPermissionLabel(scope)}</span>
+                  <Tooltip content={scopeDescription(scope)}>
+                    <button
+                      type="button"
+                      className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      aria-label={`${getAgentWalletPermissionLabel(scope)} scope details`}
+                    >
+                      <Info className="size-3.5" aria-hidden />
+                    </button>
+                  </Tooltip>
+                </span>
+              ))}
+            </div>
 
-            return (
-              <div
-                key={agent.id}
-                className={cn(
-                  "grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_minmax(320px,auto)] md:items-center",
-                  pending && "opacity-80",
-                )}
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-medium">
-                      {agent.label}
-                    </p>
-                    {isWalletSigner ? (
-                      <StatusBadge tone="success">wallet signer</StatusBadge>
-                    ) : null}
-                    {permission ? (
-                      <StatusBadge tone="success">
-                        {permission.grant_source.replaceAll("_", " ")}
-                      </StatusBadge>
-                    ) : (
-                      <StatusBadge tone="neutral">no grant</StatusBadge>
+            <div className="divide-y divide-border">
+              {activeWalletAgents.map((agent) => {
+                const permission = findActiveWalletPermission(
+                  permissions,
+                  wallet.id,
+                  agent.id,
+                );
+                const grantedScopes = permission?.scopes ?? [];
+                const pending =
+                  mutation.isPending &&
+                  mutation.variables?.agentSessionId === agent.id;
+                const isWalletSigner = wallet.agent_session_id === agent.id;
+
+                return (
+                  <div
+                    key={agent.id}
+                    className={cn(
+                      permissionGridClass,
+                      "px-4 py-3",
+                      pending && "opacity-80",
                     )}
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted-foreground">
-                    <ShieldCheck className="size-3.5" aria-hidden />
-                    <span>{agentDisplayAddress(agent)}</span>
-                  </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {AGENT_WALLET_PERMISSION_SCOPES.map((scope) => {
-                    const allowedByAgent = agent.scopes.includes(scope);
-                    const checked = grantedScopes.includes(scope);
-                    const label = getAgentWalletPermissionLabel(scope);
-                    const disabled = pending || !allowedByAgent;
-                    const checkbox = (
-                      <Checkbox
-                        key={scope}
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={(nextChecked) =>
-                          handleScopeChange(
-                            agent,
-                            permission,
-                            scope,
-                            nextChecked,
-                          )
-                        }
-                        className="rounded-md border border-border bg-surface px-3 py-2"
-                      >
-                        <span
-                          className={cn(
-                            "grid gap-0.5 text-left",
-                            disabled && "text-muted-foreground",
-                          )}
-                        >
-                          <span className="text-sm font-medium">{label}</span>
-                          <span className="text-[11px] leading-4 text-muted-foreground">
-                            {scopeDescription(scope)}
-                          </span>
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-medium">
+                          {agent.label}
+                        </p>
+                        {isWalletSigner ? (
+                          <StatusBadge tone="success">
+                            wallet signer
+                          </StatusBadge>
+                        ) : null}
+                        {permission ? (
+                          <StatusBadge tone="success">
+                            {permission.grant_source.replaceAll("_", " ")}
+                          </StatusBadge>
+                        ) : (
+                          <StatusBadge tone="neutral">no grant</StatusBadge>
+                        )}
+                      </div>
+                      <div className="mt-1 flex min-w-0 items-center gap-2 font-mono text-xs text-muted-foreground">
+                        <ShieldCheck
+                          className="size-3.5 shrink-0"
+                          aria-hidden
+                        />
+                        <span className="truncate">
+                          {agentDisplayAddress(agent)}
                         </span>
-                      </Checkbox>
-                    );
+                      </div>
+                    </div>
 
-                    return allowedByAgent ? (
-                      <div key={scope}>{checkbox}</div>
-                    ) : (
-                      <Tooltip
-                        key={scope}
-                        content="Enable this scope on the agent before granting it for this wallet."
-                      >
-                        <div>{checkbox}</div>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+                    {AGENT_WALLET_PERMISSION_SCOPES.map((scope) => {
+                      const allowedByAgent = agent.scopes.includes(scope);
+                      const checked = grantedScopes.includes(scope);
+                      const label = getAgentWalletPermissionLabel(scope);
+                      const disabled = pending || !allowedByAgent;
+                      const checkbox = (
+                        <Checkbox
+                          key={scope}
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={(nextChecked) =>
+                            handleScopeChange(
+                              agent,
+                              permission,
+                              scope,
+                              nextChecked,
+                            )
+                          }
+                          className="min-h-10 w-full justify-center gap-0 rounded-md px-2 py-2 transition-colors hover:bg-muted/40"
+                        >
+                          <span className="sr-only">
+                            {label} access for {agent.label}
+                          </span>
+                        </Checkbox>
+                      );
+
+                      return allowedByAgent ? (
+                        <div key={scope}>{checkbox}</div>
+                      ) : (
+                        <Tooltip
+                          key={scope}
+                          className="w-full"
+                          content="Enable this scope on the agent before granting it for this wallet."
+                        >
+                          <span className="block w-full">{checkbox}</span>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </section>
