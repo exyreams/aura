@@ -134,6 +134,15 @@ function summarizeEventKind(eventKind: string) {
   if (kind === "wallet.transfer_request.approved") {
     return "Transfer proposal approved";
   }
+  if (kind === "wallet.transfer.execution_intent.created") {
+    return "Transfer execution prepared";
+  }
+  if (kind === "wallet.dwallet.message_signed") {
+    return "dWallet message signed";
+  }
+  if (kind === "wallet.transfer.executed_by_agent") {
+    return "Transfer executed by agent";
+  }
   if (kind === "wallet.transfer.submitted") {
     return "Transfer submitted";
   }
@@ -209,6 +218,13 @@ export function getActivityFamily(
   }
   if (hasPrefix(event.event_kind, "wallet.transfer_request")) {
     return "proposals";
+  }
+  if (
+    event.event_kind === "wallet.transfer.execution_intent.created" ||
+    event.event_kind === "wallet.dwallet.message_signed" ||
+    event.event_kind === "wallet.transfer.executed_by_agent"
+  ) {
+    return "execution";
   }
   if (hasPrefix(event.event_kind, "wallet.transfer")) {
     return "transfers";

@@ -44,7 +44,7 @@ function nextActionForDisplayStatus(status: string) {
     case "pending":
       return "owner_review_required";
     case "approved":
-      return "approved_execution_bridge_pending";
+      return "approved_owner_review_recorded";
     case "consumed":
       return "complete";
     case "expired":
@@ -102,7 +102,7 @@ export async function GET(
     runtimeCanExecute: false,
     note:
       displayStatus === "approved"
-        ? "Owner approval is recorded. Runtime execution remains disabled until the execution bridge is enabled."
-        : "Conduit can poll this request status; owner review and future execution happen through the dashboard-controlled flow.",
+        ? "Owner approval is recorded for this reviewed request. This status endpoint only polls review state."
+        : "Conduit can poll this request status; execution happens only through policy-allowed bound transfer requests.",
   });
 }

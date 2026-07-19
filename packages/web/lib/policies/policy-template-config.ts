@@ -240,6 +240,21 @@ function readAnomalyCode(action: PolicyAnomalyAction) {
       : 0;
 }
 
+function isBigNumberLike(
+  value: unknown,
+): value is { toString: (base?: number) => string } {
+  const record =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
+
+  return (
+    !!record &&
+    typeof record.toString === "function" &&
+    ("words" in record || record.constructor?.name === "BN")
+  );
+}
+
 function toJson(value: unknown): Json {
   if (
     value === null ||
@@ -256,6 +271,10 @@ function toJson(value: unknown): Json {
 
   if (typeof value === "bigint") {
     return value.toString(10);
+  }
+
+  if (isBigNumberLike(value)) {
+    return value.toString();
   }
 
   if (typeof value === "object") {

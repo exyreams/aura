@@ -115,6 +115,70 @@ test("wallet transfer request tool queues owner review through dashboard", async
   });
 });
 
+test("wallet transfer request tool does not mock an executable transfer without a signer", async () => {
+  const fetchImpl = async () =>
+    jsonResponse({
+      signRequest: null,
+      nextAction: "execute_native_solana_transfer",
+      dashboardUrl: "http://localhost:3000/dashboard/wallets",
+      runtimeCanExecute: true,
+      execution: {
+        version: "aura.wallet_transfer_execution_intent.v1",
+        mode: "native_solana_dwallet_transfer",
+        status: "ready",
+        wallet: {
+          id: "wallet_123",
+          chain_address: VALID_PUBKEY,
+          treasury_pda: VALID_PUBKEY,
+          dwallet_id: VALID_PUBKEY,
+          dwallet_state_pda: VALID_PUBKEY,
+        },
+        dwallet: {
+          publicKeyHex:
+            "0000000000000000000000000000000000000000000000000000000000000001",
+          dwalletProgramId: VALID_PUBKEY,
+          curve: 2,
+          signatureScheme: 5,
+        },
+        transfer: {
+          asset_id: "sol",
+          decimals: 9,
+        },
+        aura: {
+          amount_usd: "1",
+          confirmations_required: 1,
+        },
+        endpoints: {
+          dwallet_signature: "/wallets/dwallet-signatures",
+          execution_result: "/wallets/transfer-executions",
+        },
+      },
+    });
+  const tool = createWalletTransferRequestTool({
+    controlPlaneBaseUrl: "http://localhost:3000/api/conduit",
+    dashboardBaseUrl: "http://localhost:3000",
+    fetchImpl: fetchImpl as typeof fetch,
+  });
+
+  await assert.rejects(
+    () =>
+      tool.handler(
+        tool.input.parse({
+          walletId: "wallet_123",
+          recipientAddress: VALID_PUBKEY,
+          rawAmount: "1000000000",
+          decimals: 9,
+          amountUi: "1",
+          assetKind: "native",
+          assetSymbol: "SOL",
+        }),
+        makeContext(),
+      ),
+    (error: unknown) =>
+      error instanceof ConduitError && error.code === "needs_human",
+  );
+});
+
 test("wallet transfer status tool polls dashboard status without execution", async () => {
   const calls: Array<{ url: string; method: string | undefined }> = [];
   const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -182,6 +246,41 @@ test("wallet transfer request tool maps dashboard link-required conflicts to nee
       ),
     (error: unknown) =>
       error instanceof ConduitError && error.code === "needs_human",
+  );
+});
+
+test("wallet transfer request tool maps dashboard policy denials to policy_denied", async () => {
+  const fetchImpl = async () =>
+    jsonResponse(
+      {
+        error: "Transfer amount exceeds Daily cap's per-request cap.",
+        details: {
+          status: "blocked",
+          reasons: [{ code: "max_amount_exceeded" }],
+        },
+      },
+      422,
+    );
+  const tool = createWalletTransferRequestTool({
+    controlPlaneBaseUrl: "http://localhost:3000/api/conduit",
+    dashboardBaseUrl: "http://localhost:3000",
+    fetchImpl: fetchImpl as typeof fetch,
+  });
+
+  await assert.rejects(
+    () =>
+      tool.handler(
+        tool.input.parse({
+          walletId: "wallet_123",
+          recipientAddress: VALID_PUBKEY,
+          rawAmount: "2000000000000",
+          decimals: 9,
+          amountUi: "2000",
+        }),
+        makeContext(),
+      ),
+    (error: unknown) =>
+      error instanceof ConduitError && error.code === "policy_denied",
   );
 });
 

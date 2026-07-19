@@ -2,6 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
 import {
   evaluateTransferPolicies,
+  transferPolicyDenialMessage,
   transferPolicyEvaluationToJson,
 } from "@/lib/policies/transfer-policy";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -246,6 +247,70 @@ export async function POST(request: Request) {
   const message = `Transfer ${amountUi} ${assetSymbol} from ${
     wallet.label ?? wallet.chain_name
   } to ${recipientAddress}.`;
+
+  if (policyEvaluation.decision === "block") {
+    const deniedMetadata = {
+      version: "aura.wallet_transfer_policy_denial.v1",
+      created_via: "web",
+      wallet: {
+        id: wallet.id,
+        kind: wallet.wallet_kind,
+        chain_id: wallet.chain_id,
+        chain_name: wallet.chain_name,
+        chain_address: wallet.chain_address,
+        treasury_pda: wallet.treasury_pda,
+        dwallet_id: wallet.dwallet_id,
+        dwallet_state_pda: wallet.dwallet_state_pda,
+      },
+      agent: {
+        id: agent.id,
+        agent_id: agent.agent_id,
+        label: agent.agent_label,
+        treasury_pda: agent.treasury_pda,
+      },
+      transfer: {
+        asset_kind: assetKind,
+        symbol: assetSymbol,
+        name: assetName,
+        amount_ui: amountUi,
+        raw_amount: rawAmount,
+        decimals,
+        recipient_address: recipientAddress,
+        token_mint: tokenMint,
+        token_program: tokenProgram,
+        source_token_account: sourceTokenAccount,
+        note,
+      },
+      permission: {
+        id: walletPermission.id,
+        scopes: walletPermission.scopes,
+        grant_source: walletPermission.grant_source,
+      },
+      policy: policyMetadata,
+      source: {
+        kind: "owner_web",
+        reviewed_by_owner: true,
+      },
+    };
+
+    await admin.from("activity_events").insert({
+      owner_id: user.id,
+      agent_session_id: agent.id,
+      treasury_pda: wallet.treasury_pda,
+      wallet_id: wallet.id,
+      event_kind: "policy.transfer.denied",
+      severity: "error",
+      title: "Transfer denied by policy",
+      summary: message,
+      metadata: deniedMetadata,
+    });
+
+    return jsonError(
+      transferPolicyDenialMessage(policyEvaluation),
+      422,
+      policyMetadata,
+    );
+  }
 
   const payload = {
     version: "aura.wallet_transfer_request.v1",

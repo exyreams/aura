@@ -1,9 +1,25 @@
 import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
+import { metadataString } from "@/lib/agents/session-model";
 import {
   assertConduitScope,
   authenticateConduitAgent,
 } from "@/lib/conduit/agent-token";
+import {
+  assertDWalletAddressMatchesSession,
+  assertNativeSolanaDWallet,
+  getAuraProgramId,
+  loadPublicDWalletExecutionSession,
+  SOL_ASSET_ID,
+  SOL_DECIMALS,
+  SOLANA_CHAIN_CODE,
+  TRANSFER_TX_TYPE_CODE,
+} from "@/lib/conduit/wallet-transfer-execution";
+import {
+  evaluateTransferPolicies,
+  transferPolicyDenialMessage,
+  transferPolicyEvaluationToJson,
+} from "@/lib/policies/transfer-policy";
 import type { Json } from "@/lib/supabase/types";
 import { getDWalletStatusModel } from "@/lib/wallets/dwallet-status";
 import { getTransferRequestSummary } from "@/lib/wallets/transfer-requests";
@@ -30,8 +46,8 @@ interface ConduitTransferRequestBody {
   metadata?: unknown;
 }
 
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
+function jsonError(message: string, status: number, details?: Json) {
+  return NextResponse.json({ error: message, details }, { status });
 }
 
 function getErrorMessage(error: unknown) {
@@ -148,6 +164,11 @@ function transferNextAction(status: string) {
   return "none" as const;
 }
 
+function getSetupErrorStatus(error: unknown) {
+  const message = getErrorMessage(error);
+  return message.includes("supports Solana") ? 400 : 409;
+}
+
 export async function POST(request: Request) {
   let auth: Awaited<ReturnType<typeof authenticateConduitAgent>>;
   let body: ConduitTransferRequestBody;
@@ -257,12 +278,226 @@ export async function POST(request: Request) {
     );
   }
 
-  const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + REQUEST_TTL_MINUTES);
+  const policyEvaluation = await evaluateTransferPolicies({
+    ownerId: auth.session.owner_id,
+    wallet,
+    agent: auth.session,
+    admin: auth.admin,
+    transfer: {
+      assetKind,
+      assetSymbol,
+      rawAmount,
+      amountUi,
+      decimals,
+      recipientAddress,
+      tokenMint,
+      expiresInMinutes: REQUEST_TTL_MINUTES,
+    },
+  });
+
+  const policyMetadata = transferPolicyEvaluationToJson(policyEvaluation);
 
   const message = `${auth.session.agent_label ?? auth.session.agent_id} requests ${amountUi} ${assetSymbol} from ${
     wallet.label ?? wallet.chain_name
   } to ${recipientAddress}.`;
+
+  if (policyEvaluation.decision === "block") {
+    const deniedMetadata: Json = {
+      version: "aura.wallet_transfer_policy_denial.v1",
+      created_via: "conduit_agent",
+      wallet: {
+        id: wallet.id,
+        kind: wallet.wallet_kind,
+        chain_id: wallet.chain_id,
+        chain_name: wallet.chain_name,
+        chain_address: wallet.chain_address,
+        treasury_pda: wallet.treasury_pda,
+        dwallet_id: wallet.dwallet_id,
+        dwallet_state_pda: wallet.dwallet_state_pda,
+      },
+      agent: {
+        id: auth.session.id,
+        agent_id: auth.session.agent_id,
+        label: auth.session.agent_label,
+        treasury_pda: auth.session.treasury_pda,
+      },
+      transfer: {
+        asset_kind: assetKind,
+        symbol: assetSymbol,
+        name: assetName,
+        amount_ui: amountUi,
+        raw_amount: rawAmount,
+        decimals,
+        recipient_address: recipientAddress,
+        token_mint: tokenMint,
+        token_program: tokenProgram,
+        source_token_account: sourceTokenAccount,
+        note,
+      },
+      permission: {
+        id: walletPermission.id,
+        scopes: walletPermission.scopes,
+        grant_source: walletPermission.grant_source,
+      },
+      policy: policyMetadata,
+      source: {
+        kind: "conduit_agent",
+        conduit_session_id: auth.session.id,
+        conduit_agent_id: auth.session.agent_id,
+        metadata: requestMetadata,
+      },
+    };
+
+    await auth.admin.from("activity_events").insert({
+      owner_id: auth.session.owner_id,
+      agent_session_id: auth.session.id,
+      treasury_pda: wallet.treasury_pda ?? auth.session.treasury_pda,
+      wallet_id: wallet.id,
+      event_kind: "policy.transfer.denied",
+      severity: "error",
+      title: "Transfer denied by policy",
+      summary: message,
+      metadata: deniedMetadata,
+    });
+
+    return jsonError(
+      transferPolicyDenialMessage(policyEvaluation),
+      422,
+      policyMetadata,
+    );
+  }
+
+  if (policyEvaluation.decision === "allow") {
+    if (assetKind !== "native") {
+      return jsonError(
+        "Real agent execution currently supports native SOL transfers only. Token transfers must stay out of the agent execution path until SPL transfer construction is wired.",
+        409,
+      );
+    }
+
+    if (decimals !== SOL_DECIMALS || assetSymbol.toUpperCase() !== "SOL") {
+      return jsonError(
+        "Native Solana dWallet execution requires SOL with 9 decimals.",
+        400,
+      );
+    }
+
+    let dwalletSession: Awaited<
+      ReturnType<typeof loadPublicDWalletExecutionSession>
+    >;
+
+    try {
+      assertNativeSolanaDWallet(wallet);
+      dwalletSession = await loadPublicDWalletExecutionSession(auth.admin, {
+        ownerId: auth.session.owner_id,
+        walletId: wallet.id,
+        agentSessionId: auth.session.id,
+      });
+      assertDWalletAddressMatchesSession(wallet, dwalletSession);
+    } catch (cause) {
+      return jsonError(getErrorMessage(cause), getSetupErrorStatus(cause));
+    }
+
+    if (!policyEvaluation.amountUsd) {
+      return jsonError(
+        "Policy allowed this transfer without a trusted USD amount; refusing agent execution.",
+        409,
+      );
+    }
+
+    const url = new URL(request.url);
+    const programId = getAuraProgramId();
+    const executionIntent = {
+      version: "aura.wallet_transfer_execution_intent.v1",
+      mode: "native_solana_dwallet_transfer",
+      status: "ready",
+      wallet: {
+        id: wallet.id,
+        kind: wallet.wallet_kind,
+        chain_id: wallet.chain_id,
+        chain_name: wallet.chain_name,
+        chain_address: wallet.chain_address,
+        treasury_pda: wallet.treasury_pda,
+        dwallet_id: wallet.dwallet_id,
+        dwallet_state_pda: wallet.dwallet_state_pda,
+      },
+      dwallet: {
+        id: dwalletSession.id,
+        provider: dwalletSession.provider,
+        status: dwalletSession.status,
+        publicKeyHex: dwalletSession.publicKeyHex,
+        authorizedUserPubkey: dwalletSession.authorizedUserPubkey,
+        messageMetadataDigest: dwalletSession.messageMetadataDigest,
+        dwalletProgramId: dwalletSession.dwalletProgramId,
+        curve: dwalletSession.curve,
+        signatureScheme: dwalletSession.signatureScheme,
+      },
+      transfer: {
+        asset_kind: assetKind,
+        asset_id: SOL_ASSET_ID,
+        symbol: "SOL",
+        name: assetName,
+        amount_ui: amountUi,
+        raw_amount: rawAmount,
+        decimals,
+        recipient_address: recipientAddress,
+        note,
+      },
+      aura: {
+        program_id: programId.toBase58(),
+        treasury_pda: wallet.treasury_pda,
+        owner_pubkey: metadataString(auth.session.metadata, "owner_wallet"),
+        agent_id: auth.session.agent_id,
+        ai_authority: metadataString(
+          auth.session.metadata,
+          "authority_public_key",
+        ),
+        amount_usd: policyEvaluation.amountUsd,
+        target_chain: SOLANA_CHAIN_CODE,
+        tx_type: TRANSFER_TX_TYPE_CODE,
+        confirmations_required: 1,
+      },
+      policy: policyMetadata,
+      endpoints: {
+        dwallet_signature: "/wallets/dwallet-signatures",
+        execution_result: "/wallets/transfer-executions",
+      },
+      source: {
+        kind: "conduit_agent",
+        conduit_session_id: auth.session.id,
+        conduit_agent_id: auth.session.agent_id,
+        metadata: requestMetadata,
+      },
+    } satisfies Json;
+
+    await auth.admin.from("activity_events").insert({
+      owner_id: auth.session.owner_id,
+      agent_session_id: auth.session.id,
+      treasury_pda: wallet.treasury_pda ?? auth.session.treasury_pda,
+      wallet_id: wallet.id,
+      event_kind: "wallet.transfer.execution_intent.created",
+      severity: "info",
+      title: "Transfer execution prepared",
+      summary: message,
+      metadata: executionIntent,
+    });
+
+    return NextResponse.json({
+      signRequest: null,
+      execution: executionIntent,
+      dashboardUrl: `${url.origin}/dashboard/wallets`,
+      nextAction: "execute_native_solana_transfer",
+      runtimeCanExecute: true,
+      policy: policyEvaluation,
+      note: "Policy allowed this native SOL transfer. Conduit must now submit the bound AURA proposal, obtain the dWallet signature for the exact Solana message, broadcast it, and settle on-chain.",
+    });
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setMinutes(
+    expiresAt.getMinutes() + policyEvaluation.effectiveExpiryMinutes,
+  );
+
   const payload: Json = {
     version: "aura.wallet_transfer_request.v1",
     created_via: "conduit_agent",
@@ -301,6 +536,7 @@ export async function POST(request: Request) {
       scopes: walletPermission.scopes,
       grant_source: walletPermission.grant_source,
     },
+    policy: policyMetadata,
     source: {
       kind: "conduit_agent",
       reviewed_by_owner: false,
@@ -310,8 +546,8 @@ export async function POST(request: Request) {
     },
     sdk_hint: {
       package: "@aura-protocol/sdk-ts",
-      flow: "ownerReview -> runtimePoll -> executionBridge",
-      execution_bridge: "not_enabled",
+      flow: "ownerReviewRequired",
+      execution_bridge: "policy_review_required",
     },
   };
 
@@ -357,6 +593,7 @@ export async function POST(request: Request) {
     dashboardUrl,
     nextAction: transferNextAction(signRequest.status),
     runtimeCanExecute: false,
-    note: "The owner must approve this request in the dashboard. Conduit will only poll status until the execution bridge is enabled.",
+    policy: policyEvaluation,
+    note: "The transfer needs owner review because the live policy could not produce an agent-executable allow decision.",
   });
 }

@@ -236,6 +236,7 @@ export function createProposalCreateTool(
             replayNonce: null,
             gasLimit: null,
             maxFeeNative: null,
+            nativeMessageHash: null,
             calldataHash: null,
             utxoSetHash: null,
             sighashType: null,

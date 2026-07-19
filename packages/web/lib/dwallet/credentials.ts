@@ -11,7 +11,7 @@ export interface DWalletCredentialContext {
   agentSessionId: string | null;
 }
 
-interface DWalletSessionEnvelope {
+export interface DWalletSessionEnvelope {
   version: "aura.dwallet_session_ciphertext.v1";
   alg: "AES-256-GCM";
   key_version: string;

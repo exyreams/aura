@@ -66,6 +66,8 @@ export function buildToolCatalogue(
     createWalletTransferRequestTool({
       controlPlaneBaseUrl: options.controlPlaneBaseUrl,
       dashboardBaseUrl: options.dashboardBaseUrl,
+      solana: options.solana,
+      signer: options.signer,
     }),
     createWalletTransferStatusTool({
       controlPlaneBaseUrl: options.controlPlaneBaseUrl,
