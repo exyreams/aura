@@ -126,7 +126,7 @@ export function deriveEncryptEventAuthorityAddress(
   );
 }
 
-function u64Le(value: bigint | number | string, label: string): Buffer {
+function u64Le(value: bigint | number | string, label: string): Uint8Array {
   const bigintValue =
     typeof value === "bigint"
       ? value
@@ -136,32 +136,40 @@ function u64Le(value: bigint | number | string, label: string): Buffer {
   if (bigintValue < 0n || bigintValue > 0xffff_ffff_ffff_ffffn) {
     throw new Error(`${label} must fit in u64`);
   }
-  const bytes = Buffer.alloc(8);
-  bytes.writeBigUInt64LE(bigintValue);
+  const bytes = new Uint8Array(8);
+  new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setBigUint64(
+    0,
+    bigintValue,
+    true,
+  );
   return bytes;
 }
 
-function fixedBytes(value: Uint8Array, len: number, label: string): Buffer {
+function fixedBytes(value: Uint8Array, len: number, label: string): Uint8Array {
   if (value.length !== len) {
     throw new Error(`${label} must be ${len} bytes, got ${value.length}`);
   }
-  return Buffer.from(value);
+  return Uint8Array.from(value);
 }
 
-function u32Le(value: number, label: string): Buffer {
+function u32Le(value: number, label: string): Uint8Array {
   if (!Number.isInteger(value) || value < 0 || value > 0xffff_ffff) {
     throw new Error(`${label} must be a u32 integer`);
   }
-  const bytes = Buffer.alloc(4);
-  bytes.writeUInt32LE(value);
+  const bytes = new Uint8Array(4);
+  new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint32(
+    0,
+    value,
+    true,
+  );
   return bytes;
 }
 
-function u8Byte(value: number, label: string): Buffer {
+function u8Byte(value: number, label: string): Uint8Array {
   if (!Number.isInteger(value) || value < 0 || value > 0xff) {
     throw new Error(`${label} must be a u8 integer`);
   }
-  return Buffer.from([value]);
+  return Uint8Array.of(value);
 }
 
 /** Derives the policy simulation result PDA. */
@@ -289,12 +297,16 @@ export function deriveInvariantReportAddress(
   );
 }
 
-function u16Le(value: number, label: string): Buffer {
+function u16Le(value: number, label: string): Uint8Array {
   if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
     throw new Error(`${label} must be a u16 integer`);
   }
-  const bytes = Buffer.alloc(2);
-  bytes.writeUInt16LE(value);
+  const bytes = new Uint8Array(2);
+  new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint16(
+    0,
+    value,
+    true,
+  );
   return bytes;
 }
 
@@ -343,24 +355,24 @@ export function deriveMessageApprovalAddress(
     );
   }
 
-  const payload = Buffer.concat([
-    u16Le(curveCode, "curveCode"),
-    Buffer.from(publicKey),
-  ]);
-  const publicKeySeeds: Buffer[] = [];
+  const payload = new Uint8Array(2 + publicKey.length);
+  payload.set(u16Le(curveCode, "curveCode"), 0);
+  payload.set(publicKey, 2);
+
+  const publicKeySeeds: Uint8Array[] = [];
   for (let offset = 0; offset < payload.length; offset += 32) {
     publicKeySeeds.push(payload.subarray(offset, offset + 32));
   }
 
-  const seeds: Buffer[] = [
+  const seeds: Uint8Array[] = [
     DWALLET_SEED,
     ...publicKeySeeds,
     MESSAGE_APPROVAL_SEED,
     u16Le(signatureSchemeCode, "signatureSchemeCode"),
-    Buffer.from(messageDigest),
+    messageDigest,
   ];
   if (messageMetadataDigest?.some((byte) => byte !== 0)) {
-    seeds.push(Buffer.from(messageMetadataDigest));
+    seeds.push(messageMetadataDigest);
   }
 
   return PublicKey.findProgramAddressSync(seeds, dwalletProgramId);
