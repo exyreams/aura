@@ -347,6 +347,128 @@ export interface Database {
           },
         ];
       };
+      policy_template_snapshots: {
+        Row: {
+          id: string;
+          owner_id: string;
+          owner_wallet: string;
+          cluster: "devnet" | "mainnet-beta";
+          program_id: string;
+          template_pda: string;
+          template_id: string;
+          name: string;
+          description: string;
+          version: number;
+          onchain_created_at: number | null;
+          onchain_updated_at: number | null;
+          applied_count: string;
+          shared: boolean;
+          source_preset: number | null;
+          policy_config: Json;
+          config_fields: Json;
+          status: "active" | "closed";
+          last_tx_signature: string | null;
+          last_tx_slot: number | null;
+          last_synced_at: string;
+          closed_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          owner_wallet: string;
+          cluster?: "devnet" | "mainnet-beta";
+          program_id: string;
+          template_pda: string;
+          template_id: string;
+          name: string;
+          description?: string;
+          version?: number;
+          onchain_created_at?: number | null;
+          onchain_updated_at?: number | null;
+          applied_count?: string;
+          shared?: boolean;
+          source_preset?: number | null;
+          policy_config: Json;
+          config_fields: Json;
+          status?: "active" | "closed";
+          last_tx_signature?: string | null;
+          last_tx_slot?: number | null;
+          last_synced_at?: string;
+          closed_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["policy_template_snapshots"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "policy_template_snapshots_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      treasury_policy_snapshots: {
+        Row: {
+          id: string;
+          owner_id: string;
+          owner_wallet: string;
+          cluster: "devnet" | "mainnet-beta";
+          program_id: string;
+          treasury_pda: string;
+          template_pda: string | null;
+          template_id: string | null;
+          template_name: string | null;
+          policy_version: number | null;
+          policy_config: Json;
+          status: "active" | "stale";
+          last_tx_signature: string | null;
+          last_tx_slot: number | null;
+          last_synced_at: string;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          owner_wallet: string;
+          cluster?: "devnet" | "mainnet-beta";
+          program_id: string;
+          treasury_pda: string;
+          template_pda?: string | null;
+          template_id?: string | null;
+          template_name?: string | null;
+          policy_version?: number | null;
+          policy_config: Json;
+          status?: "active" | "stale";
+          last_tx_signature?: string | null;
+          last_tx_slot?: number | null;
+          last_synced_at?: string;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["treasury_policy_snapshots"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "treasury_policy_snapshots_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       wallet_assets: {
         Row: {
           id: string;
@@ -771,6 +893,10 @@ export type DWalletSessionRow =
   Database["public"]["Tables"]["dwallet_sessions"]["Row"];
 export type AgentWalletPermissionRow =
   Database["public"]["Tables"]["agent_wallet_permissions"]["Row"];
+export type PolicyTemplateSnapshotRow =
+  Database["public"]["Tables"]["policy_template_snapshots"]["Row"];
+export type TreasuryPolicySnapshotRow =
+  Database["public"]["Tables"]["treasury_policy_snapshots"]["Row"];
 export type AgentSessionRow =
   Database["public"]["Tables"]["agent_sessions"]["Row"];
 export type DeviceCodeRow = Database["public"]["Tables"]["device_codes"]["Row"];

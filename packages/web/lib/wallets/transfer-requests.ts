@@ -21,6 +21,10 @@ export interface TransferRequestSummary {
   permissionId: string | null;
   permissionScopes: string[];
   sourceKind: string | null;
+  policyStatus: string | null;
+  policyDecision: string | null;
+  policyReasons: string[];
+  policyMatchedCount: number | null;
 }
 
 export interface WalletTransferReviewMessageInput {
@@ -56,6 +60,20 @@ function stringArrayValue(value: unknown) {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+function policyReasonMessages(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const reason = record(item);
+      const message = reason?.message;
+      return typeof message === "string" ? message : null;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
 export function getTransferRequestSummary(
   request: SignRequestRow,
 ): TransferRequestSummary {
@@ -65,6 +83,7 @@ export function getTransferRequestSummary(
   const transfer = record(payload?.transfer);
   const permission = record(payload?.permission);
   const source = record(payload?.source);
+  const policy = record(payload?.policy);
 
   return {
     walletId: stringValue(wallet?.id),
@@ -85,6 +104,10 @@ export function getTransferRequestSummary(
     permissionId: stringValue(permission?.id),
     permissionScopes: stringArrayValue(permission?.scopes),
     sourceKind: stringValue(source?.kind) ?? stringValue(payload?.created_via),
+    policyStatus: stringValue(policy?.status),
+    policyDecision: stringValue(policy?.decision),
+    policyReasons: policyReasonMessages(policy?.reasons),
+    policyMatchedCount: numberValue(policy?.matched_policy_count),
   };
 }
 

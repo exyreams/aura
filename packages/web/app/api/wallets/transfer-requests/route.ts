@@ -1,5 +1,9 @@
 import { PublicKey } from "@solana/web3.js";
 import { NextResponse } from "next/server";
+import {
+  evaluateTransferPolicies,
+  transferPolicyEvaluationToJson,
+} from "@/lib/policies/transfer-policy";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -23,8 +27,8 @@ interface CreateTransferRequestBody {
   note?: unknown;
 }
 
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
+function jsonError(message: string, status: number, details?: unknown) {
+  return NextResponse.json({ error: message, details }, { status });
 }
 
 function getString(value: unknown, label: string) {
@@ -215,8 +219,29 @@ export async function POST(request: Request) {
     );
   }
 
+  const policyEvaluation = await evaluateTransferPolicies({
+    ownerId: user.id,
+    wallet,
+    agent,
+    admin,
+    transfer: {
+      assetKind,
+      assetSymbol,
+      rawAmount,
+      amountUi,
+      decimals,
+      recipientAddress,
+      tokenMint,
+      expiresInMinutes: REQUEST_TTL_MINUTES,
+    },
+  });
+
+  const policyMetadata = transferPolicyEvaluationToJson(policyEvaluation);
+
   const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + REQUEST_TTL_MINUTES);
+  expiresAt.setMinutes(
+    expiresAt.getMinutes() + policyEvaluation.effectiveExpiryMinutes,
+  );
 
   const message = `Transfer ${amountUi} ${assetSymbol} from ${
     wallet.label ?? wallet.chain_name
@@ -260,6 +285,7 @@ export async function POST(request: Request) {
       scopes: walletPermission.scopes,
       grant_source: walletPermission.grant_source,
     },
+    policy: policyMetadata,
     source: {
       kind: "owner_web",
       reviewed_by_owner: true,
@@ -303,5 +329,5 @@ export async function POST(request: Request) {
     metadata: payload,
   });
 
-  return NextResponse.json({ signRequest });
+  return NextResponse.json({ signRequest, policy: policyEvaluation });
 }

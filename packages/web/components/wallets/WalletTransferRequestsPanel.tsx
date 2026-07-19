@@ -83,6 +83,37 @@ function statusLabel(request: SignRequestRow) {
   return status;
 }
 
+function policyStatusTone(status: string | null) {
+  if (status === "blocked") {
+    return "danger" as const;
+  }
+  if (
+    status === "flagged" ||
+    status === "not_configured" ||
+    status === "onchain_review" ||
+    status === "treasury_missing" ||
+    status === "policy_unavailable"
+  ) {
+    return "warning" as const;
+  }
+  if (status === "passed") {
+    return "success" as const;
+  }
+  return "neutral" as const;
+}
+
+function formatPolicyStatus(status: string | null) {
+  if (!status) {
+    return "unknown";
+  }
+
+  if (status === "onchain_review") {
+    return "on-chain review";
+  }
+
+  return status.replaceAll("_", " ");
+}
+
 function SourceLine({
   label,
   value,
@@ -377,7 +408,7 @@ export function WalletTransferRequestsPanel({
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="grid gap-2 rounded-md border border-border bg-surface px-3 py-2">
                       <SourceLine
                         label="Wallet"
@@ -427,6 +458,25 @@ export function WalletTransferRequestsPanel({
                         value={formatDateTime(request.expires_at)}
                       />
                     </div>
+                    <div className="grid gap-2 rounded-md border border-border bg-surface px-3 py-2">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">Policy</span>
+                        <StatusBadge
+                          tone={policyStatusTone(summary.policyStatus)}
+                          className="px-1.5 py-0.5 text-[9px]"
+                        >
+                          {formatPolicyStatus(summary.policyStatus)}
+                        </StatusBadge>
+                      </div>
+                      <SourceLine
+                        label="Matched"
+                        value={
+                          summary.policyMatchedCount == null
+                            ? "Unknown"
+                            : String(summary.policyMatchedCount)
+                        }
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -439,6 +489,12 @@ export function WalletTransferRequestsPanel({
                       <>
                         <Clock className="size-3.5" aria-hidden />
                         <span>Waiting for signer runtime pickup.</span>
+                      </>
+                    ) : null}
+                    {summary.policyReasons[0] ? (
+                      <>
+                        <ShieldCheck className="size-3.5" aria-hidden />
+                        <span>{summary.policyReasons[0]}</span>
                       </>
                     ) : null}
                   </div>

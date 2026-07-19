@@ -173,6 +173,30 @@ function summarizeEventKind(eventKind: string) {
   if (kind === "conduit.device.denied") {
     return "Conduit authorization denied";
   }
+  if (kind === "policy.transfer.created") {
+    return "Transfer policy created";
+  }
+  if (kind === "policy.transfer.updated") {
+    return "Transfer policy updated";
+  }
+  if (kind === "policy.transfer.deleted") {
+    return "Transfer policy deleted";
+  }
+  if (kind === "policy.transfer.denied") {
+    return "Transfer denied by policy";
+  }
+  if (kind === "policy.template.created") {
+    return "Policy template created";
+  }
+  if (kind === "policy.template.updated") {
+    return "Policy template updated";
+  }
+  if (kind === "policy.template.applied") {
+    return "Policy template applied";
+  }
+  if (kind === "policy.template.closed") {
+    return "Policy template closed";
+  }
 
   return titleCase(kind);
 }
@@ -204,7 +228,9 @@ export function getActivityFamily(
   if (
     event.event_kind.includes("approved") ||
     event.event_kind.includes("revoked") ||
-    event.event_kind.includes("denied")
+    event.event_kind.includes("denied") ||
+    hasPrefix(event.event_kind, "policy.transfer") ||
+    hasPrefix(event.event_kind, "policy.template")
   ) {
     return "approvals";
   }
@@ -239,7 +265,9 @@ export function getActivityOrigin(
     sourceKind?.includes("web") ||
     hasPrefix(event.event_kind, "wallet.") ||
     hasPrefix(event.event_kind, "account.wallet") ||
-    hasPrefix(event.event_kind, "agent_session")
+    hasPrefix(event.event_kind, "agent_session") ||
+    hasPrefix(event.event_kind, "policy.transfer") ||
+    hasPrefix(event.event_kind, "policy.template")
   ) {
     return "owner";
   }

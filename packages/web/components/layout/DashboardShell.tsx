@@ -1,6 +1,12 @@
 "use client";
 
-import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import {
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ScrollText,
+  X,
+} from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -82,6 +88,13 @@ const primaryNav: NavItem[] = [
     animated: true,
   },
   {
+    href: "/dashboard/policies",
+    label: "Policies",
+    description: "On-chain templates",
+    icon: ScrollText,
+    animated: false,
+  },
+  {
     href: "/dashboard/conduit",
     label: "Conduit",
     description: "Agent gateway and approvals",
@@ -150,6 +163,11 @@ const pageMeta = [
     href: "/dashboard/agents",
     title: "Agents",
     description: "Conduit sessions, scopes, and approvals",
+  },
+  {
+    href: "/dashboard/policies",
+    title: "Policies",
+    description: "On-chain policy templates and treasury applies",
   },
   {
     href: "/dashboard/conduit",
